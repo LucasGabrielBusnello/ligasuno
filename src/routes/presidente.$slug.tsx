@@ -340,6 +340,7 @@ function QuizTab({ league }: any) {
   async function delSet(id: string) { if (!confirm("Excluir caderno e suas questões?")) return; await supabase.from("league_quiz_sets").delete().eq("id", id); reload(); }
   async function addQuiz() {
     if (!nq.question || nq.options.some(o => !o)) return toast.error("Preencha pergunta e 4 alternativas");
+    if (!openSet) return;
     const { error } = await supabase.from("league_quizzes").insert({ ...nq, quiz_set_id: openSet, display_order: quizzes.length });
     if (error) return toast.error(error.message);
     setNq({ question: "", options: ["", "", "", ""], correct_answer: 0, explanation: "" });
