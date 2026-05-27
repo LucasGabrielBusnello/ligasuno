@@ -425,8 +425,8 @@ function MembersTab({ league }: any) {
     if (!query.trim()) return;
     const q = query.trim();
     const { data: prof } = await supabase.from("profiles").select("id").or(`email.ilike.${q},username.ilike.${q}`).maybeSingle();
-    if (!prof) return toast.error("Usuário não existe");
-    const { error } = await supabase.from("league_memberships").upsert({ league_id: league.id, user_id: prof.id as string, role }, { onConflict: "league_id,user_id" });
+    if (!prof?.id) return toast.error("Usuário não existe");
+    const { error } = await supabase.from("league_memberships").upsert({ league_id: league.id, user_id: prof.id, role }, { onConflict: "league_id,user_id" });
     if (error) return toast.error(error.message);
     toast.success("Adicionado"); setQuery(""); reload();
   }
