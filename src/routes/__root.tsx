@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Ligas Unochapecó" },
+      { name: "description", content: "Centralizes all academic leagues, offering a unified platform for information, management, and event participation." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Ligas Unochapecó" },
+      { property: "og:description", content: "Centralizes all academic leagues, offering a unified platform for information, management, and event participation." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Ligas Unochapecó" },
+      { name: "twitter:description", content: "Centralizes all academic leagues, offering a unified platform for information, management, and event participation." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ltcTiKetBFV5AhiYSaV8TJSBNs82/social-images/social-1779893153554-images_(2).webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ltcTiKetBFV5AhiYSaV8TJSBNs82/social-images/social-1779893153554-images_(2).webp" },
     ],
     links: [
       {
