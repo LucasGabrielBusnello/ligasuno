@@ -14,6 +14,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugIndexRouteImport } from './routes/$slug/index'
 import { Route as PresidenteSlugRouteImport } from './routes/presidente.$slug'
+import { Route as LiganteSlugRouteImport } from './routes/ligante.$slug'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -40,11 +41,17 @@ const PresidenteSlugRoute = PresidenteSlugRouteImport.update({
   path: '/presidente/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LiganteSlugRoute = LiganteSlugRouteImport.update({
+  id: '/ligante/$slug',
+  path: '/ligante/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug': typeof SlugIndexRoute
 }
@@ -60,21 +68,42 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/presidente/$slug' | '/$slug/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/ligante/$slug'
+    | '/presidente/$slug'
+    | '/$slug/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/presidente/$slug' | '/$slug'
-  id: '__root__' | '/' | '/admin' | '/auth' | '/presidente/$slug' | '/$slug/'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/ligante/$slug'
+    | '/presidente/$slug'
+    | '/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/ligante/$slug'
+    | '/presidente/$slug'
+    | '/$slug/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
   SlugIndexRoute: typeof SlugIndexRoute
 }
@@ -116,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PresidenteSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ligante/$slug': {
+      id: '/ligante/$slug'
+      path: '/ligante/$slug'
+      fullPath: '/ligante/$slug'
+      preLoaderRoute: typeof LiganteSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -123,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,
   SlugIndexRoute: SlugIndexRoute,
 }
