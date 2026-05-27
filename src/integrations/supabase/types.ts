@@ -89,6 +89,93 @@ export type Database = {
         }
         Relationships: []
       }
+      league_activities: {
+        Row: {
+          caption: string | null
+          created_at: string
+          display_order: number
+          id: string
+          image_url: string
+          league_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url: string
+          league_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          image_url?: string
+          league_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_activities_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_activities_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_attendance: {
+        Row: {
+          activity: string
+          activity_date: string
+          created_at: string
+          id: string
+          league_id: string
+          present: boolean
+          user_id: string
+        }
+        Insert: {
+          activity: string
+          activity_date: string
+          created_at?: string
+          id?: string
+          league_id: string
+          present?: boolean
+          user_id: string
+        }
+        Update: {
+          activity?: string
+          activity_date?: string
+          created_at?: string
+          id?: string
+          league_id?: string
+          present?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_attendance_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_attendance_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_content: {
         Row: {
           content_key: string
@@ -215,6 +302,54 @@ export type Database = {
           },
         ]
       }
+      league_news: {
+        Row: {
+          category: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          image_url: string | null
+          league_id: string
+          link: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          league_id: string
+          link?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          league_id?: string
+          link?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_news_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_news_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_notifications: {
         Row: {
           created_at: string
@@ -250,6 +385,124 @@ export type Database = {
             columns: ["league_id"]
             isOneToOne: false
             referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_quiz_answers: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          quiz_id: string
+          selected: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct: boolean
+          quiz_id: string
+          selected: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          quiz_id?: string
+          selected?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_quiz_answers_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "league_quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_quiz_sets: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_private: boolean
+          league_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          league_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_private?: boolean
+          league_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_quiz_sets_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_quiz_sets_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_quizzes: {
+        Row: {
+          correct_answer: number
+          created_at: string
+          display_order: number
+          explanation: string | null
+          id: string
+          options: Json
+          question: string
+          quiz_set_id: string
+        }
+        Insert: {
+          correct_answer: number
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          options: Json
+          question: string
+          quiz_set_id: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string
+          display_order?: number
+          explanation?: string | null
+          id?: string
+          options?: Json
+          question?: string
+          quiz_set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_quizzes_quiz_set_id_fkey"
+            columns: ["quiz_set_id"]
+            isOneToOne: false
+            referencedRelation: "league_quiz_sets"
             referencedColumns: ["id"]
           },
         ]
