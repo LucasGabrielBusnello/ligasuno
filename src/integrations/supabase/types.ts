@@ -89,6 +89,68 @@ export type Database = {
         }
         Relationships: []
       }
+      event_registrations: {
+        Row: {
+          base_price: number
+          category: string
+          course: string
+          cpf: string
+          created_at: string
+          discount_reason: string | null
+          event_id: string
+          full_name: string
+          id: string
+          paid_price: number
+          social_name: string | null
+          status: string
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_price?: number
+          category?: string
+          course: string
+          cpf: string
+          created_at?: string
+          discount_reason?: string | null
+          event_id: string
+          full_name: string
+          id?: string
+          paid_price?: number
+          social_name?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_price?: number
+          category?: string
+          course?: string
+          cpf?: string
+          created_at?: string
+          discount_reason?: string | null
+          event_id?: string
+          full_name?: string
+          id?: string
+          paid_price?: number
+          social_name?: string | null
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "league_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_activities: {
         Row: {
           caption: string | null
@@ -223,6 +285,10 @@ export type Database = {
           id: string
           image_url: string | null
           league_id: string
+          partner_league_ids: string[]
+          price_ligante: number
+          price_partner: number
+          price_visitor: number
           registration_link: string | null
           title: string
         }
@@ -233,6 +299,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           league_id: string
+          partner_league_ids?: string[]
+          price_ligante?: number
+          price_partner?: number
+          price_visitor?: number
           registration_link?: string | null
           title: string
         }
@@ -243,6 +313,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           league_id?: string
+          partner_league_ids?: string[]
+          price_ligante?: number
+          price_partner?: number
+          price_visitor?: number
           registration_link?: string | null
           title?: string
         }

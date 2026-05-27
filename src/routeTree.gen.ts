@@ -16,6 +16,7 @@ import { Route as SlugIndexRouteImport } from './routes/$slug/index'
 import { Route as PresidenteSlugRouteImport } from './routes/presidente.$slug'
 import { Route as LiganteSlugRouteImport } from './routes/ligante.$slug'
 import { Route as DiretorSlugRouteImport } from './routes/diretor.$slug'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -52,6 +53,12 @@ const DiretorSlugRoute = DiretorSlugRouteImport.update({
   path: '/diretor/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +78,7 @@ export interface FileRoutesByTo {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug': typeof SlugIndexRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +89,7 @@ export interface FileRoutesById {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +101,7 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug/'
+    | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +111,7 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug'
+    | '/api/public/payments/webhook'
   id:
     | '__root__'
     | '/'
@@ -109,6 +121,7 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug/'
+    | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +132,7 @@ export interface RootRouteChildren {
   LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
   SlugIndexRoute: typeof SlugIndexRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiretorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +204,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,
   SlugIndexRoute: SlugIndexRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
