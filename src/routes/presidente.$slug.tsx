@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type League } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { createLeagueSubscriptionCheckout } from "@/lib/subscription.functions";
 
 export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
 
@@ -70,17 +72,7 @@ function PresidentePage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="mb-6 border-destructive">
-            <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-              <div>
-                <p className="font-black text-destructive">Anuidade não está em dia</p>
-                <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga.</p>
-              </div>
-              <Button className="bg-gradient-to-r from-amber-500 to-orange-600" onClick={() => toast.info("Integração de pagamento Stripe em breve")}>
-                <DollarSign className="size-4" /> Pagar Anuidade
-              </Button>
-            </CardContent>
-          </Card>
+          <PayAnuidadeCard leagueId={league.id} settings={settings} />
         )}
 
         <Tabs defaultValue="config">
@@ -101,29 +93,53 @@ function PresidentePage() {
           <TabsContent value="atividades" className="mt-6"><ActivitiesTab league={league} /></TabsContent>
           <TabsContent value="membros" className="mt-6"><MembersTab league={league} /></TabsContent>
         </Tabs>
-
-        <Card className="mt-6">
-          <CardHeader><CardTitle>Valores da anuidade</CardTitle></CardHeader>
-          <CardContent>
-            {settings && (
-              <div className="grid sm:grid-cols-2 gap-3">
-                <Card className="border-primary"><CardContent className="p-4 text-center">
-                  <Badge className="mb-2">PIX</Badge>
-                  <div className="text-3xl font-black">R$ {Number(settings.annual_fee_pix_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-                  <div className="text-xs text-muted-foreground">R$ {(Number(settings.annual_fee_pix_monthly) * 12).toFixed(2)} anual</div>
-                </CardContent></Card>
-                <Card><CardContent className="p-4 text-center">
-                  <Badge variant="secondary" className="mb-2">Crédito até 12x</Badge>
-                  <div className="text-3xl font-black">R$ {Number(settings.annual_fee_credit_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-                  <div className="text-xs text-muted-foreground">R$ {(Number(settings.annual_fee_credit_monthly) * 12).toFixed(2)} anual</div>
-                </CardContent></Card>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground mt-3">⚠ Pagamentos não são reembolsáveis.</p>
-          </CardContent>
-        </Card>
       </main>
     </div>
+  );
+}
+
+function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: any }) {
+  const startCheckout = useServerFn(createLeagueSubscriptionCheckout);
+  const [loading, setLoading] = useState<"pix" | "card" | null>(null);
+  async function pay(method: "pix" | "card") {
+    try {
+      setLoading(method);
+      const res = await startCheckout({ data: { league_id: leagueId, method, origin_url: window.location.origin } });
+      if (res?.url) window.location.href = res.url;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao iniciar pagamento");
+    } finally {
+      setLoading(null);
+    }
+  }
+  return (
+    <Card className="mb-6 border-destructive">
+      <CardHeader>
+        <CardTitle className="text-destructive">Anuidade pendente</CardTitle>
+        <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga. Escolha a forma de pagamento mensal:</p>
+      </CardHeader>
+      <CardContent>
+        {settings && (
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Card className="border-primary"><CardContent className="p-4 text-center space-y-3">
+              <Badge className="mb-1">PIX</Badge>
+              <div className="text-3xl font-black">R$ {Number(settings.annual_fee_pix_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+              <Button className="w-full" disabled={loading !== null} onClick={() => pay("pix")}>
+                <DollarSign className="size-4" /> {loading === "pix" ? "Abrindo..." : "Pagar com PIX"}
+              </Button>
+            </CardContent></Card>
+            <Card><CardContent className="p-4 text-center space-y-3">
+              <Badge variant="secondary" className="mb-1">Cartão</Badge>
+              <div className="text-3xl font-black">R$ {Number(settings.annual_fee_credit_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+              <Button variant="secondary" className="w-full" disabled={loading !== null} onClick={() => pay("card")}>
+                <DollarSign className="size-4" /> {loading === "card" ? "Abrindo..." : "Pagar com Cartão"}
+              </Button>
+            </CardContent></Card>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground mt-3">⚠ Pagamentos não são reembolsáveis. A cobrança é mensal e pode ser cancelada a qualquer momento.</p>
+      </CardContent>
+    </Card>
   );
 }
 
