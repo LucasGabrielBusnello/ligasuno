@@ -58,16 +58,17 @@ function LigantePage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Ligante</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
 
-        <Tabs defaultValue="quiz">
+        <Tabs defaultValue="schedule">
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1.5" />Quizzes</TabsTrigger>
+            <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1.5" />Agenda</TabsTrigger>
             <TabsTrigger value="attendance"><Calendar className="size-4 mr-1.5" />Minha Frequência</TabsTrigger>
             <TabsTrigger value="ranking"><BarChart2 className="size-4 mr-1.5" />Meu Desempenho</TabsTrigger>
           </TabsList>
-          <TabsContent value="quiz" className="mt-6"><QuizView league={league} userId={user.id} isStaff={!!allowed} /></TabsContent>
+          <TabsContent value="schedule" className="mt-6"><ScheduleView league={league} /></TabsContent>
           <TabsContent value="attendance" className="mt-6"><AttendanceView league={league} userId={user.id} /></TabsContent>
           <TabsContent value="ranking" className="mt-6"><PerformanceView userId={user.id} /></TabsContent>
         </Tabs>
+
       </main>
     </div>
   );
