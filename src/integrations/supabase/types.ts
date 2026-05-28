@@ -581,6 +581,39 @@ export type Database = {
           },
         ]
       }
+      league_schedule_items: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          league_id: string
+          name: string
+          scheduled_date: string
+          scheduled_time: string | null
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          league_id: string
+          name: string
+          scheduled_date: string
+          scheduled_time?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          league_id?: string
+          name?: string
+          scheduled_date?: string
+          scheduled_time?: string | null
+        }
+        Relationships: []
+      }
       league_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
