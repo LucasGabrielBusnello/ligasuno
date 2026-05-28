@@ -254,3 +254,47 @@ function PerformanceView({ userId }: { userId: string }) {
     </CardContent></Card>
   );
 }
+
+function ScheduleView({ league }: { league: League }) {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from("league_schedule_items").select("*").eq("league_id", league.id).order("scheduled_date").order("scheduled_time")
+      .then(({ data }) => setItems(data ?? []));
+  }, [league.id]);
+
+  // Agrupa por data
+  const grouped = items.reduce((acc: Record<string, any[]>, it) => {
+    (acc[it.scheduled_date] ??= []).push(it);
+    return acc;
+  }, {});
+  const sortedDates = Object.keys(grouped).sort();
+
+  if (items.length === 0) return <Card className="p-12 text-center text-muted-foreground">Nada na agenda ainda.</Card>;
+
+  return (
+    <div className="space-y-4">
+      {sortedDates.map((date) => (
+        <Card key={date}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {grouped[date].map((s: any) => (
+              <div key={s.id} className="flex items-start gap-3 p-3 rounded border">
+                <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: s.color }} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">{s.name}</span>
+                    {s.scheduled_time && <Badge variant="secondary" className="text-[10px]">{s.scheduled_time.slice(0, 5)}</Badge>}
+                  </div>
+                  {s.description && <p className="text-xs text-muted-foreground mt-1">{s.description}</p>}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
