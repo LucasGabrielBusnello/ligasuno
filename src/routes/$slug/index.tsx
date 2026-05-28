@@ -25,6 +25,7 @@ function LeaguePage() {
   const [events, setEvents] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [quizSets, setQuizSets] = useState<any[]>([]);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string | null>(null);
@@ -34,15 +35,17 @@ function LeaguePage() {
       const { data } = await supabase.from("leagues").select("*").eq("slug", slug).maybeSingle();
       setLeague(data as League | null);
       if (data) {
-        const [ev, nw, ac, ct] = await Promise.all([
+        const [ev, nw, ac, ct, qs] = await Promise.all([
           supabase.from("league_events").select("*").eq("league_id", data.id).order("created_at", { ascending: false }),
           supabase.from("league_news").select("*").eq("league_id", data.id).order("created_at", { ascending: false }),
           supabase.from("league_activities").select("*").eq("league_id", data.id).order("display_order"),
           supabase.from("league_content").select("content_key,content_value").eq("league_id", data.id),
+          supabase.from("league_quiz_sets").select("*").eq("league_id", data.id).order("created_at", { ascending: false }),
         ]);
         setEvents(ev.data ?? []);
         setNews(nw.data ?? []);
         setActivities(ac.data ?? []);
+        setQuizSets(qs.data ?? []);
         const m: Record<string, string> = {};
         (ct.data ?? []).forEach((r: any) => { m[r.content_key] = r.content_value; });
         setContent(m);
@@ -122,11 +125,12 @@ function LeaguePage() {
 
       <main className="max-w-7xl mx-auto px-4 py-12">
         <Tabs defaultValue="sobre" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 h-auto p-1">
+          <TabsList className="w-full grid grid-cols-2 md:grid-cols-5 h-auto p-1">
             <TabsTrigger value="sobre" className="py-2.5"><Award className="size-4 mr-1.5" />Sobre</TabsTrigger>
             <TabsTrigger value="eventos" className="py-2.5"><Calendar className="size-4 mr-1.5" />Eventos</TabsTrigger>
             <TabsTrigger value="news" className="py-2.5"><Newspaper className="size-4 mr-1.5" />Notícias</TabsTrigger>
             <TabsTrigger value="atividades" className="py-2.5"><Activity className="size-4 mr-1.5" />Atividades</TabsTrigger>
+            <TabsTrigger value="quizzes" className="py-2.5"><HelpCircle className="size-4 mr-1.5" />Quizzes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sobre" className="mt-8">
@@ -217,6 +221,37 @@ function LeaguePage() {
                 </CarouselContent>
                 <CarouselPrevious /><CarouselNext />
               </Carousel>
+            )}
+          </TabsContent>
+
+          <TabsContent value="quizzes" className="mt-8">
+            {quizSets.length === 0 ? (
+              <Empty icon={<HelpCircle className="size-12" />} title="Nenhum quiz publicado" />
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {quizSets.map((q) => (
+                  <Card key={q.id} className="overflow-hidden hover:-translate-y-1 transition-all">
+                    <div className="h-2" style={{ background: league.theme_color }} />
+                    <CardContent className="p-5">
+                      <h3 className="font-black text-lg">{q.title}</h3>
+                      {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
+                      {user ? (
+                        isLigante ? (
+                          <Button asChild className="w-full mt-4" style={{ background: league.theme_color }}>
+                            <Link to="/ligante/$slug" params={{ slug }}>Acessar quiz <ChevronRight className="size-4" /></Link>
+                          </Button>
+                        ) : (
+                          <Button disabled className="w-full mt-4">Apenas ligantes</Button>
+                        )
+                      ) : (
+                        <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
+                          <LogIn className="size-4" /> Entrar para responder
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>

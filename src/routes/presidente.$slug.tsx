@@ -66,8 +66,8 @@ function PresidentePage() {
             <CardContent className="p-4 flex items-center gap-3">
               <CheckCircle2 className="size-5 text-emerald-600" />
               <div>
-                <p className="font-black text-emerald-700 dark:text-emerald-400">Anuidade ativa</p>
-                <p className="text-sm text-muted-foreground">Sua liga está publicada até <span className="font-bold">{paidUntilFmt}</span>.</p>
+                <p className="font-black text-emerald-700 dark:text-emerald-400">Liga ativa</p>
+                <p className="text-sm text-muted-foreground">Data da próxima cobrança: <span className="font-bold">{paidUntilFmt}</span>.</p>
               </div>
             </CardContent>
           </Card>
