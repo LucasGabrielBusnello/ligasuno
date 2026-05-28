@@ -321,25 +321,25 @@ function UsersAdmin() {
 
 /* ===================== CONFIG ===================== */
 function SettingsAdmin() {
-  const [s, setS] = useState({ annual_fee_credit_monthly: 9.80, annual_fee_pix_monthly: 7.90 });
+  const [s, setS] = useState({ annual_fee_credit_monthly: 0.05 });
   useEffect(() => {
-    supabase.from("app_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => { if (data) setS(data as any); });
+    supabase.from("app_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => { if (data) setS({ annual_fee_credit_monthly: Number((data as any).annual_fee_credit_monthly) }); });
   }, []);
   async function save() {
+    // Mantém PIX sincronizado para compatibilidade, mas só cartão é cobrado
     const { error } = await supabase.from("app_settings").update({
       annual_fee_credit_monthly: s.annual_fee_credit_monthly,
-      annual_fee_pix_monthly: s.annual_fee_pix_monthly,
+      annual_fee_pix_monthly: s.annual_fee_credit_monthly,
     }).eq("id", 1);
     if (error) return toast.error(error.message);
     toast.success("Configurações salvas");
   }
   return (
     <Card>
-      <CardHeader><CardTitle>Valores da Anuidade</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Valor da Anuidade (Cartão)</CardTitle></CardHeader>
       <CardContent className="space-y-3">
-        <div><Label>Valor mensal no crédito (R$)</Label><Input type="number" step="0.01" value={s.annual_fee_credit_monthly} onChange={(e) => setS({ ...s, annual_fee_credit_monthly: +e.target.value })} /></div>
-        <div><Label>Valor mensal no PIX (R$)</Label><Input type="number" step="0.01" value={s.annual_fee_pix_monthly} onChange={(e) => setS({ ...s, annual_fee_pix_monthly: +e.target.value })} /></div>
-        <p className="text-xs text-muted-foreground">Anuidade total = valor mensal × 12. Pix calcula desconto automático em relação ao crédito.</p>
+        <div><Label>Valor mensal no cartão (R$)</Label><Input type="number" step="0.01" value={s.annual_fee_credit_monthly} onChange={(e) => setS({ ...s, annual_fee_credit_monthly: +e.target.value })} /></div>
+        <p className="text-xs text-muted-foreground">Cobrança recorrente mensal no cartão. O valor é lido em tempo real no checkout.</p>
         <Button onClick={save}>Salvar</Button>
       </CardContent>
     </Card>
