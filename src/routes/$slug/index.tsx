@@ -223,6 +223,37 @@ function LeaguePage() {
               </Carousel>
             )}
           </TabsContent>
+
+          <TabsContent value="quizzes" className="mt-8">
+            {quizSets.length === 0 ? (
+              <Empty icon={<HelpCircle className="size-12" />} title="Nenhum quiz publicado" />
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {quizSets.map((q) => (
+                  <Card key={q.id} className="overflow-hidden hover:-translate-y-1 transition-all">
+                    <div className="h-2" style={{ background: league.theme_color }} />
+                    <CardContent className="p-5">
+                      <h3 className="font-black text-lg">{q.title}</h3>
+                      {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
+                      {user ? (
+                        isLigante ? (
+                          <Button asChild className="w-full mt-4" style={{ background: league.theme_color }}>
+                            <Link to="/ligante/$slug" params={{ slug }}>Acessar quiz <ChevronRight className="size-4" /></Link>
+                          </Button>
+                        ) : (
+                          <Button disabled className="w-full mt-4">Apenas ligantes</Button>
+                        )
+                      ) : (
+                        <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
+                          <LogIn className="size-4" /> Entrar para responder
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
 
         {!user && (
