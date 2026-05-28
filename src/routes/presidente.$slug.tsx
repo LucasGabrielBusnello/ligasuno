@@ -100,44 +100,36 @@ function PresidentePage() {
 
 function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: any }) {
   const startCheckout = useServerFn(createLeagueSubscriptionCheckout);
-  const [loading, setLoading] = useState<"pix" | "card" | null>(null);
-  async function pay(method: "pix" | "card") {
+  const [loading, setLoading] = useState(false);
+  async function pay() {
     try {
-      setLoading(method);
-      const res = await startCheckout({ data: { league_id: leagueId, method, origin_url: window.location.origin } });
+      setLoading(true);
+      const res = await startCheckout({ data: { league_id: leagueId, origin_url: window.location.origin } });
       if (res?.url) window.location.href = res.url;
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao iniciar pagamento");
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   }
+  const value = Number(settings?.annual_fee_credit_monthly ?? 0);
   return (
     <Card className="mb-6 border-destructive">
       <CardHeader>
         <CardTitle className="text-destructive">Anuidade pendente</CardTitle>
-        <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga. Escolha a forma de pagamento mensal:</p>
+        <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga. Cobrança recorrente mensal no cartão.</p>
       </CardHeader>
       <CardContent>
         {settings && (
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Card className="border-primary"><CardContent className="p-4 text-center space-y-3">
-              <Badge className="mb-1">PIX</Badge>
-              <div className="text-3xl font-black">R$ {Number(settings.annual_fee_pix_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-              <Button className="w-full" disabled={loading !== null} onClick={() => pay("pix")}>
-                <DollarSign className="size-4" /> {loading === "pix" ? "Abrindo..." : "Pagar com PIX"}
-              </Button>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 text-center space-y-3">
-              <Badge variant="secondary" className="mb-1">Cartão</Badge>
-              <div className="text-3xl font-black">R$ {Number(settings.annual_fee_credit_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-              <Button variant="secondary" className="w-full" disabled={loading !== null} onClick={() => pay("card")}>
-                <DollarSign className="size-4" /> {loading === "card" ? "Abrindo..." : "Pagar com Cartão"}
-              </Button>
-            </CardContent></Card>
-          </div>
+          <Card className="border-primary max-w-sm mx-auto"><CardContent className="p-4 text-center space-y-3">
+            <Badge className="mb-1">Cartão</Badge>
+            <div className="text-3xl font-black">R$ {value.toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+            <Button className="w-full" disabled={loading} onClick={pay}>
+              <DollarSign className="size-4" /> {loading ? "Abrindo..." : "Pagar com Cartão"}
+            </Button>
+          </CardContent></Card>
         )}
-        <p className="text-xs text-muted-foreground mt-3">⚠ Pagamentos não são reembolsáveis. A cobrança é mensal e pode ser cancelada a qualquer momento.</p>
+        <p className="text-xs text-muted-foreground mt-3 text-center">⚠ Cobrança mensal recorrente. Pode ser cancelada a qualquer momento. Pagamentos não são reembolsáveis.</p>
       </CardContent>
     </Card>
   );
@@ -207,20 +199,44 @@ function AboutTab({ league }: any) {
 
 function EventsTab({ league }: any) {
   const [events, setEvents] = useState<any[]>([]);
+  const [allLeagues, setAllLeagues] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [f, setF] = useState({ title: "", description: "", image_url: "", registration_link: "" });
+  const blank = {
+    title: "", description: "", image_url: "",
+    event_date: "",
+    price_ligante: 0, price_partner: 0, price_visitor: 0,
+    partner_league_ids: [] as string[],
+  };
+  const [f, setF] = useState(blank);
   const reload = async () => {
     const { data } = await supabase.from("league_events").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
     setEvents(data ?? []);
   };
   useEffect(() => { reload(); }, [league.id]);
+  useEffect(() => {
+    supabase.from("leagues").select("id,name").neq("id", league.id).order("name").then(({ data }) => setAllLeagues(data ?? []));
+  }, [league.id]);
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const { error } = await supabase.from("league_events").insert({ ...f, league_id: league.id, image_url: f.image_url || null, registration_link: f.registration_link || null });
+    const payload = {
+      league_id: league.id,
+      title: f.title,
+      description: f.description,
+      image_url: f.image_url || null,
+      event_date: f.event_date || null,
+      price_ligante: Number(f.price_ligante) || 0,
+      price_partner: Number(f.price_partner) || 0,
+      price_visitor: Number(f.price_visitor) || 0,
+      partner_league_ids: f.partner_league_ids,
+    };
+    const { error } = await supabase.from("league_events").insert(payload);
     if (error) return toast.error(error.message);
-    toast.success("Criado"); setOpen(false); setF({ title: "", description: "", image_url: "", registration_link: "" }); reload();
+    toast.success("Criado"); setOpen(false); setF(blank); reload();
   }
   async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_events").delete().eq("id", id); reload(); }
+  function togglePartner(id: string) {
+    setF(p => ({ ...p, partner_league_ids: p.partner_league_ids.includes(id) ? p.partner_league_ids.filter(x => x !== id) : [...p.partner_league_ids, id] }));
+  }
   return (
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={() => setOpen(true)}><Plus className="size-4" /> Novo evento</Button></div>
@@ -228,19 +244,41 @@ function EventsTab({ league }: any) {
         {events.map((e) => (
           <Card key={e.id}><CardContent className="p-4 flex gap-3">
             {e.image_url && <img src={e.image_url} className="size-16 rounded object-cover" />}
-            <div className="flex-1"><h4 className="font-black">{e.title}</h4><p className="text-xs text-muted-foreground line-clamp-2">{e.description}</p></div>
+            <div className="flex-1">
+              <h4 className="font-black">{e.title}</h4>
+              {e.event_date && <p className="text-xs text-muted-foreground">{new Date(e.event_date).toLocaleDateString("pt-BR")}</p>}
+              <p className="text-xs text-muted-foreground line-clamp-2">{e.description}</p>
+              <div className="text-[11px] text-muted-foreground mt-1">L: R${Number(e.price_ligante).toFixed(2)} · P: R${Number(e.price_partner).toFixed(2)} · V: R${Number(e.price_visitor).toFixed(2)}</div>
+            </div>
             <Button size="sm" variant="destructive" onClick={() => del(e.id)}><Trash2 className="size-3" /></Button>
           </CardContent></Card>
         ))}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Novo Evento</DialogTitle></DialogHeader>
           <form onSubmit={save} className="space-y-3">
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+            <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
             <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
-            <div><Label>Link de inscrição</Label><Input value={f.registration_link} onChange={(e) => setF({ ...f, registration_link: e.target.value })} /></div>
+            <div className="grid grid-cols-3 gap-2">
+              <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
+              <div><Label className="text-xs">Valor Liga Parceira (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_partner} onChange={(e) => setF({ ...f, price_partner: +e.target.value })} /></div>
+              <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
+            </div>
+            <div>
+              <Label>Ligas parceiras (recebem o valor de parceiro)</Label>
+              <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1">
+                {allLeagues.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma outra liga cadastrada.</p>}
+                {allLeagues.map((l) => (
+                  <label key={l.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={f.partner_league_ids.includes(l.id)} onChange={() => togglePartner(l.id)} />
+                    {l.name}
+                  </label>
+                ))}
+              </div>
+            </div>
             <DialogFooter><Button type="submit">Criar</Button></DialogFooter>
           </form>
         </DialogContent>
