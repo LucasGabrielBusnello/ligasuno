@@ -74,9 +74,17 @@ function FreqTab({ league }: { league: League }) {
   const [presence, setPresence] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    supabase.from("league_memberships").select("user_id, role, profiles!inner(username,email)").eq("league_id", league.id)
-      .then(({ data }) => setMembers((data ?? []).filter((m: any) => ["ligante", "diretor"].includes(m.role))));
-  }, [league.id]);
+    (async () => {
+      const { data: mships } = await supabase.from("league_memberships").select("user_id, role, profiles!inner(username,email)").eq("league_id", league.id);
+      const list = (mships ?? []).filter((m: any) => ["ligante", "diretor"].includes(m.role));
+      // Inclui o presidente da liga na lista de presença
+      if (league.president_id && !list.some((m: any) => m.user_id === league.president_id)) {
+        const { data: pres } = await supabase.from("profiles").select("username,email").eq("id", league.president_id).maybeSingle();
+        if (pres) list.push({ user_id: league.president_id, role: "presidente", profiles: pres } as any);
+      }
+      setMembers(list);
+    })();
+  }, [league.id, league.president_id]);
 
   async function save() {
     if (!activity || !date) return toast.error("Preencha atividade e data");
