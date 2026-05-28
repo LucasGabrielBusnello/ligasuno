@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, GraduationCap, HelpCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight, Lock, Layers, BarChart2, Calendar } from "lucide-react";
+import { ArrowLeft, GraduationCap, HelpCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight, Lock, Layers, BarChart2, Calendar, CalendarDays } from "lucide-react";
 
 export const Route = createFileRoute("/ligante/$slug")({ component: LigantePage });
 
@@ -58,16 +58,17 @@ function LigantePage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Ligante</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
 
-        <Tabs defaultValue="quiz">
+        <Tabs defaultValue="schedule">
           <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1.5" />Quizzes</TabsTrigger>
+            <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1.5" />Agenda</TabsTrigger>
             <TabsTrigger value="attendance"><Calendar className="size-4 mr-1.5" />Minha Frequência</TabsTrigger>
             <TabsTrigger value="ranking"><BarChart2 className="size-4 mr-1.5" />Meu Desempenho</TabsTrigger>
           </TabsList>
-          <TabsContent value="quiz" className="mt-6"><QuizView league={league} userId={user.id} isStaff={!!allowed} /></TabsContent>
+          <TabsContent value="schedule" className="mt-6"><ScheduleView league={league} /></TabsContent>
           <TabsContent value="attendance" className="mt-6"><AttendanceView league={league} userId={user.id} /></TabsContent>
           <TabsContent value="ranking" className="mt-6"><PerformanceView userId={user.id} /></TabsContent>
         </Tabs>
+
       </main>
     </div>
   );
@@ -253,3 +254,47 @@ function PerformanceView({ userId }: { userId: string }) {
     </CardContent></Card>
   );
 }
+
+function ScheduleView({ league }: { league: League }) {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from("league_schedule_items").select("*").eq("league_id", league.id).order("scheduled_date").order("scheduled_time")
+      .then(({ data }) => setItems(data ?? []));
+  }, [league.id]);
+
+  // Agrupa por data
+  const grouped = items.reduce((acc: Record<string, any[]>, it) => {
+    (acc[it.scheduled_date] ??= []).push(it);
+    return acc;
+  }, {});
+  const sortedDates = Object.keys(grouped).sort();
+
+  if (items.length === 0) return <Card className="p-12 text-center text-muted-foreground">Nada na agenda ainda.</Card>;
+
+  return (
+    <div className="space-y-4">
+      {sortedDates.map((date) => (
+        <Card key={date}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">{new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {grouped[date].map((s: any) => (
+              <div key={s.id} className="flex items-start gap-3 p-3 rounded border">
+                <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: s.color }} />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">{s.name}</span>
+                    {s.scheduled_time && <Badge variant="secondary" className="text-[10px]">{s.scheduled_time.slice(0, 5)}</Badge>}
+                  </div>
+                  {s.description && <p className="text-xs text-muted-foreground mt-1">{s.description}</p>}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
