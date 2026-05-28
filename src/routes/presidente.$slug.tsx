@@ -100,44 +100,36 @@ function PresidentePage() {
 
 function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: any }) {
   const startCheckout = useServerFn(createLeagueSubscriptionCheckout);
-  const [loading, setLoading] = useState<"pix" | "card" | null>(null);
-  async function pay(method: "pix" | "card") {
+  const [loading, setLoading] = useState(false);
+  async function pay() {
     try {
-      setLoading(method);
-      const res = await startCheckout({ data: { league_id: leagueId, method, origin_url: window.location.origin } });
+      setLoading(true);
+      const res = await startCheckout({ data: { league_id: leagueId, origin_url: window.location.origin } });
       if (res?.url) window.location.href = res.url;
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao iniciar pagamento");
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   }
+  const value = Number(settings?.annual_fee_credit_monthly ?? 0);
   return (
     <Card className="mb-6 border-destructive">
       <CardHeader>
         <CardTitle className="text-destructive">Anuidade pendente</CardTitle>
-        <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga. Escolha a forma de pagamento mensal:</p>
+        <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga. Cobrança recorrente mensal no cartão.</p>
       </CardHeader>
       <CardContent>
         {settings && (
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Card className="border-primary"><CardContent className="p-4 text-center space-y-3">
-              <Badge className="mb-1">PIX</Badge>
-              <div className="text-3xl font-black">R$ {Number(settings.annual_fee_pix_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-              <Button className="w-full" disabled={loading !== null} onClick={() => pay("pix")}>
-                <DollarSign className="size-4" /> {loading === "pix" ? "Abrindo..." : "Pagar com PIX"}
-              </Button>
-            </CardContent></Card>
-            <Card><CardContent className="p-4 text-center space-y-3">
-              <Badge variant="secondary" className="mb-1">Cartão</Badge>
-              <div className="text-3xl font-black">R$ {Number(settings.annual_fee_credit_monthly).toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-              <Button variant="secondary" className="w-full" disabled={loading !== null} onClick={() => pay("card")}>
-                <DollarSign className="size-4" /> {loading === "card" ? "Abrindo..." : "Pagar com Cartão"}
-              </Button>
-            </CardContent></Card>
-          </div>
+          <Card className="border-primary max-w-sm mx-auto"><CardContent className="p-4 text-center space-y-3">
+            <Badge className="mb-1">Cartão</Badge>
+            <div className="text-3xl font-black">R$ {value.toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+            <Button className="w-full" disabled={loading} onClick={pay}>
+              <DollarSign className="size-4" /> {loading ? "Abrindo..." : "Pagar com Cartão"}
+            </Button>
+          </CardContent></Card>
         )}
-        <p className="text-xs text-muted-foreground mt-3">⚠ Pagamentos não são reembolsáveis. A cobrança é mensal e pode ser cancelada a qualquer momento.</p>
+        <p className="text-xs text-muted-foreground mt-3 text-center">⚠ Cobrança mensal recorrente. Pode ser cancelada a qualquer momento. Pagamentos não são reembolsáveis.</p>
       </CardContent>
     </Card>
   );
