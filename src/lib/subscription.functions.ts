@@ -54,6 +54,10 @@ export const createLeagueSubscriptionCheckout = createServerFn({ method: "POST" 
     params.append("line_items[0][price_data][product_data][name]", `Anuidade ${(league as any).name} (Cartão)`);
     params.append("metadata[league_id]", data.league_id);
     params.append("subscription_data[metadata][league_id]", data.league_id);
+    // Anuidade parcelada: cancela automaticamente após 12 ciclos mensais
+    const cancelAt = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 365;
+    params.append("subscription_data[cancel_at]", String(cancelAt));
+
 
     const res = await fetch(`${GATEWAY}/v1/checkout/sessions`, {
       method: "POST",
