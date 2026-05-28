@@ -66,6 +66,32 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
             type === "customer.subscription.created" ||
             type === "customer.subscription.updated"
           ) {
+            // Aplica cancel_at de 12 ciclos uma única vez na criação
+            if (type === "customer.subscription.created" && obj?.metadata?.cancel_after_months && !obj?.cancel_at) {
+              try {
+                const months = parseInt(obj.metadata.cancel_after_months, 10);
+                const startUnix = obj?.items?.data?.[0]?.current_period_start ?? obj?.current_period_start ?? Math.floor(Date.now() / 1000);
+                const cancelAt = startUnix + months * 30 * 24 * 60 * 60;
+                const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+                const STRIPE_KEY = process.env.STRIPE_SANDBOX_API_KEY;
+                if (LOVABLE_API_KEY && STRIPE_KEY) {
+                  const body = new URLSearchParams();
+                  body.append("cancel_at", String(cancelAt));
+                  await fetch(`https://connector-gateway.lovable.dev/stripe/v1/subscriptions/${obj.id}`, {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                      "X-Connection-Api-Key": STRIPE_KEY,
+                      "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: body.toString(),
+                  });
+                }
+              } catch (e) {
+                console.error("cancel_at update failed", e);
+              }
+            }
+
             const leagueId = obj?.metadata?.league_id;
             const periodEndUnix = obj?.items?.data?.[0]?.current_period_end ?? obj?.current_period_end;
             const periodStartUnix = obj?.items?.data?.[0]?.current_period_start ?? obj?.current_period_start;
