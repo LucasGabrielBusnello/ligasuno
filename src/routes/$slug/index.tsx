@@ -125,11 +125,12 @@ function LeaguePage() {
 
       <main className="max-w-7xl mx-auto px-4 py-12">
         <Tabs defaultValue="sobre" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 h-auto p-1">
+          <TabsList className="w-full grid grid-cols-2 md:grid-cols-5 h-auto p-1">
             <TabsTrigger value="sobre" className="py-2.5"><Award className="size-4 mr-1.5" />Sobre</TabsTrigger>
             <TabsTrigger value="eventos" className="py-2.5"><Calendar className="size-4 mr-1.5" />Eventos</TabsTrigger>
             <TabsTrigger value="news" className="py-2.5"><Newspaper className="size-4 mr-1.5" />Notícias</TabsTrigger>
             <TabsTrigger value="atividades" className="py-2.5"><Activity className="size-4 mr-1.5" />Atividades</TabsTrigger>
+            <TabsTrigger value="quizzes" className="py-2.5"><HelpCircle className="size-4 mr-1.5" />Quizzes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sobre" className="mt-8">
