@@ -25,6 +25,7 @@ function LeaguePage() {
   const [events, setEvents] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [quizSets, setQuizSets] = useState<any[]>([]);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string | null>(null);
@@ -34,15 +35,17 @@ function LeaguePage() {
       const { data } = await supabase.from("leagues").select("*").eq("slug", slug).maybeSingle();
       setLeague(data as League | null);
       if (data) {
-        const [ev, nw, ac, ct] = await Promise.all([
+        const [ev, nw, ac, ct, qs] = await Promise.all([
           supabase.from("league_events").select("*").eq("league_id", data.id).order("created_at", { ascending: false }),
           supabase.from("league_news").select("*").eq("league_id", data.id).order("created_at", { ascending: false }),
           supabase.from("league_activities").select("*").eq("league_id", data.id).order("display_order"),
           supabase.from("league_content").select("content_key,content_value").eq("league_id", data.id),
+          supabase.from("league_quiz_sets").select("*").eq("league_id", data.id).order("created_at", { ascending: false }),
         ]);
         setEvents(ev.data ?? []);
         setNews(nw.data ?? []);
         setActivities(ac.data ?? []);
+        setQuizSets(qs.data ?? []);
         const m: Record<string, string> = {};
         (ct.data ?? []).forEach((r: any) => { m[r.content_key] = r.content_value; });
         setContent(m);
