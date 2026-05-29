@@ -253,7 +253,7 @@ function EventsTab({ league }: any) {
   }
   async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_events").delete().eq("id", id); reload(); }
   async function toggleField(id: string, field: "published" | "accepting_registrations", v: boolean) {
-    const { error } = await supabase.from("league_events").update({ [field]: v }).eq("id", id);
+    const { error } = await supabase.from("league_events").update({ [field]: v } as any).eq("id", id);
     if (error) return toast.error(error.message);
     setEvents(prev => prev.map(e => e.id === id ? { ...e, [field]: v } : e));
   }
