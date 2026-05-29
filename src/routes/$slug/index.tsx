@@ -277,7 +277,110 @@ function LeaguePage() {
           </Card>
         )}
       </main>
+      <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} />
     </div>
+  );
+}
+
+function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string }) {
+  const checkout = useServerFn(createEventCheckout);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ full_name: "", social_name: "", cpf: "", course: "medicina" as const });
+  const [method, setMethod] = useState<"card" | "pix">("card");
+
+  useEffect(() => { if (event) { setStep(1); setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" }); setMethod("card"); } }, [event]);
+
+  const { price, label, discount } = useMemo(() => {
+    if (!event) return { price: 0, label: "", discount: null as string | null };
+    const partnerIds: string[] = event.partner_league_ids ?? [];
+    const isLigante = myLeagueIds.includes(leagueId);
+    const isPartner = !isLigante && myLeagueIds.some(id => partnerIds.includes(id));
+    if (isLigante) return { price: Number(event.price_ligante) || 0, label: "Ligante", discount: "Desconto aplicado: Ligante" };
+    if (isPartner) return { price: Number(event.price_partner) || 0, label: "Liga parceira", discount: "Desconto aplicado: Liga parceira" };
+    return { price: Number(event.price_visitor) || 0, label: "Não-ligante", discount: null };
+  }, [event, myLeagueIds, leagueId]);
+
+  if (!event) return null;
+
+  async function submit() {
+    if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
+    if (!form.cpf || form.cpf.length < 11) return toast.error("Informe um CPF válido");
+    try {
+      setSubmitting(true);
+      const res = await checkout({ data: {
+        event_id: event.id,
+        full_name: form.full_name,
+        social_name: form.social_name || null,
+        cpf: form.cpf,
+        course: form.course,
+        payment_method: method,
+        origin_url: window.location.origin,
+      }});
+      if ((res as any).free) { toast.success("Inscrição confirmada!"); onClose(); return; }
+      if ((res as any).url) window.location.href = (res as any).url;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao iniciar inscrição");
+    } finally { setSubmitting(false); }
+  }
+
+  return (
+    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{event.title}</DialogTitle>
+          <div className="flex gap-2 mt-2">
+            <Badge variant={step === 1 ? "default" : "secondary"}>1. Dados</Badge>
+            <Badge variant={step === 2 ? "default" : "secondary"}>2. Pagamento</Badge>
+          </div>
+        </DialogHeader>
+        {step === 1 ? (
+          <div className="space-y-3">
+            <div><Label>Nome completo *</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+            <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
+            <div><Label>CPF *</Label><Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+            <div>
+              <Label>Curso *</Label>
+              <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value as any })}>
+                <option value="medicina">Medicina</option>
+                <option value="enfermagem">Enfermagem</option>
+                <option value="egresso_medicina">Egresso de Medicina</option>
+                <option value="outro">Outro curso</option>
+                <option value="egresso_outro">Egresso de outro curso</option>
+              </select>
+            </div>
+            <DialogFooter><Button onClick={() => setStep(2)}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Card className="border-primary/40 bg-primary/5">
+              <CardContent className="p-4 text-center space-y-1">
+                <div className="text-xs text-muted-foreground">Categoria: {label}</div>
+                <div className="text-3xl font-black">R$ {price.toFixed(2)}</div>
+                {discount && <Badge variant="secondary" className="mt-1">{discount}</Badge>}
+              </CardContent>
+            </Card>
+            {price > 0 && (
+              <div>
+                <Label className="mb-2 block">Método de pagamento</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setMethod("card")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "card" ? "border-primary bg-primary/5" : ""}`}>
+                    <CreditCard className="size-6" /> Cartão
+                  </button>
+                  <button type="button" onClick={() => setMethod("pix")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "pix" ? "border-primary bg-primary/5" : ""}`}>
+                    <QrCode className="size-6" /> Pix
+                  </button>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="flex-row gap-2">
+              <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
+              <Button onClick={submit} disabled={submitting}>{submitting ? "Processando..." : price === 0 ? "Confirmar inscrição" : "Pagar e inscrever"}</Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
