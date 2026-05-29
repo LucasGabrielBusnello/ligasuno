@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type League } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { createEventCheckout } from "@/lib/events.functions";
+import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode } from "lucide-react";
 
 export const Route = createFileRoute("/$slug/")({ component: LeaguePage });
 
@@ -29,6 +35,8 @@ function LeaguePage() {
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string | null>(null);
+  const [myLeagueIds, setMyLeagueIds] = useState<string[]>([]);
+  const [registerEvent, setRegisterEvent] = useState<any | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -57,6 +65,7 @@ function LeaguePage() {
   useEffect(() => {
     if (!league || !user) return;
     supabase.from("league_memberships").select("role").eq("league_id", league.id).eq("user_id", user.id).maybeSingle().then(({ data }) => setMyRole((data as any)?.role ?? null));
+    supabase.from("league_memberships").select("league_id").eq("user_id", user.id).in("role", ["ligante", "diretor", "presidente"]).then(({ data }) => setMyLeagueIds((data ?? []).map((m: any) => m.league_id)));
   }, [league, user]);
 
   if (loading) return <div className="p-12 text-center">Carregando...</div>;
@@ -154,28 +163,33 @@ function LeaguePage() {
           </TabsContent>
 
           <TabsContent value="eventos" className="mt-8">
-            {events.length === 0 ? (
-              <Empty icon={<Calendar className="size-12" />} title="Nenhum evento publicado" />
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((e) => (
-                  <Card key={e.id} className="overflow-hidden hover:-translate-y-1 transition-all">
-                    <div className="aspect-video bg-muted relative">
-                      {e.image_url ? <img src={e.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: league.theme_color }} />}
-                    </div>
-                    <CardContent className="p-5">
-                      <h3 className="font-black">{e.title}</h3>
-                      {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
-                      {e.registration_link ? (
-                        <Button asChild className="w-full mt-4" style={{ background: league.theme_color }}>
-                          <a href={e.registration_link} target="_blank" rel="noreferrer">Inscreva-se! <ChevronRight className="size-4" /></a>
-                        </Button>
-                      ) : <Button disabled className="w-full mt-4">Sem inscrição</Button>}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const visibleEvents = events.filter(e => e.published !== false || isPresident || isAdminMaster);
+              if (visibleEvents.length === 0) return <Empty icon={<Calendar className="size-12" />} title="Nenhum evento publicado" />;
+              return (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {visibleEvents.map((e) => (
+                    <Card key={e.id} className="overflow-hidden hover:-translate-y-1 transition-all">
+                      <div className="aspect-video bg-muted relative">
+                        {e.image_url ? <img src={e.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: league.theme_color }} />}
+                      </div>
+                      <CardContent className="p-5">
+                        <h3 className="font-black">{e.title}</h3>
+                        {e.event_date && <p className="text-xs text-muted-foreground mt-1">{new Date(e.event_date).toLocaleDateString("pt-BR")}</p>}
+                        {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
+                        {e.accepting_registrations === false ? (
+                          <Button disabled className="w-full mt-4">Inscrições encerradas</Button>
+                        ) : !user ? (
+                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>
+                        ) : (
+                          <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4" style={{ background: league.theme_color }}>Inscreva-se! <ChevronRight className="size-4" /></Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              );
+            })()}
           </TabsContent>
 
           <TabsContent value="news" className="mt-8">
@@ -263,7 +277,110 @@ function LeaguePage() {
           </Card>
         )}
       </main>
+      <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} />
     </div>
+  );
+}
+
+function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string }) {
+  const checkout = useServerFn(createEventCheckout);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ full_name: "", social_name: "", cpf: "", course: "medicina" as const });
+  const [method, setMethod] = useState<"card" | "pix">("card");
+
+  useEffect(() => { if (event) { setStep(1); setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" }); setMethod("card"); } }, [event]);
+
+  const { price, label, discount } = useMemo(() => {
+    if (!event) return { price: 0, label: "", discount: null as string | null };
+    const partnerIds: string[] = event.partner_league_ids ?? [];
+    const isLigante = myLeagueIds.includes(leagueId);
+    const isPartner = !isLigante && myLeagueIds.some(id => partnerIds.includes(id));
+    if (isLigante) return { price: Number(event.price_ligante) || 0, label: "Ligante", discount: "Desconto aplicado: Ligante" };
+    if (isPartner) return { price: Number(event.price_partner) || 0, label: "Liga parceira", discount: "Desconto aplicado: Liga parceira" };
+    return { price: Number(event.price_visitor) || 0, label: "Não-ligante", discount: null };
+  }, [event, myLeagueIds, leagueId]);
+
+  if (!event) return null;
+
+  async function submit() {
+    if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
+    if (!form.cpf || form.cpf.length < 11) return toast.error("Informe um CPF válido");
+    try {
+      setSubmitting(true);
+      const res = await checkout({ data: {
+        event_id: event.id,
+        full_name: form.full_name,
+        social_name: form.social_name || null,
+        cpf: form.cpf,
+        course: form.course,
+        payment_method: method,
+        origin_url: window.location.origin,
+      }});
+      if ((res as any).free) { toast.success("Inscrição confirmada!"); onClose(); return; }
+      if ((res as any).url) window.location.href = (res as any).url;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao iniciar inscrição");
+    } finally { setSubmitting(false); }
+  }
+
+  return (
+    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{event.title}</DialogTitle>
+          <div className="flex gap-2 mt-2">
+            <Badge variant={step === 1 ? "default" : "secondary"}>1. Dados</Badge>
+            <Badge variant={step === 2 ? "default" : "secondary"}>2. Pagamento</Badge>
+          </div>
+        </DialogHeader>
+        {step === 1 ? (
+          <div className="space-y-3">
+            <div><Label>Nome completo *</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+            <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
+            <div><Label>CPF *</Label><Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+            <div>
+              <Label>Curso *</Label>
+              <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value as any })}>
+                <option value="medicina">Medicina</option>
+                <option value="enfermagem">Enfermagem</option>
+                <option value="egresso_medicina">Egresso de Medicina</option>
+                <option value="outro">Outro curso</option>
+                <option value="egresso_outro">Egresso de outro curso</option>
+              </select>
+            </div>
+            <DialogFooter><Button onClick={() => setStep(2)}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Card className="border-primary/40 bg-primary/5">
+              <CardContent className="p-4 text-center space-y-1">
+                <div className="text-xs text-muted-foreground">Categoria: {label}</div>
+                <div className="text-3xl font-black">R$ {price.toFixed(2)}</div>
+                {discount && <Badge variant="secondary" className="mt-1">{discount}</Badge>}
+              </CardContent>
+            </Card>
+            {price > 0 && (
+              <div>
+                <Label className="mb-2 block">Método de pagamento</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setMethod("card")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "card" ? "border-primary bg-primary/5" : ""}`}>
+                    <CreditCard className="size-6" /> Cartão
+                  </button>
+                  <button type="button" onClick={() => setMethod("pix")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "pix" ? "border-primary bg-primary/5" : ""}`}>
+                    <QrCode className="size-6" /> Pix
+                  </button>
+                </div>
+              </div>
+            )}
+            <DialogFooter className="flex-row gap-2">
+              <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
+              <Button onClick={submit} disabled={submitting}>{submitting ? "Processando..." : price === 0 ? "Confirmar inscrição" : "Pagar e inscrever"}</Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 

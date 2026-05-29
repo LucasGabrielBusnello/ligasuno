@@ -11,6 +11,7 @@ const schema = z.object({
   social_name: z.string().max(150).optional().nullable(),
   cpf: z.string().min(11).max(20),
   course: z.enum(["medicina", "enfermagem", "egresso_medicina", "outro", "egresso_outro"]),
+  payment_method: z.enum(["card", "pix"]).default("card"),
   origin_url: z.string().url(),
 });
 
@@ -96,8 +97,7 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     params.append("mode", "payment");
     params.append("success_url", successUrl);
     params.append("cancel_url", cancelUrl);
-    params.append("payment_method_types[]", "card");
-    params.append("payment_method_types[]", "pix");
+    params.append("payment_method_types[]", data.payment_method);
     params.append("line_items[0][quantity]", "1");
     params.append("line_items[0][price_data][currency]", "brl");
     params.append("line_items[0][price_data][unit_amount]", String(Math.round(paid * 100)));

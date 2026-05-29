@@ -201,13 +201,15 @@ function EventsTab({ league }: any) {
   const [events, setEvents] = useState<any[]>([]);
   const [allLeagues, setAllLeagues] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const blank = {
     title: "", description: "", image_url: "",
     event_date: "",
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
   };
-  const [f, setF] = useState(blank);
+  const [f, setF] = useState<any>(blank);
   const reload = async () => {
     const { data } = await supabase.from("league_events").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
     setEvents(data ?? []);
@@ -216,6 +218,20 @@ function EventsTab({ league }: any) {
   useEffect(() => {
     supabase.from("leagues").select("id,name").neq("id", league.id).order("name").then(({ data }) => setAllLeagues(data ?? []));
   }, [league.id]);
+
+  function openNew() { setEditing(null); setF(blank); setOpen(true); }
+  function openEdit(ev: any) {
+    setEditing(ev);
+    setF({
+      title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
+      event_date: ev.event_date ?? "",
+      price_ligante: Number(ev.price_ligante) || 0,
+      price_partner: Number(ev.price_partner) || 0,
+      price_visitor: Number(ev.price_visitor) || 0,
+      partner_league_ids: ev.partner_league_ids ?? [],
+    });
+    setOpen(true);
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault();
     const payload = {
@@ -229,34 +245,42 @@ function EventsTab({ league }: any) {
       price_visitor: Number(f.price_visitor) || 0,
       partner_league_ids: f.partner_league_ids,
     };
-    const { error } = await supabase.from("league_events").insert(payload);
+    const { error } = editing
+      ? await supabase.from("league_events").update(payload).eq("id", editing.id)
+      : await supabase.from("league_events").insert(payload);
     if (error) return toast.error(error.message);
-    toast.success("Criado"); setOpen(false); setF(blank); reload();
+    toast.success(editing ? "Atualizado" : "Criado"); setOpen(false); setF(blank); setEditing(null); reload();
   }
   async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_events").delete().eq("id", id); reload(); }
-  function togglePartner(id: string) {
-    setF(p => ({ ...p, partner_league_ids: p.partner_league_ids.includes(id) ? p.partner_league_ids.filter(x => x !== id) : [...p.partner_league_ids, id] }));
+  async function toggleField(id: string, field: "published" | "accepting_registrations", v: boolean) {
+    const { error } = await supabase.from("league_events").update({ [field]: v } as any).eq("id", id);
+    if (error) return toast.error(error.message);
+    setEvents(prev => prev.map(e => e.id === id ? { ...e, [field]: v } : e));
   }
+  function togglePartner(id: string) {
+    setF((p: any) => ({ ...p, partner_league_ids: p.partner_league_ids.includes(id) ? p.partner_league_ids.filter((x: string) => x !== id) : [...p.partner_league_ids, id] }));
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button onClick={() => setOpen(true)}><Plus className="size-4" /> Novo evento</Button></div>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="flex justify-end"><Button onClick={openNew}><Plus className="size-4" /> Novo evento</Button></div>
+      <div className="space-y-3">
         {events.map((e) => (
-          <Card key={e.id}><CardContent className="p-4 flex gap-3">
-            {e.image_url && <img src={e.image_url} className="size-16 rounded object-cover" />}
-            <div className="flex-1">
-              <h4 className="font-black">{e.title}</h4>
-              {e.event_date && <p className="text-xs text-muted-foreground">{new Date(e.event_date).toLocaleDateString("pt-BR")}</p>}
-              <p className="text-xs text-muted-foreground line-clamp-2">{e.description}</p>
-              <div className="text-[11px] text-muted-foreground mt-1">L: R${Number(e.price_ligante).toFixed(2)} · P: R${Number(e.price_partner).toFixed(2)} · V: R${Number(e.price_visitor).toFixed(2)}</div>
-            </div>
-            <Button size="sm" variant="destructive" onClick={() => del(e.id)}><Trash2 className="size-3" /></Button>
-          </CardContent></Card>
+          <EventManageCard
+            key={e.id}
+            event={e}
+            expanded={expanded === e.id}
+            onExpand={() => setExpanded(expanded === e.id ? null : e.id)}
+            onToggle={toggleField}
+            onEdit={() => openEdit(e)}
+            onDelete={() => del(e.id)}
+          />
         ))}
+        {events.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento criado ainda.</p>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Novo Evento</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editing ? "Editar Evento" : "Novo Evento"}</DialogTitle></DialogHeader>
           <form onSubmit={save} className="space-y-3">
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
@@ -279,12 +303,111 @@ function EventsTab({ league }: any) {
                 ))}
               </div>
             </div>
-            <DialogFooter><Button type="submit">Criar</Button></DialogFooter>
+            <DialogFooter><Button type="submit">{editing ? "Salvar alterações" : "Criar"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
   );
+}
+
+function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete }: any) {
+  const [regs, setRegs] = useState<any[] | null>(null);
+  const [selected, setSelected] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!expanded || regs !== null) return;
+    supabase.from("event_registrations").select("*, profiles(username,email,phone)").eq("event_id", event.id).order("created_at", { ascending: false })
+      .then(({ data }) => setRegs(data ?? []));
+  }, [expanded]);
+
+  const paidRegs = (regs ?? []).filter(r => r.status === "paid");
+  const counts = { ligante: 0, partner: 0, visitor: 0 };
+  let total = 0;
+  paidRegs.forEach(r => { counts[r.category as keyof typeof counts] = (counts[r.category as keyof typeof counts] ?? 0) + 1; total += Number(r.paid_price) || 0; });
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex gap-3">
+          {event.image_url && <img src={event.image_url} className="size-16 rounded object-cover" />}
+          <div className="flex-1 min-w-0">
+            <h4 className="font-black">{event.title}</h4>
+            {event.event_date && <p className="text-xs text-muted-foreground">{new Date(event.event_date).toLocaleDateString("pt-BR")}</p>}
+            <div className="text-[11px] text-muted-foreground mt-1">L: R${Number(event.price_ligante).toFixed(2)} · P: R${Number(event.price_partner).toFixed(2)} · V: R${Number(event.price_visitor).toFixed(2)}</div>
+          </div>
+          <div className="flex gap-1 shrink-0">
+            <Button size="sm" variant="outline" onClick={onEdit}>Editar</Button>
+            <Button size="sm" variant="destructive" onClick={onDelete}><Trash2 className="size-3" /></Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 pt-2 border-t">
+          <label className="flex items-center justify-between gap-2 text-xs p-2 rounded border">
+            <span>Publicado</span>
+            <Switch checked={!!event.published} onCheckedChange={(v) => onToggle(event.id, "published", v)} />
+          </label>
+          <label className="flex items-center justify-between gap-2 text-xs p-2 rounded border">
+            <span>Aceitar inscrições</span>
+            <Switch checked={!!event.accepting_registrations} onCheckedChange={(v) => onToggle(event.id, "accepting_registrations", v)} />
+          </label>
+        </div>
+        <Button size="sm" variant="ghost" className="w-full" onClick={onExpand}>
+          {expanded ? "Esconder inscritos" : "Ver inscritos e arrecadação"}
+        </Button>
+        {expanded && (
+          <div className="pt-3 border-t space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+              <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Ligantes</div><div className="font-black">{counts.ligante}</div></div>
+              <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Parceiros</div><div className="font-black">{counts.partner}</div></div>
+              <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Visitantes</div><div className="font-black">{counts.visitor}</div></div>
+              <div className="p-2 rounded bg-primary/10"><div className="text-xs text-muted-foreground">Arrecadado</div><div className="font-black">R$ {total.toFixed(2)}</div></div>
+            </div>
+            {regs === null ? <p className="text-xs text-muted-foreground">Carregando inscritos...</p> :
+              regs.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p> : (
+                <div className="space-y-1">
+                  {regs.map(r => (
+                    <button key={r.id} onClick={() => setSelected(r)} className="w-full text-left p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-bold truncate">{r.full_name}</div>
+                        <div className="text-[11px] text-muted-foreground">{r.profiles?.email}</div>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0">
+                        <Badge variant={r.status === "paid" ? "default" : "secondary"} className="text-[10px]">{r.status === "paid" ? "Pago" : "Pendente"}</Badge>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">{r.category} · R${Number(r.paid_price).toFixed(2)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+          </div>
+        )}
+      </CardContent>
+      <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Inscrição</DialogTitle></DialogHeader>
+          {selected && (
+            <div className="space-y-2 text-sm">
+              <Row k="Nome completo" v={selected.full_name} />
+              {selected.social_name && <Row k="Nome social" v={selected.social_name} />}
+              <Row k="CPF" v={selected.cpf} />
+              <Row k="Curso" v={selected.course} />
+              <Row k="Email" v={selected.profiles?.email ?? "—"} />
+              <Row k="Telefone" v={selected.profiles?.phone ?? "—"} />
+              <Row k="Categoria" v={selected.category} />
+              <Row k="Valor pago" v={`R$ ${Number(selected.paid_price).toFixed(2)}`} />
+              {selected.discount_reason && <Row k="Desconto" v={selected.discount_reason} />}
+              <Row k="Status" v={selected.status} />
+              <Row k="Inscrito em" v={new Date(selected.created_at).toLocaleString("pt-BR")} />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return <div className="flex justify-between gap-3 border-b py-1.5"><span className="text-muted-foreground">{k}</span><span className="font-medium text-right">{v}</span></div>;
 }
 
 function NewsTab({ league }: any) {
