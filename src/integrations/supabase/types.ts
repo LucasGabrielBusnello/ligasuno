@@ -279,6 +279,7 @@ export type Database = {
       }
       league_events: {
         Row: {
+          accepting_registrations: boolean
           created_at: string
           description: string | null
           event_date: string | null
@@ -289,10 +290,12 @@ export type Database = {
           price_ligante: number
           price_partner: number
           price_visitor: number
+          published: boolean
           registration_link: string | null
           title: string
         }
         Insert: {
+          accepting_registrations?: boolean
           created_at?: string
           description?: string | null
           event_date?: string | null
@@ -303,10 +306,12 @@ export type Database = {
           price_ligante?: number
           price_partner?: number
           price_visitor?: number
+          published?: boolean
           registration_link?: string | null
           title: string
         }
         Update: {
+          accepting_registrations?: boolean
           created_at?: string
           description?: string | null
           event_date?: string | null
@@ -317,6 +322,7 @@ export type Database = {
           price_ligante?: number
           price_partner?: number
           price_visitor?: number
+          published?: boolean
           registration_link?: string | null
           title?: string
         }
