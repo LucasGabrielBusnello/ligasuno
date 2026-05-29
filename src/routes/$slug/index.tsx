@@ -191,9 +191,6 @@ function LeaguePage() {
               );
             })()}
           </TabsContent>
-              </div>
-            )}
-          </TabsContent>
 
           <TabsContent value="news" className="mt-8">
             {news.length === 0 ? (
