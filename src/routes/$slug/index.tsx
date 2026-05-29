@@ -35,6 +35,8 @@ function LeaguePage() {
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string | null>(null);
+  const [myLeagueIds, setMyLeagueIds] = useState<string[]>([]);
+  const [registerEvent, setRegisterEvent] = useState<any | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -63,6 +65,7 @@ function LeaguePage() {
   useEffect(() => {
     if (!league || !user) return;
     supabase.from("league_memberships").select("role").eq("league_id", league.id).eq("user_id", user.id).maybeSingle().then(({ data }) => setMyRole((data as any)?.role ?? null));
+    supabase.from("league_memberships").select("league_id").eq("user_id", user.id).in("role", ["ligante", "diretor", "presidente"]).then(({ data }) => setMyLeagueIds((data ?? []).map((m: any) => m.league_id)));
   }, [league, user]);
 
   if (loading) return <div className="p-12 text-center">Carregando...</div>;
