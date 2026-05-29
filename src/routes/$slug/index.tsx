@@ -163,26 +163,34 @@ function LeaguePage() {
           </TabsContent>
 
           <TabsContent value="eventos" className="mt-8">
-            {events.length === 0 ? (
-              <Empty icon={<Calendar className="size-12" />} title="Nenhum evento publicado" />
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {events.map((e) => (
-                  <Card key={e.id} className="overflow-hidden hover:-translate-y-1 transition-all">
-                    <div className="aspect-video bg-muted relative">
-                      {e.image_url ? <img src={e.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: league.theme_color }} />}
-                    </div>
-                    <CardContent className="p-5">
-                      <h3 className="font-black">{e.title}</h3>
-                      {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
-                      {e.registration_link ? (
-                        <Button asChild className="w-full mt-4" style={{ background: league.theme_color }}>
-                          <a href={e.registration_link} target="_blank" rel="noreferrer">Inscreva-se! <ChevronRight className="size-4" /></a>
-                        </Button>
-                      ) : <Button disabled className="w-full mt-4">Sem inscrição</Button>}
-                    </CardContent>
-                  </Card>
-                ))}
+            {(() => {
+              const visibleEvents = events.filter(e => e.published !== false || isPresident || isAdminMaster);
+              if (visibleEvents.length === 0) return <Empty icon={<Calendar className="size-12" />} title="Nenhum evento publicado" />;
+              return (
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {visibleEvents.map((e) => (
+                    <Card key={e.id} className="overflow-hidden hover:-translate-y-1 transition-all">
+                      <div className="aspect-video bg-muted relative">
+                        {e.image_url ? <img src={e.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: league.theme_color }} />}
+                      </div>
+                      <CardContent className="p-5">
+                        <h3 className="font-black">{e.title}</h3>
+                        {e.event_date && <p className="text-xs text-muted-foreground mt-1">{new Date(e.event_date).toLocaleDateString("pt-BR")}</p>}
+                        {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
+                        {e.accepting_registrations === false ? (
+                          <Button disabled className="w-full mt-4">Inscrições encerradas</Button>
+                        ) : !user ? (
+                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>
+                        ) : (
+                          <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4" style={{ background: league.theme_color }}>Inscreva-se! <ChevronRight className="size-4" /></Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              );
+            })()}
+          </TabsContent>
               </div>
             )}
           </TabsContent>
