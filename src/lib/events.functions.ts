@@ -11,6 +11,7 @@ const schema = z.object({
   social_name: z.string().max(150).optional().nullable(),
   cpf: z.string().min(11).max(20),
   course: z.enum(["medicina", "enfermagem", "egresso_medicina", "outro", "egresso_outro"]),
+  payment_method: z.enum(["card", "pix"]).default("card"),
   origin_url: z.string().url(),
 });
 
