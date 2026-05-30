@@ -359,7 +359,7 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
         payment_method: method,
         origin_url: window.location.origin,
       }});
-      if ((res as any).free) { toast.success("Inscrição confirmada!"); onClose(); return; }
+      if ((res as any).free) { toast.success("Inscrição confirmada!"); onSuccess?.({ event_id: event.id, status: "paid", paid_price: 0, full_name: form.full_name }); onClose(); return; }
       if ((res as any).url) window.location.href = (res as any).url;
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao iniciar inscrição");
