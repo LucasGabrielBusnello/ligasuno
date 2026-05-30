@@ -293,7 +293,7 @@ function LeaguePage() {
                       {user ? (
                         isLigante ? (
                           <Button asChild className="w-full mt-4" style={{ background: league.theme_color }}>
-                            <Link to="/ligante/$slug" params={{ slug }}>Acessar quiz <ChevronRight className="size-4" /></Link>
+                            <Link to="/ligante/$slug" params={{ slug }} search={{ tab: "quizzes", set: q.id } as any}>Acessar quiz <ChevronRight className="size-4" /></Link>
                           </Button>
                         ) : (
                           <Button disabled className="w-full mt-4">Apenas ligantes</Button>
