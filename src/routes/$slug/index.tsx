@@ -426,6 +426,48 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
   );
 }
 
+
+function ParticipantPanelDialog({ event, registration, league, onClose }: { event: any; registration: any; league: League; onClose: () => void }) {
+  if (!event) return null;
+  const reg = registration;
+  return (
+    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Painel do Inscrito</DialogTitle>
+          <Badge className="w-fit mt-1" style={{ background: league.theme_color }}>{event.title}</Badge>
+        </DialogHeader>
+        {event.image_url && <img src={event.image_url} className="w-full aspect-video object-cover rounded" />}
+        <div className="space-y-3">
+          {event.event_date && (
+            <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span><b>Data:</b> {new Date(event.event_date).toLocaleDateString("pt-BR")}</span></div>
+          )}
+          {event.description && <div><div className="text-xs font-black uppercase text-muted-foreground mb-1">Descrição</div><p className="text-sm whitespace-pre-line">{event.description}</p></div>}
+          {reg && (
+            <Card className="border-emerald-500/40 bg-emerald-500/5"><CardContent className="p-4 space-y-1">
+              <div className="text-xs text-muted-foreground">Status da inscrição</div>
+              <div className="flex items-center justify-between gap-2">
+                <Badge className={reg.status === "paid" ? "bg-emerald-600" : "bg-amber-600"}>{reg.status === "paid" ? "Inscrição confirmada" : "Pagamento pendente"}</Badge>
+                <div className="text-lg font-black">R$ {Number(reg.paid_price ?? 0).toFixed(2)}</div>
+              </div>
+              {reg.discount_reason && <div className="text-[11px] text-muted-foreground">{reg.discount_reason}</div>}
+            </CardContent></Card>
+          )}
+          <div>
+            <div className="text-xs font-black uppercase text-muted-foreground mb-1">Cronograma do evento</div>
+            {event.schedule ? (
+              <p className="text-sm whitespace-pre-line p-3 rounded border bg-muted/30">{event.schedule}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">O presidente ainda não publicou o cronograma.</p>
+            )}
+          </div>
+        </div>
+        <DialogFooter><Button onClick={onClose} variant="outline">Fechar</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Empty({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <Card className="p-12 text-center">
