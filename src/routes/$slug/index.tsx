@@ -37,6 +37,8 @@ function LeaguePage() {
   const [myRole, setMyRole] = useState<string | null>(null);
   const [myLeagueIds, setMyLeagueIds] = useState<string[]>([]);
   const [registerEvent, setRegisterEvent] = useState<any | null>(null);
+  const [participantEvent, setParticipantEvent] = useState<any | null>(null);
+  const [myRegs, setMyRegs] = useState<Record<string, any>>({});
 
   useEffect(() => {
     (async () => {
