@@ -324,7 +324,7 @@ function LeaguePage() {
   );
 }
 
-function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string }) {
+function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string; onSuccess?: (reg: any) => void }) {
   const checkout = useServerFn(createEventCheckout);
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
