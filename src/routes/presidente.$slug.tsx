@@ -286,6 +286,7 @@ function EventsTab({ league }: any) {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+            <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
             <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
             <div className="grid grid-cols-3 gap-2">
               <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
