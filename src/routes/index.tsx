@@ -233,8 +233,8 @@ function HomePage() {
                     <CardContent className="p-5">
                       <h3 className="font-black text-lg">{e.title}</h3>
                       {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
-                      {e.registration_link ? (
-                        <Button asChild className="w-full mt-4"><a href={e.registration_link} target="_blank" rel="noreferrer">Inscreva-se! <ArrowRight className="size-4" /></a></Button>
+                      {e.league ? (
+                        <Button asChild className="w-full mt-4"><Link to="/$slug" params={{ slug: e.league.slug }} search={{ event: e.id } as any}>Inscreva-se! <ArrowRight className="size-4" /></Link></Button>
                       ) : (
                         <Button disabled className="w-full mt-4">Sem inscrição</Button>
                       )}
