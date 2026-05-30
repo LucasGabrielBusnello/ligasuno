@@ -70,6 +70,43 @@ function LeaguePage() {
     supabase.from("league_memberships").select("league_id").eq("user_id", user.id).in("role", ["ligante", "diretor", "presidente"]).then(({ data }) => setMyLeagueIds((data ?? []).map((m: any) => m.league_id)));
   }, [league, user]);
 
+  // Carrega inscrições do usuário nesta liga
+  useEffect(() => {
+    if (!user || events.length === 0) return;
+    const ids = events.map(e => e.id);
+    supabase.from("event_registrations").select("*").eq("user_id", user.id).in("event_id", ids).then(({ data }) => {
+      const m: Record<string, any> = {};
+      (data ?? []).forEach((r: any) => { m[r.event_id] = r; });
+      setMyRegs(m);
+    });
+  }, [user, events]);
+
+  // Detecta ?event=ID&paid=1 (confirmação) ou ?event=ID (abrir registro/painel)
+  useEffect(() => {
+    if (typeof window === "undefined" || events.length === 0) return;
+    const url = new URL(window.location.href);
+    const evId = url.searchParams.get("event");
+    const paid = url.searchParams.get("paid");
+    if (!evId) return;
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    if (paid === "1") {
+      toast.success("Inscrição confirmada! Confira no Painel do Inscrito.");
+      // Atualiza status local imediato
+      setMyRegs(prev => ({ ...prev, [evId]: { ...(prev[evId] ?? {}), event_id: evId, status: "paid" } }));
+      setParticipantEvent(ev);
+    } else if (paid === "0") {
+      toast.error("Pagamento cancelado.");
+    } else if (user) {
+      // Se já inscrito → painel; senão → registro
+      const r = myRegs[evId];
+      if (r) setParticipantEvent(ev); else setRegisterEvent(ev);
+    }
+    // Limpa querystring
+    url.searchParams.delete("event"); url.searchParams.delete("paid");
+    window.history.replaceState({}, "", url.pathname + (url.search ? "?" + url.searchParams.toString() : ""));
+  }, [events, user]);
+
   if (loading) return <div className="p-12 text-center">Carregando...</div>;
   if (!league) return (
     <div className="p-12 text-center max-w-md mx-auto">
