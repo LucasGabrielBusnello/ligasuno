@@ -37,6 +37,8 @@ function LeaguePage() {
   const [myRole, setMyRole] = useState<string | null>(null);
   const [myLeagueIds, setMyLeagueIds] = useState<string[]>([]);
   const [registerEvent, setRegisterEvent] = useState<any | null>(null);
+  const [participantEvent, setParticipantEvent] = useState<any | null>(null);
+  const [myRegs, setMyRegs] = useState<Record<string, any>>({});
 
   useEffect(() => {
     (async () => {
@@ -67,6 +69,43 @@ function LeaguePage() {
     supabase.from("league_memberships").select("role").eq("league_id", league.id).eq("user_id", user.id).maybeSingle().then(({ data }) => setMyRole((data as any)?.role ?? null));
     supabase.from("league_memberships").select("league_id").eq("user_id", user.id).in("role", ["ligante", "diretor", "presidente"]).then(({ data }) => setMyLeagueIds((data ?? []).map((m: any) => m.league_id)));
   }, [league, user]);
+
+  // Carrega inscrições do usuário nesta liga
+  useEffect(() => {
+    if (!user || events.length === 0) return;
+    const ids = events.map(e => e.id);
+    supabase.from("event_registrations").select("*").eq("user_id", user.id).in("event_id", ids).then(({ data }) => {
+      const m: Record<string, any> = {};
+      (data ?? []).forEach((r: any) => { m[r.event_id] = r; });
+      setMyRegs(m);
+    });
+  }, [user, events]);
+
+  // Detecta ?event=ID&paid=1 (confirmação) ou ?event=ID (abrir registro/painel)
+  useEffect(() => {
+    if (typeof window === "undefined" || events.length === 0) return;
+    const url = new URL(window.location.href);
+    const evId = url.searchParams.get("event");
+    const paid = url.searchParams.get("paid");
+    if (!evId) return;
+    const ev = events.find(e => e.id === evId);
+    if (!ev) return;
+    if (paid === "1") {
+      toast.success("Inscrição confirmada! Confira no Painel do Inscrito.");
+      // Atualiza status local imediato
+      setMyRegs(prev => ({ ...prev, [evId]: { ...(prev[evId] ?? {}), event_id: evId, status: "paid" } }));
+      setParticipantEvent(ev);
+    } else if (paid === "0") {
+      toast.error("Pagamento cancelado.");
+    } else if (user) {
+      // Se já inscrito → painel; senão → registro
+      const r = myRegs[evId];
+      if (r) setParticipantEvent(ev); else setRegisterEvent(ev);
+    }
+    // Limpa querystring
+    url.searchParams.delete("event"); url.searchParams.delete("paid");
+    window.history.replaceState({}, "", url.pathname + (url.search ? "?" + url.searchParams.toString() : ""));
+  }, [events, user]);
 
   if (loading) return <div className="p-12 text-center">Carregando...</div>;
   if (!league) return (
@@ -177,13 +216,15 @@ function LeaguePage() {
                         <h3 className="font-black">{e.title}</h3>
                         {e.event_date && <p className="text-xs text-muted-foreground mt-1">{new Date(e.event_date).toLocaleDateString("pt-BR")}</p>}
                         {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
-                        {e.accepting_registrations === false ? (
-                          <Button disabled className="w-full mt-4">Inscrições encerradas</Button>
-                        ) : !user ? (
-                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>
-                        ) : (
-                          <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4" style={{ background: league.theme_color }}>Inscreva-se! <ChevronRight className="size-4" /></Button>
-                        )}
+                        {(() => {
+                          const reg = myRegs[e.id];
+                          if (reg) {
+                            return <Button onClick={() => setParticipantEvent(e)} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Acessar Painel do Inscrito <ChevronRight className="size-4" /></Button>;
+                          }
+                          if (e.accepting_registrations === false) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
+                          if (!user) return <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>;
+                          return <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4" style={{ background: league.theme_color }}>Inscreva-se! <ChevronRight className="size-4" /></Button>;
+                        })()}
                       </CardContent>
                     </Card>
                   ))}
@@ -252,7 +293,7 @@ function LeaguePage() {
                       {user ? (
                         isLigante ? (
                           <Button asChild className="w-full mt-4" style={{ background: league.theme_color }}>
-                            <Link to="/ligante/$slug" params={{ slug }}>Acessar quiz <ChevronRight className="size-4" /></Link>
+                            <Link to="/ligante/$slug" params={{ slug }} search={{ tab: "quizzes", set: q.id } as any}>Acessar quiz <ChevronRight className="size-4" /></Link>
                           </Button>
                         ) : (
                           <Button disabled className="w-full mt-4">Apenas ligantes</Button>
@@ -277,12 +318,13 @@ function LeaguePage() {
           </Card>
         )}
       </main>
-      <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} />
+      <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} onSuccess={(reg) => { if (reg) setMyRegs(prev => ({ ...prev, [reg.event_id]: reg })); }} />
+      <ParticipantPanelDialog event={participantEvent} registration={participantEvent ? myRegs[participantEvent.id] : null} league={league} onClose={() => setParticipantEvent(null)} />
     </div>
   );
 }
 
-function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string }) {
+function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string; onSuccess?: (reg: any) => void }) {
   const checkout = useServerFn(createEventCheckout);
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
@@ -317,7 +359,7 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId }: { event:
         payment_method: method,
         origin_url: window.location.origin,
       }});
-      if ((res as any).free) { toast.success("Inscrição confirmada!"); onClose(); return; }
+      if ((res as any).free) { toast.success("Inscrição confirmada!"); onSuccess?.({ event_id: event.id, status: "paid", paid_price: 0, full_name: form.full_name }); onClose(); return; }
       if ((res as any).url) window.location.href = (res as any).url;
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao iniciar inscrição");
@@ -379,6 +421,48 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId }: { event:
             </DialogFooter>
           </div>
         )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+function ParticipantPanelDialog({ event, registration, league, onClose }: { event: any; registration: any; league: League; onClose: () => void }) {
+  if (!event) return null;
+  const reg = registration;
+  return (
+    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Painel do Inscrito</DialogTitle>
+          <Badge className="w-fit mt-1" style={{ background: league.theme_color }}>{event.title}</Badge>
+        </DialogHeader>
+        {event.image_url && <img src={event.image_url} className="w-full aspect-video object-cover rounded" />}
+        <div className="space-y-3">
+          {event.event_date && (
+            <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span><b>Data:</b> {new Date(event.event_date).toLocaleDateString("pt-BR")}</span></div>
+          )}
+          {event.description && <div><div className="text-xs font-black uppercase text-muted-foreground mb-1">Descrição</div><p className="text-sm whitespace-pre-line">{event.description}</p></div>}
+          {reg && (
+            <Card className="border-emerald-500/40 bg-emerald-500/5"><CardContent className="p-4 space-y-1">
+              <div className="text-xs text-muted-foreground">Status da inscrição</div>
+              <div className="flex items-center justify-between gap-2">
+                <Badge className={reg.status === "paid" ? "bg-emerald-600" : "bg-amber-600"}>{reg.status === "paid" ? "Inscrição confirmada" : "Pagamento pendente"}</Badge>
+                <div className="text-lg font-black">R$ {Number(reg.paid_price ?? 0).toFixed(2)}</div>
+              </div>
+              {reg.discount_reason && <div className="text-[11px] text-muted-foreground">{reg.discount_reason}</div>}
+            </CardContent></Card>
+          )}
+          <div>
+            <div className="text-xs font-black uppercase text-muted-foreground mb-1">Cronograma do evento</div>
+            {event.schedule ? (
+              <p className="text-sm whitespace-pre-line p-3 rounded border bg-muted/30">{event.schedule}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">O presidente ainda não publicou o cronograma.</p>
+            )}
+          </div>
+        </div>
+        <DialogFooter><Button onClick={onClose} variant="outline">Fechar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

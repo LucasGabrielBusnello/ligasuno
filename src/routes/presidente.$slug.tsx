@@ -205,7 +205,7 @@ function EventsTab({ league }: any) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const blank = {
     title: "", description: "", image_url: "",
-    event_date: "",
+    event_date: "", schedule: "",
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
   };
@@ -224,7 +224,7 @@ function EventsTab({ league }: any) {
     setEditing(ev);
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
-      event_date: ev.event_date ?? "",
+      event_date: ev.event_date ?? "", schedule: ev.schedule ?? "",
       price_ligante: Number(ev.price_ligante) || 0,
       price_partner: Number(ev.price_partner) || 0,
       price_visitor: Number(ev.price_visitor) || 0,
@@ -240,6 +240,7 @@ function EventsTab({ league }: any) {
       description: f.description,
       image_url: f.image_url || null,
       event_date: f.event_date || null,
+      schedule: f.schedule || null,
       price_ligante: Number(f.price_ligante) || 0,
       price_partner: Number(f.price_partner) || 0,
       price_visitor: Number(f.price_visitor) || 0,
@@ -285,6 +286,7 @@ function EventsTab({ league }: any) {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+            <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
             <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
             <div className="grid grid-cols-3 gap-2">
               <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
@@ -317,8 +319,24 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
-    supabase.from("event_registrations").select("*, profiles(username,email,phone)").eq("event_id", event.id).order("created_at", { ascending: false })
-      .then(({ data }) => setRegs(data ?? []));
+    (async () => {
+      const { data: rs } = await supabase
+        .from("event_registrations")
+        .select("*")
+        .eq("event_id", event.id)
+        .order("created_at", { ascending: false });
+      const list = rs ?? [];
+      const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
+      let profMap: Record<string, any> = {};
+      if (uids.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id,username,email,phone")
+          .in("id", uids);
+        (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+      }
+      setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+    })();
   }, [expanded]);
 
   const paidRegs = (regs ?? []).filter(r => r.status === "paid");

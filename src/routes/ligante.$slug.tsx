@@ -46,6 +46,10 @@ function LigantePage() {
     );
   }
 
+  const initialTab = typeof window !== "undefined" ? (new URL(window.location.href).searchParams.get("tab") ?? "schedule") : "schedule";
+  const initialSet = typeof window !== "undefined" ? new URL(window.location.href).searchParams.get("set") : null;
+  const isStaff = !!(myRole && ["diretor", "presidente"].includes(myRole)) || league.president_id === user.id;
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-card/80 backdrop-blur border-b">
@@ -58,13 +62,15 @@ function LigantePage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Ligante</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
 
-        <Tabs defaultValue="schedule">
-          <TabsList className="grid grid-cols-3 w-full">
+        <Tabs defaultValue={initialTab}>
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1.5" />Agenda</TabsTrigger>
+            <TabsTrigger value="quizzes"><HelpCircle className="size-4 mr-1.5" />Quizzes</TabsTrigger>
             <TabsTrigger value="attendance"><Calendar className="size-4 mr-1.5" />Minha Frequência</TabsTrigger>
             <TabsTrigger value="ranking"><BarChart2 className="size-4 mr-1.5" />Meu Desempenho</TabsTrigger>
           </TabsList>
           <TabsContent value="schedule" className="mt-6"><ScheduleView league={league} /></TabsContent>
+          <TabsContent value="quizzes" className="mt-6"><QuizView league={league} userId={user.id} isStaff={isStaff} initialSet={initialSet} /></TabsContent>
           <TabsContent value="attendance" className="mt-6"><AttendanceView league={league} userId={user.id} /></TabsContent>
           <TabsContent value="ranking" className="mt-6"><PerformanceView userId={user.id} /></TabsContent>
         </Tabs>
@@ -74,9 +80,9 @@ function LigantePage() {
   );
 }
 
-function QuizView({ league, userId, isStaff }: { league: League; userId: string; isStaff: boolean }) {
+function QuizView({ league, userId, isStaff, initialSet }: { league: League; userId: string; isStaff: boolean; initialSet?: string | null }) {
   const [sets, setSets] = useState<any[]>([]);
-  const [activeSet, setActiveSet] = useState<string | null>(null);
+  const [activeSet, setActiveSet] = useState<string | null>(initialSet ?? null);
   const [quizzes, setQuizzes] = useState<any[]>([]);
   const [answers, setAnswers] = useState<Record<string, { is_correct: boolean; selected: number }>>({});
   const [curr, setCurr] = useState(0);

@@ -98,6 +98,14 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     params.append("success_url", successUrl);
     params.append("cancel_url", cancelUrl);
     params.append("payment_method_types[]", data.payment_method);
+    if (data.payment_method === "pix") {
+      params.append("payment_method_options[pix][expires_after_seconds]", "3600");
+    }
+    // Email do usuário (Pix exige; Cartão também se beneficia)
+    const { data: prof } = await supabaseAdmin
+      .from("profiles").select("email,full_name").eq("id", userId).maybeSingle();
+    const email = (prof as any)?.email;
+    if (email) params.append("customer_email", email);
     params.append("line_items[0][quantity]", "1");
     params.append("line_items[0][price_data][currency]", "brl");
     params.append("line_items[0][price_data][unit_amount]", String(Math.round(paid * 100)));
@@ -117,7 +125,7 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     });
     const session = await res.json();
     if (!res.ok) {
-      throw new Error(`Stripe falhou [${res.status}]: ${JSON.stringify(session)}`);
+      throw new Error(`Stripe falhou [${res.status}]: ${session?.error?.message ?? JSON.stringify(session)}`);
     }
 
     await supabaseAdmin.from("event_registrations")

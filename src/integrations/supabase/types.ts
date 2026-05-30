@@ -292,6 +292,7 @@ export type Database = {
           price_visitor: number
           published: boolean
           registration_link: string | null
+          schedule: string | null
           title: string
         }
         Insert: {
@@ -308,6 +309,7 @@ export type Database = {
           price_visitor?: number
           published?: boolean
           registration_link?: string | null
+          schedule?: string | null
           title: string
         }
         Update: {
@@ -324,6 +326,7 @@ export type Database = {
           price_visitor?: number
           published?: boolean
           registration_link?: string | null
+          schedule?: string | null
           title?: string
         }
         Relationships: [
