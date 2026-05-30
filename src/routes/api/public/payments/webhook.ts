@@ -31,14 +31,6 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
 
               if (reg) {
                 const ev: any = (reg as any).league_events;
-                // Adicionar à lista de presença
-                await supabaseAdmin.from("league_attendance").insert({
-                  league_id: ev.league_id,
-                  user_id: (reg as any).user_id,
-                  activity: ev.title,
-                  activity_date: ev.event_date ?? new Date().toISOString().slice(0, 10),
-                  present: false,
-                });
                 // Notificar presidente
                 await supabaseAdmin.from("league_notifications").insert({
                   league_id: ev.league_id,
