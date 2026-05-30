@@ -205,7 +205,7 @@ function EventsTab({ league }: any) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const blank = {
     title: "", description: "", image_url: "",
-    event_date: "",
+    event_date: "", schedule: "",
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
   };
@@ -224,7 +224,7 @@ function EventsTab({ league }: any) {
     setEditing(ev);
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
-      event_date: ev.event_date ?? "",
+      event_date: ev.event_date ?? "", schedule: ev.schedule ?? "",
       price_ligante: Number(ev.price_ligante) || 0,
       price_partner: Number(ev.price_partner) || 0,
       price_visitor: Number(ev.price_visitor) || 0,
@@ -240,6 +240,7 @@ function EventsTab({ league }: any) {
       description: f.description,
       image_url: f.image_url || null,
       event_date: f.event_date || null,
+      schedule: f.schedule || null,
       price_ligante: Number(f.price_ligante) || 0,
       price_partner: Number(f.price_partner) || 0,
       price_visitor: Number(f.price_visitor) || 0,
