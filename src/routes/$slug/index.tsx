@@ -216,13 +216,15 @@ function LeaguePage() {
                         <h3 className="font-black">{e.title}</h3>
                         {e.event_date && <p className="text-xs text-muted-foreground mt-1">{new Date(e.event_date).toLocaleDateString("pt-BR")}</p>}
                         {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
-                        {e.accepting_registrations === false ? (
-                          <Button disabled className="w-full mt-4">Inscrições encerradas</Button>
-                        ) : !user ? (
-                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>
-                        ) : (
-                          <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4" style={{ background: league.theme_color }}>Inscreva-se! <ChevronRight className="size-4" /></Button>
-                        )}
+                        {(() => {
+                          const reg = myRegs[e.id];
+                          if (reg) {
+                            return <Button onClick={() => setParticipantEvent(e)} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Acessar Painel do Inscrito <ChevronRight className="size-4" /></Button>;
+                          }
+                          if (e.accepting_registrations === false) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
+                          if (!user) return <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>;
+                          return <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4" style={{ background: league.theme_color }}>Inscreva-se! <ChevronRight className="size-4" /></Button>;
+                        })()}
                       </CardContent>
                     </Card>
                   ))}
