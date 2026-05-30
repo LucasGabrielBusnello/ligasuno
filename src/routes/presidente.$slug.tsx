@@ -319,8 +319,24 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
-    supabase.from("event_registrations").select("*, profiles(username,email,phone)").eq("event_id", event.id).order("created_at", { ascending: false })
-      .then(({ data }) => setRegs(data ?? []));
+    (async () => {
+      const { data: rs } = await supabase
+        .from("event_registrations")
+        .select("*")
+        .eq("event_id", event.id)
+        .order("created_at", { ascending: false });
+      const list = rs ?? [];
+      const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
+      let profMap: Record<string, any> = {};
+      if (uids.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id,username,email,phone")
+          .in("id", uids);
+        (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+      }
+      setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+    })();
   }, [expanded]);
 
   const paidRegs = (regs ?? []).filter(r => r.status === "paid");
