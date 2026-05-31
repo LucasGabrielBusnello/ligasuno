@@ -506,6 +506,7 @@ function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; 
   }, [quizSet, userId]);
 
   if (!quizSet || !userId) return null;
+  const currentUserId = userId;
   const q = quizzes[curr];
   const existing = q ? answers[q.id] : undefined;
   const isAnswered = existing !== undefined;
@@ -514,7 +515,7 @@ function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; 
     if (!q || ans === null) return;
     const ok = ans === q.correct_answer;
     const { error } = await supabase.from("league_quiz_answers").upsert(
-      { user_id: userId, quiz_id: q.id, is_correct: ok, selected: ans },
+      { user_id: currentUserId, quiz_id: q.id, is_correct: ok, selected: ans },
       { onConflict: "user_id,quiz_id" },
     );
     if (error) return toast.error(error.message);
