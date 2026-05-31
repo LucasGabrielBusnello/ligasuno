@@ -385,6 +385,62 @@ export type Database = {
           },
         ]
       }
+      league_minicourses: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_id: string
+          id: string
+          instructor: string
+          is_free: boolean
+          location: string | null
+          max_registrations: number
+          price: number
+          published: boolean
+          starts_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_id: string
+          id?: string
+          instructor: string
+          is_free?: boolean
+          location?: string | null
+          max_registrations?: number
+          price?: number
+          published?: boolean
+          starts_at: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          id?: string
+          instructor?: string
+          is_free?: boolean
+          location?: string | null
+          max_registrations?: number
+          price?: number
+          published?: boolean
+          starts_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_minicourses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "league_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_news: {
         Row: {
           category: string | null
@@ -712,6 +768,57 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      minicourse_registrations: {
+        Row: {
+          created_at: string
+          event_registration_id: string
+          id: string
+          minicourse_id: string
+          paid_price: number
+          status: string
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_registration_id: string
+          id?: string
+          minicourse_id: string
+          paid_price?: number
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_registration_id?: string
+          id?: string
+          minicourse_id?: string
+          paid_price?: number
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minicourse_registrations_event_registration_id_fkey"
+            columns: ["event_registration_id"]
+            isOneToOne: false
+            referencedRelation: "event_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minicourse_registrations_minicourse_id_fkey"
+            columns: ["minicourse_id"]
+            isOneToOne: false
+            referencedRelation: "league_minicourses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
