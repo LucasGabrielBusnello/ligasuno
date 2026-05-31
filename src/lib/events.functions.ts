@@ -2,8 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/stripe";
+
+function getStripeConnectionKey() {
+  return process.env.STRIPE_LIVE_API_KEY ?? process.env.STRIPE_SANDBOX_API_KEY;
+}
 
 const schema = z.object({
   event_id: z.string().uuid(),
@@ -30,6 +35,8 @@ export const createEventCheckout = createServerFn({ method: "POST" })
 
     const leagueId = (event as any).league_id;
     const partnerIds: string[] = (event as any).partner_league_ids ?? [];
+    const normalizedCpf = normalizeCpf(data.cpf);
+    if (!isValidCPF(normalizedCpf)) throw new Error("CPF inválido");
 
     // Determine category (ligante > partner > visitor)
     const { data: myMemberships } = await supabase
@@ -67,7 +74,7 @@ export const createEventCheckout = createServerFn({ method: "POST" })
         user_id: userId,
         full_name: data.full_name,
         social_name: data.social_name || null,
-        cpf: data.cpf,
+        cpf: normalizedCpf,
         course: data.course,
         category,
         base_price: base,
@@ -85,9 +92,9 @@ export const createEventCheckout = createServerFn({ method: "POST" })
 
     // Create Stripe Checkout Session via gateway
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const STRIPE_KEY = process.env.STRIPE_SANDBOX_API_KEY;
+    const STRIPE_KEY = getStripeConnectionKey();
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
-    if (!STRIPE_KEY) throw new Error("STRIPE_SANDBOX_API_KEY não configurada");
+    if (!STRIPE_KEY) throw new Error("Integração de pagamentos não configurada");
 
     const origin = data.origin_url.replace(/\/$/, "");
     const successUrl = `${origin}/${(event as any).leagues.slug}?event=${data.event_id}&paid=1`;
@@ -97,10 +104,7 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     params.append("mode", "payment");
     params.append("success_url", successUrl);
     params.append("cancel_url", cancelUrl);
-    params.append("payment_method_types[]", data.payment_method);
-    if (data.payment_method === "pix") {
-      params.append("payment_method_options[pix][expires_after_seconds]", "3600");
-    }
+    params.append("payment_method_types[]", data.payment_method === "pix" ? "promptpay" : data.payment_method);
     // Email do usuário (Pix exige; Cartão também se beneficia)
     const { data: prof } = await supabaseAdmin
       .from("profiles").select("email,full_name").eq("id", userId).maybeSingle();
