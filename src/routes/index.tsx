@@ -20,6 +20,7 @@ function HomePage() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [myMemberships, setMyMemberships] = useState<{ league: League; role: string }[]>([]);
   const [events, setEvents] = useState<(Event & { league?: League })[]>([]);
+  const [myEventRegs, setMyEventRegs] = useState<Record<string, boolean>>({});
   const [camedInfo, setCamedInfo] = useState<any>(null);
   const [camedMembers, setCamedMembers] = useState<CamedMember[]>([]);
 
@@ -54,6 +55,19 @@ function HomePage() {
       setMyMemberships(mapped.filter((m) => m.league));
     })();
   }, [user]);
+
+  useEffect(() => {
+    if (!user || events.length === 0) {
+      setMyEventRegs({});
+      return;
+    }
+    const eventIds = events.map((event) => event.id);
+    supabase.from("event_registrations").select("event_id").eq("user_id", user.id).in("event_id", eventIds).then(({ data }) => {
+      const mapped: Record<string, boolean> = {};
+      (data ?? []).forEach((row: any) => { mapped[row.event_id] = true; });
+      setMyEventRegs(mapped);
+    });
+  }, [user, events]);
 
   const myActiveMemberships = myMemberships.filter((m) => m.role !== "visitante");
 
@@ -234,7 +248,9 @@ function HomePage() {
                       <h3 className="font-black text-lg">{e.title}</h3>
                       {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
                       {e.league ? (
-                        <Button asChild className="w-full mt-4"><Link to="/$slug" params={{ slug: e.league.slug }} search={{ event: e.id } as any}>Inscreva-se! <ArrowRight className="size-4" /></Link></Button>
+                        <Button asChild className="w-full mt-4" variant={myEventRegs[e.id] ? "outline" : "default"}>
+                          <Link to="/$slug" params={{ slug: e.league.slug }} search={{ event: e.id } as any}>{myEventRegs[e.id] ? "Acessar Painel do Inscrito" : "Inscreva-se!"} <ArrowRight className="size-4" /></Link>
+                        </Button>
                       ) : (
                         <Button disabled className="w-full mt-4">Sem inscrição</Button>
                       )}
