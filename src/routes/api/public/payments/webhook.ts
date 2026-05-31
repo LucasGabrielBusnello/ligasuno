@@ -49,6 +49,15 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
                 .eq("id", mcRegId);
             }
 
+            // === PROVA SELETIVA: inscrição paga ===
+            const selRegId = obj?.metadata?.selection_registration_id || payload?.metadata?.selection_registration_id;
+            if (selRegId) {
+              await (supabaseAdmin as any)
+                .from("league_selection_registrations")
+                .update({ status: "paid" })
+                .eq("id", selRegId);
+            }
+
             // === ASSINATURA criada via checkout ===
             const leagueId = obj?.metadata?.league_id;
             if (leagueId && obj?.mode === "subscription" && obj?.subscription) {

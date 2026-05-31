@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as CamedRouteImport } from './routes/camed'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,6 +19,11 @@ import { Route as LiganteSlugRouteImport } from './routes/ligante.$slug'
 import { Route as DiretorSlugRouteImport } from './routes/diretor.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
+const CamedRoute = CamedRouteImport.update({
+  id: '/camed',
+  path: '/camed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/camed': typeof CamedRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/camed': typeof CamedRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/camed': typeof CamedRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/camed'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/camed'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/camed'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -128,6 +140,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  CamedRoute: typeof CamedRoute
   DiretorSlugRoute: typeof DiretorSlugRoute
   LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
@@ -137,6 +150,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/camed': {
+      id: '/camed'
+      path: '/camed'
+      fullPath: '/camed'
+      preLoaderRoute: typeof CamedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -200,6 +220,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  CamedRoute: CamedRoute,
   DiretorSlugRoute: DiretorSlugRoute,
   LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,
@@ -209,13 +230,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
