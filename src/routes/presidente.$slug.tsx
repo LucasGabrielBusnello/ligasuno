@@ -370,9 +370,14 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             <Switch checked={!!event.accepting_registrations} onCheckedChange={(v) => onToggle(event.id, "accepting_registrations", v)} />
           </label>
         </div>
-        <Button size="sm" variant="ghost" className="w-full" onClick={onExpand}>
-          {expanded ? "Esconder inscritos" : "Ver inscritos e arrecadação"}
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="sm" variant="outline" className="w-full" onClick={() => setMcOpen(true)}>
+            <BookOpen className="size-3 mr-1" /> Minicursos
+          </Button>
+          <Button size="sm" variant="ghost" className="w-full" onClick={onExpand}>
+            {expanded ? "Esconder inscritos" : "Inscritos / Arrecadação"}
+          </Button>
+        </div>
         {expanded && (
           <div className="pt-3 border-t space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
