@@ -257,8 +257,7 @@ function CamedAdmin() {
           </div>
         </CardContent>
       </Card>
-        <CamedMemberDialog open={open} setOpen={setOpen} member={editing} onSaved={reload} />
-      </Card>
+      <CamedMemberDialog open={open} setOpen={setOpen} member={editing} onSaved={reload} />
       <CamedPresidentsCard />
     </div>
   );
@@ -311,12 +310,6 @@ function CamedPresidentsCard() {
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function _CamedAdminEnd() {
-  return null;
-    </div>
   );
 }
 
