@@ -13,8 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { createLeagueSubscriptionCheckout } from "@/lib/subscription.functions";
+import { SelectionManagerDialog } from "@/components/selection-manager";
 
 export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
 
@@ -208,6 +209,7 @@ function EventsTab({ league }: any) {
     event_date: "", schedule: "",
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
+    max_seats: 0,
   };
   const [f, setF] = useState<any>(blank);
   const reload = async () => {
@@ -229,6 +231,7 @@ function EventsTab({ league }: any) {
       price_partner: Number(ev.price_partner) || 0,
       price_visitor: Number(ev.price_visitor) || 0,
       partner_league_ids: ev.partner_league_ids ?? [],
+      max_seats: Number(ev.max_seats) || 0,
     });
     setOpen(true);
   }
@@ -245,6 +248,7 @@ function EventsTab({ league }: any) {
       price_partner: Number(f.price_partner) || 0,
       price_visitor: Number(f.price_visitor) || 0,
       partner_league_ids: f.partner_league_ids,
+      max_seats: Number(f.max_seats) > 0 ? Number(f.max_seats) : null,
     };
     const { error } = editing
       ? await supabase.from("league_events").update(payload).eq("id", editing.id)
@@ -293,6 +297,7 @@ function EventsTab({ league }: any) {
               <div><Label className="text-xs">Valor Liga Parceira (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_partner} onChange={(e) => setF({ ...f, price_partner: +e.target.value })} /></div>
               <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
             </div>
+            <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
             <div>
               <Label>Ligas parceiras (recebem o valor de parceiro)</Label>
               <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1">
@@ -809,6 +814,7 @@ function MembersTab({ league }: any) {
   const [members, setMembers] = useState<any[]>([]);
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<"ligante" | "diretor">("ligante");
+  const [selOpen, setSelOpen] = useState(false);
   const reload = async () => {
     const { data } = await supabase.from("league_memberships").select("*, profiles!inner(username,email)").eq("league_id", league.id);
     setMembers(data ?? []);
@@ -826,6 +832,9 @@ function MembersTab({ league }: any) {
   async function remove(id: string) { await supabase.from("league_memberships").delete().eq("id", id); reload(); }
   return (
     <Card><CardContent className="p-6 space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setSelOpen(true)} variant="outline"><ClipboardCheck className="size-4" /> Processo Seletivo</Button>
+      </div>
       <div className="flex gap-2 flex-wrap">
         <Input className="flex-1 min-w-[200px]" placeholder="Email ou usuário" value={query} onChange={(e) => setQuery(e.target.value)} />
         <select className="px-3 rounded border bg-background" value={role} onChange={(e) => setRole(e.target.value as any)}>
@@ -841,6 +850,7 @@ function MembersTab({ league }: any) {
           </div>
         ))}
       </div>
+      <SelectionManagerDialog league={league} open={selOpen} onClose={() => setSelOpen(false)} />
     </CardContent></Card>
   );
 }
