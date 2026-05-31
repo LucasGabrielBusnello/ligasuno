@@ -1100,6 +1100,7 @@ export type Database = {
       }
       is_admin_master: { Args: { _user_id: string }; Returns: boolean }
       is_camed_president: { Args: { _user_id: string }; Returns: boolean }
+      username_available: { Args: { _username: string }; Returns: boolean }
     }
     Enums: {
       app_role:
