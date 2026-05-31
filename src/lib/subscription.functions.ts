@@ -5,6 +5,10 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const GATEWAY = "https://connector-gateway.lovable.dev/stripe";
 
+function getStripeConnectionKey() {
+  return process.env.STRIPE_LIVE_API_KEY ?? process.env.STRIPE_SANDBOX_API_KEY;
+}
+
 const schema = z.object({
   league_id: z.string().uuid(),
   origin_url: z.string().url(),
@@ -34,9 +38,9 @@ export const createLeagueSubscriptionCheckout = createServerFn({ method: "POST" 
     const unitAmount = Math.max(1, Math.round(monthly * 100)); // mínimo 1 centavo
 
     const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const STRIPE_KEY = process.env.STRIPE_SANDBOX_API_KEY;
+    const STRIPE_KEY = getStripeConnectionKey();
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
-    if (!STRIPE_KEY) throw new Error("STRIPE_SANDBOX_API_KEY não configurada");
+    if (!STRIPE_KEY) throw new Error("Integração de pagamentos não configurada");
 
     const origin = data.origin_url.replace(/\/$/, "");
     const successUrl = `${origin}/presidente/${(league as any).slug}?anuidade=ok`;
