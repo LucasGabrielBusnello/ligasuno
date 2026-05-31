@@ -89,6 +89,45 @@ export type Database = {
         }
         Relationships: []
       }
+      camed_presidents: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      camed_settings: {
+        Row: {
+          id: number
+          league_registration_fee: number
+          semestrality_fee: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          league_registration_fee?: number
+          semestrality_fee?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          league_registration_fee?: number
+          semestrality_fee?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       event_registrations: {
         Row: {
           base_price: number
@@ -286,6 +325,7 @@ export type Database = {
           id: string
           image_url: string | null
           league_id: string
+          max_seats: number | null
           partner_league_ids: string[]
           price_ligante: number
           price_partner: number
@@ -303,6 +343,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           league_id: string
+          max_seats?: number | null
           partner_league_ids?: string[]
           price_ligante?: number
           price_partner?: number
@@ -320,6 +361,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           league_id?: string
+          max_seats?: number | null
           partner_league_ids?: string[]
           price_ligante?: number
           price_partner?: number
@@ -679,6 +721,117 @@ export type Database = {
         }
         Relationships: []
       }
+      league_selection_quotas: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          seats: number
+          semester: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          seats?: number
+          semester: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          seats?: number
+          semester?: number
+        }
+        Relationships: []
+      }
+      league_selection_ranking_history: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          snapshot: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          snapshot: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          snapshot?: Json
+        }
+        Relationships: []
+      }
+      league_selection_registrations: {
+        Row: {
+          cpf: string
+          created_at: string
+          delivery_position: number | null
+          email: string
+          full_name: string
+          grade: number | null
+          id: string
+          league_id: string
+          paid_price: number
+          phone: string
+          present: boolean
+          ranked_position: number | null
+          ranked_semester: number | null
+          ranked_via: string | null
+          semester: number
+          status: string
+          stripe_session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          delivery_position?: number | null
+          email: string
+          full_name: string
+          grade?: number | null
+          id?: string
+          league_id: string
+          paid_price?: number
+          phone: string
+          present?: boolean
+          ranked_position?: number | null
+          ranked_semester?: number | null
+          ranked_via?: string | null
+          semester: number
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          delivery_position?: number | null
+          email?: string
+          full_name?: string
+          grade?: number | null
+          id?: string
+          league_id?: string
+          paid_price?: number
+          phone?: string
+          present?: boolean
+          ranked_position?: number | null
+          ranked_semester?: number | null
+          ranked_via?: string | null
+          semester?: number
+          status?: string
+          stripe_session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       league_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -735,6 +888,12 @@ export type Database = {
           paid_until: string | null
           president_id: string | null
           published: boolean
+          selection_deadline: string | null
+          selection_exam_date: string | null
+          selection_exam_description: string | null
+          selection_exam_time: string | null
+          selection_open: boolean
+          selection_total_seats: number
           slug: string
           theme_color: string
           updated_at: string
@@ -749,6 +908,12 @@ export type Database = {
           paid_until?: string | null
           president_id?: string | null
           published?: boolean
+          selection_deadline?: string | null
+          selection_exam_date?: string | null
+          selection_exam_description?: string | null
+          selection_exam_time?: string | null
+          selection_open?: boolean
+          selection_total_seats?: number
           slug: string
           theme_color?: string
           updated_at?: string
@@ -763,6 +928,12 @@ export type Database = {
           paid_until?: string | null
           president_id?: string | null
           published?: boolean
+          selection_deadline?: string | null
+          selection_exam_date?: string | null
+          selection_exam_description?: string | null
+          selection_exam_time?: string | null
+          selection_open?: boolean
+          selection_total_seats?: number
           slug?: string
           theme_color?: string
           updated_at?: string
@@ -928,6 +1099,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_master: { Args: { _user_id: string }; Returns: boolean }
+      is_camed_president: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
