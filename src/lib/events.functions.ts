@@ -104,7 +104,7 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     params.append("mode", "payment");
     params.append("success_url", successUrl);
     params.append("cancel_url", cancelUrl);
-    params.append("payment_method_types[]", data.payment_method === "pix" ? "promptpay" : data.payment_method);
+    params.append("payment_method_types[]", data.payment_method);
     // Email do usuário (Pix exige; Cartão também se beneficia)
     const { data: prof } = await supabaseAdmin
       .from("profiles").select("email,full_name").eq("id", userId).maybeSingle();
