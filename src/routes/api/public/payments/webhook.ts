@@ -40,10 +40,18 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               }
             }
 
+            // === MINICURSO: inscrição paga ===
+            const mcRegId = obj?.metadata?.minicourse_registration_id || payload?.metadata?.minicourse_registration_id;
+            if (mcRegId) {
+              await supabaseAdmin
+                .from("minicourse_registrations")
+                .update({ status: "paid" })
+                .eq("id", mcRegId);
+            }
+
             // === ASSINATURA criada via checkout ===
             const leagueId = obj?.metadata?.league_id;
             if (leagueId && obj?.mode === "subscription" && obj?.subscription) {
-              // Será também processado por customer.subscription.created, mas garantimos paid_until aqui.
               const periodEnd = new Date();
               periodEnd.setMonth(periodEnd.getMonth() + 1);
               await supabaseAdmin

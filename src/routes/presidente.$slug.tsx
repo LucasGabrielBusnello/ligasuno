@@ -316,6 +316,7 @@ function EventsTab({ league }: any) {
 function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete }: any) {
   const [regs, setRegs] = useState<any[] | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
+  const [mcOpen, setMcOpen] = useState(false);
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
@@ -369,9 +370,14 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             <Switch checked={!!event.accepting_registrations} onCheckedChange={(v) => onToggle(event.id, "accepting_registrations", v)} />
           </label>
         </div>
-        <Button size="sm" variant="ghost" className="w-full" onClick={onExpand}>
-          {expanded ? "Esconder inscritos" : "Ver inscritos e arrecadação"}
-        </Button>
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="sm" variant="outline" className="w-full" onClick={() => setMcOpen(true)}>
+            <BookOpen className="size-3 mr-1" /> Minicursos
+          </Button>
+          <Button size="sm" variant="ghost" className="w-full" onClick={onExpand}>
+            {expanded ? "Esconder inscritos" : "Inscritos / Arrecadação"}
+          </Button>
+        </div>
         {expanded && (
           <div className="pt-3 border-t space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
@@ -420,7 +426,198 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
           )}
         </DialogContent>
       </Dialog>
+      <MinicoursesManager event={event} open={mcOpen} onClose={() => setMcOpen(false)} />
     </Card>
+  );
+}
+
+function MinicoursesManager({ event, open, onClose }: { event: any; open: boolean; onClose: () => void }) {
+  const [list, setList] = useState<any[]>([]);
+  const [regsByMc, setRegsByMc] = useState<Record<string, any[]>>({});
+  const [editing, setEditing] = useState<any | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [viewing, setViewing] = useState<any | null>(null);
+  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false };
+  const [f, setF] = useState<any>(blank);
+
+  async function reload() {
+    const { data } = await supabase.from("league_minicourses").select("*").eq("event_id", event.id).order("starts_at", { ascending: true });
+    setList(data ?? []);
+    const ids = (data ?? []).map((m: any) => m.id);
+    if (ids.length === 0) { setRegsByMc({}); return; }
+    const { data: regs } = await supabase.from("minicourse_registrations").select("*").in("minicourse_id", ids);
+    const uids = Array.from(new Set((regs ?? []).map((r: any) => r.user_id)));
+    let profMap: Record<string, any> = {};
+    if (uids.length > 0) {
+      const { data: profs } = await supabase.from("profiles").select("id,username,email,phone,full_name").in("id", uids);
+      (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+    }
+    const grouped: Record<string, any[]> = {};
+    (regs ?? []).forEach((r: any) => {
+      (grouped[r.minicourse_id] ||= []).push({ ...r, profile: profMap[r.user_id] ?? null });
+    });
+    setRegsByMc(grouped);
+  }
+  useEffect(() => { if (open) reload(); }, [open, event.id]);
+
+  function openNew() { setEditing(null); setF(blank); setFormOpen(true); }
+  function openEdit(mc: any) {
+    setEditing(mc);
+    setF({
+      title: mc.title, instructor: mc.instructor,
+      starts_at: mc.starts_at ? new Date(mc.starts_at).toISOString().slice(0, 16) : "",
+      location: mc.location ?? "", description: mc.description ?? "",
+      is_free: !!mc.is_free, price: Number(mc.price) || 0,
+      max_registrations: Number(mc.max_registrations) || 20,
+      published: !!mc.published,
+    });
+    setFormOpen(true);
+  }
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!f.starts_at) return toast.error("Informe data e hora");
+    const payload: any = {
+      event_id: event.id,
+      title: f.title, instructor: f.instructor,
+      starts_at: new Date(f.starts_at).toISOString(),
+      location: f.location || null, description: f.description || null,
+      is_free: !!f.is_free, price: f.is_free ? 0 : Number(f.price) || 0,
+      max_registrations: Math.max(1, Number(f.max_registrations) || 1),
+      published: !!f.published,
+    };
+    const { error } = editing
+      ? await supabase.from("league_minicourses").update(payload).eq("id", editing.id)
+      : await supabase.from("league_minicourses").insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success(editing ? "Atualizado" : "Criado"); setFormOpen(false); reload();
+  }
+  async function del(id: string) {
+    if (!confirm("Excluir este minicurso? As inscrições serão removidas.")) return;
+    await supabase.from("minicourse_registrations").delete().eq("minicourse_id", id);
+    await supabase.from("league_minicourses").delete().eq("id", id);
+    reload();
+  }
+  async function togglePublished(mc: any) {
+    const { error } = await supabase.from("league_minicourses").update({ published: !mc.published }).eq("id", mc.id);
+    if (error) return toast.error(error.message);
+    setList(prev => prev.map(m => m.id === mc.id ? { ...m, published: !mc.published } : m));
+  }
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Minicursos · {event.title}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={openNew}><Plus className="size-4" /> Novo minicurso</Button>
+          </div>
+          {list.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Nenhum minicurso ainda. Crie um para liberar inscrição aos participantes do evento.</p>
+          ) : (
+            <div className="space-y-2">
+              {list.map((mc) => {
+                const regs = regsByMc[mc.id] ?? [];
+                const paidCount = regs.filter(r => r.status === "paid").length;
+                const cap = Number(mc.max_registrations) || 0;
+                const pct = cap ? Math.min(100, Math.round((paidCount / cap) * 100)) : 0;
+                return (
+                  <Card key={mc.id}>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h5 className="font-black truncate">{mc.title}</h5>
+                            <Badge variant={mc.is_free ? "secondary" : "default"} className="text-[10px]">{mc.is_free ? "Gratuito" : `R$ ${Number(mc.price).toFixed(2)}`}</Badge>
+                            {!mc.published && <Badge variant="outline" className="text-[10px]">Rascunho</Badge>}
+                          </div>
+                          <p className="text-xs text-muted-foreground">{mc.instructor} · {new Date(mc.starts_at).toLocaleString("pt-BR")}</p>
+                          {mc.location && <p className="text-[11px] text-muted-foreground">📍 {mc.location}</p>}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="sm" variant="outline" onClick={() => openEdit(mc)}>Editar</Button>
+                          <Button size="sm" variant="destructive" onClick={() => del(mc.id)}><Trash2 className="size-3" /></Button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t">
+                        <label className="flex items-center gap-2 text-xs">
+                          <Switch checked={!!mc.published} onCheckedChange={() => togglePublished(mc)} />
+                          Publicado
+                        </label>
+                        <button onClick={() => setViewing(mc)} className="text-xs underline text-muted-foreground">
+                          {paidCount}/{cap} inscritos ({pct}%)
+                        </button>
+                      </div>
+                      <div className="h-1 bg-muted rounded overflow-hidden">
+                        <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing ? "Editar minicurso" : "Novo minicurso"}</DialogTitle></DialogHeader>
+          <form onSubmit={save} className="space-y-3">
+            <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+            <div><Label>Lecionador</Label><Input required value={f.instructor} onChange={(e) => setF({ ...f, instructor: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label>Data e hora</Label><Input type="datetime-local" required value={f.starts_at} onChange={(e) => setF({ ...f, starts_at: e.target.value })} /></div>
+              <div><Label>Vagas (máx.)</Label><Input type="number" min="1" required value={f.max_registrations} onChange={(e) => setF({ ...f, max_registrations: +e.target.value })} /></div>
+            </div>
+            <div><Label>Local</Label><Input placeholder="Sala, prédio, link..." value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></div>
+            <div><Label>Descrição</Label><Textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+            <div className="flex items-center justify-between gap-2 p-3 rounded border">
+              <div>
+                <Label className="cursor-pointer">Gratuito</Label>
+                <p className="text-[11px] text-muted-foreground">Se desativado, exigirá pagamento.</p>
+              </div>
+              <Switch checked={f.is_free} onCheckedChange={(v) => setF({ ...f, is_free: v })} />
+            </div>
+            {!f.is_free && (
+              <div><Label>Valor adicional (R$)</Label><Input type="number" step="0.01" min="0.50" value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Mínimo R$ 0,50 (limite do gateway).</p></div>
+            )}
+            <label className="flex items-center justify-between gap-2 p-3 rounded border">
+              <div>
+                <span className="text-sm font-medium">Publicar imediatamente</span>
+                <p className="text-[11px] text-muted-foreground">Quando publicado, aparece para inscritos no evento.</p>
+              </div>
+              <Switch checked={f.published} onCheckedChange={(v) => setF({ ...f, published: v })} />
+            </label>
+            <DialogFooter><Button type="submit">{editing ? "Salvar" : "Criar"}</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewing} onOpenChange={(v) => !v && setViewing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Inscritos · {viewing?.title}</DialogTitle></DialogHeader>
+          {viewing && (
+            <div className="space-y-1">
+              {(regsByMc[viewing.id] ?? []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p>}
+              {(regsByMc[viewing.id] ?? []).map((r) => (
+                <div key={r.id} className="p-2 rounded border flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold truncate">{r.profile?.full_name ?? r.profile?.username ?? "—"}</div>
+                    <div className="text-[11px] text-muted-foreground">{r.profile?.email}</div>
+                  </div>
+                  <div className="flex flex-col items-end shrink-0">
+                    <Badge variant={r.status === "paid" ? "default" : "secondary"} className="text-[10px]">{r.status === "paid" ? "Confirmado" : "Pendente"}</Badge>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">R$ {Number(r.paid_price).toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

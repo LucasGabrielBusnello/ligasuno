@@ -444,41 +444,184 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
   const reg = registration;
   return (
     <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Painel do Inscrito</DialogTitle>
           <Badge className="w-fit mt-1" style={{ background: league.theme_color }}>{event.title}</Badge>
         </DialogHeader>
         {event.image_url && <img src={event.image_url} className="w-full aspect-video object-cover rounded" />}
-        <div className="space-y-3">
-          {event.event_date && (
-            <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span><b>Data:</b> {new Date(event.event_date).toLocaleDateString("pt-BR")}</span></div>
-          )}
-          {event.description && <div><div className="text-xs font-black uppercase text-muted-foreground mb-1">Descrição</div><p className="text-sm whitespace-pre-line">{event.description}</p></div>}
-          {reg && (
-            <Card className="border-emerald-500/40 bg-emerald-500/5"><CardContent className="p-4 space-y-1">
-              <div className="text-xs text-muted-foreground">Status da inscrição</div>
-              <div className="flex items-center justify-between gap-2">
-                <Badge className={reg.status === "paid" ? "bg-emerald-600" : "bg-amber-600"}>{reg.status === "paid" ? "Inscrição confirmada" : "Pagamento pendente"}</Badge>
-                <div className="text-lg font-black">R$ {Number(reg.paid_price ?? 0).toFixed(2)}</div>
-              </div>
-              {reg.discount_reason && <div className="text-[11px] text-muted-foreground">{reg.discount_reason}</div>}
-            </CardContent></Card>
-          )}
-          <div>
-            <div className="text-xs font-black uppercase text-muted-foreground mb-1">Cronograma do evento</div>
+        <Tabs defaultValue="info">
+          <TabsList className="grid grid-cols-3 w-full">
+            <TabsTrigger value="info">Evento</TabsTrigger>
+            <TabsTrigger value="schedule">Cronograma</TabsTrigger>
+            <TabsTrigger value="mc">Minicursos</TabsTrigger>
+          </TabsList>
+          <TabsContent value="info" className="space-y-3 pt-3">
+            {event.event_date && (
+              <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span><b>Data:</b> {new Date(event.event_date).toLocaleDateString("pt-BR")}</span></div>
+            )}
+            {event.description && <div><div className="text-xs font-black uppercase text-muted-foreground mb-1">Descrição</div><p className="text-sm whitespace-pre-line">{event.description}</p></div>}
+            {reg && (
+              <Card className="border-emerald-500/40 bg-emerald-500/5"><CardContent className="p-4 space-y-1">
+                <div className="text-xs text-muted-foreground">Status da inscrição</div>
+                <div className="flex items-center justify-between gap-2">
+                  <Badge className={reg.status === "paid" ? "bg-emerald-600" : "bg-amber-600"}>{reg.status === "paid" ? "Inscrição confirmada" : "Pagamento pendente"}</Badge>
+                  <div className="text-lg font-black">R$ {Number(reg.paid_price ?? 0).toFixed(2)}</div>
+                </div>
+                {reg.discount_reason && <div className="text-[11px] text-muted-foreground">{reg.discount_reason}</div>}
+              </CardContent></Card>
+            )}
+          </TabsContent>
+          <TabsContent value="schedule" className="pt-3">
             {event.schedule ? (
               <p className="text-sm whitespace-pre-line p-3 rounded border bg-muted/30">{event.schedule}</p>
             ) : (
               <p className="text-sm text-muted-foreground italic">O presidente ainda não publicou o cronograma.</p>
             )}
-          </div>
-        </div>
+          </TabsContent>
+          <TabsContent value="mc" className="pt-3">
+            <ParticipantMinicourses event={event} isPaid={reg?.status === "paid"} />
+          </TabsContent>
+        </Tabs>
         <DialogFooter><Button onClick={onClose} variant="outline">Fechar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean }) {
+  const { user } = useAuth();
+  const [list, setList] = useState<any[] | null>(null);
+  const [myRegs, setMyRegs] = useState<Record<string, any>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [payOpen, setPayOpen] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function reload() {
+    const { data: mcs } = await supabase
+      .from("league_minicourses")
+      .select("*")
+      .eq("event_id", event.id)
+      .eq("published", true)
+      .order("starts_at", { ascending: true });
+    setList(mcs ?? []);
+    const ids = (mcs ?? []).map((m: any) => m.id);
+    if (ids.length === 0) { setMyRegs({}); setCounts({}); return; }
+    const [{ data: mine }, { data: all }] = await Promise.all([
+      user ? supabase.from("minicourse_registrations").select("*").eq("user_id", user.id).in("minicourse_id", ids) : Promise.resolve({ data: [] as any[] }) as any,
+      supabase.from("minicourse_registrations").select("minicourse_id,status").in("minicourse_id", ids),
+    ]);
+    const m: Record<string, any> = {};
+    (mine ?? []).forEach((r: any) => { m[r.minicourse_id] = r; });
+    setMyRegs(m);
+    const c: Record<string, number> = {};
+    (all ?? []).forEach((r: any) => { if (r.status === "paid" || r.status === "pending") c[r.minicourse_id] = (c[r.minicourse_id] ?? 0) + 1; });
+    setCounts(c);
+  }
+  useEffect(() => { reload(); }, [event.id, user?.id]);
+
+  // Detecta retorno do checkout: ?mc_paid=1
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const u = new URL(window.location.href);
+    if (u.searchParams.get("mc_paid") === "1") {
+      toast.success("Inscrição no minicurso confirmada!");
+      u.searchParams.delete("mc_paid");
+      window.history.replaceState({}, "", u.toString());
+      reload();
+    }
+  }, []);
+
+  async function register(mc: any, method: "card" | "pix") {
+    if (!user) { toast.error("Faça login primeiro"); return; }
+    setBusy(true);
+    try {
+      const { createMinicourseCheckout } = await import("@/lib/minicourses.functions");
+      const res: any = await createMinicourseCheckout({
+        data: { minicourse_id: mc.id, payment_method: method, origin_url: window.location.origin },
+      } as any);
+      if (res?.free) {
+        toast.success("Inscrição confirmada!");
+        setPayOpen(null);
+        reload();
+      } else if (res?.url) {
+        window.location.href = res.url;
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao inscrever");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!isPaid) {
+    return <p className="text-sm text-muted-foreground italic">Confirme o pagamento da inscrição do evento para liberar os minicursos.</p>;
+  }
+  if (list === null) return <p className="text-sm text-muted-foreground">Carregando minicursos...</p>;
+  if (list.length === 0) return <p className="text-sm text-muted-foreground text-center py-6">Nenhum minicurso publicado ainda.</p>;
+
+  return (
+    <div className="space-y-2">
+      {list.map((mc) => {
+        const mine = myRegs[mc.id];
+        const used = counts[mc.id] ?? 0;
+        const cap = Number(mc.max_registrations) || 0;
+        const full = cap > 0 && used >= cap && !mine;
+        return (
+          <Card key={mc.id}>
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h5 className="font-black">{mc.title}</h5>
+                    <Badge variant={mc.is_free ? "secondary" : "default"} className="text-[10px]">
+                      {mc.is_free ? "Gratuito" : `R$ ${Number(mc.price).toFixed(2)}`}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">👤 {mc.instructor}</p>
+                  <p className="text-xs text-muted-foreground">🗓️ {new Date(mc.starts_at).toLocaleString("pt-BR")}</p>
+                  {mc.location && <p className="text-xs text-muted-foreground">📍 {mc.location}</p>}
+                  {mc.description && <p className="text-xs mt-1 whitespace-pre-line">{mc.description}</p>}
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-[10px] text-muted-foreground mb-1">{used}/{cap || "∞"} vagas</div>
+                  {mine?.status === "paid" ? (
+                    <Badge className="bg-emerald-600">Inscrito</Badge>
+                  ) : mine?.status === "pending" ? (
+                    <Badge variant="secondary">Pagamento pendente</Badge>
+                  ) : full ? (
+                    <Badge variant="outline">Esgotado</Badge>
+                  ) : mc.is_free ? (
+                    <Button size="sm" disabled={busy} onClick={() => register(mc, "card")}>Inscrever-se</Button>
+                  ) : (
+                    <Button size="sm" disabled={busy} onClick={() => setPayOpen(mc)}>Inscrever-se</Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+
+      <Dialog open={!!payOpen} onOpenChange={(v) => !v && setPayOpen(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Pagamento · {payOpen?.title}</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Valor: <b>R$ {Number(payOpen?.price ?? 0).toFixed(2)}</b></p>
+          <p className="text-xs text-muted-foreground">Escolha o método de pagamento:</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" disabled={busy} onClick={() => register(payOpen, "pix")}>
+              <QrCode className="size-4 mr-1" /> Pix
+            </Button>
+            <Button disabled={busy} onClick={() => register(payOpen, "card")}>
+              <CreditCard className="size-4 mr-1" /> Cartão
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 
 function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; league: League; userId: string | null; onClose: () => void }) {
   const [quizzes, setQuizzes] = useState<any[]>([]);

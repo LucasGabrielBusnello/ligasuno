@@ -105,6 +105,10 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     params.append("success_url", successUrl);
     params.append("cancel_url", cancelUrl);
     params.append("payment_method_types[]", data.payment_method);
+    if (data.payment_method === "pix") {
+      // Pix expira em 1h para garantir conversão
+      params.append("payment_method_options[pix][expires_after_seconds]", "3600");
+    }
     // Email do usuário (Pix exige; Cartão também se beneficia)
     const { data: prof } = await supabaseAdmin
       .from("profiles").select("email,full_name").eq("id", userId).maybeSingle();
