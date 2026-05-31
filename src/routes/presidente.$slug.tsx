@@ -316,6 +316,7 @@ function EventsTab({ league }: any) {
 function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete }: any) {
   const [regs, setRegs] = useState<any[] | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
+  const [mcOpen, setMcOpen] = useState(false);
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
