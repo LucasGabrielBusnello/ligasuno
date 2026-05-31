@@ -153,7 +153,7 @@ function ConfigSection({ league }: { league: any }) {
         )}
       </CardContent></Card>
 
-      <Button onClick={save}>Salvar configuração</Button>
+      <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar configuração"}</Button>
     </div>
   );
 }
