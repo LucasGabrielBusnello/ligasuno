@@ -129,7 +129,11 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     });
     const session = await res.json();
     if (!res.ok) {
-      throw new Error(`Stripe falhou [${res.status}]: ${session?.error?.message ?? JSON.stringify(session)}`);
+      const message = session?.error?.message ?? JSON.stringify(session);
+      if (typeof message === "string" && message.toLowerCase().includes("provided: pix is invalid")) {
+        throw new Error("Pix ainda não está habilitado na conta de pagamentos conectada. Ative o Pix nas configurações da conta para liberar esse método.");
+      }
+      throw new Error(`Stripe falhou [${res.status}]: ${message}`);
     }
 
     await supabaseAdmin.from("event_registrations")
