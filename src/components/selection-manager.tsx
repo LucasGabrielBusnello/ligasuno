@@ -48,41 +48,70 @@ function ConfigSection({ league }: { league: any }) {
   });
   const [quotas, setQuotas] = useState<Record<number, number>>({});
   const [quotasEnabled, setQuotasEnabled] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    supabase.from("league_selection_quotas").select("*").eq("league_id", league.id).then(({ data }) => {
-      const m: Record<number, number> = {};
-      (data ?? []).forEach((q: any) => { if (q.seats > 0) m[q.semester] = q.seats; });
-      setQuotas(m);
-      setQuotasEnabled(Object.keys(m).length > 0);
-    });
-  }, [league.id]);
+  async function loadAll() {
+    const [{ data: l }, { data: qs }] = await Promise.all([
+      supabase.from("leagues").select("selection_open,selection_deadline,selection_exam_date,selection_exam_time,selection_exam_description,selection_total_seats").eq("id", league.id).maybeSingle(),
+      supabase.from("league_selection_quotas").select("*").eq("league_id", league.id),
+    ]);
+    if (l) {
+      const ll: any = l;
+      setF({
+        selection_open: !!ll.selection_open,
+        selection_deadline: ll.selection_deadline ?? "",
+        selection_exam_date: ll.selection_exam_date ?? "",
+        selection_exam_time: (ll.selection_exam_time ?? "").slice(0, 5),
+        selection_exam_description: ll.selection_exam_description ?? "",
+        selection_total_seats: Number(ll.selection_total_seats) || 0,
+      });
+    }
+    const m: Record<number, number> = {};
+    (qs ?? []).forEach((q: any) => { if (q.seats > 0) m[q.semester] = q.seats; });
+    setQuotas(m);
+    setQuotasEnabled(Object.keys(m).length > 0);
+  }
+  useEffect(() => { loadAll(); }, [league.id]);
 
   async function save() {
-    const { error } = await supabase.from("leagues").update({
-      selection_open: f.selection_open,
-      selection_deadline: f.selection_deadline || null,
-      selection_exam_date: f.selection_exam_date || null,
-      selection_exam_time: f.selection_exam_time || null,
-      selection_exam_description: f.selection_exam_description || null,
-      selection_total_seats: f.selection_total_seats,
-    } as any).eq("id", league.id);
-    if (error) return toast.error(error.message);
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("leagues").update({
+        selection_open: f.selection_open,
+        selection_deadline: f.selection_deadline || null,
+        selection_exam_date: f.selection_exam_date || null,
+        selection_exam_time: f.selection_exam_time || null,
+        selection_exam_description: f.selection_exam_description || null,
+        selection_total_seats: f.selection_total_seats,
+      } as any).eq("id", league.id);
+      if (error) { toast.error(error.message); return; }
 
-    // Sync quotas
-    const target = quotasEnabled ? quotas : {};
-    for (const sem of SEMESTERS) {
-      const seats = Number(target[sem]) || 0;
-      if (seats > 0) {
-        await supabase.from("league_selection_quotas").upsert(
-          { league_id: league.id, semester: sem, seats } as any,
-          { onConflict: "league_id,semester" } as any
-        );
-      } else {
-        await supabase.from("league_selection_quotas").delete().eq("league_id", league.id).eq("semester", sem);
+      const target = quotasEnabled ? quotas : {};
+      for (const sem of SEMESTERS) {
+        const seats = Number(target[sem]) || 0;
+        if (seats > 0) {
+          const { error: qe } = await supabase.from("league_selection_quotas").upsert(
+            { league_id: league.id, semester: sem, seats } as any,
+            { onConflict: "league_id,semester" } as any
+          );
+          if (qe) { toast.error(qe.message); return; }
+        } else {
+          await supabase.from("league_selection_quotas").delete().eq("league_id", league.id).eq("semester", sem);
+        }
       }
+      Object.assign(league, {
+        selection_open: f.selection_open,
+        selection_deadline: f.selection_deadline || null,
+        selection_exam_date: f.selection_exam_date || null,
+        selection_exam_time: f.selection_exam_time || null,
+        selection_exam_description: f.selection_exam_description || null,
+        selection_total_seats: f.selection_total_seats,
+      });
+      await loadAll();
+      toast.success("Configuração salva");
+    } finally {
+      setSaving(false);
     }
-    toast.success("Configuração salva");
   }
 
   return (
