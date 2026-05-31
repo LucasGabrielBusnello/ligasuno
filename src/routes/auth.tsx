@@ -92,13 +92,9 @@ function AuthPage() {
     }
 
     setLoading(true);
-    // Verifica disponibilidade do usuário
-    const { data: existing } = await supabase
-      .from("profiles")
-      .select("id")
-      .ilike("username", cleaned.username)
-      .maybeSingle();
-    if (existing) {
+    // Verifica disponibilidade do usuário (via função SECURITY DEFINER — não expõe emails)
+    const { data: available } = await supabase.rpc("username_available", { _username: cleaned.username });
+    if (available === false) {
       setLoading(false);
       const msg = "Esse nome de usuário já está em uso. Escolha outro.";
       setError(msg);
