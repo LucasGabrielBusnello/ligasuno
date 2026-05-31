@@ -480,6 +480,101 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
   );
 }
 
+function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; league: League; userId: string | null; onClose: () => void }) {
+  const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [answers, setAnswers] = useState<Record<string, { is_correct: boolean; selected: number }>>({});
+  const [curr, setCurr] = useState(0);
+  const [ans, setAns] = useState<number | null>(null);
+  const [showReport, setShowReport] = useState(false);
+
+  useEffect(() => {
+    if (!quizSet || !userId) return;
+    (async () => {
+      const [{ data: qs }, { data: a }] = await Promise.all([
+        supabase.from("league_quizzes").select("*").eq("quiz_set_id", quizSet.id).order("display_order"),
+        supabase.from("league_quiz_answers").select("*").eq("user_id", userId),
+      ]);
+      const answerMap: Record<string, { is_correct: boolean; selected: number }> = {};
+      (a ?? []).forEach((row: any) => { answerMap[row.quiz_id] = { is_correct: row.is_correct, selected: row.selected }; });
+      setQuizzes(qs ?? []);
+      setAnswers(answerMap);
+      const first = (qs ?? []).findIndex((q: any) => answerMap[q.id] === undefined);
+      setCurr(first === -1 ? 0 : first);
+      setAns(null);
+      setShowReport(first === -1 && (qs ?? []).length > 0);
+    })();
+  }, [quizSet, userId]);
+
+  if (!quizSet || !userId) return null;
+  const q = quizzes[curr];
+  const existing = q ? answers[q.id] : undefined;
+  const isAnswered = existing !== undefined;
+
+  async function verify() {
+    if (!q || ans === null) return;
+    const ok = ans === q.correct_answer;
+    const { error } = await supabase.from("league_quiz_answers").upsert(
+      { user_id: userId, quiz_id: q.id, is_correct: ok, selected: ans },
+      { onConflict: "user_id,quiz_id" },
+    );
+    if (error) return toast.error(error.message);
+    setAnswers((prev) => ({ ...prev, [q.id]: { is_correct: ok, selected: ans } }));
+  }
+
+  return (
+    <Dialog open={!!quizSet} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{quizSet.title}</DialogTitle>
+        </DialogHeader>
+        {!q ? (
+          <p className="text-sm text-muted-foreground">Nenhuma questão neste caderno.</p>
+        ) : showReport ? (
+          <div className="space-y-4 text-center">
+            <div className="text-4xl font-black">{Math.round((quizzes.filter((item) => answers[item.id]?.is_correct).length / quizzes.length) * 100)}%</div>
+            <p className="text-sm text-muted-foreground">{quizzes.filter((item) => answers[item.id]?.is_correct).length} acertos de {quizzes.length}</p>
+            <Button onClick={() => { setShowReport(false); setCurr(0); setAns(null); }}>Revisar questões</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="text-xs font-black uppercase text-muted-foreground">Questão {curr + 1} de {quizzes.length}</div>
+            <h3 className="text-lg font-black">{q.question}</h3>
+            <div className="space-y-2">
+              {(q.options as string[]).map((opt, i) => {
+                let cls = "border bg-card";
+                if (isAnswered) {
+                  if (i === q.correct_answer) cls = "border-emerald-500 bg-emerald-500/10";
+                  else if (i === existing?.selected) cls = "border-rose-500 bg-rose-500/10";
+                  else cls = "border bg-muted/40 opacity-60";
+                } else if (ans === i) cls = "border-primary bg-primary/5";
+                return (
+                  <button key={i} type="button" disabled={isAnswered} onClick={() => setAns(i)} className={`w-full rounded-xl border-2 p-4 text-left ${cls}`}>
+                    <span className="font-bold mr-2">{String.fromCharCode(65 + i)}.</span>{opt}
+                  </button>
+                );
+              })}
+            </div>
+            {!isAnswered && ans !== null && <Button className="w-full" onClick={verify}>Verificar</Button>}
+            {isAnswered && (
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <p className={`mb-2 flex items-center gap-2 font-black ${existing?.is_correct ? "text-emerald-600" : "text-rose-600"}`}>
+                  {existing?.is_correct ? <><CheckCircle className="size-5" /> Correto!</> : <><XCircle className="size-5" /> Incorreto</>}
+                </p>
+                {q.explanation && <p className="text-sm text-muted-foreground">{q.explanation}</p>}
+                <Button className="mt-4 w-full" onClick={() => {
+                  setAns(null);
+                  if (curr === quizzes.length - 1) setShowReport(true);
+                  else setCurr((prev) => prev + 1);
+                }}>{curr === quizzes.length - 1 ? "Ver relatório" : "Próxima"}</Button>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Empty({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <Card className="p-12 text-center">
