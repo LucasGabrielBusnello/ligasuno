@@ -496,8 +496,6 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [payOpen, setPayOpen] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
-  const checkoutFn = useServerFn<any>(async () => null as any);
-  // Import dinamicamente via hook abaixo
 
   async function reload() {
     const { data: mcs } = await supabase
