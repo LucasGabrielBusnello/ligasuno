@@ -257,7 +257,65 @@ function CamedAdmin() {
           </div>
         </CardContent>
       </Card>
-      <CamedMemberDialog open={open} setOpen={setOpen} member={editing} onSaved={reload} />
+        <CamedMemberDialog open={open} setOpen={setOpen} member={editing} onSaved={reload} />
+      </Card>
+      <CamedPresidentsCard />
+    </div>
+  );
+}
+
+function CamedPresidentsCard() {
+  const [list, setList] = useState<any[]>([]);
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function reload() {
+    const { data } = await supabase.from("camed_presidents").select("*").order("created_at", { ascending: false });
+    setList(data ?? []);
+  }
+  useEffect(() => { reload(); }, []);
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    const v = email.trim().toLowerCase();
+    if (!v) return;
+    setBusy(true);
+    const { error } = await supabase.from("camed_presidents").insert({ email: v });
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Presidente do CAMED adicionado");
+    setEmail("");
+    reload();
+  }
+  async function remove(id: string) {
+    if (!confirm("Remover este presidente do CAMED?")) return;
+    const { error } = await supabase.from("camed_presidents").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    reload();
+  }
+  return (
+    <Card>
+      <CardHeader><CardTitle>Presidentes do CAMED</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">Defina os e-mails dos usuários que terão acesso ao painel do CAMED. O acesso é concedido assim que o usuário fizer login com este e-mail.</p>
+        <form onSubmit={add} className="flex gap-2">
+          <Input type="email" required placeholder="email@unochapeco.edu.br" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Button type="submit" disabled={busy}><Plus className="size-4" /> Adicionar</Button>
+        </form>
+        <div className="space-y-1">
+          {list.length === 0 && <p className="text-xs text-muted-foreground">Nenhum presidente cadastrado ainda.</p>}
+          {list.map((p) => (
+            <div key={p.id} className="flex items-center justify-between p-2 rounded border text-sm">
+              <span className="font-medium">{p.email}</span>
+              <Button size="sm" variant="destructive" onClick={() => remove(p.id)}><Trash2 className="size-3" /></Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function _CamedAdminEnd() {
+  return null;
     </div>
   );
 }
