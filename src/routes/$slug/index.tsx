@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type League } from "@/hooks/use-auth";
+import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createEventCheckout } from "@/lib/events.functions";
-import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode } from "lucide-react";
+import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle } from "lucide-react";
 
 export const Route = createFileRoute("/$slug/")({ component: LeaguePage });
 
@@ -39,6 +40,8 @@ function LeaguePage() {
   const [registerEvent, setRegisterEvent] = useState<any | null>(null);
   const [participantEvent, setParticipantEvent] = useState<any | null>(null);
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
+  const [regsLoaded, setRegsLoaded] = useState(false);
+  const [activeQuizSet, setActiveQuizSet] = useState<any | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -72,12 +75,13 @@ function LeaguePage() {
 
   // Carrega inscrições do usuário nesta liga
   useEffect(() => {
-    if (!user || events.length === 0) return;
+    if (!user || events.length === 0) { setRegsLoaded(false); return; }
     const ids = events.map(e => e.id);
     supabase.from("event_registrations").select("*").eq("user_id", user.id).in("event_id", ids).then(({ data }) => {
       const m: Record<string, any> = {};
       (data ?? []).forEach((r: any) => { m[r.event_id] = r; });
       setMyRegs(m);
+      setRegsLoaded(true);
     });
   }, [user, events]);
 
@@ -97,15 +101,17 @@ function LeaguePage() {
       setParticipantEvent(ev);
     } else if (paid === "0") {
       toast.error("Pagamento cancelado.");
-    } else if (user) {
+    } else if (user && regsLoaded) {
       // Se já inscrito → painel; senão → registro
       const r = myRegs[evId];
       if (r) setParticipantEvent(ev); else setRegisterEvent(ev);
+    } else {
+      return;
     }
     // Limpa querystring
     url.searchParams.delete("event"); url.searchParams.delete("paid");
     window.history.replaceState({}, "", url.pathname + (url.search ? "?" + url.searchParams.toString() : ""));
-  }, [events, user]);
+  }, [events, user, myRegs, regsLoaded]);
 
   if (loading) return <div className="p-12 text-center">Carregando...</div>;
   if (!league) return (
@@ -292,8 +298,8 @@ function LeaguePage() {
                       {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
                       {user ? (
                         isLigante ? (
-                          <Button asChild className="w-full mt-4" style={{ background: league.theme_color }}>
-                            <Link to="/ligante/$slug" params={{ slug }} search={{ tab: "quizzes", set: q.id } as any}>Acessar quiz <ChevronRight className="size-4" /></Link>
+                          <Button className="w-full mt-4" style={{ background: league.theme_color }} onClick={() => setActiveQuizSet(q)}>
+                            Acessar quiz <ChevronRight className="size-4" />
                           </Button>
                         ) : (
                           <Button disabled className="w-full mt-4">Apenas ligantes</Button>
@@ -320,6 +326,7 @@ function LeaguePage() {
       </main>
       <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} onSuccess={(reg) => { if (reg) setMyRegs(prev => ({ ...prev, [reg.event_id]: reg })); }} />
       <ParticipantPanelDialog event={participantEvent} registration={participantEvent ? myRegs[participantEvent.id] : null} league={league} onClose={() => setParticipantEvent(null)} />
+      <PublicQuizDialog quizSet={activeQuizSet} league={league} userId={user?.id ?? null} onClose={() => setActiveQuizSet(null)} />
     </div>
   );
 }
@@ -346,15 +353,16 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
   if (!event) return null;
 
   async function submit() {
+    const normalizedCpf = normalizeCpf(form.cpf);
     if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
-    if (!form.cpf || form.cpf.length < 11) return toast.error("Informe um CPF válido");
+    if (!isValidCPF(normalizedCpf)) return toast.error("Informe um CPF válido");
     try {
       setSubmitting(true);
       const res = await checkout({ data: {
         event_id: event.id,
         full_name: form.full_name,
         social_name: form.social_name || null,
-        cpf: form.cpf,
+        cpf: normalizedCpf,
         course: form.course,
         payment_method: method,
         origin_url: window.location.origin,
@@ -380,7 +388,7 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
           <div className="space-y-3">
             <div><Label>Nome completo *</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
             <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
-            <div><Label>CPF *</Label><Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" /></div>
+            <div><Label>CPF *</Label><Input inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/[^\d.-]/g, "") })} placeholder="000.000.000-00" /></div>
             <div>
               <Label>Curso *</Label>
               <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value as any })}>
@@ -391,7 +399,11 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
                 <option value="egresso_outro">Egresso de outro curso</option>
               </select>
             </div>
-            <DialogFooter><Button onClick={() => setStep(2)}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
+            <DialogFooter><Button onClick={() => {
+              if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
+              if (!isValidCPF(normalizeCpf(form.cpf))) return toast.error("Informe um CPF válido");
+              setStep(2);
+            }}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
           </div>
         ) : (
           <div className="space-y-4">
