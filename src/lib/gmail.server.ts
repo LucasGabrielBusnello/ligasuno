@@ -144,3 +144,279 @@ export function emailInfoCard(opts: { title: string; rows: Array<{ label: string
     ${rows}
   </div>`;
 }
+
+// ============== Helpers compartilhados ==============
+const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const HUB_GREEN = "#1f5132";
+
+function fmtDateBR(iso?: string | null) {
+  if (!iso) return "—";
+  const [y, m, d] = String(iso).split("T")[0].split("-");
+  return `${d}/${m}/${y}`;
+}
+function fmtTimeBR(t?: string | null) {
+  if (!t) return "";
+  return String(t).slice(0, 5);
+}
+
+// ============== E-mail de boas-vindas (hub) ==============
+export async function sendWelcomeEmail(to: string, fullName?: string | null) {
+  const name = fullName?.trim() || "futuro(a) ligante";
+  return sendGmail({
+    to,
+    subject: "Bem-vindo(a) ao Ligasuno!",
+    html: emailLayout({
+      title: `Bem-vindo(a), ${name}!`,
+      brandColor: HUB_GREEN,
+      leagueName: "LIGASUNO",
+      bodyHtml: `<p>Obrigado(a) por criar sua conta no <strong>Ligasuno</strong>, o hub das ligas acadêmicas da UNOCHAPECÓ. Aqui você concentra tudo o que precisa para viver a experiência acadêmica completa.</p>
+        ${emailInfoCard({
+          title: "O que você já pode fazer",
+          brandColor: HUB_GREEN,
+          rows: [
+            { label: "Ligas", value: "Conheça as ligas e se inscreva nas provas de seleção" },
+            { label: "Eventos", value: "Inscreva-se em simpósios com desconto para ligantes" },
+            { label: "Minicursos", value: "Vagas exclusivas dentro dos eventos das ligas" },
+            { label: "Painel do ligante", value: "Quizzes, agenda, frequência e semestralidade num só lugar" },
+          ],
+        })}
+        <p>Boas-vindas e bons estudos. Quando precisar, é só voltar ao hub.</p>`,
+      ctaLabel: "Acessar o Ligasuno",
+      ctaUrl: PUBLISHED_URL,
+      signature: "— Equipe Ligasuno",
+    }),
+  });
+}
+
+// ============== E-mail: classificado como Ligante ==============
+export async function sendClassifiedAsLiganteEmail(args: {
+  to: string;
+  fullName: string;
+  leagueName: string;
+  leagueSlug: string;
+  brandColor?: string;
+}) {
+  const brand = args.brandColor || HUB_GREEN;
+  return sendGmail({
+    to: args.to,
+    subject: `Parabéns! Você é agora ligante da ${args.leagueName}`,
+    html: emailLayout({
+      title: `${args.fullName}, você foi aprovado(a)!`,
+      brandColor: brand,
+      leagueName: args.leagueName,
+      bodyHtml: `<p>É com grande satisfação que confirmamos: você foi <strong>classificado(a) como ligante da ${args.leagueName}</strong>. Bem-vindo(a) ao time!</p>
+        <p>A partir de agora, você tem acesso ao painel de ligante com agenda, quizzes, frequência, desempenho e semestralidade da liga.</p>
+        <p>Fique atento(a) à comunicação da diretoria para os próximos passos.</p>`,
+      ctaLabel: "Acessar painel do ligante",
+      ctaUrl: `${PUBLISHED_URL}/ligante/${args.leagueSlug}`,
+      signature: `— Presidência da ${args.leagueName}`,
+    }),
+  });
+}
+
+// ============== E-mail: confirmação de inscrição em evento ==============
+export async function sendEventRegistrationEmail(args: {
+  to: string;
+  fullName: string;
+  leagueName: string;
+  leagueSlug: string;
+  brandColor?: string;
+  eventTitle: string;
+  eventDate?: string | null;
+  eventTime?: string | null;
+  eventLocation?: string | null;
+  eventDescription?: string | null;
+  paidPrice?: number;
+}) {
+  const brand = args.brandColor || HUB_GREEN;
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "Evento", value: args.eventTitle },
+  ];
+  if (args.eventDate) rows.push({ label: "Data", value: fmtDateBR(args.eventDate) });
+  if (args.eventTime) rows.push({ label: "Horário", value: fmtTimeBR(args.eventTime) });
+  if (args.eventLocation) rows.push({ label: "Local", value: args.eventLocation });
+  rows.push({
+    label: "Valor pago",
+    value: Number(args.paidPrice ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+  });
+  return sendGmail({
+    to: args.to,
+    subject: `Inscrição confirmada — ${args.eventTitle}`,
+    html: emailLayout({
+      title: `${args.fullName}, sua inscrição está confirmada!`,
+      brandColor: brand,
+      leagueName: args.leagueName,
+      bodyHtml: `<p>Recebemos sua inscrição no evento <strong>${args.eventTitle}</strong> da <strong>${args.leagueName}</strong>.</p>
+        ${emailInfoCard({ title: "Detalhes do evento", brandColor: brand, rows })}
+        ${args.eventDescription ? `<p style="white-space:pre-line;">${args.eventDescription}</p>` : ""}
+        <p>Você receberá lembretes automáticos uma semana antes, um dia antes e no dia do evento.</p>`,
+      ctaLabel: "Ver na página da liga",
+      ctaUrl: `${PUBLISHED_URL}/${args.leagueSlug}`,
+      signature: `— Presidência da ${args.leagueName}`,
+    }),
+  });
+}
+
+// ============== E-mail: confirmação de inscrição em minicurso ==============
+export async function sendMinicourseRegistrationEmail(args: {
+  to: string;
+  fullName: string;
+  leagueName: string;
+  leagueSlug: string;
+  brandColor?: string;
+  minicourseTitle: string;
+  instructor?: string | null;
+  startsAt?: string | null;
+  location?: string | null;
+  description?: string | null;
+  paidPrice?: number;
+}) {
+  const brand = args.brandColor || HUB_GREEN;
+  const startDate = args.startsAt ? new Date(args.startsAt) : null;
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "Minicurso", value: args.minicourseTitle },
+  ];
+  if (args.instructor) rows.push({ label: "Ministrante", value: args.instructor });
+  if (startDate) {
+    rows.push({ label: "Data", value: startDate.toLocaleDateString("pt-BR") });
+    rows.push({ label: "Horário", value: startDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) });
+  }
+  if (args.location) rows.push({ label: "Local", value: args.location });
+  rows.push({
+    label: "Valor pago",
+    value: Number(args.paidPrice ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+  });
+  return sendGmail({
+    to: args.to,
+    subject: `Inscrição confirmada — Minicurso ${args.minicourseTitle}`,
+    html: emailLayout({
+      title: `${args.fullName}, sua vaga no minicurso está garantida!`,
+      brandColor: brand,
+      leagueName: args.leagueName,
+      bodyHtml: `<p>Sua inscrição no minicurso <strong>${args.minicourseTitle}</strong> foi confirmada.</p>
+        ${emailInfoCard({ title: "Detalhes do minicurso", brandColor: brand, rows })}
+        ${args.description ? `<p style="white-space:pre-line;">${args.description}</p>` : ""}`,
+      ctaLabel: "Ver na página da liga",
+      ctaUrl: `${PUBLISHED_URL}/${args.leagueSlug}`,
+      signature: `— Presidência da ${args.leagueName}`,
+    }),
+  });
+}
+
+// ============== E-mail: lembrete de evento ==============
+export async function sendEventReminderEmail(args: {
+  to: string;
+  fullName: string;
+  leagueName: string;
+  leagueSlug: string;
+  brandColor?: string;
+  eventTitle: string;
+  eventDate: string;
+  eventTime?: string | null;
+  eventLocation?: string | null;
+  kind: "7d" | "1d" | "0d";
+}) {
+  const brand = args.brandColor || HUB_GREEN;
+  const subjects: Record<string, string> = {
+    "7d": `Falta 1 semana — ${args.eventTitle}`,
+    "1d": `Amanhã — ${args.eventTitle}`,
+    "0d": `É hoje — ${args.eventTitle}`,
+  };
+  const intros: Record<string, string> = {
+    "7d": `Falta exatamente <strong>1 semana</strong> para o evento <strong>${args.eventTitle}</strong>. Vai dar tempo de se preparar!`,
+    "1d": `É <strong>amanhã</strong>! O evento <strong>${args.eventTitle}</strong> está chegando — confira os detalhes abaixo.`,
+    "0d": `<strong>Hoje é o dia!</strong> O evento <strong>${args.eventTitle}</strong> acontece em algumas horas. Não se esqueça!`,
+  };
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "Data", value: fmtDateBR(args.eventDate) },
+  ];
+  if (args.eventTime) rows.push({ label: "Horário", value: fmtTimeBR(args.eventTime) });
+  if (args.eventLocation) rows.push({ label: "Local", value: args.eventLocation });
+
+  return sendGmail({
+    to: args.to,
+    subject: subjects[args.kind],
+    html: emailLayout({
+      title: `${args.fullName}, lembrete do evento`,
+      brandColor: brand,
+      leagueName: args.leagueName,
+      bodyHtml: `<p>${intros[args.kind]}</p>
+        ${emailInfoCard({ title: args.eventTitle, brandColor: brand, rows })}`,
+      ctaLabel: "Abrir página da liga",
+      ctaUrl: `${PUBLISHED_URL}/${args.leagueSlug}`,
+      signature: `— Presidência da ${args.leagueName}`,
+    }),
+  });
+}
+
+// ============== E-mail: minicurso no dia ==============
+export async function sendMinicourseDayEmail(args: {
+  to: string;
+  fullName: string;
+  leagueName: string;
+  leagueSlug: string;
+  brandColor?: string;
+  minicourseTitle: string;
+  instructor?: string | null;
+  startsAt: string;
+  location?: string | null;
+}) {
+  const brand = args.brandColor || HUB_GREEN;
+  const d = new Date(args.startsAt);
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "Minicurso", value: args.minicourseTitle },
+    { label: "Horário", value: d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) },
+  ];
+  if (args.instructor) rows.push({ label: "Ministrante", value: args.instructor });
+  if (args.location) rows.push({ label: "Local", value: args.location });
+
+  return sendGmail({
+    to: args.to,
+    subject: `Hoje — Minicurso ${args.minicourseTitle}`,
+    html: emailLayout({
+      title: `${args.fullName}, é hoje seu minicurso!`,
+      brandColor: brand,
+      leagueName: args.leagueName,
+      bodyHtml: `<p>Seu minicurso <strong>${args.minicourseTitle}</strong> acontece hoje. Boa atividade!</p>
+        ${emailInfoCard({ title: "Detalhes", brandColor: brand, rows })}`,
+      ctaLabel: "Abrir página da liga",
+      ctaUrl: `${PUBLISHED_URL}/${args.leagueSlug}`,
+      signature: `— Presidência da ${args.leagueName}`,
+    }),
+  });
+}
+
+// ============== E-mail: pedido de desistência (para o presidente) ==============
+export async function sendLeaveRequestEmail(args: {
+  to: string;
+  leagueName: string;
+  leagueSlug: string;
+  brandColor?: string;
+  ligante: { fullName: string; cpf?: string | null; registration?: string | null; email?: string | null };
+  reason?: string | null;
+}) {
+  const brand = args.brandColor || HUB_GREEN;
+  const rows: Array<{ label: string; value: string }> = [
+    { label: "Nome", value: args.ligante.fullName },
+    { label: "CPF", value: args.ligante.cpf || "—" },
+    { label: "Matrícula", value: args.ligante.registration || "—" },
+  ];
+  if (args.ligante.email) rows.push({ label: "E-mail", value: args.ligante.email });
+  return sendGmail({
+    to: args.to,
+    subject: `Pedido de desistência — ${args.leagueName}`,
+    html: emailLayout({
+      title: "Novo pedido de desistência da liga",
+      brandColor: brand,
+      leagueName: args.leagueName,
+      bodyHtml: `<p>O usuário <strong>${args.ligante.fullName}</strong> (CPF ${args.ligante.cpf || "—"}, matrícula ${args.ligante.registration || "—"}) realizou pedido para desinscrição na liga.</p>
+        ${emailInfoCard({ title: "Solicitante", brandColor: brand, rows })}
+        ${args.reason ? `<p><strong>Motivo informado:</strong><br><span style="white-space:pre-line;">${args.reason}</span></p>` : ""}
+        <p>Acesse o painel do presidente para aprovar ou recusar o pedido.</p>`,
+      ctaLabel: "Abrir painel do presidente",
+      ctaUrl: `${PUBLISHED_URL}/presidente/${args.leagueSlug}`,
+      signature: `— Sistema Ligasuno`,
+    }),
+  });
+}
+
