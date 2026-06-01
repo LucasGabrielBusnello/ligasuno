@@ -73,7 +73,7 @@ function AuthPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [li, setLi] = useState({ email: "", password: "" });
-  const [su, setSu] = useState({ username: "", email: "", phone: "", password: "" });
+  const [su, setSu] = useState({ username: "", email: "", phone: "", password: "", confirmPassword: "" });
 
   function reset() {
     setError(null);
