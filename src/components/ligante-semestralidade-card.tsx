@@ -30,7 +30,9 @@ export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
   const { cycle, payment } = data;
   const status = payment?.status ?? "pending";
   const isOverdue = new Date(cycle.due_date) < new Date(new Date().toISOString().slice(0, 10));
-  const total = cycle.amount_cents + (isOverdue && status !== "paid" ? cycle.late_fee_cents : 0);
+  // Valor devido do próprio ligante (ligantes pagam CAMED, presidente/diretores pagam o valor customizado)
+  const baseDue = payment?.amount_due_cents ?? cycle.amount_cents;
+  const total = baseDue + (isOverdue && status !== "paid" ? (cycle.late_fee_cents ?? 0) : 0);
 
   async function handlePay() {
     setPaying(true);
