@@ -65,7 +65,7 @@ function LigantePage() {
         <p className="text-muted-foreground mb-6 text-sm md:text-base">{league.name}</p>
 
         <div className="mb-6">
-          <LiganteSemestralidadeCard leagueId={league.id} userId={user.id} />
+          <LiganteSemestralidadeCard leagueId={league.id} />
         </div>
 
 
