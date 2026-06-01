@@ -23,6 +23,13 @@ function HomePage() {
   const [myEventRegs, setMyEventRegs] = useState<Record<string, boolean>>({});
   const [camedInfo, setCamedInfo] = useState<any>(null);
   const [camedMembers, setCamedMembers] = useState<CamedMember[]>([]);
+  const [isCamedPresident, setIsCamedPresident] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.email) { setIsCamedPresident(false); return; }
+    supabase.from("camed_presidents").select("id").ilike("email", profile.email).maybeSingle()
+      .then(({ data }) => setIsCamedPresident(!!data));
+  }, [profile?.email]);
 
   useEffect(() => {
     (async () => {
