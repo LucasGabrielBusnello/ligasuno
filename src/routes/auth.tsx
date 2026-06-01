@@ -154,6 +154,15 @@ function AuthPage() {
       return;
     }
 
+    // Atualiza matrícula no perfil (se informada) e envia e-mail de boas-vindas
+    if (data.user) {
+      const reg = su.registration_number.trim();
+      if (reg) {
+        try { await supabase.from("profiles").update({ registration_number: reg } as any).eq("id", data.user.id); } catch {}
+      }
+      try { await welcome({ data: { user_id: data.user.id } }); } catch (e) { console.warn("welcome email failed", e); }
+    }
+
     // Como auto-confirm está ativo, a sessão já vem pronta
     if (data.session) {
       toast.success("Conta criada com sucesso!");
