@@ -362,6 +362,8 @@ function LeaguePage() {
       <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} onSuccess={(reg) => { if (reg) setMyRegs(prev => ({ ...prev, [reg.event_id]: reg })); }} />
       <ParticipantPanelDialog event={participantEvent} registration={participantEvent ? myRegs[participantEvent.id] : null} league={league} onClose={() => setParticipantEvent(null)} />
       <PublicQuizDialog quizSet={activeQuizSet} league={league} userId={user?.id ?? null} onClose={() => setActiveQuizSet(null)} />
+      <SelectionRegisterDialog league={league} open={selectionRegOpen} onClose={() => setSelectionRegOpen(false)} defaultEmail={user?.email ?? undefined} onPaid={() => { supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user?.id ?? "").maybeSingle().then(({ data }) => { setMySelectionReg(data); if (data) setSelectionPanelOpen(true); }); }} />
+      <SelectionAccessDialog league={league} registration={mySelectionReg} open={selectionPanelOpen} onClose={() => setSelectionPanelOpen(false)} />
     </div>
   );
 }
