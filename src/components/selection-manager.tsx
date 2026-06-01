@@ -130,7 +130,11 @@ function ConfigSection({ league }: { league: any }) {
       </CardContent></Card>
       <div className="grid sm:grid-cols-2 gap-3">
         <div><Label>Prazo final de inscrição</Label><Input type="date" value={f.selection_deadline} onChange={(e) => setF({ ...f, selection_deadline: e.target.value })} /></div>
-        <div><Label>Total de vagas</Label><Input type="number" min="0" value={f.selection_total_seats} onChange={(e) => setF({ ...f, selection_total_seats: +e.target.value })} /></div>
+        <div>
+          <Label>Total de vagas (8 a 12 — CAMED)</Label>
+          <Input type="number" min="8" max="12" value={f.selection_total_seats} onChange={(e) => setF({ ...f, selection_total_seats: +e.target.value })} />
+          <p className="text-[10px] text-muted-foreground mt-1">A quantidade deve estar entre 8 e 12 conforme o regulamento do CAMED.</p>
+        </div>
         <div><Label>Data da prova</Label><Input type="date" value={f.selection_exam_date} onChange={(e) => setF({ ...f, selection_exam_date: e.target.value })} /></div>
         <div><Label>Horário da prova</Label><Input type="time" value={f.selection_exam_time} onChange={(e) => setF({ ...f, selection_exam_time: e.target.value })} /></div>
       </div>
