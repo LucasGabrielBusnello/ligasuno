@@ -79,6 +79,7 @@ export const createMinicourseCheckout = createServerFn({ method: "POST" })
       externalReference: `minicourse:${(reg as any).id}`,
       notificationUrl: WEBHOOK_URL,
       metadata: { minicourse_registration_id: (reg as any).id, minicourse_id: data.minicourse_id, user_id: userId, league_id: leagueId },
+      pixOnly: true,
     });
 
     await supabaseAdmin.from("minicourse_registrations")
