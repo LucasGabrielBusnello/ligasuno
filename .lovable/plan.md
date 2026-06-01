@@ -1,112 +1,105 @@
 
-## Visão geral
+## ⚠️ Confirmar antes de implementar
 
-Mercado Pago será o **único provedor de pagamentos**. Você (CPF) opera como "marketplace" e cada presidente conecta a própria conta MP via OAuth. Em cada pagamento, o MP debita automaticamente uma taxa (`marketplace_fee`) que cai na sua conta e o restante vai direto pra conta do presidente — sem você intermediar dinheiro.
+Você escreveu que o semestre vai **"de janeiro até o último dia de julho"** e **"de 1° de julho até 31 de dezembro"** — há sobreposição em julho. Vou assumir o padrão acadêmico:
+- **1º semestre:** 1º de janeiro a 30 de junho
+- **2º semestre:** 1º de julho a 31 de dezembro
 
-```
-[Aluno paga PIX/Cartão]
-        │
-        ▼
-[Mercado Pago do Presidente] ──► recebe valor líquido
-        │
-        └──► marketplace_fee (taxa configurada) ──► [Sua conta MP]
-```
+Se for outro recorte, me avise antes de eu começar.
 
-Anuidade da plataforma usa o mesmo MP, sem split (100% pra você).
+---
 
-## O que você precisa providenciar
+## Etapa 1 — Conectar Gmail pessoal
 
-1. **Conta Mercado Pago (CPF)** — gratuita em mercadopago.com.br
-2. **Criar uma aplicação** em developers.mercadopago.com → Suas integrações → Criar aplicação
-   - Tipo: "Pagamentos online" + "Marketplace"
-3. **Copiar 3 valores** da aplicação (vou pedir via secrets):
-   - `MP_ACCESS_TOKEN` (Production) — sua chave da plataforma
-   - `MP_CLIENT_ID` — pra OAuth dos presidentes
-   - `MP_CLIENT_SECRET` — pra OAuth dos presidentes
-4. **Configurar Redirect URI** na aplicação MP:
-   `https://ligasuno.lovable.app/api/public/payments/mp-oauth-callback`
-5. **Configurar Webhook** na aplicação MP (tópicos: `payment`, `merchant_order`):
-   `https://ligasuno.lovable.app/api/public/payments/mp-webhook`
+Vou abrir o conector Gmail. Você clica em "Autorizar com Google", escolhe a conta que será o remetente oficial da liga (ex: seu Gmail pessoal ou um Gmail dedicado da presidência), e pronto. Os e-mails sairão de `nomedaconta@gmail.com`.
 
-## Fluxo do presidente (uma vez)
+## Etapa 2 — Modelo de dados (Semestralidade)
 
-1. Painel do presidente → botão "Conectar Mercado Pago"
-2. Redireciona pro MP → presidente faz login (ou cria conta gratuita: CPF + dados bancários)
-3. Autoriza nossa aplicação
-4. Voltamos com `access_token` + `user_id` do presidente, salvos em `league_mp_accounts`
-5. Pronto — todas as inscrições da liga dele já caem na conta dele com split automático
+Duas novas tabelas:
 
-## Mudanças no banco (migração)
+**`semester_cycles`** — ciclos semestrais
+- `semester` (1 ou 2), `year`, `start_date`, `end_date`
+- `amount_cents` (valor da semestralidade definido pelo presidente)
+- `due_date` (data limite de pagamento)
+- `late_fee_cents` (acréscimo único após o vencimento)
+- `is_current` (boolean — apenas um ciclo ativo por vez)
+- Histórico permanente: ciclos antigos nunca são deletados
 
-**Nova tabela `league_mp_accounts`** — credenciais MP por liga
-- `league_id`, `mp_user_id`, `access_token` (criptografado), `refresh_token`, `public_key`, `expires_at`, `connected_at`
+**`semester_payments`** — pagamentos por ligante por ciclo
+- `cycle_id`, `user_id`
+- `status` (`pending` | `paid` | `overdue`)
+- `paid_at`, `mp_payment_id`, `amount_paid_cents`
+- Único por (cycle_id, user_id)
 
-**Tabela `app_settings`** — adicionar colunas de taxa (% + valor fixo) por categoria:
-- `fee_selection_pct`, `fee_selection_fixed`
-- `fee_semester_pct`, `fee_semester_fixed`
-- `fee_event_pct`, `fee_event_fixed`
-- `fee_minicourse_pct`, `fee_minicourse_fixed`
-- (Anuidade não tem taxa — é 100% sua)
+**Quem paga:** apenas ligantes ativos que ainda não têm registro `paid` no ciclo corrente (conforme você decidiu).
 
-**Tabela `payment_transactions`** — log unificado de todos pagamentos MP (id, tipo, valor bruto, taxa retida, status, mp_payment_id, league_id, user_id)
+## Etapa 3 — Painel do Presidente / Aba Membros
 
-## Mudanças no código
+Na lista de ligantes, cada nome ganha um **badge de status do ciclo atual**:
+- 🟢 **Pago**
+- 🟡 **Pendente** (dentro do prazo)
+- 🔴 **Fora do prazo** (após `due_date`)
 
-### Backend (server functions novas/refatoradas)
+Botão novo **"Semestralidade"** abre um modal/drawer com:
+1. **Ciclo atual** — valor, data de vencimento, taxa de atraso, % de pagamento
+2. **Editar ciclo atual** — alterar valor, vencimento, taxa de atraso
+3. **Encerrar ciclo / iniciar novo** — botão que arquiva o ciclo atual e cria o próximo
+4. **Histórico de ciclos anteriores** — lista navegável; clicar abre detalhes (quem pagou, quem ficou inadimplente, valores totais)
+5. **Exportar CSV** do ciclo (opcional, fácil de adicionar)
 
-1. `src/lib/mp.server.ts` — cliente MP (helper de fetch com auth, criar pagamento PIX/Cartão com split, criar assinatura)
-2. `src/lib/mp-oauth.functions.ts` — iniciar OAuth e callback
-3. `src/lib/events.functions.ts` — trocar Stripe por MP (`createEventCheckout`)
-4. `src/lib/minicourses.functions.ts` — trocar Stripe por MP
-5. `src/lib/selection.functions.ts` — trocar Stripe por MP para taxa de seletiva
-6. `src/lib/subscription.functions.ts` — trocar Stripe por MP (anuidade recorrente, sem split)
-7. `src/routes/api/public/payments/mp-webhook.ts` — novo webhook MP (substitui o do Stripe)
-8. `src/routes/api/public/payments/mp-oauth-callback.ts` — callback OAuth
+## Etapa 4 — Pagamento (apenas Pix)
 
-### Frontend
+Botão **"Pagar semestralidade"** na conta do ligante:
+- Abre checkout Mercado Pago **somente Pix** (já usamos esse padrão nos minicursos/eventos)
+- Valor = `amount_cents` + `late_fee_cents` se vencido
+- Taxas da plataforma seguem a regra que você já definiu
 
-9. `src/routes/admin.tsx` (aba Configurações) — campos de taxa por categoria (% + R$ fixo)
-10. `src/routes/presidente.$slug.tsx` — card "Mercado Pago" com botão Conectar/Reconectar/Desconectar + status
-11. Bloquear publicação de evento/seletiva/minicurso pago se a liga ainda não conectou MP (com aviso claro)
-12. Remover referências a Stripe nas telas
+Webhook do Mercado Pago atualiza `semester_payments.status = 'paid'` automaticamente.
 
-### Cleanup
+## Etapa 5 — Job diário "fora do prazo"
 
-13. Remover `src/lib/subscription.functions.ts` versão Stripe, helpers Stripe, secrets Stripe (`STRIPE_*`) ficam no projeto mas sem uso
-14. Remover edge function `payments/webhook` antiga (manter por compat até validar MP em produção)
+Função agendada (cron, 1x/dia) que marca como `overdue` os pagamentos `pending` cuja data de vencimento já passou. Atualiza os badges automaticamente.
 
-## Tratamento de taxas
+## Etapa 6 — E-mails via Gmail
 
-Para cada pagamento (exceto anuidade):
-```
-valor_taxa = arredondar(preço × pct/100 + fixo, 2)
-marketplace_fee = valor_taxa  // vai pra você
-recebedor = mp_account da liga // recebe (preço - valor_taxa - taxa_MP)
-```
+Helper único `sendGmail({ to, subject, html })` usando o conector Gmail.
 
-Taxa do MP em si (0,99% PIX ou ~4,98% cartão) é descontada do presidente, não da plataforma — padrão de marketplace.
+E-mails do Bloco 1:
+- **Abertura de ciclo:** quando o presidente cria/edita o ciclo → notifica todos os ligantes ativos (valor, vencimento)
+- **Lembrete de vencimento:** 3 dias antes do `due_date` para quem está `pending`
+- **Confirmação de pagamento:** ao receber pagamento aprovado
+- **Aviso de atraso:** quando passa a `overdue`
 
-## Anuidade (100% sua)
+Todos enviados de `nomedaconta@gmail.com`.
 
-Continua sendo cobrança recorrente mensal, mas no MP via "Assinaturas" (preapproval). Cobra no seu próprio access_token, sem split. Webhook atualiza `paid_until` e `published` da liga igual hoje.
+## Etapa 7 — Permissões (RLS)
 
-## Validação
+- Ligante: vê apenas o próprio `semester_payments` e pode pagar o seu
+- Presidente: CRUD completo em `semester_cycles` e leitura de todos os `semester_payments`
+- Admin master: acesso total
 
-- Testar OAuth com 1 presidente fictício (você pode criar 2ª conta MP de teste)
-- Testar 1 pagamento PIX em modo sandbox primeiro
-- Conferir no painel MP que o split apareceu corretamente
+---
 
-## Detalhes técnicos relevantes
+## Detalhes técnicos
 
-- API MP usa `Authorization: Bearer <access_token>` direto (sem gateway Lovable)
-- PIX retorna QR Code + copia-cola na resposta → renderizar modal próprio (não tem checkout hospedado bom pra PIX)
-- Cartão usa Checkout Pro (URL hospedada do MP, similar ao Stripe Checkout)
-- Webhook MP envia só `{id, type}` — precisamos fazer GET no recurso pra pegar detalhes (padrão MP)
-- Tokens OAuth do presidente expiram em 180 dias → guardar `refresh_token` e renovar automaticamente
+- Tabelas com `GRANT` adequados e RLS
+- Server functions (`createServerFn`) para todas as ações do presidente e do pagamento
+- Helper `sendGmail` em `src/lib/gmail.server.ts` usando o gateway Lovable + `GOOGLE_MAIL_API_KEY`
+- Cron diário via pg_cron chamando endpoint `/api/public/cron/mark-overdue` com secret
+- Webhook MP existente estendido para identificar pagamentos do tipo `semestralidade` pelo `external_reference`
+- Badges no painel: componente reutilizável `<SemesterStatusBadge status={...} />` usando os tokens semânticos do design system
 
-## Próximo passo
+---
 
-Quando aprovar este plano, vou:
-1. Pedir os 3 secrets do MP via tool de secrets
-2. Rodar a migração do banco
-3. Implementar tudo na ordem acima
+## Fora deste bloco (próximos blocos)
+
+- E-mails de boas-vindas, classificação do processo seletivo, evento, minicurso
+- Sistema de desistência + CAMED (Bloco 3)
+- Matrícula + CPF único + limite 8-12 ligantes (Bloco 4)
+
+Quando você aprovar este plano:
+1. Eu abro o conector Gmail
+2. Você autoriza com a conta desejada
+3. Eu sigo direto na implementação do Bloco 1
+
+Posso prosseguir?
