@@ -198,6 +198,15 @@ function LeaguePage() {
           )}
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 drop-shadow-2xl">{league.name}</h1>
           {league.description && <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/90 font-medium">{league.description}</p>}
+          {(league as any).selection_open && !isLigante && (() => {
+            const deadlinePassed = (league as any).selection_deadline && new Date((league as any).selection_deadline) < new Date();
+            if (mySelectionReg && mySelectionReg.status === "paid") {
+              return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionPanelOpen(true)}><ClipboardList className="size-5" /> Acessar minha inscrição</Button>;
+            }
+            if (deadlinePassed) return <Button size="lg" disabled className="mt-8">Inscrições encerradas</Button>;
+            if (!user) return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => nav({ to: "/auth" })}><LogIn className="size-5" /> Entrar para se inscrever na prova</Button>;
+            return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionRegOpen(true)}><ClipboardList className="size-5" /> Inscreva-se no processo seletivo</Button>;
+          })()}
           {!visible && <Badge variant="destructive" className="mt-6">Preview — não publicada</Badge>}
         </div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_100%)] pointer-events-none" />
