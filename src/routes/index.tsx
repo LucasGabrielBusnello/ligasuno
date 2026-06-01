@@ -23,6 +23,13 @@ function HomePage() {
   const [myEventRegs, setMyEventRegs] = useState<Record<string, boolean>>({});
   const [camedInfo, setCamedInfo] = useState<any>(null);
   const [camedMembers, setCamedMembers] = useState<CamedMember[]>([]);
+  const [isCamedPresident, setIsCamedPresident] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.email) { setIsCamedPresident(false); return; }
+    supabase.from("camed_presidents").select("id").ilike("email", profile.email).maybeSingle()
+      .then(({ data }) => setIsCamedPresident(!!data));
+  }, [profile?.email]);
 
   useEffect(() => {
     (async () => {
@@ -91,6 +98,11 @@ function HomePage() {
                 <span className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                   <UserCircle className="size-4" /> {profile?.username ?? user.email}
                 </span>
+                {isCamedPresident && (
+                  <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
+                    <Link to="/camed"><Building2 className="size-4" /> CAMED</Link>
+                  </Button>
+                )}
                 {isAdminMaster && (
                   <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
                     <Link to="/admin"><Shield className="size-4" /> ADMIN</Link>
