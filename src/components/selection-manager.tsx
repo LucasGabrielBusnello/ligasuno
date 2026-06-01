@@ -74,6 +74,11 @@ function ConfigSection({ league }: { league: any }) {
   useEffect(() => { loadAll(); }, [league.id]);
 
   async function save() {
+    const seats = Number(f.selection_total_seats) || 0;
+    if (seats < 8 || seats > 12) {
+      toast.error("A quantidade de membros não é permitida pelo regulamento do CAMED");
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await supabase.from("leagues").update({
@@ -82,7 +87,7 @@ function ConfigSection({ league }: { league: any }) {
         selection_exam_date: f.selection_exam_date || null,
         selection_exam_time: f.selection_exam_time || null,
         selection_exam_description: f.selection_exam_description || null,
-        selection_total_seats: f.selection_total_seats,
+        selection_total_seats: seats,
       } as any).eq("id", league.id);
       if (error) { toast.error(error.message); return; }
 
