@@ -289,7 +289,7 @@ export const toggleLigante = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({ registration_id: z.string().uuid() }).parse(i))
   .handler(async ({ data }) => {
     const { data: reg } = await (supabaseAdmin as any)
-      .from("league_selection_registrations").select("league_id, user_id").eq("id", data.registration_id).maybeSingle();
+      .from("league_selection_registrations").select("league_id, user_id, full_name, email").eq("id", data.registration_id).maybeSingle();
     if (!reg) throw new Error("Inscrição não encontrada");
     const r: any = reg;
     const { data: existing } = await (supabaseAdmin as any).from("league_memberships")
@@ -303,6 +303,23 @@ export const toggleLigante = createServerFn({ method: "POST" })
     const { error } = await (supabaseAdmin as any).from("league_memberships")
       .upsert({ league_id: r.league_id, user_id: r.user_id, role: "ligante" }, { onConflict: "league_id,user_id" });
     if (error) throw new Error(error.message);
+
+    // Envia e-mail de classificação
+    try {
+      const { data: league } = await (supabaseAdmin as any)
+        .from("leagues").select("name, slug, theme_color").eq("id", r.league_id).maybeSingle();
+      if (league && r.email) {
+        await sendClassifiedAsLiganteEmail({
+          to: r.email,
+          fullName: r.full_name,
+          leagueName: (league as any).name,
+          leagueSlug: (league as any).slug,
+          brandColor: (league as any).theme_color,
+        });
+      }
+    } catch (e) {
+      console.error("Falha ao enviar email de classificação", e);
+    }
     return { ok: true, isLigante: true };
   });
 
