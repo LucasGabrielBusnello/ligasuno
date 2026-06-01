@@ -20,6 +20,7 @@ import { Route as DiretorSlugRouteImport } from './routes/diretor.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicPaymentsMpWebhookRouteImport } from './routes/api/public/payments/mp-webhook'
 import { Route as ApiPublicPaymentsMpOauthCallbackRouteImport } from './routes/api/public/payments/mp-oauth-callback'
+import { Route as ApiPublicCronMarkOverdueRouteImport } from './routes/api/public/cron/mark-overdue'
 
 const CamedRoute = CamedRouteImport.update({
   id: '/camed',
@@ -79,6 +80,12 @@ const ApiPublicPaymentsMpOauthCallbackRoute =
     path: '/api/public/payments/mp-oauth-callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronMarkOverdueRoute =
+  ApiPublicCronMarkOverdueRouteImport.update({
+    id: '/api/public/cron/mark-overdue',
+    path: '/api/public/cron/mark-overdue',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
+  '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -102,6 +110,7 @@ export interface FileRoutesByTo {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug': typeof SlugIndexRoute
+  '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -116,6 +125,7 @@ export interface FileRoutesById {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
+  '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug/'
+    | '/api/public/cron/mark-overdue'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug'
+    | '/api/public/cron/mark-overdue'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
@@ -157,6 +169,7 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug/'
+    | '/api/public/cron/mark-overdue'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
@@ -171,6 +184,7 @@ export interface RootRouteChildren {
   LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
   SlugIndexRoute: typeof SlugIndexRoute
+  ApiPublicCronMarkOverdueRoute: typeof ApiPublicCronMarkOverdueRoute
   ApiPublicPaymentsMpOauthCallbackRoute: typeof ApiPublicPaymentsMpOauthCallbackRoute
   ApiPublicPaymentsMpWebhookRoute: typeof ApiPublicPaymentsMpWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -255,6 +269,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsMpOauthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/mark-overdue': {
+      id: '/api/public/cron/mark-overdue'
+      path: '/api/public/cron/mark-overdue'
+      fullPath: '/api/public/cron/mark-overdue'
+      preLoaderRoute: typeof ApiPublicCronMarkOverdueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -267,6 +288,7 @@ const rootRouteChildren: RootRouteChildren = {
   LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,
   SlugIndexRoute: SlugIndexRoute,
+  ApiPublicCronMarkOverdueRoute: ApiPublicCronMarkOverdueRoute,
   ApiPublicPaymentsMpOauthCallbackRoute: ApiPublicPaymentsMpOauthCallbackRoute,
   ApiPublicPaymentsMpWebhookRoute: ApiPublicPaymentsMpWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
@@ -274,13 +296,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

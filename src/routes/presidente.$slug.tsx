@@ -17,6 +17,8 @@ import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, B
 import { createLeagueSubscriptionCheckout } from "@/lib/subscription.functions";
 import { startMpOAuth, disconnectMp } from "@/lib/mp-oauth.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
+import { SemesterDialog, StatusBadge as SemesterStatusBadge } from "@/components/semester-dialog";
+import { listCyclePayments } from "@/lib/semester.functions";
 
 export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
 
@@ -887,11 +889,21 @@ function MembersTab({ league }: any) {
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<"ligante" | "diretor">("ligante");
   const [selOpen, setSelOpen] = useState(false);
+  const [semOpen, setSemOpen] = useState(false);
+  const [statusMap, setStatusMap] = useState<Record<string, string>>({});
+  const listPays = useServerFn(listCyclePayments);
+
   const reload = async () => {
     const { data } = await supabase.from("league_memberships").select("*, profiles!inner(username,email)").eq("league_id", league.id);
     setMembers(data ?? []);
+    try {
+      const r = await listPays({ data: { league_id: league.id } });
+      const map: Record<string, string> = {};
+      (r.payments ?? []).forEach((p: any) => { map[p.user_id] = p.status; });
+      setStatusMap(map);
+    } catch { /* sem ciclo ainda */ }
   };
-  useEffect(() => { reload(); }, [league.id]);
+  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [league.id]);
   async function add() {
     if (!query.trim()) return;
     const q = query.trim();
@@ -904,7 +916,8 @@ function MembersTab({ league }: any) {
   async function remove(id: string) { await supabase.from("league_memberships").delete().eq("id", id); reload(); }
   return (
     <Card><CardContent className="p-6 space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2 flex-wrap">
+        <Button onClick={() => setSemOpen(true)} variant="outline"><DollarSign className="size-4" /> Semestralidade</Button>
         <Button onClick={() => setSelOpen(true)} variant="outline"><ClipboardCheck className="size-4" /> Processo Seletivo</Button>
       </div>
       <div className="flex gap-2 flex-wrap">
@@ -916,13 +929,20 @@ function MembersTab({ league }: any) {
       </div>
       <div className="space-y-2">
         {members.map((m) => (
-          <div key={m.id} className="flex items-center justify-between p-3 rounded border">
-            <div><span className="font-bold">{m.profiles?.username}</span> <Badge variant="secondary" className="ml-2">{m.role}</Badge></div>
+          <div key={m.id} className="flex items-center justify-between p-3 rounded border gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold">{m.profiles?.username}</span>
+              <Badge variant="secondary">{m.role}</Badge>
+              {["ligante","diretor"].includes(m.role) && statusMap[m.user_id] && (
+                <SemesterStatusBadge status={statusMap[m.user_id]} />
+              )}
+            </div>
             {m.role !== "presidente" && <Button size="sm" variant="destructive" onClick={() => remove(m.id)}><Trash2 className="size-3" /></Button>}
           </div>
         ))}
       </div>
       <SelectionManagerDialog league={league} open={selOpen} onClose={() => setSelOpen(false)} />
+      <SemesterDialog league={league} open={semOpen} onClose={() => setSemOpen(false)} onUpdated={reload} />
     </CardContent></Card>
   );
 }

@@ -1,0 +1,267 @@
+import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { CheckCircle2, AlertCircle, Clock, History as HistoryIcon, Wallet } from "lucide-react";
+import {
+  upsertCurrentSemesterCycle,
+  closeCurrentSemesterCycle,
+  listCyclePayments,
+  listSemesterCycles,
+} from "@/lib/semester.functions";
+
+function brl(cents: number) {
+  return ((cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+function fmtDate(iso?: string | null) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("T")[0].split("-");
+  return `${d}/${m}/${y}`;
+}
+
+export function StatusBadge({ status }: { status: "pending" | "paid" | "overdue" | string }) {
+  if (status === "paid")
+    return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white"><CheckCircle2 className="size-3 mr-1" />Pago</Badge>;
+  if (status === "overdue")
+    return <Badge className="bg-red-600 hover:bg-red-600 text-white"><AlertCircle className="size-3 mr-1" />Fora do prazo</Badge>;
+  return <Badge className="bg-amber-500 hover:bg-amber-500 text-white"><Clock className="size-3 mr-1" />Pendente</Badge>;
+}
+
+export function SemesterDialog({
+  league,
+  open,
+  onClose,
+  onUpdated,
+}: {
+  league: { id: string; name: string };
+  open: boolean;
+  onClose: () => void;
+  onUpdated?: () => void;
+}) {
+  const upsert = useServerFn(upsertCurrentSemesterCycle);
+  const close = useServerFn(closeCurrentSemesterCycle);
+  const listCur = useServerFn(listCyclePayments);
+  const listHist = useServerFn(listSemesterCycles);
+
+  const [loading, setLoading] = useState(false);
+  const [cycle, setCycle] = useState<any>(null);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [histSelected, setHistSelected] = useState<string | null>(null);
+  const [histPayments, setHistPayments] = useState<any[]>([]);
+
+  // form
+  const [amount, setAmount] = useState<string>("");
+  const [dueDate, setDueDate] = useState<string>("");
+  const [lateFee, setLateFee] = useState<string>("");
+  const [notify, setNotify] = useState(true);
+
+  async function reload() {
+    setLoading(true);
+    try {
+      const r = await listCur({ data: { league_id: league.id } });
+      setCycle(r.cycle);
+      setPayments(r.payments);
+      if (r.cycle) {
+        setAmount(((r.cycle.amount_cents ?? 0) / 100).toFixed(2));
+        setDueDate(r.cycle.due_date);
+        setLateFee(((r.cycle.late_fee_cents ?? 0) / 100).toFixed(2));
+      } else {
+        setAmount("");
+        setLateFee("0");
+        // default vencimento = 30 dias
+        const d = new Date(); d.setDate(d.getDate() + 30);
+        setDueDate(d.toISOString().slice(0, 10));
+      }
+      const h = await listHist({ data: { league_id: league.id } });
+      setHistory(h.cycles);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { if (open) reload(); /* eslint-disable-next-line */ }, [open, league.id]);
+
+  async function loadHistPayments(cycleId: string) {
+    setHistSelected(cycleId);
+    const r = await listCur({ data: { league_id: league.id, cycle_id: cycleId } });
+    setHistPayments(r.payments);
+  }
+
+  async function handleSave() {
+    const amt = Math.round(parseFloat(amount.replace(",", ".")) * 100);
+    const lf = Math.round(parseFloat((lateFee || "0").replace(",", ".")) * 100);
+    if (!amt || amt < 0 || Number.isNaN(amt)) return toast.error("Valor inválido");
+    if (!dueDate) return toast.error("Defina a data de vencimento");
+    try {
+      await upsert({
+        data: {
+          league_id: league.id,
+          amount_cents: amt,
+          late_fee_cents: lf || 0,
+          due_date: dueDate,
+          notify,
+        },
+      });
+      toast.success(cycle ? "Ciclo atualizado" : "Ciclo criado");
+      await reload();
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao salvar");
+    }
+  }
+
+  async function handleClose() {
+    if (!confirm("Encerrar o ciclo atual? Ele virará histórico e você poderá criar um novo.")) return;
+    try {
+      await close({ data: { league_id: league.id } });
+      toast.success("Ciclo encerrado");
+      await reload();
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro");
+    }
+  }
+
+  const paidCount = payments.filter((p) => p.status === "paid").length;
+  const totalCount = payments.length;
+  const pct = totalCount ? Math.round((paidCount / totalCount) * 100) : 0;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Wallet className="size-5" /> Semestralidade — {league.name}</DialogTitle>
+        </DialogHeader>
+
+        <Tabs defaultValue="current">
+          <TabsList className="grid grid-cols-2 w-full">
+            <TabsTrigger value="current">Ciclo atual</TabsTrigger>
+            <TabsTrigger value="history"><HistoryIcon className="size-3.5 mr-1" />Histórico</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="current" className="space-y-4 mt-4">
+            {loading ? (
+              <p className="text-sm text-muted-foreground">Carregando…</p>
+            ) : (
+              <>
+                {cycle && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div className="p-3 rounded border">
+                      <div className="text-muted-foreground text-xs">Período</div>
+                      <div className="font-bold">{cycle.semester}º/{cycle.year}</div>
+                    </div>
+                    <div className="p-3 rounded border">
+                      <div className="text-muted-foreground text-xs">Pagos</div>
+                      <div className="font-bold">{paidCount}/{totalCount} ({pct}%)</div>
+                    </div>
+                    <div className="p-3 rounded border">
+                      <div className="text-muted-foreground text-xs">Valor</div>
+                      <div className="font-bold">{brl(cycle.amount_cents)}</div>
+                    </div>
+                    <div className="p-3 rounded border">
+                      <div className="text-muted-foreground text-xs">Vencimento</div>
+                      <div className="font-bold">{fmtDate(cycle.due_date)}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-4 rounded border space-y-3 bg-muted/30">
+                  <h3 className="font-black text-sm">{cycle ? "Editar ciclo atual" : "Abrir novo ciclo"}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <Label className="text-xs">Valor (R$)</Label>
+                      <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Vencimento</Label>
+                      <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Acréscimo após vencer (R$)</Label>
+                      <Input type="number" step="0.01" min="0" value={lateFee} onChange={(e) => setLateFee(e.target.value)} placeholder="0,00" />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={notify} onCheckedChange={setNotify} id="notify" />
+                    <Label htmlFor="notify" className="text-sm">Notificar ligantes pendentes por e-mail</Label>
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button onClick={handleSave}>{cycle ? "Salvar alterações" : "Abrir ciclo"}</Button>
+                    {cycle && <Button variant="outline" onClick={handleClose}>Encerrar ciclo</Button>}
+                  </div>
+                </div>
+
+                {cycle && (
+                  <div className="space-y-2">
+                    <h3 className="font-black text-sm">Status dos ligantes</h3>
+                    {payments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Nenhum ligante na liga ainda.</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {payments.map((p) => (
+                          <div key={p.id} className="flex items-center justify-between p-2.5 rounded border text-sm">
+                            <div>
+                              <div className="font-bold">{p.profiles?.full_name || p.profiles?.username}</div>
+                              <div className="text-xs text-muted-foreground">{p.profiles?.email}</div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {p.paid_at && <span className="text-xs text-muted-foreground">{fmtDate(p.paid_at)}</span>}
+                              <StatusBadge status={p.status} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-3 mt-4">
+            {history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sem ciclos anteriores.</p>
+            ) : (
+              <div className="space-y-2">
+                {history.map((c) => (
+                  <div key={c.id} className="border rounded">
+                    <button
+                      className="w-full p-3 text-left flex items-center justify-between hover:bg-muted/40"
+                      onClick={() => loadHistPayments(c.id)}
+                    >
+                      <div>
+                        <div className="font-bold">{c.semester}º/{c.year} {c.is_current && <Badge variant="outline" className="ml-2">Atual</Badge>}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {brl(c.amount_cents)} • Vencimento {fmtDate(c.due_date)} {c.closed_at && `• Encerrado em ${fmtDate(c.closed_at)}`}
+                        </div>
+                      </div>
+                    </button>
+                    {histSelected === c.id && (
+                      <div className="border-t p-3 space-y-1.5">
+                        {histPayments.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">Sem pagamentos registrados.</p>
+                        ) : histPayments.map((p) => (
+                          <div key={p.id} className="flex items-center justify-between text-sm">
+                            <span>{p.profiles?.full_name || p.profiles?.username}</span>
+                            <StatusBadge status={p.status} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}

@@ -1144,6 +1144,143 @@ export type Database = {
         }
         Relationships: []
       }
+      semester_cycles: {
+        Row: {
+          amount_cents: number
+          closed_at: string | null
+          created_at: string
+          due_date: string
+          end_date: string
+          id: string
+          is_current: boolean
+          late_fee_cents: number
+          league_id: string
+          semester: number
+          start_date: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount_cents?: number
+          closed_at?: string | null
+          created_at?: string
+          due_date: string
+          end_date: string
+          id?: string
+          is_current?: boolean
+          late_fee_cents?: number
+          league_id: string
+          semester: number
+          start_date: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount_cents?: number
+          closed_at?: string | null
+          created_at?: string
+          due_date?: string
+          end_date?: string
+          id?: string
+          is_current?: boolean
+          late_fee_cents?: number
+          league_id?: string
+          semester?: number
+          start_date?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semester_cycles_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semester_cycles_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      semester_payments: {
+        Row: {
+          amount_due_cents: number
+          amount_paid_cents: number
+          created_at: string
+          cycle_id: string
+          id: string
+          league_id: string
+          mp_payment_id: string | null
+          mp_preference_id: string | null
+          paid_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_due_cents?: number
+          amount_paid_cents?: number
+          created_at?: string
+          cycle_id: string
+          id?: string
+          league_id: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_due_cents?: number
+          amount_paid_cents?: number
+          created_at?: string
+          cycle_id?: string
+          id?: string
+          league_id?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          paid_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semester_payments_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "semester_cycles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semester_payments_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semester_payments_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semester_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -1220,6 +1357,7 @@ export type Database = {
       }
       is_admin_master: { Args: { _user_id: string }; Returns: boolean }
       is_camed_president: { Args: { _user_id: string }; Returns: boolean }
+      mark_overdue_semester_payments: { Args: never; Returns: number }
       username_available: { Args: { _username: string }; Returns: boolean }
     }
     Enums: {
