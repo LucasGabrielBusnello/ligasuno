@@ -116,6 +116,12 @@ function AuthPage() {
       toast.error(msg);
       return;
     }
+    if (su.password !== su.confirmPassword) {
+      const msg = "As senhas não coincidem.";
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
 
     setLoading(true);
     // Verifica disponibilidade do usuário (via função SECURITY DEFINER — não expõe emails)
