@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
+import { sendWelcomeEmailForUser } from "@/lib/registration.functions";
 
 function PasswordInput({ id, value, onChange, autoComplete, required }: { id: string; value: string; onChange: (v: string) => void; autoComplete?: string; required?: boolean }) {
   const [show, setShow] = useState(false);
@@ -68,12 +70,13 @@ function translateError(msg: string): string {
 
 function AuthPage() {
   const nav = useNavigate();
+  const welcome = useServerFn(sendWelcomeEmailForUser);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [li, setLi] = useState({ email: "", password: "" });
-  const [su, setSu] = useState({ username: "", email: "", phone: "", password: "", confirmPassword: "" });
+  const [su, setSu] = useState({ username: "", email: "", phone: "", registration_number: "", password: "", confirmPassword: "" });
 
   function reset() {
     setError(null);
@@ -149,6 +152,15 @@ function AuthPage() {
       setError(msg);
       toast.error(msg);
       return;
+    }
+
+    // Atualiza matrícula no perfil (se informada) e envia e-mail de boas-vindas
+    if (data.user) {
+      const reg = su.registration_number.trim();
+      if (reg) {
+        try { await supabase.from("profiles").update({ registration_number: reg } as any).eq("id", data.user.id); } catch {}
+      }
+      try { await welcome({ data: { user_id: data.user.id } }); } catch (e) { console.warn("welcome email failed", e); }
     }
 
     // Como auto-confirm está ativo, a sessão já vem pronta
@@ -262,6 +274,16 @@ function AuthPage() {
                       value={su.phone}
                       onChange={(e) => setSu({ ...su, phone: e.target.value })}
                       placeholder="(49) 99999-9999"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-reg">Matrícula (deixe em branco caso não tenha)</Label>
+                    <Input
+                      id="su-reg"
+                      value={su.registration_number}
+                      onChange={(e) => setSu({ ...su, registration_number: e.target.value })}
+                      placeholder="Ex.: 2024123456"
+                      maxLength={50}
                     />
                   </div>
                   <div className="space-y-1.5">

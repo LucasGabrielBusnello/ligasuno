@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getPayment, getPreapproval } from "@/lib/mp.server";
-import { sendGmail, emailLayout } from "@/lib/gmail.server";
+import { sendGmail, emailLayout, sendEventRegistrationEmail, sendMinicourseRegistrationEmail } from "@/lib/gmail.server";
 
 
 /**
@@ -114,7 +114,7 @@ async function handlePayment(paymentId: string) {
       .eq("id", refId);
     if (approved) {
       const { data: reg } = await supabaseAdmin.from("event_registrations")
-        .select("full_name, event_id, league_events!inner(title, league_id)")
+        .select("full_name, event_id, paid_price, league_events!inner(title, league_id, event_date, schedule, leagues:league_id(name, slug, theme_color)), profiles!event_registrations_user_id_fkey(email)")
         .eq("id", refId).maybeSingle();
       if (reg) {
         const ev: any = (reg as any).league_events;
@@ -123,11 +123,47 @@ async function handlePayment(paymentId: string) {
           title: "Nova inscrição paga",
           message: `${(reg as any).full_name} confirmou inscrição em ${ev.title}.`,
         });
+        const email = (reg as any).profiles?.email;
+        const lg = ev.leagues;
+        if (email && lg) {
+          try {
+            await sendEventRegistrationEmail({
+              to: email,
+              fullName: (reg as any).full_name,
+              leagueName: lg.name, leagueSlug: lg.slug, brandColor: lg.theme_color,
+              eventTitle: ev.title, eventDate: ev.event_date, eventTime: ev.schedule,
+              paidPrice: Number((reg as any).paid_price) || 0,
+            });
+            await supabaseAdmin.from("event_email_log").insert({
+              event_id: ev.id ?? ev.event_id ?? null, kind: "registration", reference_id: refId, recipient: email,
+            } as any).then(() => {}, () => {});
+          } catch (e) { console.error("event email failed", e); }
+        }
       }
     }
   } else if (category === "minicourse") {
     await supabaseAdmin.from("minicourse_registrations")
       .update({ status: approved ? "paid" : "pending" }).eq("id", refId);
+    if (approved) {
+      const { data: mr } = await supabaseAdmin.from("minicourse_registrations")
+        .select("user_id, paid_price, league_minicourses!inner(title, instructor, starts_at, location, description, event_id, league_events!inner(league_id, leagues:league_id(name, slug, theme_color))), profiles!minicourse_registrations_user_id_fkey(email, full_name, username)")
+        .eq("id", refId).maybeSingle();
+      const mc: any = (mr as any)?.league_minicourses;
+      const lg = mc?.league_events?.leagues;
+      const email = (mr as any)?.profiles?.email;
+      const name = (mr as any)?.profiles?.full_name || (mr as any)?.profiles?.username || "ligante";
+      if (email && lg && mc) {
+        try {
+          await sendMinicourseRegistrationEmail({
+            to: email, fullName: name,
+            leagueName: lg.name, leagueSlug: lg.slug, brandColor: lg.theme_color,
+            minicourseTitle: mc.title, instructor: mc.instructor, startsAt: mc.starts_at,
+            location: mc.location, description: mc.description,
+            paidPrice: Number((mr as any).paid_price) || 0,
+          });
+        } catch (e) { console.error("minicourse email failed", e); }
+      }
+    }
   } else if (category === "selection") {
     await supabaseAdmin.from("league_selection_registrations")
       .update({ status: approved ? "paid" : "pending" }).eq("id", refId);
