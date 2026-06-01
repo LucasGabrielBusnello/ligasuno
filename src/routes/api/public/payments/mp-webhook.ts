@@ -144,7 +144,7 @@ async function handlePayment(paymentId: string) {
       // Confirmação por e-mail
       const { data: sp } = await supabaseAdmin
         .from("semester_payments")
-        .select("amount_paid_cents, semester_cycles!inner(semester, year), leagues:league_id(name), profiles!semester_payments_user_id_fkey(email, full_name, username)")
+        .select("amount_paid_cents, semester_cycles!inner(semester, year), leagues:league_id(name, theme_color), profiles!semester_payments_user_id_fkey(email, full_name, username)")
         .eq("id", refId)
         .maybeSingle();
       const email = (sp as any)?.profiles?.email;
@@ -152,16 +152,20 @@ async function handlePayment(paymentId: string) {
         const name = (sp as any).profiles?.full_name || (sp as any).profiles?.username || "ligante";
         const cy = (sp as any).semester_cycles;
         const leagueName = (sp as any).leagues?.name ?? "";
+        const brand = (sp as any).leagues?.theme_color ?? "#1f5132";
+        const paidValue = (((sp as any).amount_paid_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
         try {
           await sendGmail({
             to: email,
             subject: `Semestralidade paga — ${leagueName}`,
             html: emailLayout({
-              title: "Pagamento confirmado ✓",
-              bodyHtml: `<p>Olá, <strong>${name}</strong>!</p>
-                <p>Recebemos seu pagamento da semestralidade ${cy?.semester}º/${cy?.year} de <strong>${leagueName}</strong>.</p>
-                <p><strong>Valor:</strong> ${(((sp as any).amount_paid_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
-                <p>Você está em dia. Bom semestre!</p>`,
+              title: `Olá, ${name}. Recebemos seu pagamento.`,
+              brandColor: brand,
+              leagueName,
+              bodyHtml: `<p>Confirmamos o pagamento da sua semestralidade <strong>${cy?.semester}º/${cy?.year}</strong> da <strong>${leagueName}</strong>.</p>
+                <p>Está tudo certo: você segue ativo na liga e com acesso a todas as atividades, plantões e oportunidades do semestre. Bom ciclo pela frente!</p>
+                <p style="margin:18px 0 0;color:#cfd9d3;"><strong style="color:#fff;">Valor pago:</strong> ${paidValue}</p>`,
+              signature: `— Presidência da ${leagueName}`,
             }),
           });
         } catch (e) {

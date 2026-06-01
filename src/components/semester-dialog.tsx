@@ -52,12 +52,13 @@ export function SemesterDialog({
   const [loading, setLoading] = useState(false);
   const [cycle, setCycle] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
+  const [camedDefaultCents, setCamedDefaultCents] = useState<number>(0);
   const [history, setHistory] = useState<any[]>([]);
   const [histSelected, setHistSelected] = useState<string | null>(null);
   const [histPayments, setHistPayments] = useState<any[]>([]);
 
   // form
-  const [amount, setAmount] = useState<string>("");
+  const [directorAmount, setDirectorAmount] = useState<string>("");
   const [dueDate, setDueDate] = useState<string>("");
   const [lateFee, setLateFee] = useState<string>("");
   const [notify, setNotify] = useState(true);
@@ -65,15 +66,16 @@ export function SemesterDialog({
   async function reload() {
     setLoading(true);
     try {
-      const r = await listCur({ data: { league_id: league.id } });
+      const r: any = await listCur({ data: { league_id: league.id } });
       setCycle(r.cycle);
       setPayments(r.payments);
+      setCamedDefaultCents(r.camed_default_cents ?? 0);
       if (r.cycle) {
-        setAmount(((r.cycle.amount_cents ?? 0) / 100).toFixed(2));
+        setDirectorAmount((((r.cycle.director_amount_cents ?? 0)) / 100).toFixed(2));
         setDueDate(r.cycle.due_date);
         setLateFee(((r.cycle.late_fee_cents ?? 0) / 100).toFixed(2));
       } else {
-        setAmount("");
+        setDirectorAmount("0");
         setLateFee("0");
         // default vencimento = 30 dias
         const d = new Date(); d.setDate(d.getDate() + 30);
@@ -95,15 +97,16 @@ export function SemesterDialog({
   }
 
   async function handleSave() {
-    const amt = Math.round(parseFloat(amount.replace(",", ".")) * 100);
+    const dirAmt = Math.round(parseFloat((directorAmount || "0").replace(",", ".")) * 100);
     const lf = Math.round(parseFloat((lateFee || "0").replace(",", ".")) * 100);
-    if (!amt || amt < 0 || Number.isNaN(amt)) return toast.error("Valor inválido");
+    if (Number.isNaN(dirAmt) || dirAmt < 0) return toast.error("Valor inválido");
     if (!dueDate) return toast.error("Defina a data de vencimento");
+    if (!camedDefaultCents) return toast.error("O CAMED ainda não definiu o valor padrão da semestralidade.");
     try {
       await upsert({
         data: {
           league_id: league.id,
-          amount_cents: amt,
+          director_amount_cents: dirAmt,
           late_fee_cents: lf || 0,
           due_date: dueDate,
           notify,
@@ -162,7 +165,7 @@ export function SemesterDialog({
                       <div className="font-bold">{paidCount}/{totalCount} ({pct}%)</div>
                     </div>
                     <div className="p-3 rounded border">
-                      <div className="text-muted-foreground text-xs">Valor</div>
+                      <div className="text-muted-foreground text-xs">Valor ligantes (CAMED)</div>
                       <div className="font-bold">{brl(cycle.amount_cents)}</div>
                     </div>
                     <div className="p-3 rounded border">
@@ -172,12 +175,22 @@ export function SemesterDialog({
                   </div>
                 )}
 
+                <div className="p-3 rounded border bg-primary/5 text-sm">
+                  <div className="font-bold">Valor padrão dos ligantes: {brl(camedDefaultCents)}</div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Definido pelo CAMED e aplicado automaticamente a todos os ligantes da liga. Para alterar, fale com a coordenação.
+                  </p>
+                </div>
+
                 <div className="p-4 rounded border space-y-3 bg-muted/30">
                   <h3 className="font-black text-sm">{cycle ? "Editar ciclo atual" : "Abrir novo ciclo"}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <Label className="text-xs">Valor (R$)</Label>
-                      <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
+                      <Label className="text-xs">Valor presidente/diretores (R$)</Label>
+                      <Input type="number" step="0.01" min="0" value={directorAmount} onChange={(e) => setDirectorAmount(e.target.value)} placeholder="0,00" />
+                      <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                        Este valor vale <strong>apenas para presidente e diretores</strong> da liga. Os demais ligantes pagam sempre o valor padrão definido pelo CAMED.
+                      </p>
                     </div>
                     <div>
                       <Label className="text-xs">Vencimento</Label>
@@ -197,6 +210,7 @@ export function SemesterDialog({
                     {cycle && <Button variant="outline" onClick={handleClose}>Encerrar ciclo</Button>}
                   </div>
                 </div>
+
 
                 {cycle && (
                   <div className="space-y-2">

@@ -8,7 +8,31 @@ import {
   loadFeeForCategory,
   loadLeagueMpAccount,
 } from "@/lib/mp.server";
-import { sendGmail, sendGmailBulk, emailLayout } from "@/lib/gmail.server";
+import { sendGmail, sendGmailBulk, emailLayout, emailInfoCard } from "@/lib/gmail.server";
+
+/** Lê o valor padrão de semestralidade definido pelo CAMED (em centavos). */
+async function loadCamedDefaultSemesterCents(): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("camed_settings")
+    .select("semestrality_fee")
+    .eq("id", 1)
+    .maybeSingle();
+  const reais = Number((data as any)?.semestrality_fee ?? 0) || 0;
+  return Math.round(reais * 100);
+}
+
+/** True se o usuário é presidente da liga (president_id) ou tem role 'presidente'/'diretor'. */
+async function isLeaderOf(leagueId: string, userId: string, leaguePresidentId?: string | null): Promise<boolean> {
+  if (leaguePresidentId && leaguePresidentId === userId) return true;
+  const { data } = await supabaseAdmin
+    .from("league_memberships")
+    .select("role")
+    .eq("league_id", leagueId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const role = (data as any)?.role;
+  return role === "presidente" || role === "diretor";
+}
 
 const PUBLISHED_URL = "https://ligasuno.lovable.app";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
@@ -27,7 +51,7 @@ function currentSemester(d = new Date()): { semester: 1 | 2; year: number; start
 async function assertPresident(supabase: any, leagueId: string, userId: string) {
   const { data: l } = await supabase
     .from("leagues")
-    .select("id, president_id, name, slug")
+    .select("id, president_id, name, slug, theme_color")
     .eq("id", leagueId)
     .maybeSingle();
   if (!l) throw new Error("Liga não encontrada");
@@ -49,28 +73,44 @@ function fmtDate(iso: string): string {
 
 // ------------------ ensure / get current cycle ------------------
 
-/** Garante que existe um payment row pra cada ligante ativo da liga no ciclo dado. */
-async function ensurePaymentsForCycle(cycleId: string, leagueId: string, amountCents: number) {
+/**
+ * Garante linha de payment para cada ligante/diretor ativo, usando o valor correto
+ * conforme o papel: diretores e o presidente usam `directorAmountCents`, demais
+ * usam o `amountCents` (padrão do CAMED).
+ */
+async function ensurePaymentsForCycle(
+  cycleId: string,
+  leagueId: string,
+  amountCents: number,
+  directorAmountCents: number,
+  presidentId: string | null,
+) {
   const { data: members } = await supabaseAdmin
     .from("league_memberships")
-    .select("user_id")
+    .select("user_id, role")
     .eq("league_id", leagueId)
-    .in("role", ["ligante", "diretor"]);
-  const userIds = (members ?? []).map((m: any) => m.user_id);
-  if (!userIds.length) return;
+    .in("role", ["ligante", "diretor", "presidente"]);
+  const list = (members ?? []) as Array<{ user_id: string; role: string }>;
+  if (!list.length) return;
 
-  const rows = userIds.map((uid) => ({
-    cycle_id: cycleId,
-    league_id: leagueId,
-    user_id: uid,
-    status: "pending" as const,
-    amount_due_cents: amountCents,
-  }));
-  // Upsert sem mexer em quem já pagou
-  for (const r of rows) {
+  for (const m of list) {
+    const isLeader =
+      m.role === "diretor" ||
+      m.role === "presidente" ||
+      (presidentId && m.user_id === presidentId);
+    const due = isLeader ? directorAmountCents : amountCents;
     await supabaseAdmin
       .from("semester_payments")
-      .upsert(r, { onConflict: "cycle_id,user_id", ignoreDuplicates: true });
+      .upsert(
+        {
+          cycle_id: cycleId,
+          league_id: leagueId,
+          user_id: m.user_id,
+          status: "pending" as const,
+          amount_due_cents: due,
+        },
+        { onConflict: "cycle_id,user_id", ignoreDuplicates: true },
+      );
   }
 }
 
@@ -86,7 +126,8 @@ export const getCurrentSemesterCycle = createServerFn({ method: "POST" })
       .eq("league_id", data.league_id)
       .eq("is_current", true)
       .maybeSingle();
-    return { cycle: cycle ?? null };
+    const camedDefaultCents = await loadCamedDefaultSemesterCents();
+    return { cycle: cycle ?? null, camed_default_cents: camedDefaultCents };
   });
 
 // ------------------ president: list payments for current cycle ------------------
@@ -106,7 +147,8 @@ export const listCyclePayments = createServerFn({ method: "POST" })
         .from("semester_cycles").select("id").eq("league_id", data.league_id).eq("is_current", true).maybeSingle();
       cycleId = cur?.id;
     }
-    if (!cycleId) return { cycle: null, payments: [] };
+    const camedDefaultCents = await loadCamedDefaultSemesterCents();
+    if (!cycleId) return { cycle: null, payments: [], camed_default_cents: camedDefaultCents };
 
     const { data: cycle } = await supabaseAdmin
       .from("semester_cycles").select("*").eq("id", cycleId).maybeSingle();
@@ -116,7 +158,7 @@ export const listCyclePayments = createServerFn({ method: "POST" })
       .select("*, profiles!semester_payments_user_id_fkey(username, full_name, email)")
       .eq("cycle_id", cycleId);
 
-    return { cycle, payments: payments ?? [] };
+    return { cycle, payments: payments ?? [], camed_default_cents: camedDefaultCents };
   });
 
 // ------------------ president: list all cycles (history) ------------------
@@ -139,7 +181,7 @@ export const listSemesterCycles = createServerFn({ method: "POST" })
 
 const upsertSchema = z.object({
   league_id: z.string().uuid(),
-  amount_cents: z.number().int().min(0),
+  director_amount_cents: z.number().int().min(0),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   late_fee_cents: z.number().int().min(0).default(0),
   notify: z.boolean().default(true),
@@ -150,9 +192,15 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => upsertSchema.parse(input))
   .handler(async ({ data, context }) => {
     const league = await assertPresident(context.supabase, data.league_id, context.userId);
+    const brand = (league as any).theme_color || "#1f5132";
+
+    // Valor padrão para ligantes vem sempre do CAMED.
+    const camedAmountCents = await loadCamedDefaultSemesterCents();
+    if (!camedAmountCents) {
+      throw new Error("O CAMED ainda não definiu o valor padrão da semestralidade. Avise a coordenação.");
+    }
 
     const period = currentSemester();
-    // Ciclo atual: se já existe, atualiza; senão, cria.
     const { data: existing } = await supabaseAdmin
       .from("semester_cycles")
       .select("id")
@@ -166,17 +214,37 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("semester_cycles")
         .update({
-          amount_cents: data.amount_cents,
+          amount_cents: camedAmountCents,
+          director_amount_cents: data.director_amount_cents,
           due_date: data.due_date,
           late_fee_cents: data.late_fee_cents,
         })
         .eq("id", cycleId);
-      // Atualiza valor devido nos pagamentos ainda pendentes
-      await supabaseAdmin
+
+      // Atualiza valor devido nos pagamentos pendentes, conforme o papel do usuário.
+      const { data: pendings } = await supabaseAdmin
         .from("semester_payments")
-        .update({ amount_due_cents: data.amount_cents })
+        .select("id, user_id, league_memberships:user_id(role)")
         .eq("cycle_id", cycleId)
         .in("status", ["pending", "overdue"]);
+      // Como o join via FK pode não existir, busca roles em batch.
+      const userIds = (pendings ?? []).map((p: any) => p.user_id);
+      const { data: mems } = await supabaseAdmin
+        .from("league_memberships")
+        .select("user_id, role")
+        .eq("league_id", data.league_id)
+        .in("user_id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]);
+      const roleByUser = new Map<string, string>();
+      (mems ?? []).forEach((m: any) => roleByUser.set(m.user_id, m.role));
+      for (const p of pendings ?? []) {
+        const role = roleByUser.get((p as any).user_id);
+        const isLeader =
+          role === "diretor" || role === "presidente" || (league as any).president_id === (p as any).user_id;
+        await supabaseAdmin
+          .from("semester_payments")
+          .update({ amount_due_cents: isLeader ? data.director_amount_cents : camedAmountCents })
+          .eq("id", (p as any).id);
+      }
     } else {
       const { data: newCycle, error } = await supabaseAdmin
         .from("semester_cycles")
@@ -186,7 +254,8 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
           year: period.year,
           start_date: period.start_date,
           end_date: period.end_date,
-          amount_cents: data.amount_cents,
+          amount_cents: camedAmountCents,
+          director_amount_cents: data.director_amount_cents,
           due_date: data.due_date,
           late_fee_cents: data.late_fee_cents,
           is_current: true,
@@ -197,34 +266,48 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
       cycleId = newCycle.id;
     }
 
-    await ensurePaymentsForCycle(cycleId!, data.league_id, data.amount_cents);
+    await ensurePaymentsForCycle(
+      cycleId!,
+      data.league_id,
+      camedAmountCents,
+      data.director_amount_cents,
+      (league as any).president_id,
+    );
 
     // Notifica todos os ligantes ainda pendentes
     if (data.notify) {
       const { data: pendings } = await supabaseAdmin
         .from("semester_payments")
-        .select("user_id, profiles!semester_payments_user_id_fkey(email, full_name, username)")
+        .select("user_id, amount_due_cents, profiles!semester_payments_user_id_fkey(email, full_name, username)")
         .eq("cycle_id", cycleId)
         .in("status", ["pending", "overdue"]);
       const msgs = (pendings ?? []).map((p: any) => {
         const email = p.profiles?.email;
         if (!email) return null;
         const name = p.profiles?.full_name || p.profiles?.username || "ligante";
+        const due = p.amount_due_cents ?? camedAmountCents;
         return {
           to: email,
           subject: `Semestralidade aberta — ${league.name}`,
           html: emailLayout({
-            title: `Semestralidade ${period.semester}º/${period.year}`,
-            bodyHtml: `<p>Olá, <strong>${name}</strong>!</p>
-              <p>A semestralidade da <strong>${league.name}</strong> está aberta.</p>
-              <ul>
-                <li><strong>Valor:</strong> ${brl(data.amount_cents)}</li>
-                <li><strong>Vencimento:</strong> ${fmtDate(data.due_date)}</li>
-                ${data.late_fee_cents > 0 ? `<li><strong>Acréscimo após vencimento:</strong> ${brl(data.late_fee_cents)}</li>` : ""}
-              </ul>
-              <p>Acesse o painel do ligante para pagar via Pix.</p>`,
-            ctaLabel: "Pagar semestralidade",
+            title: `Olá, ${name}. A semestralidade ${period.semester}º/${period.year} está aberta.`,
+            brandColor: brand,
+            leagueName: league.name,
+            bodyHtml: `<p>A presidência da <strong>${league.name}</strong> abriu o ciclo de pagamento da semestralidade. Quitar agora garante que você não perca atividades, oficinas nem oportunidades de pesquisa da liga.</p>
+              ${emailInfoCard({
+                title: "Seu pagamento",
+                brandColor: brand,
+                rows: [
+                  { label: "Ciclo", value: `${period.semester}º semestre de ${period.year}` },
+                  { label: "Valor", value: brl(due) },
+                  { label: "Vencimento", value: fmtDate(data.due_date) },
+                  ...(data.late_fee_cents > 0 ? [{ label: "Acréscimo após vencer", value: brl(data.late_fee_cents) }] : []),
+                ],
+              })}
+              <p>É rápido: o pagamento é feito por Pix direto no painel do ligante, com confirmação automática.</p>`,
+            ctaLabel: "Pagar via Pix",
             ctaUrl: `${PUBLISHED_URL}/ligante/${(league as any).slug}?tab=schedule&semestralidade=1`,
+            signature: `— Presidência da ${league.name}`,
           }),
         };
       }).filter(Boolean) as any[];
@@ -235,6 +318,7 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
 
     return { ok: true, cycle_id: cycleId };
   });
+
 
 // ------------------ president: close current cycle (archive) ------------------
 
@@ -273,25 +357,35 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!cycle) throw new Error("Não há semestralidade aberta para esta liga");
 
-    // Garante que o usuário é ligante/diretor
+    // Garante que o usuário é ligante/diretor/presidente
     const { data: mem } = await supabaseAdmin
       .from("league_memberships")
       .select("role")
       .eq("league_id", data.league_id)
       .eq("user_id", userId)
       .maybeSingle();
-    if (!mem || !["ligante", "diretor"].includes((mem as any).role)) {
-      throw new Error("Apenas ligantes podem pagar a semestralidade");
+    const role = (mem as any)?.role;
+    const presidentId = (cycle as any).leagues?.id ? null : null;
+    const { data: leagueRow } = await supabaseAdmin
+      .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
+    const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId;
+    if (!role && !isLeader) {
+      throw new Error("Apenas membros da liga podem pagar a semestralidade");
     }
 
-    // Garante linha de pagamento
+    // Valor base depende do papel
+    const baseAmountCents = isLeader
+      ? ((cycle as any).director_amount_cents ?? 0) || (cycle as any).amount_cents
+      : (cycle as any).amount_cents;
+
+    // Garante linha de pagamento com o valor correto
     await supabaseAdmin
       .from("semester_payments")
       .upsert({
         cycle_id: (cycle as any).id,
         league_id: data.league_id,
         user_id: userId,
-        amount_due_cents: (cycle as any).amount_cents,
+        amount_due_cents: baseAmountCents,
         status: "pending",
       }, { onConflict: "cycle_id,user_id", ignoreDuplicates: true });
 
@@ -308,7 +402,7 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
 
     // Calcula valor (com taxa de atraso se vencido)
     const isOverdue = new Date((cycle as any).due_date) < new Date(new Date().toISOString().slice(0, 10));
-    const totalCents = (cycle as any).amount_cents + (isOverdue ? (cycle as any).late_fee_cents : 0);
+    const totalCents = ((payment as any).amount_due_cents ?? baseAmountCents) + (isOverdue ? (cycle as any).late_fee_cents : 0);
     const totalReais = totalCents / 100;
     if (totalReais <= 0) throw new Error("Valor inválido");
 

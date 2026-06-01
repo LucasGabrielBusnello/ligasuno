@@ -1,0 +1,1 @@
+ALTER TABLE public.semester_cycles ADD COLUMN IF NOT EXISTS director_amount_cents integer NOT NULL DEFAULT 0;
