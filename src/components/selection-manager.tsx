@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Settings, ClipboardCheck, Trophy, Undo2, X, UserPlus, Info } from "lucide-react";
-import { generateRanking, removeFromRanking, undoLastRanking, setAsLigante } from "@/lib/selection.functions";
+import { generateRanking, removeFromRanking, undoLastRanking, toggleLigante } from "@/lib/selection.functions";
 
 const SEMESTERS = [1, 3, 5, 7, 9, 11] as const;
 
