@@ -191,7 +191,18 @@ export const generateRanking = createServerFn({ method: "POST" })
         .eq("id", u.id);
     }
 
-    return { ok: true, classified: updates.filter(u => u.ranked_via !== "waitlist").length };
+    // Auto-add classified candidates as ligantes
+    const classifiedIds = updates.filter(u => u.ranked_via !== "waitlist").map(u => u.id);
+    if (classifiedIds.length > 0) {
+      const classifiedRegs = regs.filter((r: any) => classifiedIds.includes(r.id));
+      const rows = classifiedRegs.map((r: any) => ({ league_id: data.league_id, user_id: r.user_id, role: "ligante" }));
+      if (rows.length > 0) {
+        await (supabaseAdmin as any).from("league_memberships")
+          .upsert(rows, { onConflict: "league_id,user_id" });
+      }
+    }
+
+    return { ok: true, classified: classifiedIds.length };
   });
 
 export const removeFromRanking = createServerFn({ method: "POST" })
