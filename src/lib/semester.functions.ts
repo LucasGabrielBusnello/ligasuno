@@ -51,7 +51,7 @@ function currentSemester(d = new Date()): { semester: 1 | 2; year: number; start
 async function assertPresident(supabase: any, leagueId: string, userId: string) {
   const { data: l } = await supabase
     .from("leagues")
-    .select("id, president_id, name, slug")
+    .select("id, president_id, name, slug, theme_color")
     .eq("id", leagueId)
     .maybeSingle();
   if (!l) throw new Error("Liga não encontrada");
