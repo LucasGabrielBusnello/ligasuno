@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getPayment, getPreapproval } from "@/lib/mp.server";
-import { sendGmail, emailLayout } from "@/lib/gmail.server";
+import { sendGmail, emailLayout, sendEventRegistrationEmail, sendMinicourseRegistrationEmail } from "@/lib/gmail.server";
 
 
 /**
