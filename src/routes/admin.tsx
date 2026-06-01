@@ -372,27 +372,76 @@ function UsersAdmin() {
 
 /* ===================== CONFIG ===================== */
 function SettingsAdmin() {
-  const [s, setS] = useState({ annual_fee_credit_monthly: 0.05 });
+  const [s, setS] = useState<any>({
+    annual_fee_credit_monthly: 0.05,
+    fee_selection_pct: 5, fee_selection_fixed: 0,
+    fee_semester_pct: 5, fee_semester_fixed: 0,
+    fee_event_pct: 5, fee_event_fixed: 0,
+    fee_minicourse_pct: 5, fee_minicourse_fixed: 0,
+  });
   useEffect(() => {
-    supabase.from("app_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => { if (data) setS({ annual_fee_credit_monthly: Number((data as any).annual_fee_credit_monthly) }); });
+    supabase.from("app_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
+      if (data) setS({
+        annual_fee_credit_monthly: Number((data as any).annual_fee_credit_monthly),
+        fee_selection_pct: Number((data as any).fee_selection_pct ?? 5),
+        fee_selection_fixed: Number((data as any).fee_selection_fixed ?? 0),
+        fee_semester_pct: Number((data as any).fee_semester_pct ?? 5),
+        fee_semester_fixed: Number((data as any).fee_semester_fixed ?? 0),
+        fee_event_pct: Number((data as any).fee_event_pct ?? 5),
+        fee_event_fixed: Number((data as any).fee_event_fixed ?? 0),
+        fee_minicourse_pct: Number((data as any).fee_minicourse_pct ?? 5),
+        fee_minicourse_fixed: Number((data as any).fee_minicourse_fixed ?? 0),
+      });
+    });
   }, []);
   async function save() {
-    // Mantém PIX sincronizado para compatibilidade, mas só cartão é cobrado
     const { error } = await supabase.from("app_settings").update({
       annual_fee_credit_monthly: s.annual_fee_credit_monthly,
       annual_fee_pix_monthly: s.annual_fee_credit_monthly,
+      fee_selection_pct: s.fee_selection_pct, fee_selection_fixed: s.fee_selection_fixed,
+      fee_semester_pct: s.fee_semester_pct, fee_semester_fixed: s.fee_semester_fixed,
+      fee_event_pct: s.fee_event_pct, fee_event_fixed: s.fee_event_fixed,
+      fee_minicourse_pct: s.fee_minicourse_pct, fee_minicourse_fixed: s.fee_minicourse_fixed,
     }).eq("id", 1);
     if (error) return toast.error(error.message);
     toast.success("Configurações salvas");
   }
+
+  const feeRow = (label: string, pctKey: string, fixKey: string, hint: string) => (
+    <div className="grid grid-cols-1 md:grid-cols-[1fr_140px_140px] gap-3 items-end p-4 rounded-lg border bg-card/40">
+      <div>
+        <div className="font-bold">{label}</div>
+        <div className="text-xs text-muted-foreground">{hint}</div>
+      </div>
+      <div><Label className="text-xs">Percentual (%)</Label><Input type="number" step="0.01" min="0" value={s[pctKey]} onChange={(e) => setS({ ...s, [pctKey]: +e.target.value })} /></div>
+      <div><Label className="text-xs">Valor fixo (R$)</Label><Input type="number" step="0.01" min="0" value={s[fixKey]} onChange={(e) => setS({ ...s, [fixKey]: +e.target.value })} /></div>
+    </div>
+  );
+
   return (
-    <Card>
-      <CardHeader><CardTitle>Valor da Anuidade (Cartão)</CardTitle></CardHeader>
-      <CardContent className="space-y-3">
-        <div><Label>Valor mensal no cartão (R$)</Label><Input type="number" step="0.01" value={s.annual_fee_credit_monthly} onChange={(e) => setS({ ...s, annual_fee_credit_monthly: +e.target.value })} /></div>
-        <p className="text-xs text-muted-foreground">Cobrança recorrente mensal no cartão. O valor é lido em tempo real no checkout.</p>
-        <Button onClick={save}>Salvar</Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader><CardTitle>Anuidade das Ligas (100% da plataforma)</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div><Label>Valor mensal no cartão (R$)</Label><Input type="number" step="0.01" value={s.annual_fee_credit_monthly} onChange={(e) => setS({ ...s, annual_fee_credit_monthly: +e.target.value })} /></div>
+          <p className="text-xs text-muted-foreground">Cobrança recorrente mensal via Mercado Pago. Valor lido em tempo real no checkout.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Taxas de repasse por categoria</CardTitle>
+          <p className="text-sm text-muted-foreground">Taxa retida pela plataforma em cada transação. O restante vai direto pra conta Mercado Pago do presidente da liga. Fórmula: <code>taxa = preço × (%) + valor fixo</code>.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {feeRow("Processo Seletivo", "fee_selection_pct", "fee_selection_fixed", "Cobrada em cada inscrição na prova seletiva")}
+          {feeRow("Semestralidade", "fee_semester_pct", "fee_semester_fixed", "Mensalidades/semestralidades cobradas dos ligantes (quando aplicável)")}
+          {feeRow("Eventos", "fee_event_pct", "fee_event_fixed", "Cobrada em cada inscrição paga em eventos")}
+          {feeRow("Minicursos", "fee_minicourse_pct", "fee_minicourse_fixed", "Cobrada em cada inscrição paga em minicursos")}
+        </CardContent>
+      </Card>
+
+      <Button onClick={save} size="lg">Salvar todas as configurações</Button>
+    </div>
   );
 }
