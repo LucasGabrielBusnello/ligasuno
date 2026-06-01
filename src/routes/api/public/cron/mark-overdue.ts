@@ -25,7 +25,7 @@ export const Route = createFileRoute("/api/public/cron/mark-overdue")({
           .select(`
             id, league_id,
             semester_cycles!inner(id, due_date, is_current, semester, year, amount_cents, late_fee_cents),
-            leagues:league_id(name, slug),
+            leagues:league_id(name, slug, theme_color),
             profiles!semester_payments_user_id_fkey(email, full_name, username)
           `)
           .eq("status", "pending")
@@ -41,17 +41,20 @@ export const Route = createFileRoute("/api/public/cron/mark-overdue")({
           const name = p.profiles?.full_name || p.profiles?.username || "ligante";
           const league = p.leagues;
           const cycle = p.semester_cycles;
+          const brand = league?.theme_color ?? "#1f5132";
           return {
             to: email,
             subject: `Semestralidade em atraso — ${league?.name ?? "sua liga"}`,
             html: emailLayout({
-              title: "Pagamento em atraso",
-              bodyHtml: `<p>Olá, <strong>${name}</strong>!</p>
-                <p>A semestralidade ${cycle?.semester}º/${cycle?.year} da <strong>${league?.name ?? ""}</strong> venceu.</p>
-                ${cycle?.late_fee_cents > 0 ? `<p>Foi aplicado um acréscimo de <strong>${(cycle.late_fee_cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong>.</p>` : ""}
-                <p>Regularize sua situação o quanto antes pelo painel do ligante.</p>`,
-              ctaLabel: "Pagar agora",
+              title: `Olá, ${name}. Sua semestralidade venceu.`,
+              brandColor: brand,
+              leagueName: league?.name,
+              bodyHtml: `<p>A semestralidade <strong>${cycle?.semester}º/${cycle?.year}</strong> da <strong>${league?.name ?? ""}</strong> passou da data de vencimento.</p>
+                ${cycle?.late_fee_cents > 0 ? `<p>Foi aplicado um acréscimo de <strong>${(cycle.late_fee_cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong> sobre o valor original.</p>` : ""}
+                <p>Para evitar bloqueio nas atividades da liga, regularize agora pelo painel do ligante — o pagamento é por Pix e a confirmação é automática.</p>`,
+              ctaLabel: "Regularizar agora",
               ctaUrl: `https://ligasuno.lovable.app/ligante/${league?.slug}?semestralidade=1`,
+              signature: `— Presidência da ${league?.name ?? "liga"}`,
             }),
           };
         }).filter(Boolean) as any[];
