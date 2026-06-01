@@ -98,6 +98,11 @@ function HomePage() {
                 <span className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
                   <UserCircle className="size-4" /> {profile?.username ?? user.email}
                 </span>
+                {isCamedPresident && (
+                  <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
+                    <Link to="/camed"><Building2 className="size-4" /> CAMED</Link>
+                  </Button>
+                )}
                 {isAdminMaster && (
                   <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
                     <Link to="/admin"><Shield className="size-4" /> ADMIN</Link>
