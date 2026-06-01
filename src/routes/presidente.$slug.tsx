@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
 import { createLeagueSubscriptionCheckout } from "@/lib/subscription.functions";
+import { startMpOAuth, disconnectMp } from "@/lib/mp-oauth.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
 
 export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
@@ -75,6 +76,8 @@ function PresidentePage() {
         ) : (
           <PayAnuidadeCard leagueId={league.id} settings={settings} />
         )}
+
+        <MpConnectCard leagueId={league.id} />
 
         <Tabs defaultValue="config">
           <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
