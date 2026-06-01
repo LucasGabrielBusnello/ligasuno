@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Settings, ClipboardCheck, Trophy, Undo2, X, UserPlus, Info } from "lucide-react";
-import { generateRanking, removeFromRanking, undoLastRanking, setAsLigante } from "@/lib/selection.functions";
+import { generateRanking, removeFromRanking, undoLastRanking, toggleLigante } from "@/lib/selection.functions";
 
 const SEMESTERS = [1, 3, 5, 7, 9, 11] as const;
 
@@ -164,19 +164,22 @@ function ExamSection({ league }: { league: any }) {
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [quotas, setQuotas] = useState<any[]>([]);
+  const [ligantes, setLigantes] = useState<Set<string>>(new Set());
   const gen = useServerFn(generateRanking);
   const rem = useServerFn(removeFromRanking);
   const undo = useServerFn(undoLastRanking);
-  const ligante = useServerFn(setAsLigante);
+  const toggle = useServerFn(toggleLigante);
 
   async function reload() {
     setLoading(true);
-    const [{ data: rs }, { data: qs }] = await Promise.all([
+    const [{ data: rs }, { data: qs }, { data: ms }] = await Promise.all([
       supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("status", "paid"),
       supabase.from("league_selection_quotas").select("*").eq("league_id", league.id),
+      supabase.from("league_memberships").select("user_id, role").eq("league_id", league.id).eq("role", "ligante"),
     ]);
     setRegs(rs ?? []);
     setQuotas(qs ?? []);
+    setLigantes(new Set((ms ?? []).map((m: any) => m.user_id)));
     setLoading(false);
   }
   useEffect(() => { reload(); }, [league.id]);
@@ -204,9 +207,16 @@ function ExamSection({ league }: { league: any }) {
     try { await rem({ data: { registration_id: id } } as any); toast.success("Substituição feita"); reload(); }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
-  async function doLigante(id: string) {
-    try { await ligante({ data: { registration_id: id } } as any); toast.success("Definido como ligante"); }
-    catch (e: any) { toast.error(e?.message ?? "Erro"); }
+  async function doToggleLigante(reg: any) {
+    try {
+      const res: any = await toggle({ data: { registration_id: reg.id } } as any);
+      setLigantes(prev => {
+        const next = new Set(prev);
+        if (res?.isLigante) next.add(reg.user_id); else next.delete(reg.user_id);
+        return next;
+      });
+      toast.success(res?.isLigante ? "Adicionado como ligante" : "Removido de ligante");
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
 
   const classified = regs.filter(r => r.ranked_via && r.ranked_via !== "waitlist" && r.ranked_via !== "eliminated")
@@ -267,13 +277,13 @@ function ExamSection({ league }: { league: any }) {
           {Object.keys(quotaBySem).sort((a,b) => +a - +b).map(sem => (
             <div key={sem} className="space-y-1">
               <Badge className="text-[10px]">Vagas destinadas ao {sem}º semestre</Badge>
-              {quotaBySem[+sem].map(c => <RankRow key={c.id} reg={c} onRemove={() => doRemove(c.id)} onLigante={() => doLigante(c.id)} />)}
+              {quotaBySem[+sem].map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onToggleLigante={() => doToggleLigante(c)} />)}
             </div>
           ))}
           {generalClassified.length > 0 && (
             <div className="space-y-1 pt-2 border-t">
               <Badge variant="outline" className="text-[10px]">Vagas gerais</Badge>
-              {generalClassified.map(c => <RankRow key={c.id} reg={c} onRemove={() => doRemove(c.id)} onLigante={() => doLigante(c.id)} />)}
+              {generalClassified.map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onToggleLigante={() => doToggleLigante(c)} />)}
             </div>
           )}
         </CardContent></Card>
@@ -294,7 +304,7 @@ function ExamSection({ league }: { league: any }) {
   );
 }
 
-function RankRow({ reg, onRemove, onLigante }: { reg: any; onRemove: () => void; onLigante: () => void }) {
+function RankRow({ reg, isLigante, onRemove, onToggleLigante }: { reg: any; isLigante: boolean; onRemove: () => void; onToggleLigante: () => void }) {
   return (
     <div className="p-2 rounded border flex items-center justify-between gap-2 text-sm">
       <div className="min-w-0 flex-1">
@@ -302,8 +312,10 @@ function RankRow({ reg, onRemove, onLigante }: { reg: any; onRemove: () => void;
         <span className="text-xs text-muted-foreground"> · {reg.semester}º · nota {reg.grade ?? "—"}</span>
       </div>
       <div className="flex gap-1 shrink-0">
-        <Button size="sm" variant="outline" onClick={onLigante}><UserPlus className="size-3" /> Ligante</Button>
-        <Button size="sm" variant="destructive" onClick={onRemove}><X className="size-3" /></Button>
+        <Button size="sm" variant={isLigante ? "destructive" : "outline"} onClick={onToggleLigante}>
+          {isLigante ? <><X className="size-3" /> Remover</> : <><UserPlus className="size-3" /> Ligante</>}
+        </Button>
+        <Button size="sm" variant="destructive" onClick={onRemove} title="Remover da classificação"><X className="size-3" /></Button>
       </div>
     </div>
   );

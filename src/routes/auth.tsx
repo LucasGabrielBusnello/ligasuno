@@ -8,8 +8,34 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
+
+function PasswordInput({ id, value, onChange, autoComplete, required }: { id: string; value: string; onChange: (v: string) => void; autoComplete?: string; required?: boolean }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        autoComplete={autoComplete}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+        tabIndex={-1}
+        aria-label={show ? "Esconder senha" : "Mostrar senha"}
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
@@ -47,7 +73,7 @@ function AuthPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [li, setLi] = useState({ email: "", password: "" });
-  const [su, setSu] = useState({ username: "", email: "", phone: "", password: "" });
+  const [su, setSu] = useState({ username: "", email: "", phone: "", password: "", confirmPassword: "" });
 
   function reset() {
     setError(null);
@@ -86,6 +112,12 @@ function AuthPage() {
     const parsed = signupSchema.safeParse(cleaned);
     if (!parsed.success) {
       const msg = parsed.error.errors[0].message;
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+    if (su.password !== su.confirmPassword) {
+      const msg = "As senhas não coincidem.";
       setError(msg);
       toast.error(msg);
       return;
@@ -182,13 +214,12 @@ function AuthPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="li-pass">Senha</Label>
-                    <Input
+                    <PasswordInput
                       id="li-pass"
-                      type="password"
                       autoComplete="current-password"
                       required
                       value={li.password}
-                      onChange={(e) => setLi({ ...li, password: e.target.value })}
+                      onChange={(v) => setLi({ ...li, password: v })}
                     />
                   </div>
                   <Button type="submit" disabled={loading} className="w-full">
@@ -235,13 +266,22 @@ function AuthPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="su-pass">Senha (mín. 8 caracteres)</Label>
-                    <Input
+                    <PasswordInput
                       id="su-pass"
-                      type="password"
                       autoComplete="new-password"
                       required
                       value={su.password}
-                      onChange={(e) => setSu({ ...su, password: e.target.value })}
+                      onChange={(v) => setSu({ ...su, password: v })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-pass-confirm">Confirmar senha</Label>
+                    <PasswordInput
+                      id="su-pass-confirm"
+                      autoComplete="new-password"
+                      required
+                      value={su.confirmPassword}
+                      onChange={(v) => setSu({ ...su, confirmPassword: v })}
                     />
                   </div>
                   <Button type="submit" disabled={loading} className="w-full">
