@@ -3,12 +3,10 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
+import { computeFee, createSplitPreference, loadFeeForCategory, loadLeagueMpAccount } from "@/lib/mp.server";
 
-const GATEWAY = "https://connector-gateway.lovable.dev/stripe";
-
-function getStripeConnectionKey() {
-  return process.env.STRIPE_LIVE_API_KEY ?? process.env.STRIPE_SANDBOX_API_KEY;
-}
+const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
 
 const schema = z.object({
   event_id: z.string().uuid(),
@@ -16,7 +14,6 @@ const schema = z.object({
   social_name: z.string().max(150).optional().nullable(),
   cpf: z.string().min(11).max(20),
   course: z.enum(["medicina", "enfermagem", "egresso_medicina", "outro", "egresso_outro"]),
-  payment_method: z.enum(["card", "pix"]).default("card"),
   origin_url: z.string().url(),
 });
 
@@ -38,13 +35,9 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     const normalizedCpf = normalizeCpf(data.cpf);
     if (!isValidCPF(normalizedCpf)) throw new Error("CPF inválido");
 
-    // Determine category (ligante > partner > visitor)
     const { data: myMemberships } = await supabase
-      .from("league_memberships")
-      .select("league_id, role")
-      .eq("user_id", userId);
+      .from("league_memberships").select("league_id, role").eq("user_id", userId);
     const memberships = myMemberships ?? [];
-
     const isLigante = memberships.some(
       (m: any) => m.league_id === leagueId && ["ligante", "diretor", "presidente"].includes(m.role),
     );
@@ -57,92 +50,53 @@ export const createEventCheckout = createServerFn({ method: "POST" })
     let paid = base;
     let discountReason: string | null = null;
     if (isLigante) {
-      category = "ligante";
-      paid = Number((event as any).price_ligante) || 0;
+      category = "ligante"; paid = Number((event as any).price_ligante) || 0;
       discountReason = "Desconto exclusivo para ligantes da liga";
     } else if (isPartner) {
-      category = "partner";
-      paid = Number((event as any).price_partner) || 0;
+      category = "partner"; paid = Number((event as any).price_partner) || 0;
       discountReason = "Desconto para integrantes de ligas parceiras";
     }
 
-    // Upsert registration as pending
     const { data: reg, error: regErr } = await supabaseAdmin
       .from("event_registrations")
       .upsert({
-        event_id: data.event_id,
-        user_id: userId,
-        full_name: data.full_name,
-        social_name: data.social_name || null,
-        cpf: normalizedCpf,
-        course: data.course,
-        category,
-        base_price: base,
-        paid_price: paid,
-        discount_reason: discountReason,
+        event_id: data.event_id, user_id: userId,
+        full_name: data.full_name, social_name: data.social_name || null,
+        cpf: normalizedCpf, course: data.course, category,
+        base_price: base, paid_price: paid, discount_reason: discountReason,
         status: paid === 0 ? "paid" : "pending",
       }, { onConflict: "event_id,user_id" })
-      .select("*")
-      .single();
+      .select("*").single();
     if (regErr || !reg) throw new Error(regErr?.message || "Falha ao registrar");
 
-    if (paid === 0) {
-      return { free: true, registration_id: reg.id };
-    }
+    if (paid === 0) return { free: true, registration_id: reg.id };
 
-    // Create Stripe Checkout Session via gateway
-    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const STRIPE_KEY = getStripeConnectionKey();
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
-    if (!STRIPE_KEY) throw new Error("Integração de pagamentos não configurada");
+    // Carrega conta MP da liga + taxa configurada
+    const mpAccount = await loadLeagueMpAccount(supabaseAdmin, leagueId);
+    const feeCfg = await loadFeeForCategory(supabaseAdmin, "event");
+    const marketplaceFee = computeFee(paid, feeCfg.pct, feeCfg.fixed);
+
+    const { data: prof } = await supabaseAdmin
+      .from("profiles").select("email").eq("id", userId).maybeSingle();
 
     const origin = data.origin_url.replace(/\/$/, "");
-    const successUrl = `${origin}/${(event as any).leagues.slug}?event=${data.event_id}&paid=1`;
-    const cancelUrl = `${origin}/${(event as any).leagues.slug}?event=${data.event_id}&paid=0`;
+    const slug = (event as any).leagues.slug;
 
-    const params = new URLSearchParams();
-    params.append("mode", "payment");
-    params.append("success_url", successUrl);
-    params.append("cancel_url", cancelUrl);
-    params.append("payment_method_types[]", data.payment_method);
-    if (data.payment_method === "pix") {
-      // Pix expira em 1h para garantir conversão
-      params.append("payment_method_options[pix][expires_after_seconds]", "3600");
-    }
-    // Email do usuário (Pix exige; Cartão também se beneficia)
-    const { data: prof } = await supabaseAdmin
-      .from("profiles").select("email,full_name").eq("id", userId).maybeSingle();
-    const email = (prof as any)?.email;
-    if (email) params.append("customer_email", email);
-    params.append("line_items[0][quantity]", "1");
-    params.append("line_items[0][price_data][currency]", "brl");
-    params.append("line_items[0][price_data][unit_amount]", String(Math.round(paid * 100)));
-    params.append("line_items[0][price_data][product_data][name]", `${(event as any).title} — ${(event as any).leagues.name}`);
-    params.append("metadata[registration_id]", reg.id);
-    params.append("metadata[event_id]", data.event_id);
-    params.append("metadata[user_id]", userId);
-
-    const res = await fetch(`${GATEWAY}/v1/checkout/sessions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": STRIPE_KEY,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
+    const pref = await createSplitPreference({
+      sellerAccessToken: (mpAccount as any).access_token,
+      title: `${(event as any).title} — ${(event as any).leagues.name}`,
+      unitPrice: paid,
+      payerEmail: (prof as any)?.email,
+      successUrl: `${origin}/${slug}?event=${data.event_id}&paid=1`,
+      failureUrl: `${origin}/${slug}?event=${data.event_id}&paid=0`,
+      marketplaceFee,
+      externalReference: `event:${reg.id}`,
+      notificationUrl: WEBHOOK_URL,
+      metadata: { registration_id: reg.id, event_id: data.event_id, user_id: userId, league_id: leagueId },
     });
-    const session = await res.json();
-    if (!res.ok) {
-      const message = session?.error?.message ?? JSON.stringify(session);
-      if (typeof message === "string" && message.toLowerCase().includes("provided: pix is invalid")) {
-        throw new Error("Pix ainda não está habilitado na conta de pagamentos conectada. Ative o Pix nas configurações da conta para liberar esse método.");
-      }
-      throw new Error(`Stripe falhou [${res.status}]: ${message}`);
-    }
 
     await supabaseAdmin.from("event_registrations")
-      .update({ stripe_session_id: session.id })
-      .eq("id", reg.id);
+      .update({ stripe_session_id: pref.id }).eq("id", reg.id);
 
-    return { free: false, registration_id: reg.id, url: session.url as string };
+    return { free: false, registration_id: reg.id, url: pref.init_point };
   });
