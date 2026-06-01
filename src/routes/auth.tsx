@@ -266,13 +266,22 @@ function AuthPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="su-pass">Senha (mín. 8 caracteres)</Label>
-                    <Input
+                    <PasswordInput
                       id="su-pass"
-                      type="password"
                       autoComplete="new-password"
                       required
                       value={su.password}
-                      onChange={(e) => setSu({ ...su, password: e.target.value })}
+                      onChange={(v) => setSu({ ...su, password: v })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="su-pass-confirm">Confirmar senha</Label>
+                    <PasswordInput
+                      id="su-pass-confirm"
+                      autoComplete="new-password"
+                      required
+                      value={su.confirmPassword}
+                      onChange={(v) => setSu({ ...su, confirmPassword: v })}
                     />
                   </div>
                   <Button type="submit" disabled={loading} className="w-full">
