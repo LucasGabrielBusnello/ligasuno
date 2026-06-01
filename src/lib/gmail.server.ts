@@ -81,30 +81,63 @@ export async function sendGmailBulk(messages: SendGmailArgs[]): Promise<{ sent: 
   return { sent, failed };
 }
 
-/** Template base com identidade visual leve. */
-export function emailLayout(opts: { title: string; bodyHtml: string; ctaLabel?: string; ctaUrl?: string }): string {
+/** Template base com identidade visual da liga (cor). */
+export function emailLayout(opts: {
+  title: string;
+  bodyHtml: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  brandColor?: string;
+  leagueName?: string;
+  city?: string;
+  signature?: string;
+  signatureEmail?: string;
+}): string {
+  const brand = (opts.brandColor || "#1f5132").trim();
+  const darkBg = "#0b1410";
+  const panelBg = "#101c17";
+  const subtleBg = "#0e1a14";
+  const chip = opts.leagueName
+    ? `<div style="display:inline-block;padding:8px 14px;border:1px solid ${brand}55;background:${brand}26;color:#cfe9da;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">${opts.leagueName}${opts.city ? ` · ${opts.city}` : ""}</div>`
+    : `<div style="font-size:12px;letter-spacing:2px;color:${brand};font-weight:700;">LIGASUNO</div>`;
   const cta = opts.ctaUrl && opts.ctaLabel
-    ? `<p style="margin:28px 0;"><a href="${opts.ctaUrl}" style="display:inline-block;padding:12px 24px;background:#1f5132;color:#fff;text-decoration:none;border-radius:8px;font-weight:bold;">${opts.ctaLabel}</a></p>`
+    ? `<p style="margin:28px 0 8px;"><a href="${opts.ctaUrl}" style="display:inline-block;padding:13px 26px;background:${brand};color:#fff;text-decoration:none;border-radius:10px;font-weight:bold;font-size:14px;">${opts.ctaLabel}</a></p>`
+    : "";
+  const sig = opts.signature
+    ? `<p style="margin:28px 0 4px;color:#8aa399;font-size:13px;">${opts.signature}</p>${opts.signatureEmail ? `<p style="margin:0;"><a href="mailto:${opts.signatureEmail}" style="color:${brand};text-decoration:none;font-size:13px;">${opts.signatureEmail}</a></p>` : ""}`
     : "";
   return `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#f6f7f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0f172a;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 12px;">
+<body style="margin:0;padding:0;background:${darkBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#e6efe9;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px;background:${darkBg};">
     <tr><td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
-        <tr><td style="padding:24px 28px;background:#1f5132;color:#fff;">
-          <div style="font-size:13px;letter-spacing:2px;opacity:0.85;">LIGASUNO</div>
-          <div style="font-size:22px;font-weight:800;margin-top:4px;">${opts.title}</div>
+      <table role="presentation" width="640" cellpadding="0" cellspacing="0" style="max-width:640px;background:${panelBg};border-radius:14px;overflow:hidden;border:1px solid ${brand}40;">
+        <tr><td style="padding:32px 36px 8px;">
+          ${chip}
+          <h1 style="font-size:26px;font-weight:800;margin:18px 0 0;color:#ffffff;line-height:1.25;">${opts.title}</h1>
         </td></tr>
-        <tr><td style="padding:28px;font-size:15px;line-height:1.6;color:#0f172a;">
+        <tr><td style="padding:8px 36px 28px;font-size:15px;line-height:1.65;color:#cfd9d3;">
           ${opts.bodyHtml}
           ${cta}
+          ${sig}
         </td></tr>
-        <tr><td style="padding:18px 28px;background:#f8fafc;border-top:1px solid #e5e7eb;font-size:12px;color:#64748b;text-align:center;">
+        <tr><td style="padding:16px 36px;background:${subtleBg};border-top:1px solid ${brand}33;font-size:11px;color:#6b7e75;text-align:center;letter-spacing:0.3px;">
           Este é um e-mail automático da Ligasuno. Em caso de dúvidas, procure a presidência da sua liga.
         </td></tr>
       </table>
     </td></tr>
   </table>
 </body></html>`;
+}
+
+/** Card destacado para usar dentro do bodyHtml — adota a cor da liga. */
+export function emailInfoCard(opts: { title: string; rows: Array<{ label: string; value: string }>; brandColor?: string }): string {
+  const brand = (opts.brandColor || "#1f5132").trim();
+  const rows = opts.rows
+    .map((r) => `<p style="margin:6px 0;color:#cfd9d3;"><strong style="color:#ffffff;">${r.label}:</strong> ${r.value}</p>`)
+    .join("");
+  return `<div style="margin:18px 0;padding:18px 20px;border:1px solid ${brand}40;background:#0c1a14;border-radius:12px;">
+    <div style="font-size:11px;letter-spacing:2px;color:${brand};font-weight:700;text-transform:uppercase;margin-bottom:10px;">${opts.title}</div>
+    ${rows}
+  </div>`;
 }
