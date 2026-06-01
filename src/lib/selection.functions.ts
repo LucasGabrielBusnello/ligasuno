@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { computeFee, createSplitPreference, loadFeeForCategory, loadLeagueMpAccount, searchPaymentsByExternalRef } from "@/lib/mp.server";
+import { sendClassifiedAsLiganteEmail } from "@/lib/gmail.server";
 
 const PUBLISHED_URL = "https://ligasuno.lovable.app";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
