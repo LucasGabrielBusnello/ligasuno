@@ -93,6 +93,7 @@ export const createEventCheckout = createServerFn({ method: "POST" })
       externalReference: `event:${reg.id}`,
       notificationUrl: WEBHOOK_URL,
       metadata: { registration_id: reg.id, event_id: data.event_id, user_id: userId, league_id: leagueId },
+      pixOnly: true,
     });
 
     await supabaseAdmin.from("event_registrations")
