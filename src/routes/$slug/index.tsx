@@ -97,21 +97,55 @@ function LeaguePage() {
     supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user.id).maybeSingle().then(({ data }) => setMySelectionReg(data));
   }, [user, league]);
 
-  // Detecta ?selection_paid=1
+  // Detecta ?selection_paid=1 — faz polling enquanto webhook não confirma
+  const [verifyingSelection, setVerifyingSelection] = useState(false);
   useEffect(() => {
-    if (typeof window === "undefined" || !league) return;
+    if (typeof window === "undefined" || !league || !user) return;
     const url = new URL(window.location.href);
     const sp = url.searchParams.get("selection_paid");
     if (!sp) return;
-    if (sp === "1") {
-      toast.success("Inscrição na prova confirmada!");
-      supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user?.id ?? "").maybeSingle().then(({ data }) => { setMySelectionReg(data); if (data) setSelectionPanelOpen(true); });
-    } else if (sp === "0") {
-      toast.error("Pagamento cancelado.");
-    }
     url.searchParams.delete("selection_paid");
     window.history.replaceState({}, "", url.pathname + (url.search ? "?" + url.searchParams.toString() : ""));
+    if (sp === "0") { toast.error("Pagamento cancelado."); return; }
+    if (sp !== "1") return;
+
+    let cancelled = false;
+    setVerifyingSelection(true);
+    toast.success("Pagamento recebido! Confirmando inscrição...");
+    (async () => {
+      for (let i = 0; i < 12 && !cancelled; i++) {
+        const { data } = await supabase.from("league_selection_registrations")
+          .select("*").eq("league_id", league.id).eq("user_id", user.id).maybeSingle();
+        if (data) {
+          setMySelectionReg(data);
+          if ((data as any).status === "paid") {
+            setSelectionPanelOpen(true);
+            setVerifyingSelection(false);
+            return;
+          }
+          // Fallback: pergunta direto ao MP se já aprovou
+          try {
+            const r: any = await verifySelection({ data: { registration_id: (data as any).id } } as any);
+            if (r?.status === "paid") {
+              const { data: fresh } = await supabase.from("league_selection_registrations")
+                .select("*").eq("id", (data as any).id).maybeSingle();
+              if (fresh) setMySelectionReg(fresh);
+              setSelectionPanelOpen(true);
+              setVerifyingSelection(false);
+              return;
+            }
+          } catch { /* ignora e segue tentando */ }
+        }
+        await new Promise(r => setTimeout(r, 2500));
+      }
+      if (!cancelled) {
+        setVerifyingSelection(false);
+        toast.message("Pagamento ainda em processamento. Atualize a página em alguns instantes.");
+      }
+    })();
+    return () => { cancelled = true; };
   }, [league, user]);
+
 
   // Detecta ?event=ID&paid=1 (confirmação) ou ?event=ID (abrir registro/painel)
   useEffect(() => {
