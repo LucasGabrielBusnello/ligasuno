@@ -73,28 +73,44 @@ function fmtDate(iso: string): string {
 
 // ------------------ ensure / get current cycle ------------------
 
-/** Garante que existe um payment row pra cada ligante ativo da liga no ciclo dado. */
-async function ensurePaymentsForCycle(cycleId: string, leagueId: string, amountCents: number) {
+/**
+ * Garante linha de payment para cada ligante/diretor ativo, usando o valor correto
+ * conforme o papel: diretores e o presidente usam `directorAmountCents`, demais
+ * usam o `amountCents` (padrão do CAMED).
+ */
+async function ensurePaymentsForCycle(
+  cycleId: string,
+  leagueId: string,
+  amountCents: number,
+  directorAmountCents: number,
+  presidentId: string | null,
+) {
   const { data: members } = await supabaseAdmin
     .from("league_memberships")
-    .select("user_id")
+    .select("user_id, role")
     .eq("league_id", leagueId)
-    .in("role", ["ligante", "diretor"]);
-  const userIds = (members ?? []).map((m: any) => m.user_id);
-  if (!userIds.length) return;
+    .in("role", ["ligante", "diretor", "presidente"]);
+  const list = (members ?? []) as Array<{ user_id: string; role: string }>;
+  if (!list.length) return;
 
-  const rows = userIds.map((uid) => ({
-    cycle_id: cycleId,
-    league_id: leagueId,
-    user_id: uid,
-    status: "pending" as const,
-    amount_due_cents: amountCents,
-  }));
-  // Upsert sem mexer em quem já pagou
-  for (const r of rows) {
+  for (const m of list) {
+    const isLeader =
+      m.role === "diretor" ||
+      m.role === "presidente" ||
+      (presidentId && m.user_id === presidentId);
+    const due = isLeader ? directorAmountCents : amountCents;
     await supabaseAdmin
       .from("semester_payments")
-      .upsert(r, { onConflict: "cycle_id,user_id", ignoreDuplicates: true });
+      .upsert(
+        {
+          cycle_id: cycleId,
+          league_id: leagueId,
+          user_id: m.user_id,
+          status: "pending" as const,
+          amount_due_cents: due,
+        },
+        { onConflict: "cycle_id,user_id", ignoreDuplicates: true },
+      );
   }
 }
 
