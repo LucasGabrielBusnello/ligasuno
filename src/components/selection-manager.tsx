@@ -164,19 +164,22 @@ function ExamSection({ league }: { league: any }) {
   const [showWaitlist, setShowWaitlist] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [quotas, setQuotas] = useState<any[]>([]);
+  const [ligantes, setLigantes] = useState<Set<string>>(new Set());
   const gen = useServerFn(generateRanking);
   const rem = useServerFn(removeFromRanking);
   const undo = useServerFn(undoLastRanking);
-  const ligante = useServerFn(setAsLigante);
+  const toggle = useServerFn(toggleLigante);
 
   async function reload() {
     setLoading(true);
-    const [{ data: rs }, { data: qs }] = await Promise.all([
+    const [{ data: rs }, { data: qs }, { data: ms }] = await Promise.all([
       supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("status", "paid"),
       supabase.from("league_selection_quotas").select("*").eq("league_id", league.id),
+      supabase.from("league_memberships").select("user_id, role").eq("league_id", league.id).eq("role", "ligante"),
     ]);
     setRegs(rs ?? []);
     setQuotas(qs ?? []);
+    setLigantes(new Set((ms ?? []).map((m: any) => m.user_id)));
     setLoading(false);
   }
   useEffect(() => { reload(); }, [league.id]);
@@ -204,9 +207,16 @@ function ExamSection({ league }: { league: any }) {
     try { await rem({ data: { registration_id: id } } as any); toast.success("Substituição feita"); reload(); }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
-  async function doLigante(id: string) {
-    try { await ligante({ data: { registration_id: id } } as any); toast.success("Definido como ligante"); }
-    catch (e: any) { toast.error(e?.message ?? "Erro"); }
+  async function doToggleLigante(reg: any) {
+    try {
+      const res: any = await toggle({ data: { registration_id: reg.id } } as any);
+      setLigantes(prev => {
+        const next = new Set(prev);
+        if (res?.isLigante) next.add(reg.user_id); else next.delete(reg.user_id);
+        return next;
+      });
+      toast.success(res?.isLigante ? "Adicionado como ligante" : "Removido de ligante");
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
 
   const classified = regs.filter(r => r.ranked_via && r.ranked_via !== "waitlist" && r.ranked_via !== "eliminated")
