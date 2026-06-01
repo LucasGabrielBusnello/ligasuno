@@ -18,6 +18,8 @@ import { Route as PresidenteSlugRouteImport } from './routes/presidente.$slug'
 import { Route as LiganteSlugRouteImport } from './routes/ligante.$slug'
 import { Route as DiretorSlugRouteImport } from './routes/diretor.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicPaymentsMpWebhookRouteImport } from './routes/api/public/payments/mp-webhook'
+import { Route as ApiPublicPaymentsMpOauthCallbackRouteImport } from './routes/api/public/payments/mp-oauth-callback'
 
 const CamedRoute = CamedRouteImport.update({
   id: '/camed',
@@ -65,6 +67,18 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaymentsMpWebhookRoute =
+  ApiPublicPaymentsMpWebhookRouteImport.update({
+    id: '/api/public/payments/mp-webhook',
+    path: '/api/public/payments/mp-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicPaymentsMpOauthCallbackRoute =
+  ApiPublicPaymentsMpOauthCallbackRouteImport.update({
+    id: '/api/public/payments/mp-oauth-callback',
+    path: '/api/public/payments/mp-oauth-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +89,8 @@ export interface FileRoutesByFullPath {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
+  '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
+  '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -86,6 +102,8 @@ export interface FileRoutesByTo {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug': typeof SlugIndexRoute
+  '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
+  '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -98,6 +116,8 @@ export interface FileRoutesById {
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
   '/$slug/': typeof SlugIndexRoute
+  '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
+  '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -111,6 +131,8 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug/'
+    | '/api/public/payments/mp-oauth-callback'
+    | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -122,6 +144,8 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug'
+    | '/api/public/payments/mp-oauth-callback'
+    | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -133,6 +157,8 @@ export interface FileRouteTypes {
     | '/ligante/$slug'
     | '/presidente/$slug'
     | '/$slug/'
+    | '/api/public/payments/mp-oauth-callback'
+    | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -145,6 +171,8 @@ export interface RootRouteChildren {
   LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
   SlugIndexRoute: typeof SlugIndexRoute
+  ApiPublicPaymentsMpOauthCallbackRoute: typeof ApiPublicPaymentsMpOauthCallbackRoute
+  ApiPublicPaymentsMpWebhookRoute: typeof ApiPublicPaymentsMpWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -213,6 +241,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/mp-webhook': {
+      id: '/api/public/payments/mp-webhook'
+      path: '/api/public/payments/mp-webhook'
+      fullPath: '/api/public/payments/mp-webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsMpWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/payments/mp-oauth-callback': {
+      id: '/api/public/payments/mp-oauth-callback'
+      path: '/api/public/payments/mp-oauth-callback'
+      fullPath: '/api/public/payments/mp-oauth-callback'
+      preLoaderRoute: typeof ApiPublicPaymentsMpOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,8 +267,20 @@ const rootRouteChildren: RootRouteChildren = {
   LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,
   SlugIndexRoute: SlugIndexRoute,
+  ApiPublicPaymentsMpOauthCallbackRoute: ApiPublicPaymentsMpOauthCallbackRoute,
+  ApiPublicPaymentsMpWebhookRoute: ApiPublicPaymentsMpWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
