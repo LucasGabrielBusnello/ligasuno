@@ -89,6 +89,28 @@ function LeaguePage() {
     });
   }, [user, events]);
 
+  // Carrega inscrição do usuário no processo seletivo desta liga
+  useEffect(() => {
+    if (!user || !league) { setMySelectionReg(null); return; }
+    supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user.id).maybeSingle().then(({ data }) => setMySelectionReg(data));
+  }, [user, league]);
+
+  // Detecta ?selection_paid=1
+  useEffect(() => {
+    if (typeof window === "undefined" || !league) return;
+    const url = new URL(window.location.href);
+    const sp = url.searchParams.get("selection_paid");
+    if (!sp) return;
+    if (sp === "1") {
+      toast.success("Inscrição na prova confirmada!");
+      supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user?.id ?? "").maybeSingle().then(({ data }) => { setMySelectionReg(data); if (data) setSelectionPanelOpen(true); });
+    } else if (sp === "0") {
+      toast.error("Pagamento cancelado.");
+    }
+    url.searchParams.delete("selection_paid");
+    window.history.replaceState({}, "", url.pathname + (url.search ? "?" + url.searchParams.toString() : ""));
+  }, [league, user]);
+
   // Detecta ?event=ID&paid=1 (confirmação) ou ?event=ID (abrir registro/painel)
   useEffect(() => {
     if (typeof window === "undefined" || events.length === 0) return;
