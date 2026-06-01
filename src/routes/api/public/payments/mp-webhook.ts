@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getPayment, getPreapproval } from "@/lib/mp.server";
+import { sendGmail, emailLayout } from "@/lib/gmail.server";
+
 
 /**
  * Webhook do Mercado Pago.
@@ -129,6 +131,44 @@ async function handlePayment(paymentId: string) {
   } else if (category === "selection") {
     await supabaseAdmin.from("league_selection_registrations")
       .update({ status: approved ? "paid" : "pending" }).eq("id", refId);
+  } else if (category === "semester") {
+    if (approved) {
+      await supabaseAdmin.from("semester_payments")
+        .update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          amount_paid_cents: Math.round(grossAmount * 100),
+          mp_payment_id: String(paymentId),
+        })
+        .eq("id", refId);
+      // Confirmação por e-mail
+      const { data: sp } = await supabaseAdmin
+        .from("semester_payments")
+        .select("amount_paid_cents, semester_cycles!inner(semester, year), leagues:league_id(name), profiles!semester_payments_user_id_fkey(email, full_name, username)")
+        .eq("id", refId)
+        .maybeSingle();
+      const email = (sp as any)?.profiles?.email;
+      if (email) {
+        const name = (sp as any).profiles?.full_name || (sp as any).profiles?.username || "ligante";
+        const cy = (sp as any).semester_cycles;
+        const leagueName = (sp as any).leagues?.name ?? "";
+        try {
+          await sendGmail({
+            to: email,
+            subject: `Semestralidade paga — ${leagueName}`,
+            html: emailLayout({
+              title: "Pagamento confirmado ✓",
+              bodyHtml: `<p>Olá, <strong>${name}</strong>!</p>
+                <p>Recebemos seu pagamento da semestralidade ${cy?.semester}º/${cy?.year} de <strong>${leagueName}</strong>.</p>
+                <p><strong>Valor:</strong> ${(((sp as any).amount_paid_cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+                <p>Você está em dia. Bom semestre!</p>`,
+            }),
+          });
+        } catch (e) {
+          console.error("Falha ao enviar confirmação de semestralidade", e);
+        }
+      }
+    }
   }
 }
 
