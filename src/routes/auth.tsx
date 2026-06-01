@@ -70,12 +70,13 @@ function translateError(msg: string): string {
 
 function AuthPage() {
   const nav = useNavigate();
+  const welcome = useServerFn(sendWelcomeEmailForUser);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
   const [li, setLi] = useState({ email: "", password: "" });
-  const [su, setSu] = useState({ username: "", email: "", phone: "", password: "", confirmPassword: "" });
+  const [su, setSu] = useState({ username: "", email: "", phone: "", registration_number: "", password: "", confirmPassword: "" });
 
   function reset() {
     setError(null);
