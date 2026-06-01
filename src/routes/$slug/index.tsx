@@ -43,6 +43,9 @@ function LeaguePage() {
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
   const [regsLoaded, setRegsLoaded] = useState(false);
   const [activeQuizSet, setActiveQuizSet] = useState<any | null>(null);
+  const [mySelectionReg, setMySelectionReg] = useState<any | null>(null);
+  const [selectionRegOpen, setSelectionRegOpen] = useState(false);
+  const [selectionPanelOpen, setSelectionPanelOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
