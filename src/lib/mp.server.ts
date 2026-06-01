@@ -99,6 +99,7 @@ export async function createSplitPreference(args: {
   externalReference: string;
   notificationUrl: string;
   metadata?: Record<string, any>;
+  pixOnly?: boolean;
 }) {
   const body: any = {
     items: [{
@@ -122,10 +123,32 @@ export async function createSplitPreference(args: {
     statement_descriptor: "LIGASUNO",
     binary_mode: false,
   };
+  if (args.pixOnly) {
+    // Restringe a Checkout Pro ao PIX: exclui cartões, boleto, débito em conta.
+    body.payment_methods = {
+      excluded_payment_types: [
+        { id: "credit_card" },
+        { id: "debit_card" },
+        { id: "ticket" },
+        { id: "atm" },
+      ],
+      installments: 1,
+      default_payment_method_id: "pix",
+    };
+  }
   return mpFetch<{ id: string; init_point: string; sandbox_init_point: string }>(
     "/checkout/preferences",
     { method: "POST", body, accessToken: args.sellerAccessToken },
   );
+}
+
+/**
+ * Busca pagamentos no MP por external_reference usando o token do vendedor.
+ * Útil para reconciliar quando o webhook ainda não chegou.
+ */
+export async function searchPaymentsByExternalRef(externalRef: string, sellerAccessToken: string) {
+  const qs = new URLSearchParams({ external_reference: externalRef, sort: "date_created", criteria: "desc", limit: "5" });
+  return mpFetch<any>(`/v1/payments/search?${qs.toString()}`, { accessToken: sellerAccessToken });
 }
 
 /**

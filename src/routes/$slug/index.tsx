@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createEventCheckout } from "@/lib/events.functions";
+import { verifySelectionPayment } from "@/lib/selection.functions";
 import { SelectionRegisterDialog, SelectionAccessDialog } from "@/components/selection-public";
 import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList } from "lucide-react";
 
@@ -29,6 +30,7 @@ function LeaguePage() {
   const { slug } = Route.useParams();
   const { user, isAdminMaster } = useAuth();
   const nav = useNavigate();
+  const verifySelection = useServerFn(verifySelectionPayment);
   const [league, setLeague] = useState<League | null>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
@@ -95,21 +97,55 @@ function LeaguePage() {
     supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user.id).maybeSingle().then(({ data }) => setMySelectionReg(data));
   }, [user, league]);
 
-  // Detecta ?selection_paid=1
+  // Detecta ?selection_paid=1 — faz polling enquanto webhook não confirma
+  const [verifyingSelection, setVerifyingSelection] = useState(false);
   useEffect(() => {
-    if (typeof window === "undefined" || !league) return;
+    if (typeof window === "undefined" || !league || !user) return;
     const url = new URL(window.location.href);
     const sp = url.searchParams.get("selection_paid");
     if (!sp) return;
-    if (sp === "1") {
-      toast.success("Inscrição na prova confirmada!");
-      supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user?.id ?? "").maybeSingle().then(({ data }) => { setMySelectionReg(data); if (data) setSelectionPanelOpen(true); });
-    } else if (sp === "0") {
-      toast.error("Pagamento cancelado.");
-    }
     url.searchParams.delete("selection_paid");
     window.history.replaceState({}, "", url.pathname + (url.search ? "?" + url.searchParams.toString() : ""));
+    if (sp === "0") { toast.error("Pagamento cancelado."); return; }
+    if (sp !== "1") return;
+
+    let cancelled = false;
+    setVerifyingSelection(true);
+    toast.success("Pagamento recebido! Confirmando inscrição...");
+    (async () => {
+      for (let i = 0; i < 12 && !cancelled; i++) {
+        const { data } = await supabase.from("league_selection_registrations")
+          .select("*").eq("league_id", league.id).eq("user_id", user.id).maybeSingle();
+        if (data) {
+          setMySelectionReg(data);
+          if ((data as any).status === "paid") {
+            setSelectionPanelOpen(true);
+            setVerifyingSelection(false);
+            return;
+          }
+          // Fallback: pergunta direto ao MP se já aprovou
+          try {
+            const r: any = await verifySelection({ data: { registration_id: (data as any).id } } as any);
+            if (r?.status === "paid") {
+              const { data: fresh } = await supabase.from("league_selection_registrations")
+                .select("*").eq("id", (data as any).id).maybeSingle();
+              if (fresh) setMySelectionReg(fresh);
+              setSelectionPanelOpen(true);
+              setVerifyingSelection(false);
+              return;
+            }
+          } catch { /* ignora e segue tentando */ }
+        }
+        await new Promise(r => setTimeout(r, 2500));
+      }
+      if (!cancelled) {
+        setVerifyingSelection(false);
+        toast.message("Pagamento ainda em processamento. Atualize a página em alguns instantes.");
+      }
+    })();
+    return () => { cancelled = true; };
   }, [league, user]);
+
 
   // Detecta ?event=ID&paid=1 (confirmação) ou ?event=ID (abrir registro/painel)
   useEffect(() => {
@@ -202,6 +238,19 @@ function LeaguePage() {
             const deadlinePassed = (league as any).selection_deadline && new Date((league as any).selection_deadline) < new Date();
             if (mySelectionReg && mySelectionReg.status === "paid") {
               return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionPanelOpen(true)}><ClipboardList className="size-5" /> Acessar minha inscrição</Button>;
+            }
+            if (mySelectionReg && mySelectionReg.status !== "paid") {
+              return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" disabled={verifyingSelection} onClick={async () => {
+                setVerifyingSelection(true);
+                try {
+                  const r: any = await verifySelection({ data: { registration_id: mySelectionReg.id } } as any);
+                  const { data: fresh } = await supabase.from("league_selection_registrations").select("*").eq("id", mySelectionReg.id).maybeSingle();
+                  if (fresh) setMySelectionReg(fresh);
+                  if (r?.status === "paid") { toast.success("Pagamento confirmado!"); setSelectionPanelOpen(true); }
+                  else toast.message("Pagamento ainda não confirmado pelo Mercado Pago.");
+                } catch (e: any) { toast.error(e?.message ?? "Falha ao verificar"); }
+                finally { setVerifyingSelection(false); }
+              }}><ClipboardList className="size-5" /> {verifyingSelection ? "Verificando pagamento..." : "Confirmar pagamento da inscrição"}</Button>;
             }
             if (deadlinePassed) return <Button size="lg" disabled className="mt-8">Inscrições encerradas</Button>;
             if (!user) return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => nav({ to: "/auth" })}><LogIn className="size-5" /> Entrar para se inscrever na prova</Button>;
