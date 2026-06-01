@@ -139,6 +139,75 @@ function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: a
   );
 }
 
+function MpConnectCard({ leagueId }: { leagueId: string }) {
+  const [account, setAccount] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const startOAuth = useServerFn(startMpOAuth);
+  const disconnect = useServerFn(disconnectMp);
+
+  async function reload() {
+    const { data } = await supabase.from("league_mp_accounts").select("*").eq("league_id", leagueId).maybeSingle();
+    setAccount(data);
+  }
+  useEffect(() => { reload(); }, [leagueId]);
+
+  // Mostra feedback do callback OAuth
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("mp_connected") === "1") { toast.success("Mercado Pago conectado!"); reload(); }
+    if (p.get("mp_error")) toast.error("Falha ao conectar Mercado Pago: " + p.get("mp_error"));
+  }, []);
+
+  async function connect() {
+    try {
+      setLoading(true);
+      const r = await startOAuth({ data: { league_id: leagueId } });
+      if (r?.url) window.location.href = r.url;
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); } finally { setLoading(false); }
+  }
+  async function unlink() {
+    if (!confirm("Desconectar Mercado Pago? Inscrições pagas ficarão indisponíveis até reconectar.")) return;
+    try { await disconnect({ data: { league_id: leagueId } }); toast.success("Desconectado"); reload(); }
+    catch (e: any) { toast.error(e?.message ?? "Falha"); }
+  }
+
+  const connected = !!account;
+
+  return (
+    <Card className={`mb-6 ${connected ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5"}`}>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <DollarSign className="size-5" />
+          Mercado Pago {connected && <Badge className="bg-emerald-600">Conectado</Badge>}
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {connected
+            ? "Inscrições pagas (eventos, minicursos, processo seletivo) caem direto na sua conta Mercado Pago. A plataforma retém uma pequena taxa de repasse automaticamente."
+            : "Conecte sua conta Mercado Pago para começar a receber pagamentos. Os valores caem direto na sua conta. Você precisa ter CPF cadastrado no Mercado Pago — a conta é gratuita."}
+        </p>
+      </CardHeader>
+      <CardContent>
+        {!connected ? (
+          <Button onClick={connect} disabled={loading} size="lg">
+            {loading ? "Abrindo..." : "Conectar Mercado Pago"}
+          </Button>
+        ) : (
+          <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+            <div className="text-sm">
+              <div>ID Mercado Pago: <code className="font-mono">{account.mp_user_id}</code></div>
+              <div className="text-muted-foreground text-xs">Conectado em {new Date(account.connected_at).toLocaleDateString("pt-BR")}</div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={connect} disabled={loading}>Reconectar</Button>
+              <Button variant="destructive" onClick={unlink}>Desconectar</Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ConfigTab({ league, setLeague, paid }: any) {
   const [f, setF] = useState({ name: league.name, icon_url: league.icon_url ?? "", theme_color: league.theme_color, description: league.description ?? "" });
   const [pub, setPub] = useState(league.published);
