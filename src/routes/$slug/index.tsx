@@ -239,6 +239,19 @@ function LeaguePage() {
             if (mySelectionReg && mySelectionReg.status === "paid") {
               return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionPanelOpen(true)}><ClipboardList className="size-5" /> Acessar minha inscrição</Button>;
             }
+            if (mySelectionReg && mySelectionReg.status !== "paid") {
+              return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" disabled={verifyingSelection} onClick={async () => {
+                setVerifyingSelection(true);
+                try {
+                  const r: any = await verifySelection({ data: { registration_id: mySelectionReg.id } } as any);
+                  const { data: fresh } = await supabase.from("league_selection_registrations").select("*").eq("id", mySelectionReg.id).maybeSingle();
+                  if (fresh) setMySelectionReg(fresh);
+                  if (r?.status === "paid") { toast.success("Pagamento confirmado!"); setSelectionPanelOpen(true); }
+                  else toast.message("Pagamento ainda não confirmado pelo Mercado Pago.");
+                } catch (e: any) { toast.error(e?.message ?? "Falha ao verificar"); }
+                finally { setVerifyingSelection(false); }
+              }}><ClipboardList className="size-5" /> {verifyingSelection ? "Verificando pagamento..." : "Confirmar pagamento da inscrição"}</Button>;
+            }
             if (deadlinePassed) return <Button size="lg" disabled className="mt-8">Inscrições encerradas</Button>;
             if (!user) return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => nav({ to: "/auth" })}><LogIn className="size-5" /> Entrar para se inscrever na prova</Button>;
             return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionRegOpen(true)}><ClipboardList className="size-5" /> Inscreva-se no processo seletivo</Button>;
