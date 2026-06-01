@@ -14,17 +14,20 @@ function base64UrlEncode(s: string): string {
 }
 
 function buildRawMime(args: { to: string; subject: string; html: string; from?: string }): string {
-  const lines = [
+  // Codifica o HTML em base64 para evitar problemas com UTF-8 multibyte (—, é, ã)
+  // que quebram o corpo quando enviado como 7bit. Quebra em linhas de 76 chars (RFC).
+  const htmlB64 = Buffer.from(args.html, "utf-8").toString("base64").replace(/(.{76})/g, "$1\r\n");
+  const subjectB64 = Buffer.from(args.subject, "utf-8").toString("base64");
+  const headers = [
     args.from ? `From: ${args.from}` : null,
     `To: ${args.to}`,
-    `Subject: =?UTF-8?B?${Buffer.from(args.subject, "utf-8").toString("base64")}?=`,
+    `Subject: =?UTF-8?B?${subjectB64}?=`,
     "MIME-Version: 1.0",
     'Content-Type: text/html; charset="UTF-8"',
-    "Content-Transfer-Encoding: 7bit",
-    "",
-    args.html,
+    "Content-Transfer-Encoding: base64",
   ].filter(Boolean) as string[];
-  return base64UrlEncode(lines.join("\r\n"));
+  const mime = headers.join("\r\n") + "\r\n\r\n" + htmlB64;
+  return base64UrlEncode(mime);
 }
 
 export type SendGmailArgs = {
