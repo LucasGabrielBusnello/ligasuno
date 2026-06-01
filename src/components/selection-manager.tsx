@@ -304,7 +304,7 @@ function ExamSection({ league }: { league: any }) {
   );
 }
 
-function RankRow({ reg, onRemove, onLigante }: { reg: any; onRemove: () => void; onLigante: () => void }) {
+function RankRow({ reg, isLigante, onRemove, onToggleLigante }: { reg: any; isLigante: boolean; onRemove: () => void; onToggleLigante: () => void }) {
   return (
     <div className="p-2 rounded border flex items-center justify-between gap-2 text-sm">
       <div className="min-w-0 flex-1">
@@ -312,8 +312,10 @@ function RankRow({ reg, onRemove, onLigante }: { reg: any; onRemove: () => void;
         <span className="text-xs text-muted-foreground"> · {reg.semester}º · nota {reg.grade ?? "—"}</span>
       </div>
       <div className="flex gap-1 shrink-0">
-        <Button size="sm" variant="outline" onClick={onLigante}><UserPlus className="size-3" /> Ligante</Button>
-        <Button size="sm" variant="destructive" onClick={onRemove}><X className="size-3" /></Button>
+        <Button size="sm" variant={isLigante ? "destructive" : "outline"} onClick={onToggleLigante}>
+          {isLigante ? <><X className="size-3" /> Remover</> : <><UserPlus className="size-3" /> Ligante</>}
+        </Button>
+        <Button size="sm" variant="destructive" onClick={onRemove} title="Remover da classificação"><X className="size-3" /></Button>
       </div>
     </div>
   );
