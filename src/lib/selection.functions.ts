@@ -64,6 +64,7 @@ export const createSelectionCheckout = createServerFn({ method: "POST" })
       externalReference: `selection:${(reg as any).id}`,
       notificationUrl: WEBHOOK_URL,
       metadata: { selection_registration_id: (reg as any).id, user_id: userId, league_id: data.league_id },
+      pixOnly: true,
     });
 
     await (supabaseAdmin as any).from("league_selection_registrations")
