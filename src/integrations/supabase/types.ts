@@ -18,18 +18,42 @@ export type Database = {
         Row: {
           annual_fee_credit_monthly: number
           annual_fee_pix_monthly: number
+          fee_event_fixed: number
+          fee_event_pct: number
+          fee_minicourse_fixed: number
+          fee_minicourse_pct: number
+          fee_selection_fixed: number
+          fee_selection_pct: number
+          fee_semester_fixed: number
+          fee_semester_pct: number
           id: number
           updated_at: string
         }
         Insert: {
           annual_fee_credit_monthly?: number
           annual_fee_pix_monthly?: number
+          fee_event_fixed?: number
+          fee_event_pct?: number
+          fee_minicourse_fixed?: number
+          fee_minicourse_pct?: number
+          fee_selection_fixed?: number
+          fee_selection_pct?: number
+          fee_semester_fixed?: number
+          fee_semester_pct?: number
           id?: number
           updated_at?: string
         }
         Update: {
           annual_fee_credit_monthly?: number
           annual_fee_pix_monthly?: number
+          fee_event_fixed?: number
+          fee_event_pct?: number
+          fee_minicourse_fixed?: number
+          fee_minicourse_pct?: number
+          fee_selection_fixed?: number
+          fee_selection_pct?: number
+          fee_semester_fixed?: number
+          fee_semester_pct?: number
           id?: number
           updated_at?: string
         }
@@ -482,6 +506,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      league_mp_accounts: {
+        Row: {
+          access_token: string
+          connected_at: string
+          expires_at: string | null
+          id: string
+          league_id: string
+          live_mode: boolean
+          mp_user_id: string
+          public_key: string | null
+          refresh_token: string | null
+          scope: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string
+          expires_at?: string | null
+          id?: string
+          league_id: string
+          live_mode?: boolean
+          mp_user_id: string
+          public_key?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string
+          expires_at?: string | null
+          id?: string
+          league_id?: string
+          live_mode?: boolean
+          mp_user_id?: string
+          public_key?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       league_news: {
         Row: {
@@ -990,6 +1056,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      payment_transactions: {
+        Row: {
+          category: string
+          created_at: string
+          fee_amount: number
+          gross_amount: number
+          id: string
+          league_id: string | null
+          mp_payment_id: string | null
+          mp_preapproval_id: string | null
+          mp_preference_id: string | null
+          payment_method: string | null
+          raw: Json | null
+          reference_id: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          fee_amount?: number
+          gross_amount?: number
+          id?: string
+          league_id?: string | null
+          mp_payment_id?: string | null
+          mp_preapproval_id?: string | null
+          mp_preference_id?: string | null
+          payment_method?: string | null
+          raw?: Json | null
+          reference_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          fee_amount?: number
+          gross_amount?: number
+          id?: string
+          league_id?: string | null
+          mp_payment_id?: string | null
+          mp_preapproval_id?: string | null
+          mp_preference_id?: string | null
+          payment_method?: string | null
+          raw?: Json | null
+          reference_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
