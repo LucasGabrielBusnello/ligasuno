@@ -59,15 +59,23 @@ function LigantePage() {
         </div>
       </header>
       <main className="max-w-5xl mx-auto p-4 md:p-8">
-        <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Ligante</h1>
-        <p className="text-muted-foreground mb-6">{league.name}</p>
+        <h1 className="text-2xl md:text-4xl font-black mb-2">Painel do Ligante</h1>
+        <p className="text-muted-foreground mb-6 text-sm md:text-base">{league.name}</p>
 
         <Tabs defaultValue={initialTab}>
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1.5" />Agenda</TabsTrigger>
-            <TabsTrigger value="quizzes"><HelpCircle className="size-4 mr-1.5" />Quizzes</TabsTrigger>
-            <TabsTrigger value="attendance"><Calendar className="size-4 mr-1.5" />Minha Frequência</TabsTrigger>
-            <TabsTrigger value="ranking"><BarChart2 className="size-4 mr-1.5" />Meu Desempenho</TabsTrigger>
+          <TabsList className="grid grid-cols-4 w-full h-auto">
+            <TabsTrigger value="schedule" className="flex-col md:flex-row gap-0.5 md:gap-1.5 py-2 px-1 md:px-3 text-[10px] md:text-sm">
+              <CalendarDays className="size-4" /><span>Agenda</span>
+            </TabsTrigger>
+            <TabsTrigger value="quizzes" className="flex-col md:flex-row gap-0.5 md:gap-1.5 py-2 px-1 md:px-3 text-[10px] md:text-sm">
+              <HelpCircle className="size-4" /><span>Quizzes</span>
+            </TabsTrigger>
+            <TabsTrigger value="attendance" className="flex-col md:flex-row gap-0.5 md:gap-1.5 py-2 px-1 md:px-3 text-[10px] md:text-sm">
+              <Calendar className="size-4" /><span className="text-center leading-tight">Frequência</span>
+            </TabsTrigger>
+            <TabsTrigger value="ranking" className="flex-col md:flex-row gap-0.5 md:gap-1.5 py-2 px-1 md:px-3 text-[10px] md:text-sm">
+              <BarChart2 className="size-4" /><span className="text-center leading-tight">Desempenho</span>
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="schedule" className="mt-6"><ScheduleView league={league} /></TabsContent>
           <TabsContent value="quizzes" className="mt-6"><QuizView league={league} userId={user.id} isStaff={isStaff} initialSet={initialSet} /></TabsContent>
