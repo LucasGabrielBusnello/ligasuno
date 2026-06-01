@@ -3,9 +3,10 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
+import { computeFee, createSplitPreference, loadFeeForCategory, loadLeagueMpAccount } from "@/lib/mp.server";
 
-const GATEWAY = "https://connector-gateway.lovable.dev/stripe";
-const STRIPE_KEY = () => process.env.STRIPE_LIVE_API_KEY ?? process.env.STRIPE_SANDBOX_API_KEY;
+const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
 
 const schema = z.object({
   league_id: z.string().uuid(),
@@ -14,7 +15,6 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().min(8).max(30),
   semester: z.number().int().refine(v => [1,3,5,7,9,11].includes(v), "Semestre inválido"),
-  payment_method: z.enum(["card","pix"]).default("card"),
   origin_url: z.string().url(),
 });
 
@@ -48,49 +48,28 @@ export const createSelectionCheckout = createServerFn({ method: "POST" })
 
     if (fee === 0) return { free: true, registration_id: (reg as any).id };
 
-    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-    const KEY = STRIPE_KEY();
-    if (!LOVABLE_API_KEY || !KEY) throw new Error("Pagamentos não configurados");
+    const mpAccount = await loadLeagueMpAccount(supabaseAdmin, data.league_id);
+    const feeCfg = await loadFeeForCategory(supabaseAdmin, "selection");
+    const marketplaceFee = computeFee(fee, feeCfg.pct, feeCfg.fixed);
 
     const origin = data.origin_url.replace(/\/$/, "");
-    const successUrl = `${origin}/${l.slug}?selection_paid=1`;
-    const cancelUrl = `${origin}/${l.slug}?selection_paid=0`;
-
-    const params = new URLSearchParams();
-    params.append("mode","payment");
-    params.append("success_url", successUrl);
-    params.append("cancel_url", cancelUrl);
-    params.append("payment_method_types[]", data.payment_method);
-    if (data.payment_method === "pix") params.append("payment_method_options[pix][expires_after_seconds]","3600");
-    params.append("customer_email", data.email);
-    params.append("line_items[0][quantity]","1");
-    params.append("line_items[0][price_data][currency]","brl");
-    params.append("line_items[0][price_data][unit_amount]", String(Math.round(fee*100)));
-    params.append("line_items[0][price_data][product_data][name]", `Inscrição prova — ${l.name}`);
-    params.append("metadata[selection_registration_id]", (reg as any).id);
-    params.append("metadata[user_id]", userId);
-
-    const res = await fetch(`${GATEWAY}/v1/checkout/sessions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": KEY,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params.toString(),
+    const pref = await createSplitPreference({
+      sellerAccessToken: (mpAccount as any).access_token,
+      title: `Inscrição prova — ${l.name}`,
+      unitPrice: fee,
+      payerEmail: data.email,
+      successUrl: `${origin}/${l.slug}?selection_paid=1`,
+      failureUrl: `${origin}/${l.slug}?selection_paid=0`,
+      marketplaceFee,
+      externalReference: `selection:${(reg as any).id}`,
+      notificationUrl: WEBHOOK_URL,
+      metadata: { selection_registration_id: (reg as any).id, user_id: userId, league_id: data.league_id },
     });
-    const session = await res.json();
-    if (!res.ok) {
-      const msg = session?.error?.message ?? JSON.stringify(session);
-      if (typeof msg === "string" && msg.toLowerCase().includes("provided: pix is invalid")) {
-        throw new Error("Pix ainda não está habilitado na conta de pagamentos. Ative o Pix nas configurações.");
-      }
-      throw new Error(`Stripe falhou [${res.status}]: ${msg}`);
-    }
-    await (supabaseAdmin as any).from("league_selection_registrations")
-      .update({ stripe_session_id: session.id }).eq("id", (reg as any).id);
 
-    return { free: false, registration_id: (reg as any).id, url: session.url as string };
+    await (supabaseAdmin as any).from("league_selection_registrations")
+      .update({ stripe_session_id: pref.id }).eq("id", (reg as any).id);
+
+    return { free: false, registration_id: (reg as any).id, url: pref.init_point };
   });
 
 // ============ RANKING ============
