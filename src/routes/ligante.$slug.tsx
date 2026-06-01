@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, GraduationCap, HelpCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight, Lock, Layers, BarChart2, Calendar, CalendarDays, Trophy, Sparkles, Target, Flame, BookOpen } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { LiganteSemestralidadeCard } from "@/components/ligante-semestralidade-card";
 
 export const Route = createFileRoute("/ligante/$slug")({ component: LigantePage });
 
