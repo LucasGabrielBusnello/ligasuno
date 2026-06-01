@@ -121,21 +121,54 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
   }, [activeSet]);
 
   if (!activeSet) {
-    if (sets.length === 0) return <Card className="p-12 text-center text-muted-foreground">Nenhum caderno disponível ainda.</Card>;
+    if (sets.length === 0) return (
+      <Card className="p-12 text-center border-dashed">
+        <BookOpen className="size-16 mx-auto text-muted-foreground/40 mb-4" />
+        <p className="font-bold text-lg">Nenhum caderno disponível</p>
+        <p className="text-muted-foreground text-sm mt-1">Aguarde a presidência publicar conteúdo.</p>
+      </Card>
+    );
     return (
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sets.map((s) => {
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {sets.map((s, idx) => {
           const locked = s.is_private && !isStaff;
+          const setQuizIds = quizzes.filter((q: any) => q.quiz_set_id === s.id).map((q: any) => q.id);
+          // computa progresso a partir das respostas em memória contra o conjunto (best-effort: usa contagem total se carregado)
+          const answeredInSet = Object.keys(answers).filter((qid) => setQuizIds.includes(qid)).length;
           return (
-            <Card key={s.id} className={`overflow-hidden cursor-pointer hover:-translate-y-1 transition-all ${locked ? "opacity-60" : ""}`} onClick={() => { if (!locked) setActiveSet(s.id); }}>
-              <div className="h-2" style={{ background: league.theme_color }} />
-              <CardContent className="p-5">
-                <div className="size-12 rounded-xl flex items-center justify-center mb-3 text-white" style={{ background: league.theme_color }}>
-                  {locked ? <Lock className="size-6" /> : <Layers className="size-6" />}
+            <Card
+              key={s.id}
+              className={`group relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 border-2 ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
+              onClick={() => { if (!locked) setActiveSet(s.id); }}
+            >
+              {/* Hero gradient */}
+              <div
+                className="relative h-32 overflow-hidden"
+                style={{ background: `linear-gradient(135deg, ${league.theme_color}, ${league.theme_color}cc 60%, ${league.theme_color}80)` }}
+              >
+                <div className="absolute inset-0 opacity-20" style={{
+                  backgroundImage: "radial-gradient(circle at 20% 30%, white 0%, transparent 40%), radial-gradient(circle at 80% 70%, white 0%, transparent 40%)"
+                }} />
+                <div className="absolute top-3 right-3 flex gap-1.5">
+                  {s.is_private && <Badge variant="secondary" className="text-[10px] bg-white/90 text-black backdrop-blur"><Lock className="size-2.5 mr-1" />Privado</Badge>}
                 </div>
-                <h3 className="font-black">{s.title}</h3>
-                {s.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{s.description}</p>}
-                {s.is_private && <Badge variant="secondary" className="mt-2 text-[10px]">Exclusivo Ligantes</Badge>}
+                <div className="absolute bottom-3 left-4 flex items-center gap-3">
+                  <div className="size-14 rounded-2xl bg-white/95 backdrop-blur flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    {locked ? <Lock className="size-7" style={{ color: league.theme_color }} /> : <Layers className="size-7" style={{ color: league.theme_color }} />}
+                  </div>
+                  <span className="text-white/90 text-xs font-bold uppercase tracking-widest">Caderno #{idx + 1}</span>
+                </div>
+              </div>
+              <CardContent className="p-5">
+                <h3 className="font-black text-lg leading-tight">{s.title}</h3>
+                {s.description && <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">{s.description}</p>}
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                    <Sparkles className="size-3.5" style={{ color: league.theme_color }} />
+                    {locked ? "Exclusivo Ligantes" : "Começar"}
+                  </span>
+                  {!locked && <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-foreground transition-all" />}
+                </div>
               </CardContent>
             </Card>
           );
