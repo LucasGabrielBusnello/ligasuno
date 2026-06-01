@@ -30,6 +30,7 @@ function LeaguePage() {
   const { slug } = Route.useParams();
   const { user, isAdminMaster } = useAuth();
   const nav = useNavigate();
+  const verifySelection = useServerFn(verifySelectionPayment);
   const [league, setLeague] = useState<League | null>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
