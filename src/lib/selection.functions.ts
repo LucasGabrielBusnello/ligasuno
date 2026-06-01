@@ -73,6 +73,35 @@ export const createSelectionCheckout = createServerFn({ method: "POST" })
     return { free: false, registration_id: (reg as any).id, url: pref.init_point };
   });
 
+// Verifica pagamento pendente da inscrição na seleção via API do MP (fallback do webhook).
+export const verifySelectionPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ registration_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: reg } = await (supabaseAdmin as any)
+      .from("league_selection_registrations").select("*").eq("id", data.registration_id).maybeSingle();
+    if (!reg) throw new Error("Inscrição não encontrada");
+    if ((reg as any).user_id !== userId) throw new Error("Não autorizado");
+    if ((reg as any).status === "paid") return { status: "paid" };
+
+    try {
+      const mpAccount = await loadLeagueMpAccount(supabaseAdmin, (reg as any).league_id);
+      const result = await searchPaymentsByExternalRef(`selection:${(reg as any).id}`, (mpAccount as any).access_token);
+      const payments: any[] = result?.results ?? [];
+      const approved = payments.find(p => p.status === "approved");
+      if (approved) {
+        await (supabaseAdmin as any).from("league_selection_registrations")
+          .update({ status: "paid" }).eq("id", (reg as any).id);
+        return { status: "paid" };
+      }
+      const pending = payments.find(p => p.status === "pending" || p.status === "in_process");
+      return { status: pending ? "pending" : ((reg as any).status as string) };
+    } catch (e: any) {
+      return { status: (reg as any).status as string, error: e?.message };
+    }
+  });
+
 // ============ RANKING ============
 async function loadSelectionContext(leagueId: string) {
   const [{ data: league }, { data: regs }, { data: quotas }] = await Promise.all([
