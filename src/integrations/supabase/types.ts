@@ -1272,6 +1272,13 @@ export type Database = {
             referencedRelation: "public_leagues"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "semester_payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
