@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ArrowLeft, GraduationCap, HelpCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight, Lock, Layers, BarChart2, Calendar, CalendarDays } from "lucide-react";
+import { ArrowLeft, GraduationCap, HelpCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight, Lock, Layers, BarChart2, Calendar, CalendarDays, Trophy, Sparkles, Target, Flame, BookOpen } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 export const Route = createFileRoute("/ligante/$slug")({ component: LigantePage });
 
@@ -120,21 +121,54 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
   }, [activeSet]);
 
   if (!activeSet) {
-    if (sets.length === 0) return <Card className="p-12 text-center text-muted-foreground">Nenhum caderno disponível ainda.</Card>;
+    if (sets.length === 0) return (
+      <Card className="p-12 text-center border-dashed">
+        <BookOpen className="size-16 mx-auto text-muted-foreground/40 mb-4" />
+        <p className="font-bold text-lg">Nenhum caderno disponível</p>
+        <p className="text-muted-foreground text-sm mt-1">Aguarde a presidência publicar conteúdo.</p>
+      </Card>
+    );
     return (
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sets.map((s) => {
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {sets.map((s, idx) => {
           const locked = s.is_private && !isStaff;
+          const setQuizIds = quizzes.filter((q: any) => q.quiz_set_id === s.id).map((q: any) => q.id);
+          // computa progresso a partir das respostas em memória contra o conjunto (best-effort: usa contagem total se carregado)
+          const answeredInSet = Object.keys(answers).filter((qid) => setQuizIds.includes(qid)).length;
           return (
-            <Card key={s.id} className={`overflow-hidden cursor-pointer hover:-translate-y-1 transition-all ${locked ? "opacity-60" : ""}`} onClick={() => { if (!locked) setActiveSet(s.id); }}>
-              <div className="h-2" style={{ background: league.theme_color }} />
-              <CardContent className="p-5">
-                <div className="size-12 rounded-xl flex items-center justify-center mb-3 text-white" style={{ background: league.theme_color }}>
-                  {locked ? <Lock className="size-6" /> : <Layers className="size-6" />}
+            <Card
+              key={s.id}
+              className={`group relative overflow-hidden cursor-pointer hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 border-2 ${locked ? "opacity-60 cursor-not-allowed" : ""}`}
+              onClick={() => { if (!locked) setActiveSet(s.id); }}
+            >
+              {/* Hero gradient */}
+              <div
+                className="relative h-32 overflow-hidden"
+                style={{ background: `linear-gradient(135deg, ${league.theme_color}, ${league.theme_color}cc 60%, ${league.theme_color}80)` }}
+              >
+                <div className="absolute inset-0 opacity-20" style={{
+                  backgroundImage: "radial-gradient(circle at 20% 30%, white 0%, transparent 40%), radial-gradient(circle at 80% 70%, white 0%, transparent 40%)"
+                }} />
+                <div className="absolute top-3 right-3 flex gap-1.5">
+                  {s.is_private && <Badge variant="secondary" className="text-[10px] bg-white/90 text-black backdrop-blur"><Lock className="size-2.5 mr-1" />Privado</Badge>}
                 </div>
-                <h3 className="font-black">{s.title}</h3>
-                {s.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{s.description}</p>}
-                {s.is_private && <Badge variant="secondary" className="mt-2 text-[10px]">Exclusivo Ligantes</Badge>}
+                <div className="absolute bottom-3 left-4 flex items-center gap-3">
+                  <div className="size-14 rounded-2xl bg-white/95 backdrop-blur flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    {locked ? <Lock className="size-7" style={{ color: league.theme_color }} /> : <Layers className="size-7" style={{ color: league.theme_color }} />}
+                  </div>
+                  <span className="text-white/90 text-xs font-bold uppercase tracking-widest">Caderno #{idx + 1}</span>
+                </div>
+              </div>
+              <CardContent className="p-5">
+                <h3 className="font-black text-lg leading-tight">{s.title}</h3>
+                {s.description && <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">{s.description}</p>}
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <span className="text-xs font-bold text-muted-foreground flex items-center gap-1.5">
+                    <Sparkles className="size-3.5" style={{ color: league.theme_color }} />
+                    {locked ? "Exclusivo Ligantes" : "Começar"}
+                  </span>
+                  {!locked && <ChevronRight className="size-4 text-muted-foreground group-hover:translate-x-1 group-hover:text-foreground transition-all" />}
+                </div>
               </CardContent>
             </Card>
           );
@@ -153,17 +187,43 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
   if (showReport) {
     const correct = quizzes.filter((q) => answers[q.id]?.is_correct).length;
     const pct = Math.round((correct / quizzes.length) * 100);
+    const tier = pct >= 80 ? { label: "Excelente!", icon: Trophy, color: "from-emerald-400 to-emerald-600", text: "text-emerald-600" }
+      : pct >= 60 ? { label: "Bom trabalho", icon: Sparkles, color: "from-amber-400 to-orange-500", text: "text-amber-600" }
+      : { label: "Continue praticando", icon: Target, color: "from-rose-400 to-rose-600", text: "text-rose-600" };
+    const Icon = tier.icon;
     return (
       <div>
         <Button variant="ghost" onClick={() => setActiveSet(null)}><ChevronLeft className="size-4" /> Voltar aos cadernos</Button>
-        <Card className="mt-4"><CardContent className="p-8 text-center">
-          <div className={`size-32 mx-auto rounded-full flex items-center justify-center border-8 mb-4 ${pct >= 70 ? "border-emerald-400 text-emerald-600" : pct >= 50 ? "border-yellow-400 text-yellow-600" : "border-rose-400 text-rose-600"}`}>
-            <span className="text-4xl font-black">{pct}%</span>
+        <Card className="mt-4 overflow-hidden border-2">
+          <div className={`bg-gradient-to-br ${tier.color} p-8 text-center text-white`}>
+            <Icon className="size-12 mx-auto mb-3 drop-shadow-lg" />
+            <p className="text-sm font-bold uppercase tracking-widest opacity-90">{tier.label}</p>
+            <div className="text-7xl font-black mt-2 drop-shadow-md">{pct}%</div>
+            <p className="mt-2 text-sm opacity-90">{correct} de {quizzes.length} questões corretas</p>
           </div>
-          <h2 className="text-2xl font-black">Relatório</h2>
-          <p className="text-muted-foreground mt-1">{correct} acertos de {quizzes.length}</p>
-          <Button className="mt-6" onClick={() => { setShowReport(false); setCurr(0); setAns(null); }}>Revisar questões</Button>
-        </CardContent></Card>
+          <CardContent className="p-6 grid grid-cols-3 gap-3 text-center">
+            <div className="p-3 rounded-xl bg-emerald-500/10">
+              <CheckCircle className="size-5 mx-auto text-emerald-600 mb-1" />
+              <p className="text-2xl font-black text-emerald-600">{correct}</p>
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Acertos</p>
+            </div>
+            <div className="p-3 rounded-xl bg-rose-500/10">
+              <XCircle className="size-5 mx-auto text-rose-600 mb-1" />
+              <p className="text-2xl font-black text-rose-600">{quizzes.length - correct}</p>
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Erros</p>
+            </div>
+            <div className="p-3 rounded-xl bg-muted">
+              <Flame className="size-5 mx-auto text-orange-500 mb-1" />
+              <p className="text-2xl font-black">{quizzes.length}</p>
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Total</p>
+            </div>
+          </CardContent>
+          <div className="p-6 pt-0">
+            <Button className="w-full" size="lg" onClick={() => { setShowReport(false); setCurr(0); setAns(null); }}>
+              Revisar questões <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -171,6 +231,7 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
   const q = quizzes[curr];
   const existing = answers[q.id];
   const isAnswered = existing !== undefined;
+  const progressPct = ((curr + 1) / quizzes.length) * 100;
 
   async function verify() {
     if (ans === null) return;
@@ -186,45 +247,91 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
   return (
     <div>
       <Button variant="ghost" onClick={() => setActiveSet(null)}><ChevronLeft className="size-4" /> Voltar</Button>
-      <Card className="mt-4"><CardContent className="p-6 md:p-8">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="h-2 w-10 rounded-full" style={{ background: league.theme_color }} />
-          <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Questão {curr + 1} de {quizzes.length}</span>
+
+      {/* Progress bar global */}
+      <div className="mt-4 mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
+            <Target className="size-3.5" style={{ color: league.theme_color }} />
+            Questão {curr + 1} de {quizzes.length}
+          </span>
+          <span className="text-xs font-bold text-muted-foreground">{Math.round(progressPct)}%</span>
         </div>
-        <h2 className="text-xl md:text-2xl font-black mb-6">{q.question}</h2>
-        <div className="space-y-3">
-          {(q.options as string[]).map((opt, i) => {
-            let cls = "border bg-card hover:border-primary/50";
-            if (isAnswered) {
-              if (i === q.correct_answer) cls = "border-emerald-500 bg-emerald-500/10";
-              else if (i === existing.selected) cls = "border-rose-500 bg-rose-500/10";
-              else cls = "border bg-muted/40 opacity-60";
-            } else if (ans === i) cls = "border-primary bg-primary/5";
-            return (
-              <button key={i} disabled={isAnswered} onClick={() => setAns(i)} className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${cls}`}>
-                <span className="size-8 rounded-full bg-background border flex items-center justify-center font-black text-sm shrink-0">{String.fromCharCode(65 + i)}</span>
-                <span className="text-sm">{opt}</span>
-              </button>
-            );
-          })}
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${league.theme_color}, ${league.theme_color}80)` }}
+          />
         </div>
-        {!isAnswered && ans !== null && (
-          <Button className="mt-6 w-full" style={{ background: league.theme_color }} onClick={verify}>Verificar</Button>
-        )}
-        {isAnswered && (
-          <div className="mt-6 p-5 rounded-xl border bg-muted/30">
-            <p className={`font-black mb-2 flex items-center gap-2 ${existing.is_correct ? "text-emerald-600" : "text-rose-600"}`}>
-              {existing.is_correct ? <><CheckCircle className="size-5" /> Correto!</> : <><XCircle className="size-5" /> Incorreto</>}
-            </p>
-            {q.explanation && <p className="text-sm text-muted-foreground">{q.explanation}</p>}
-            <Button className="mt-4 w-full" onClick={() => {
-              setAns(null);
-              if (curr === quizzes.length - 1) setShowReport(true);
-              else setCurr(curr + 1);
-            }}>{curr === quizzes.length - 1 ? "Ver relatório" : "Próxima"} <ChevronRight className="size-4" /></Button>
+      </div>
+
+      <Card className="overflow-hidden border-2">
+        {/* Hero da questão */}
+        <div
+          className="relative px-6 md:px-8 py-6 text-white"
+          style={{ background: `linear-gradient(135deg, ${league.theme_color}, ${league.theme_color}dd)` }}
+        >
+          <div className="absolute inset-0 opacity-10" style={{
+            backgroundImage: "radial-gradient(circle at 10% 20%, white 0%, transparent 50%)"
+          }} />
+          <div className="relative">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur rounded-full px-3 py-1 mb-3">
+              <HelpCircle className="size-3.5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Questão {curr + 1}</span>
+            </div>
+            <h2 className="text-xl md:text-2xl font-black leading-snug drop-shadow-sm">{q.question}</h2>
           </div>
-        )}
-      </CardContent></Card>
+        </div>
+
+        <CardContent className="p-6 md:p-8">
+          <div className="space-y-3">
+            {(q.options as string[]).map((opt, i) => {
+              let cls = "border-2 border-border bg-card hover:border-primary/40 hover:bg-accent/30 hover:scale-[1.01]";
+              let circleCls = "bg-background border-2";
+              if (isAnswered) {
+                if (i === q.correct_answer) { cls = "border-2 border-emerald-500 bg-emerald-500/10"; circleCls = "bg-emerald-500 border-emerald-500 text-white"; }
+                else if (i === existing.selected) { cls = "border-2 border-rose-500 bg-rose-500/10"; circleCls = "bg-rose-500 border-rose-500 text-white"; }
+                else { cls = "border-2 border bg-muted/40 opacity-50"; }
+              } else if (ans === i) { cls = "border-2 border-primary bg-primary/10 scale-[1.01]"; circleCls = "bg-primary border-primary text-primary-foreground"; }
+              return (
+                <button
+                  key={i}
+                  disabled={isAnswered}
+                  onClick={() => setAns(i)}
+                  className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-4 ${cls}`}
+                >
+                  <span className={`size-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 transition-all ${circleCls}`}>
+                    {isAnswered && i === q.correct_answer ? <CheckCircle className="size-5" />
+                      : isAnswered && i === existing.selected ? <XCircle className="size-5" />
+                      : String.fromCharCode(65 + i)}
+                  </span>
+                  <span className="text-sm md:text-base font-medium flex-1">{opt}</span>
+                </button>
+              );
+            })}
+          </div>
+          {!isAnswered && ans !== null && (
+            <Button className="mt-6 w-full" size="lg" style={{ background: league.theme_color }} onClick={verify}>
+              <CheckCircle className="size-4" /> Verificar resposta
+            </Button>
+          )}
+          {isAnswered && (
+            <div className={`mt-6 p-5 rounded-xl border-2 ${existing.is_correct ? "bg-emerald-500/5 border-emerald-500/30" : "bg-rose-500/5 border-rose-500/30"}`}>
+              <p className={`font-black mb-2 flex items-center gap-2 text-lg ${existing.is_correct ? "text-emerald-600" : "text-rose-600"}`}>
+                {existing.is_correct ? <><CheckCircle className="size-6" /> Correto!</> : <><XCircle className="size-6" /> Incorreto</>}
+              </p>
+              {q.explanation && <p className="text-sm text-muted-foreground leading-relaxed">{q.explanation}</p>}
+              <Button className="mt-4 w-full" size="lg" onClick={() => {
+                setAns(null);
+                if (curr === quizzes.length - 1) setShowReport(true);
+                else setCurr(curr + 1);
+              }}>
+                {curr === quizzes.length - 1 ? <><Trophy className="size-4" /> Ver relatório</> : <>Próxima questão <ChevronRight className="size-4" /></>}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -235,19 +342,96 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
     supabase.from("league_attendance").select("*").eq("league_id", league.id).eq("user_id", userId).order("activity_date", { ascending: false })
       .then(({ data }) => setList(data ?? []));
   }, [league.id, userId]);
-  if (list.length === 0) return <Card className="p-12 text-center text-muted-foreground">Sem registros de frequência ainda.</Card>;
-  const presentes = list.filter((l) => l.present).length;
-  return (
-    <Card><CardHeader><CardTitle>Minha Frequência ({presentes}/{list.length})</CardTitle></CardHeader>
-      <CardContent className="space-y-2">
-        {list.map((a) => (
-          <div key={a.id} className="flex items-center justify-between p-3 rounded border">
-            <div><span className="font-bold">{a.activity}</span><span className="text-xs text-muted-foreground ml-2">{new Date(a.activity_date).toLocaleDateString("pt-BR")}</span></div>
-            {a.present ? <Badge className="bg-emerald-600">Presente</Badge> : <Badge variant="destructive">Faltou</Badge>}
-          </div>
-        ))}
-      </CardContent>
+
+  if (list.length === 0) return (
+    <Card className="p-12 text-center border-dashed">
+      <Calendar className="size-16 mx-auto text-muted-foreground/40 mb-4" />
+      <p className="font-bold text-lg">Sem registros ainda</p>
+      <p className="text-muted-foreground text-sm mt-1">Sua frequência aparecerá aqui após as atividades.</p>
     </Card>
+  );
+
+  const presentes = list.filter((l) => l.present).length;
+  const faltas = list.length - presentes;
+  const pct = Math.round((presentes / list.length) * 100);
+  const tier = pct >= 75 ? { color: "from-emerald-400 to-emerald-600", text: "text-emerald-600", label: "Frequência excelente" }
+    : pct >= 50 ? { color: "from-amber-400 to-orange-500", text: "text-amber-600", label: "Atenção à frequência" }
+    : { color: "from-rose-400 to-rose-600", text: "text-rose-600", label: "Frequência crítica" };
+
+  // SVG ring
+  const radius = 56;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (pct / 100) * circumference;
+
+  return (
+    <div className="space-y-5">
+      {/* Hero card com percentual em ring */}
+      <Card className="overflow-hidden border-2">
+        <div className={`bg-gradient-to-br ${tier.color} p-6 md:p-8`}>
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="relative shrink-0">
+              <svg width="140" height="140" viewBox="0 0 140 140" className="-rotate-90">
+                <circle cx="70" cy="70" r={radius} stroke="rgba(255,255,255,0.25)" strokeWidth="12" fill="none" />
+                <circle
+                  cx="70" cy="70" r={radius}
+                  stroke="white" strokeWidth="12" fill="none"
+                  strokeDasharray={`${dash} ${circumference}`}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000"
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                <span className="text-4xl font-black drop-shadow">{pct}%</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest opacity-90">Presença</span>
+              </div>
+            </div>
+            <div className="flex-1 text-white text-center md:text-left">
+              <p className="text-xs font-bold uppercase tracking-widest opacity-90 flex items-center justify-center md:justify-start gap-1.5">
+                <Flame className="size-3.5" /> {tier.label}
+              </p>
+              <h2 className="text-2xl md:text-3xl font-black mt-1">{presentes} de {list.length}</h2>
+              <p className="text-sm opacity-90 mt-1">atividades com presença</p>
+            </div>
+          </div>
+        </div>
+        <CardContent className="p-4 grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-xl bg-emerald-500/10 text-center">
+            <CheckCircle className="size-5 mx-auto text-emerald-600 mb-1" />
+            <p className="text-2xl font-black text-emerald-600">{presentes}</p>
+            <p className="text-[10px] uppercase font-bold text-muted-foreground">Presenças</p>
+          </div>
+          <div className="p-3 rounded-xl bg-rose-500/10 text-center">
+            <XCircle className="size-5 mx-auto text-rose-600 mb-1" />
+            <p className="text-2xl font-black text-rose-600">{faltas}</p>
+            <p className="text-[10px] uppercase font-bold text-muted-foreground">Faltas</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><CalendarDays className="size-4" /> Histórico</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {list.map((a) => {
+            const d = new Date(a.activity_date + "T00:00:00");
+            return (
+              <div key={a.id} className={`flex items-center gap-3 p-3 rounded-xl border-l-4 ${a.present ? "border-l-emerald-500 bg-emerald-500/5" : "border-l-rose-500 bg-rose-500/5"}`}>
+                <div className="size-12 rounded-lg bg-card border flex flex-col items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground">{d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}</span>
+                  <span className="text-lg font-black leading-none">{d.getDate()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate">{a.activity}</p>
+                  <p className="text-xs text-muted-foreground">{d.toLocaleDateString("pt-BR", { weekday: "long" })}</p>
+                </div>
+                {a.present
+                  ? <Badge className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="size-3 mr-1" />Presente</Badge>
+                  : <Badge variant="destructive"><XCircle className="size-3 mr-1" />Faltou</Badge>}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
