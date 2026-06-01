@@ -8,8 +8,34 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
+
+function PasswordInput({ id, value, onChange, autoComplete, required }: { id: string; value: string; onChange: (v: string) => void; autoComplete?: string; required?: boolean }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        autoComplete={autoComplete}
+        required={required}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+        tabIndex={-1}
+        aria-label={show ? "Esconder senha" : "Mostrar senha"}
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </button>
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
