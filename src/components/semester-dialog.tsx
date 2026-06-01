@@ -165,7 +165,7 @@ export function SemesterDialog({
                       <div className="font-bold">{paidCount}/{totalCount} ({pct}%)</div>
                     </div>
                     <div className="p-3 rounded border">
-                      <div className="text-muted-foreground text-xs">Valor</div>
+                      <div className="text-muted-foreground text-xs">Valor ligantes (CAMED)</div>
                       <div className="font-bold">{brl(cycle.amount_cents)}</div>
                     </div>
                     <div className="p-3 rounded border">
@@ -175,12 +175,22 @@ export function SemesterDialog({
                   </div>
                 )}
 
+                <div className="p-3 rounded border bg-primary/5 text-sm">
+                  <div className="font-bold">Valor padrão dos ligantes: {brl(camedDefaultCents)}</div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Definido pelo CAMED e aplicado automaticamente a todos os ligantes da liga. Para alterar, fale com a coordenação.
+                  </p>
+                </div>
+
                 <div className="p-4 rounded border space-y-3 bg-muted/30">
                   <h3 className="font-black text-sm">{cycle ? "Editar ciclo atual" : "Abrir novo ciclo"}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
-                      <Label className="text-xs">Valor (R$)</Label>
-                      <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
+                      <Label className="text-xs">Valor presidente/diretores (R$)</Label>
+                      <Input type="number" step="0.01" min="0" value={directorAmount} onChange={(e) => setDirectorAmount(e.target.value)} placeholder="0,00" />
+                      <p className="text-[11px] text-muted-foreground mt-1 leading-snug">
+                        Este valor vale <strong>apenas para presidente e diretores</strong> da liga. Os demais ligantes pagam sempre o valor padrão definido pelo CAMED.
+                      </p>
                     </div>
                     <div>
                       <Label className="text-xs">Vencimento</Label>
@@ -200,6 +210,7 @@ export function SemesterDialog({
                     {cycle && <Button variant="outline" onClick={handleClose}>Encerrar ciclo</Button>}
                   </div>
                 </div>
+
 
                 {cycle && (
                   <div className="space-y-2">
