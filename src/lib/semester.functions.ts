@@ -8,7 +8,31 @@ import {
   loadFeeForCategory,
   loadLeagueMpAccount,
 } from "@/lib/mp.server";
-import { sendGmail, sendGmailBulk, emailLayout } from "@/lib/gmail.server";
+import { sendGmail, sendGmailBulk, emailLayout, emailInfoCard } from "@/lib/gmail.server";
+
+/** Lê o valor padrão de semestralidade definido pelo CAMED (em centavos). */
+async function loadCamedDefaultSemesterCents(): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("camed_settings")
+    .select("semestrality_fee")
+    .eq("id", 1)
+    .maybeSingle();
+  const reais = Number((data as any)?.semestrality_fee ?? 0) || 0;
+  return Math.round(reais * 100);
+}
+
+/** True se o usuário é presidente da liga (president_id) ou tem role 'presidente'/'diretor'. */
+async function isLeaderOf(leagueId: string, userId: string, leaguePresidentId?: string | null): Promise<boolean> {
+  if (leaguePresidentId && leaguePresidentId === userId) return true;
+  const { data } = await supabaseAdmin
+    .from("league_memberships")
+    .select("role")
+    .eq("league_id", leagueId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  const role = (data as any)?.role;
+  return role === "presidente" || role === "diretor";
+}
 
 const PUBLISHED_URL = "https://ligasuno.lovable.app";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
