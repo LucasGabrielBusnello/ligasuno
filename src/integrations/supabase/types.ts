@@ -1149,6 +1149,7 @@ export type Database = {
           amount_cents: number
           closed_at: string | null
           created_at: string
+          director_amount_cents: number
           due_date: string
           end_date: string
           id: string
@@ -1164,6 +1165,7 @@ export type Database = {
           amount_cents?: number
           closed_at?: string | null
           created_at?: string
+          director_amount_cents?: number
           due_date: string
           end_date: string
           id?: string
@@ -1179,6 +1181,7 @@ export type Database = {
           amount_cents?: number
           closed_at?: string | null
           created_at?: string
+          director_amount_cents?: number
           due_date?: string
           end_date?: string
           id?: string
