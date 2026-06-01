@@ -70,7 +70,7 @@ export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
               <StatusBadge status={status} />
             </div>
             <p className="text-muted-foreground">
-              {brl(cycle.amount_cents)}{isOverdue && cycle.late_fee_cents > 0 && status !== "paid" ? ` + ${brl(cycle.late_fee_cents)} de acréscimo` : ""}
+              {brl(baseDue)}{isOverdue && cycle.late_fee_cents > 0 && status !== "paid" ? ` + ${brl(cycle.late_fee_cents)} de acréscimo` : ""}
               {" "}• Vencimento {fmtDate(cycle.due_date)}
             </p>
           </div>
