@@ -1,126 +1,112 @@
 
-# Plano de implementação — entrega única
+## Visão geral
 
-## 1. Migrações de banco (uma única migration)
+Mercado Pago será o **único provedor de pagamentos**. Você (CPF) opera como "marketplace" e cada presidente conecta a própria conta MP via OAuth. Em cada pagamento, o MP debita automaticamente uma taxa (`marketplace_fee`) que cai na sua conta e o restante vai direto pra conta do presidente — sem você intermediar dinheiro.
 
-### Eventos / Minicursos — vagas
-- `league_events.max_seats integer` (nullable; null = ilimitado).
-- `league_minicourses` já tem `max_registrations`; passa a ser respeitado também como teto rígido.
-- Helpers (views/funções): contar `event_registrations.status='paid'` e `minicourse_registrations.status='paid'` por id.
+```
+[Aluno paga PIX/Cartão]
+        │
+        ▼
+[Mercado Pago do Presidente] ──► recebe valor líquido
+        │
+        └──► marketplace_fee (taxa configurada) ──► [Sua conta MP]
+```
 
-### Prova de seleção da liga
-- `leagues`:
-  - `selection_open boolean default false`
-  - `selection_deadline date null` (data final de inscrição)
-  - `selection_exam_date date null`
-  - `selection_exam_time time null`
-  - `selection_exam_description text null`
-  - `selection_total_seats integer default 0`
-- `league_selection_quotas` (cotas por semestre):
-  - `league_id uuid`, `semester int (1,3,5,7,9,11)`, `seats int`
-  - UNIQUE(league_id, semester)
-- `league_selection_registrations`:
-  - `id`, `league_id`, `user_id`, `full_name`, `cpf`, `email`, `phone`, `semester int`
-  - `paid_price numeric`, `status text` (pending/paid)
-  - `stripe_session_id text`
-  - `grade numeric null`, `delivery_position int null`, `present boolean default false`
-  - `ranked_position int null`, `ranked_via text null` ('quota'|'general'|'waitlist'|'eliminated')
-  - UNIQUE(league_id, user_id); UNIQUE(league_id, delivery_position) `WHERE delivery_position IS NOT NULL`
-- `league_selection_ranking_history` (para "Desfazer"):
-  - `id`, `league_id`, `snapshot jsonb`, `created_at`
+Anuidade da plataforma usa o mesmo MP, sem split (100% pra você).
 
-### CAMED
-- `camed_info` recebe novas colunas opcionais ou nova tabela:
-  - `camed_presidents` (`id`, `email text unique`, `created_at`)
-  - `camed_settings` (linha única id=1): `league_registration_fee numeric default 0`, `semestrality_fee numeric default 0`
-- Grants + RLS:
-  - `camed_presidents`: leitura pública para a página inicial detectar; gestão por admin_master ou pelo próprio user via função `is_camed_president(auth.uid())` (security definer comparando email do profile com a lista).
-  - `camed_settings`: select público, update por admin_master ou camed_president.
-  - `camed_members` / `camed_info`: passa a permitir update/insert/delete também para `is_camed_president()`.
+## O que você precisa providenciar
 
-### RLS adicional
-- `league_selection_registrations`: insert própria, select próprio + presidente da liga + admin.
-- `league_selection_quotas`: select público; manage presidente da liga + admin.
-- Política `leagues_update` continua para presidente — basta atualizar o app para gravar os novos campos.
+1. **Conta Mercado Pago (CPF)** — gratuita em mercadopago.com.br
+2. **Criar uma aplicação** em developers.mercadopago.com → Suas integrações → Criar aplicação
+   - Tipo: "Pagamentos online" + "Marketplace"
+3. **Copiar 3 valores** da aplicação (vou pedir via secrets):
+   - `MP_ACCESS_TOKEN` (Production) — sua chave da plataforma
+   - `MP_CLIENT_ID` — pra OAuth dos presidentes
+   - `MP_CLIENT_SECRET` — pra OAuth dos presidentes
+4. **Configurar Redirect URI** na aplicação MP:
+   `https://ligasuno.lovable.app/api/public/payments/mp-oauth-callback`
+5. **Configurar Webhook** na aplicação MP (tópicos: `payment`, `merchant_order`):
+   `https://ligasuno.lovable.app/api/public/payments/mp-webhook`
 
-## 2. Server functions
+## Fluxo do presidente (uma vez)
 
-### `src/lib/selection.functions.ts`
-- `createSelectionCheckout({ leagueId, full_name, cpf, email, phone, semester })`:
-  - valida CPF, valida semestre ∈ {1,3,5,7,9,11}, busca `camed_settings.league_registration_fee`.
-  - cria registro `pending`, abre Stripe Checkout (Pix+Cartão) — reaproveita padrão de `events.functions.ts`.
-  - metadata: `selection_registration_id`.
-- `generateRanking(leagueId)`:
-  - Carrega `selection_total_seats`, cotas, e inscritos `present=true` com `grade` e `delivery_position` preenchidos.
-  - Verifica: se algum presente está sem nota OU sem posição → retorna erro listando faltantes.
-  - **Algoritmo "Cotas primeiro, depois geral":**
-    1. Para cada cota (semestre S, N vagas): ordena candidatos do semestre S por (grade desc, delivery_position asc), pega top N, marca `ranked_via='quota'`. Sobras de cota voltam para o pool.
-    2. Vagas restantes = `total_seats - somaCotasPreenchidas`.
-    3. Demais candidatos (não-classificados) ordenados por (grade desc, delivery_position asc) preenchem geral, marca `ranked_via='general'`.
-    4. Resto vai para `ranked_via='waitlist'`, ordenado por (grade desc, delivery_position asc).
-  - Salva snapshot em `league_selection_ranking_history` antes de atualizar.
-- `removeFromRanking(registrationId)`:
-  - Salva snapshot, remove o classificado, e chama próximo seguindo critério (se era vaga de cota S, chama próximo da waitlist do semestre S; se não houver, próximo geral).
-  - Remove membership 'ligante' caso exista.
-- `undoLastRankingAction(leagueId)`: restaura snapshot mais recente.
-- `setAsLigante(registrationId)`: insere `league_memberships` com role='ligante' para `user_id` da inscrição.
+1. Painel do presidente → botão "Conectar Mercado Pago"
+2. Redireciona pro MP → presidente faz login (ou cria conta gratuita: CPF + dados bancários)
+3. Autoriza nossa aplicação
+4. Voltamos com `access_token` + `user_id` do presidente, salvos em `league_mp_accounts`
+5. Pronto — todas as inscrições da liga dele já caem na conta dele com split automático
 
-### `src/lib/admin-reset.functions.ts`
-- `resetLeagueData({ leagueIds, scopes: { presidents, memberships, selection, events_regs, minicourses_regs, schedule, news, waitlist } })`
-- Admin master only.
+## Mudanças no banco (migração)
 
-### Webhook
-- `src/routes/api/public/payments/webhook.ts`: identificar `selection_registration_id` no metadata, marcar `paid`.
+**Nova tabela `league_mp_accounts`** — credenciais MP por liga
+- `league_id`, `mp_user_id`, `access_token` (criptografado), `refresh_token`, `public_key`, `expires_at`, `connected_at`
 
-## 3. UI — frontend
+**Tabela `app_settings`** — adicionar colunas de taxa (% + valor fixo) por categoria:
+- `fee_selection_pct`, `fee_selection_fixed`
+- `fee_semester_pct`, `fee_semester_fixed`
+- `fee_event_pct`, `fee_event_fixed`
+- `fee_minicourse_pct`, `fee_minicourse_fixed`
+- (Anuidade não tem taxa — é 100% sua)
 
-### `src/routes/$slug/index.tsx` (página pública da liga)
-- Se `leagues.selection_open && deadline >= hoje && usuário não inscrito/pago`: banner chamativo "Inscrições abertas — encerram em DD/MM/AAAA" + botão "Inscreva-se para realizar a prova" → modal 2 etapas (formulário → pagamento Pix/Cartão).
-- Se usuário já pagou: botão "Acessar Inscrição" mostrando data/hora/descrição da prova, vagas totais, cotas por semestre, posição na lista (se já houver ranking).
-- Se `selection_open=false`: nenhum botão.
+**Tabela `payment_transactions`** — log unificado de todos pagamentos MP (id, tipo, valor bruto, taxa retida, status, mp_payment_id, league_id, user_id)
 
-### `src/routes/$slug/index.tsx` aba eventos (e Hub `/`)
-- Para cada evento/minicurso com `max_seats`, calcular % ocupação e mostrar badge:
-  - 100% → "Não há mais vagas" + botão desabilitado.
-  - ≤10/5/4/3/2/1 vaga → "Restam menos de N vagas" (prioridade sobre %).
-  - Senão: 50/60/70/80/90% → "Metade das vagas já foram preenchidas" / "X% das vagas já foram preenchidas".
+## Mudanças no código
 
-### `src/routes/presidente.$slug.tsx`
-- Na aba **Membros**, novo botão "Processo Seletivo" → abre Dialog grande com sub-abas:
-  - **Configuração**: toggle aberto/fechado, deadline, data/hora/descrição da prova, total de vagas, lista de cotas por semestre ímpar (1–11).
-  - **Prova e Classificações**: tabela de inscritos pagos com:
-    - checkbox presença | nome (com botão "i" expandindo CPF/email/telefone) | semestre | input nota | input posição
-    - botões topo direito: "Desfazer", "Gerar Classificação", "Lista de Espera"
-    - Resultado: lista separando vagas de cota (com legenda "Vagas destinadas ao semestre X") e gerais; cada linha com botão "Definir como Ligante" e botão "X" (remover + chamar próximo).
+### Backend (server functions novas/refatoradas)
 
-### `src/routes/admin.tsx`
-- Aba Ligas: card adicional "Resetar dados das ligas" → dialog seletivo por liga + checkboxes de categorias + confirmação dupla.
-- Aba CAMED: nova sub-seção "Presidentes do CAMED" (lista + add por email + excluir).
+1. `src/lib/mp.server.ts` — cliente MP (helper de fetch com auth, criar pagamento PIX/Cartão com split, criar assinatura)
+2. `src/lib/mp-oauth.functions.ts` — iniciar OAuth e callback
+3. `src/lib/events.functions.ts` — trocar Stripe por MP (`createEventCheckout`)
+4. `src/lib/minicourses.functions.ts` — trocar Stripe por MP
+5. `src/lib/selection.functions.ts` — trocar Stripe por MP para taxa de seletiva
+6. `src/lib/subscription.functions.ts` — trocar Stripe por MP (anuidade recorrente, sem split)
+7. `src/routes/api/public/payments/mp-webhook.ts` — novo webhook MP (substitui o do Stripe)
+8. `src/routes/api/public/payments/mp-oauth-callback.ts` — callback OAuth
 
-### Novo `src/routes/camed.tsx` (painel CAMED)
-- Acessível se `is_camed_president()` true.
-- Header com link aparecendo em `/` (Hub) quando user é camed president.
-- Abas:
-  - **Informações**: edita `camed_info.description` etc.
-  - **Membros**: mesmo CRUD que admin tem hoje em `camed_members`.
-  - **Ligas**: inputs `league_registration_fee` e `semestrality_fee` (gravados em `camed_settings`).
+### Frontend
 
-### `src/routes/index.tsx` (Hub)
-- Detectar `is_camed_president` (consultar `camed_presidents` por email do user) e mostrar botão "Painel CAMED" na top bar.
-- Avisos de vagas em eventos.
+9. `src/routes/admin.tsx` (aba Configurações) — campos de taxa por categoria (% + R$ fixo)
+10. `src/routes/presidente.$slug.tsx` — card "Mercado Pago" com botão Conectar/Reconectar/Desconectar + status
+11. Bloquear publicação de evento/seletiva/minicurso pago se a liga ainda não conectou MP (com aviso claro)
+12. Remover referências a Stripe nas telas
 
-## 4. Detalhes técnicos relevantes
-- Validação CPF reusa `src/lib/cpf.ts`.
-- Semestres ímpares: select com [1,3,5,7,9,11].
-- Stripe: reusar `createStripeClient` via `events.functions.ts` como modelo (mesmo padrão pix + cartão + `expires_after_seconds`).
-- `ranked_via='quota'` armazena também o semestre para exibir a legenda.
-- "Undo": guardar snapshot por liga, manter apenas últimos 20.
-- Avisos de vagas: priorizar mensagem absoluta (≤10) sobre % via early-return.
+### Cleanup
 
-## 5. Ordem de execução
-1. Migration única + GRANTs + RLS + função `is_camed_president()`.
-2. Webhook + `selection.functions.ts` + `admin-reset.functions.ts`.
-3. UI: presidente (config + prova/classificações) → página pública liga (banner+modal+acessar inscrição) → hub/eventos (vagas) → admin (reset + presidentes CAMED) → /camed.
-4. Smoke test (`build` automático), checar logs do webhook.
+13. Remover `src/lib/subscription.functions.ts` versão Stripe, helpers Stripe, secrets Stripe (`STRIPE_*`) ficam no projeto mas sem uso
+14. Remover edge function `payments/webhook` antiga (manter por compat até validar MP em produção)
 
-Implementação grande e arriscada; aviso o usuário se algo precisar ser ajustado depois do build.
+## Tratamento de taxas
+
+Para cada pagamento (exceto anuidade):
+```
+valor_taxa = arredondar(preço × pct/100 + fixo, 2)
+marketplace_fee = valor_taxa  // vai pra você
+recebedor = mp_account da liga // recebe (preço - valor_taxa - taxa_MP)
+```
+
+Taxa do MP em si (0,99% PIX ou ~4,98% cartão) é descontada do presidente, não da plataforma — padrão de marketplace.
+
+## Anuidade (100% sua)
+
+Continua sendo cobrança recorrente mensal, mas no MP via "Assinaturas" (preapproval). Cobra no seu próprio access_token, sem split. Webhook atualiza `paid_until` e `published` da liga igual hoje.
+
+## Validação
+
+- Testar OAuth com 1 presidente fictício (você pode criar 2ª conta MP de teste)
+- Testar 1 pagamento PIX em modo sandbox primeiro
+- Conferir no painel MP que o split apareceu corretamente
+
+## Detalhes técnicos relevantes
+
+- API MP usa `Authorization: Bearer <access_token>` direto (sem gateway Lovable)
+- PIX retorna QR Code + copia-cola na resposta → renderizar modal próprio (não tem checkout hospedado bom pra PIX)
+- Cartão usa Checkout Pro (URL hospedada do MP, similar ao Stripe Checkout)
+- Webhook MP envia só `{id, type}` — precisamos fazer GET no recurso pra pegar detalhes (padrão MP)
+- Tokens OAuth do presidente expiram em 180 dias → guardar `refresh_token` e renovar automaticamente
+
+## Próximo passo
+
+Quando aprovar este plano, vou:
+1. Pedir os 3 secrets do MP via tool de secrets
+2. Rodar a migração do banco
+3. Implementar tudo na ordem acima
