@@ -14,7 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createEventCheckout } from "@/lib/events.functions";
-import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle } from "lucide-react";
+import { SelectionRegisterDialog, SelectionAccessDialog } from "@/components/selection-public";
+import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList } from "lucide-react";
 
 export const Route = createFileRoute("/$slug/")({ component: LeaguePage });
 
@@ -42,6 +43,9 @@ function LeaguePage() {
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
   const [regsLoaded, setRegsLoaded] = useState(false);
   const [activeQuizSet, setActiveQuizSet] = useState<any | null>(null);
+  const [mySelectionReg, setMySelectionReg] = useState<any | null>(null);
+  const [selectionRegOpen, setSelectionRegOpen] = useState(false);
+  const [selectionPanelOpen, setSelectionPanelOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -84,6 +88,28 @@ function LeaguePage() {
       setRegsLoaded(true);
     });
   }, [user, events]);
+
+  // Carrega inscrição do usuário no processo seletivo desta liga
+  useEffect(() => {
+    if (!user || !league) { setMySelectionReg(null); return; }
+    supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user.id).maybeSingle().then(({ data }) => setMySelectionReg(data));
+  }, [user, league]);
+
+  // Detecta ?selection_paid=1
+  useEffect(() => {
+    if (typeof window === "undefined" || !league) return;
+    const url = new URL(window.location.href);
+    const sp = url.searchParams.get("selection_paid");
+    if (!sp) return;
+    if (sp === "1") {
+      toast.success("Inscrição na prova confirmada!");
+      supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user?.id ?? "").maybeSingle().then(({ data }) => { setMySelectionReg(data); if (data) setSelectionPanelOpen(true); });
+    } else if (sp === "0") {
+      toast.error("Pagamento cancelado.");
+    }
+    url.searchParams.delete("selection_paid");
+    window.history.replaceState({}, "", url.pathname + (url.search ? "?" + url.searchParams.toString() : ""));
+  }, [league, user]);
 
   // Detecta ?event=ID&paid=1 (confirmação) ou ?event=ID (abrir registro/painel)
   useEffect(() => {
@@ -172,6 +198,15 @@ function LeaguePage() {
           )}
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 drop-shadow-2xl">{league.name}</h1>
           {league.description && <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/90 font-medium">{league.description}</p>}
+          {(league as any).selection_open && !isLigante && (() => {
+            const deadlinePassed = (league as any).selection_deadline && new Date((league as any).selection_deadline) < new Date();
+            if (mySelectionReg && mySelectionReg.status === "paid") {
+              return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionPanelOpen(true)}><ClipboardList className="size-5" /> Acessar minha inscrição</Button>;
+            }
+            if (deadlinePassed) return <Button size="lg" disabled className="mt-8">Inscrições encerradas</Button>;
+            if (!user) return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => nav({ to: "/auth" })}><LogIn className="size-5" /> Entrar para se inscrever na prova</Button>;
+            return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionRegOpen(true)}><ClipboardList className="size-5" /> Inscreva-se no processo seletivo</Button>;
+          })()}
           {!visible && <Badge variant="destructive" className="mt-6">Preview — não publicada</Badge>}
         </div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_100%)] pointer-events-none" />
@@ -327,6 +362,8 @@ function LeaguePage() {
       <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} onSuccess={(reg) => { if (reg) setMyRegs(prev => ({ ...prev, [reg.event_id]: reg })); }} />
       <ParticipantPanelDialog event={participantEvent} registration={participantEvent ? myRegs[participantEvent.id] : null} league={league} onClose={() => setParticipantEvent(null)} />
       <PublicQuizDialog quizSet={activeQuizSet} league={league} userId={user?.id ?? null} onClose={() => setActiveQuizSet(null)} />
+      <SelectionRegisterDialog league={league} open={selectionRegOpen} onClose={() => setSelectionRegOpen(false)} defaultEmail={user?.email ?? undefined} onPaid={() => { supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user?.id ?? "").maybeSingle().then(({ data }) => { setMySelectionReg(data); if (data) setSelectionPanelOpen(true); }); }} />
+      <SelectionAccessDialog league={league} registration={mySelectionReg} open={selectionPanelOpen} onClose={() => setSelectionPanelOpen(false)} />
     </div>
   );
 }
