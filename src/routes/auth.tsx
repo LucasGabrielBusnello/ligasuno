@@ -214,13 +214,12 @@ function AuthPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="li-pass">Senha</Label>
-                    <Input
+                    <PasswordInput
                       id="li-pass"
-                      type="password"
                       autoComplete="current-password"
                       required
                       value={li.password}
-                      onChange={(e) => setLi({ ...li, password: e.target.value })}
+                      onChange={(v) => setLi({ ...li, password: v })}
                     />
                   </div>
                   <Button type="submit" disabled={loading} className="w-full">
