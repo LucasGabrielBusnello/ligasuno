@@ -357,25 +357,35 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!cycle) throw new Error("Não há semestralidade aberta para esta liga");
 
-    // Garante que o usuário é ligante/diretor
+    // Garante que o usuário é ligante/diretor/presidente
     const { data: mem } = await supabaseAdmin
       .from("league_memberships")
       .select("role")
       .eq("league_id", data.league_id)
       .eq("user_id", userId)
       .maybeSingle();
-    if (!mem || !["ligante", "diretor"].includes((mem as any).role)) {
-      throw new Error("Apenas ligantes podem pagar a semestralidade");
+    const role = (mem as any)?.role;
+    const presidentId = (cycle as any).leagues?.id ? null : null;
+    const { data: leagueRow } = await supabaseAdmin
+      .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
+    const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId;
+    if (!role && !isLeader) {
+      throw new Error("Apenas membros da liga podem pagar a semestralidade");
     }
 
-    // Garante linha de pagamento
+    // Valor base depende do papel
+    const baseAmountCents = isLeader
+      ? ((cycle as any).director_amount_cents ?? 0) || (cycle as any).amount_cents
+      : (cycle as any).amount_cents;
+
+    // Garante linha de pagamento com o valor correto
     await supabaseAdmin
       .from("semester_payments")
       .upsert({
         cycle_id: (cycle as any).id,
         league_id: data.league_id,
         user_id: userId,
-        amount_due_cents: (cycle as any).amount_cents,
+        amount_due_cents: baseAmountCents,
         status: "pending",
       }, { onConflict: "cycle_id,user_id", ignoreDuplicates: true });
 
@@ -392,7 +402,7 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
 
     // Calcula valor (com taxa de atraso se vencido)
     const isOverdue = new Date((cycle as any).due_date) < new Date(new Date().toISOString().slice(0, 10));
-    const totalCents = (cycle as any).amount_cents + (isOverdue ? (cycle as any).late_fee_cents : 0);
+    const totalCents = ((payment as any).amount_due_cents ?? baseAmountCents) + (isOverdue ? (cycle as any).late_fee_cents : 0);
     const totalReais = totalCents / 100;
     if (totalReais <= 0) throw new Error("Valor inválido");
 
