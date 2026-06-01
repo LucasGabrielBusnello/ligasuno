@@ -1,105 +1,78 @@
 
-## ⚠️ Confirmar antes de implementar
+# Plano de implementação
 
-Você escreveu que o semestre vai **"de janeiro até o último dia de julho"** e **"de 1° de julho até 31 de dezembro"** — há sobreposição em julho. Vou assumir o padrão acadêmico:
-- **1º semestre:** 1º de janeiro a 30 de junho
-- **2º semestre:** 1º de julho a 31 de dezembro
-
-Se for outro recorte, me avise antes de eu começar.
+Vou implementar as 9 demandas em blocos coesos. Tudo usa o template de e-mail da liga (`emailLayout`) já existente — com a cor de cada liga — e o conector Gmail já conectado.
 
 ---
 
-## Etapa 1 — Conectar Gmail pessoal
+## 1. Botão "+ Ligante" na classificação não funciona
+- **Bug**: ao gerar ranking, classificados são adicionados automaticamente como `ligante`, mas o toggle manual depende de buscar o `user_id`. Vou revisar `toggleLigante` e o componente `selection-manager.tsx` para garantir que:
+  - O botão exibe estado correto (já é Ligante ou não)
+  - Insere/remove a membership corretamente
+  - Mostra toast de feedback
 
-Vou abrir o conector Gmail. Você clica em "Autorizar com Google", escolhe a conta que será o remetente oficial da liga (ex: seu Gmail pessoal ou um Gmail dedicado da presidência), e pronto. Os e-mails sairão de `nomedaconta@gmail.com`.
+## 2. E-mail de boas-vindas ao registrar no site
+- Disparar e-mail decorado quando um novo perfil é criado.
+- Como o `handle_new_user` é um trigger SQL, vou criar um servidor function `sendWelcomeEmail` chamado do client (auth.tsx) logo após signup bem-sucedido.
+- Template: agradecimento + funcionalidades (entrar em ligas, prova de seleção, eventos, minicursos, pagamento de semestralidade). Cor: verde Ligasuno padrão (`#1f5132`).
 
-## Etapa 2 — Modelo de dados (Semestralidade)
+## 3. E-mail no momento da inscrição em evento/minicurso
+- No webhook `mp-webhook.ts` (após pagamento aprovado) E também para eventos gratuitos: disparar e-mail com todos os dados (título, data, horário, local, descrição, preço pago) no template da liga.
 
-Duas novas tabelas:
+## 4. Lembretes automáticos de evento (7 dias, 1 dia, dia do evento + minicursos)
+- Criar rota `/api/public/cron/event-reminders` que:
+  - Busca eventos com `event_date` em `today + 7`, `today + 1`, `today`
+  - Para cada um, envia e-mail a todos os `event_registrations` com status `paid`
+  - No dia, também envia e-mails dos minicursos do evento aos inscritos
+- Idempotência: tabela nova `event_email_log (event_id, kind, sent_at)` para não duplicar.
+- Cron diário às 8h via pg_cron.
 
-**`semester_cycles`** — ciclos semestrais
-- `semester` (1 ou 2), `year`, `start_date`, `end_date`
-- `amount_cents` (valor da semestralidade definido pelo presidente)
-- `due_date` (data limite de pagamento)
-- `late_fee_cents` (acréscimo único após o vencimento)
-- `is_current` (boolean — apenas um ciclo ativo por vez)
-- Histórico permanente: ciclos antigos nunca são deletados
+## 5. E-mail ao ser definido como Ligante (botão na aba classificados)
+- Em `toggleLigante` (quando passa para `isLigante: true`), buscar perfil + liga e enviar e-mail "Você foi classificado!" no template da liga, com botão para acessar painel do ligante.
 
-**`semester_payments`** — pagamentos por ligante por ciclo
-- `cycle_id`, `user_id`
-- `status` (`pending` | `paid` | `overdue`)
-- `paid_at`, `mp_payment_id`, `amount_paid_cents`
-- Único por (cycle_id, user_id)
+## 6. Desistência de liga (painel do ligante)
+- **DB**: nova tabela `league_leave_requests (id, league_id, user_id, status: pending/approved/rejected, created_at, processed_at)`.
+- **Painel do ligante**: substituir card de semestralidade por aviso quando houver `pending`. Botão "Desistir da Liga" abre confirmação → cria request → envia e-mail para o presidente no template da liga com nome, CPF e matrícula.
+- **Painel do presidente**: nova seção para aprovar/rejeitar pedidos. Aprovar = remove `league_memberships` + marca request como `approved`.
 
-**Quem paga:** apenas ligantes ativos que ainda não têm registro `paid` no ciclo corrente (conforme você decidiu).
+## 7. CAMED — alerta de membros em 3+ ligas
+- Na rota `camed.tsx`: query agregada `user_id, count(*) from league_memberships where role='ligante' group by user_id having count>3`.
+- Mostrar banner amarelo "Existem membros em mais de 3 ligas" + botão "Verificar" que abre modal com a lista (nome, CPF, matrícula, ligas).
 
-## Etapa 3 — Painel do Presidente / Aba Membros
+## 8. Matrícula
+- **DB**: adicionar `registration_number text` em `profiles` e em `league_selection_registrations`.
+- **Cadastro de usuário** (auth.tsx): campo opcional "Matrícula (deixe em branco caso não tenha)".
+- **Inscrição em liga** (`selection-public.tsx`): campo obrigatório.
+- **Painel admin master**: mostrar matrícula nos cards/lista de usuários.
+- **Painel da liga (presidente)**: aba membros mostra matrícula.
 
-Na lista de ligantes, cada nome ganha um **badge de status do ciclo atual**:
-- 🟢 **Pago**
-- 🟡 **Pendente** (dentro do prazo)
-- 🔴 **Fora do prazo** (após `due_date`)
+## 9. Limite de vagas (8–12) no processo seletivo
+- No formulário de definir `selection_total_seats`: validação client + server. Toast: "A quantidade de membros não é permitida pelo regulamento do CAMED".
 
-Botão novo **"Semestralidade"** abre um modal/drawer com:
-1. **Ciclo atual** — valor, data de vencimento, taxa de atraso, % de pagamento
-2. **Editar ciclo atual** — alterar valor, vencimento, taxa de atraso
-3. **Encerrar ciclo / iniciar novo** — botão que arquiva o ciclo atual e cria o próximo
-4. **Histórico de ciclos anteriores** — lista navegável; clicar abre detalhes (quem pagou, quem ficou inadimplente, valores totais)
-5. **Exportar CSV** do ciclo (opcional, fácil de adicionar)
-
-## Etapa 4 — Pagamento (apenas Pix)
-
-Botão **"Pagar semestralidade"** na conta do ligante:
-- Abre checkout Mercado Pago **somente Pix** (já usamos esse padrão nos minicursos/eventos)
-- Valor = `amount_cents` + `late_fee_cents` se vencido
-- Taxas da plataforma seguem a regra que você já definiu
-
-Webhook do Mercado Pago atualiza `semester_payments.status = 'paid'` automaticamente.
-
-## Etapa 5 — Job diário "fora do prazo"
-
-Função agendada (cron, 1x/dia) que marca como `overdue` os pagamentos `pending` cuja data de vencimento já passou. Atualiza os badges automaticamente.
-
-## Etapa 6 — E-mails via Gmail
-
-Helper único `sendGmail({ to, subject, html })` usando o conector Gmail.
-
-E-mails do Bloco 1:
-- **Abertura de ciclo:** quando o presidente cria/edita o ciclo → notifica todos os ligantes ativos (valor, vencimento)
-- **Lembrete de vencimento:** 3 dias antes do `due_date` para quem está `pending`
-- **Confirmação de pagamento:** ao receber pagamento aprovado
-- **Aviso de atraso:** quando passa a `overdue`
-
-Todos enviados de `nomedaconta@gmail.com`.
-
-## Etapa 7 — Permissões (RLS)
-
-- Ligante: vê apenas o próprio `semester_payments` e pode pagar o seu
-- Presidente: CRUD completo em `semester_cycles` e leitura de todos os `semester_payments`
-- Admin master: acesso total
+## 10. CPF único globalmente
+- **DB**: 
+  - `profiles`: adicionar coluna `cpf` (nullable). Unique index (case-insensitive, normalizado).
+  - Adicionar `UNIQUE` em `league_selection_registrations.cpf`, `event_registrations.cpf`.
+- **Validação**: helper `assertCpfUnique(cpf, currentUserId?)` chamado nos pontos de inscrição. Mostrar: "Este CPF já está cadastrado".
+- Migrar dados: pegar CPF da primeira registration de cada user e popular `profiles.cpf` quando único.
 
 ---
 
-## Detalhes técnicos
+## Ordem de execução
 
-- Tabelas com `GRANT` adequados e RLS
-- Server functions (`createServerFn`) para todas as ações do presidente e do pagamento
-- Helper `sendGmail` em `src/lib/gmail.server.ts` usando o gateway Lovable + `GOOGLE_MAIL_API_KEY`
-- Cron diário via pg_cron chamando endpoint `/api/public/cron/mark-overdue` com secret
-- Webhook MP existente estendido para identificar pagamentos do tipo `semestralidade` pelo `external_reference`
-- Badges no painel: componente reutilizável `<SemesterStatusBadge status={...} />` usando os tokens semânticos do design system
+1. **Migração DB** (matrícula, CPF em profiles, tabela leave_requests, tabela event_email_log, cron) — single migration
+2. **E-mails** (welcome, evento, minicurso, classificação, lembretes, desistência) em `gmail.server.ts` como templates reutilizáveis
+3. **Backend** (server functions: leave-request, welcome, reminders cron, validações)
+4. **Frontend** (auth.tsx matrícula, selection-public.tsx matrícula+cpf-único, semester-card desistência, presidente painel, camed alerta, selection-manager limite 8-12 + botão ligante)
 
 ---
 
-## Fora deste bloco (próximos blocos)
+## Notas técnicas
 
-- E-mails de boas-vindas, classificação do processo seletivo, evento, minicurso
-- Sistema de desistência + CAMED (Bloco 3)
-- Matrícula + CPF único + limite 8-12 ligantes (Bloco 4)
-
-Quando você aprovar este plano:
-1. Eu abro o conector Gmail
-2. Você autoriza com a conta desejada
-3. Eu sigo direto na implementação do Bloco 1
+- Todos os e-mails passam pelo `sendGmail`/`sendGmailBulk` existente, já com encoding base64 corrigido.
+- Templates reutilizam `emailLayout({ brandColor: league.theme_color, leagueName: league.name })`.
+- O cron diário (`mark-overdue` 03h e `event-reminders` 08h) usa `pg_cron + pg_net + apikey` conforme padrão já usado.
+- Toda nova tabela terá `GRANT` + RLS conforme regras do projeto.
+- Vou validar CPF normalizado (apenas dígitos) para a unique constraint funcionar de forma consistente.
 
 Posso prosseguir?

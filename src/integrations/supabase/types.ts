@@ -152,6 +152,33 @@ export type Database = {
         }
         Relationships: []
       }
+      event_email_log: {
+        Row: {
+          event_id: string
+          id: string
+          kind: string
+          recipient: string
+          reference_id: string | null
+          sent_at: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          kind: string
+          recipient: string
+          reference_id?: string | null
+          sent_at?: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          kind?: string
+          recipient?: string
+          reference_id?: string | null
+          sent_at?: string
+        }
+        Relationships: []
+      }
       event_registrations: {
         Row: {
           base_price: number
@@ -411,6 +438,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      league_leave_requests: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          processed_at: string | null
+          reason: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          processed_at?: string | null
+          reason?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          processed_at?: string | null
+          reason?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       league_memberships: {
         Row: {
@@ -848,6 +905,7 @@ export type Database = {
           ranked_position: number | null
           ranked_semester: number | null
           ranked_via: string | null
+          registration_number: string | null
           semester: number
           status: string
           stripe_session_id: string | null
@@ -869,6 +927,7 @@ export type Database = {
           ranked_position?: number | null
           ranked_semester?: number | null
           ranked_via?: string | null
+          registration_number?: string | null
           semester: number
           status?: string
           stripe_session_id?: string | null
@@ -890,6 +949,7 @@ export type Database = {
           ranked_position?: number | null
           ranked_semester?: number | null
           ranked_via?: string | null
+          registration_number?: string | null
           semester?: number
           status?: string
           stripe_session_id?: string | null
@@ -1114,31 +1174,37 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          cpf: string | null
           created_at: string
           email: string
           full_name: string | null
           id: string
           phone: string | null
+          registration_number: string | null
           updated_at: string
           username: string
         }
         Insert: {
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string
           email: string
           full_name?: string | null
           id: string
           phone?: string | null
+          registration_number?: string | null
           updated_at?: string
           username: string
         }
         Update: {
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string
           full_name?: string | null
           id?: string
           phone?: string | null
+          registration_number?: string | null
           updated_at?: string
           username?: string
         }
