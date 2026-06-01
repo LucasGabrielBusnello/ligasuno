@@ -277,6 +277,16 @@ function AuthPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <Label htmlFor="su-reg">Matrícula (deixe em branco caso não tenha)</Label>
+                    <Input
+                      id="su-reg"
+                      value={su.registration_number}
+                      onChange={(e) => setSu({ ...su, registration_number: e.target.value })}
+                      placeholder="Ex.: 2024123456"
+                      maxLength={50}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
                     <Label htmlFor="su-pass">Senha (mín. 8 caracteres)</Label>
                     <PasswordInput
                       id="su-pass"
