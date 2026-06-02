@@ -917,6 +917,7 @@ function MembersTab({ league }: any) {
   async function remove(id: string) { await supabase.from("league_memberships").delete().eq("id", id); reload(); }
   return (
     <Card><CardContent className="p-6 space-y-4">
+      <LeaveRequestsPanel league={league} onProcessed={reload} />
       <div className="flex justify-end gap-2 flex-wrap">
         <Button onClick={() => setSemOpen(true)} variant="outline"><DollarSign className="size-4" /> Semestralidade</Button>
         <Button onClick={() => setSelOpen(true)} variant="outline"><ClipboardCheck className="size-4" /> Processo Seletivo</Button>
