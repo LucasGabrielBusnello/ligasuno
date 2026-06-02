@@ -27,7 +27,7 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
   useEffect(() => {
     if (open) {
       setStep(1); setMethod("card");
-      setForm({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1 });
+      setForm({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
       supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => setFee(Number((data as any)?.league_registration_fee) || 0));
     }
   }, [open, defaultEmail]);
