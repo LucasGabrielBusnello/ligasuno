@@ -948,3 +948,55 @@ function MembersTab({ league }: any) {
     </CardContent></Card>
   );
 }
+
+function LeaveRequestsPanel({ league, onProcessed }: { league: any; onProcessed: () => void }) {
+  const listFn = useServerFn(listLeagueLeaveRequests);
+  const processFn = useServerFn(processLeaveRequest);
+  const [items, setItems] = useState<any[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function reload() {
+    try {
+      const r: any = await listFn({ data: { league_id: league.id } });
+      setItems(r?.requests ?? []);
+    } catch { setItems([]); }
+  }
+  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [league.id]);
+
+  async function act(id: string, action: "approve" | "reject") {
+    setBusy(id);
+    try {
+      await processFn({ data: { request_id: id, action } } as any);
+      toast.success(action === "approve" ? "Desistência aprovada" : "Pedido rejeitado");
+      await reload();
+      onProcessed();
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setBusy(null); }
+  }
+
+  if (items.length === 0) return null;
+  return (
+    <div className="p-4 rounded-lg border border-amber-500/40 bg-amber-500/5 space-y-3">
+      <div className="font-black text-amber-700 dark:text-amber-400 flex items-center gap-2">
+        <Bell className="size-4" /> Pedidos de desistência ({items.length})
+      </div>
+      <div className="space-y-2">
+        {items.map((r) => (
+          <div key={r.id} className="p-3 rounded border bg-background flex items-start justify-between gap-3 flex-wrap">
+            <div className="text-sm flex-1 min-w-[200px]">
+              <div className="font-bold">{r.profile?.full_name || r.profile?.username || "Ligante"}</div>
+              <div className="text-xs text-muted-foreground">
+                {r.profile?.email}{r.profile?.cpf ? ` · CPF ${r.profile.cpf}` : ""}{r.profile?.registration_number ? ` · Matrícula ${r.profile.registration_number}` : ""}
+              </div>
+              {r.reason && <div className="text-xs mt-1 italic">"{r.reason}"</div>}
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" disabled={busy === r.id} onClick={() => act(r.id, "reject")}>Rejeitar</Button>
+              <Button size="sm" variant="destructive" disabled={busy === r.id} onClick={() => act(r.id, "approve")}>Aprovar desistência</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
