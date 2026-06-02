@@ -895,7 +895,7 @@ function MembersTab({ league }: any) {
   const listPays = useServerFn(listCyclePayments);
 
   const reload = async () => {
-    const { data } = await supabase.from("league_memberships").select("*, profiles!inner(username,email)").eq("league_id", league.id);
+    const { data } = await supabase.from("league_memberships").select("*, profiles!inner(username,email,full_name,registration_number)").eq("league_id", league.id);
     setMembers(data ?? []);
     try {
       const r = await listPays({ data: { league_id: league.id } });
