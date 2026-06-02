@@ -322,7 +322,7 @@ function ExamSection({ league }: { league: any }) {
   );
 }
 
-function RankRow({ reg, isLigante, onRemove, onToggleLigante }: { reg: any; isLigante: boolean; onRemove: () => void; onToggleLigante: () => void }) {
+function RankRow({ reg, isLigante, onRemove, onAddLigante, onRemoveLigante }: { reg: any; isLigante: boolean; onRemove: () => void; onAddLigante: () => void; onRemoveLigante: () => void }) {
   return (
     <div className="p-2 rounded border flex items-center justify-between gap-2 text-sm">
       <div className="min-w-0 flex-1">
@@ -330,11 +330,18 @@ function RankRow({ reg, isLigante, onRemove, onToggleLigante }: { reg: any; isLi
         <span className="text-xs text-muted-foreground"> · {reg.semester}º · nota {reg.grade ?? "—"}</span>
       </div>
       <div className="flex gap-1 shrink-0">
-        <Button size="sm" variant={isLigante ? "destructive" : "outline"} onClick={onToggleLigante}>
-          {isLigante ? <><X className="size-3" /> Remover</> : <><UserPlus className="size-3" /> Ligante</>}
-        </Button>
+        {isLigante ? (
+          <Button size="sm" onClick={onRemoveLigante} className="bg-emerald-600 hover:bg-emerald-700 text-white" title="Já é ligante — clique para remover">
+            <UserPlus className="size-3" /> Ligante
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" onClick={onAddLigante}>
+            <UserPlus className="size-3" /> Ligante
+          </Button>
+        )}
         <Button size="sm" variant="destructive" onClick={onRemove} title="Remover da classificação"><X className="size-3" /></Button>
       </div>
     </div>
   );
 }
+
