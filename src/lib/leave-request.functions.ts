@@ -114,8 +114,15 @@ export const listLeagueLeaveRequests = createServerFn({ method: "POST" })
     if ((league as any)?.president_id !== userId && !isAdmin) throw new Error("Não autorizado");
 
     const { data: rows } = await (supabaseAdmin as any).from("league_leave_requests")
-      .select("*, profiles!league_leave_requests_user_id_fkey(full_name, username, email, cpf, registration_number)")
-      .eq("league_id", data.league_id).eq("status", "pending")
+      .select("*").eq("league_id", data.league_id).eq("status", "pending")
       .order("created_at", { ascending: false });
-    return { requests: rows ?? [] };
+    const ids = (rows ?? []).map((r: any) => r.user_id);
+    let profiles: any[] = [];
+    if (ids.length > 0) {
+      const { data: ps } = await (supabaseAdmin as any).from("profiles")
+        .select("id, full_name, username, email, cpf, registration_number").in("id", ids);
+      profiles = ps ?? [];
+    }
+    const enriched = (rows ?? []).map((r: any) => ({ ...r, profile: profiles.find((p) => p.id === r.user_id) ?? null }));
+    return { requests: enriched };
   });
