@@ -16,6 +16,7 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().min(8).max(30),
   semester: z.number().int().refine(v => [1,3,5,7,9,11].includes(v), "Semestre inválido"),
+  registration_number: z.string().min(1).max(50),
   origin_url: z.string().url(),
 });
 
