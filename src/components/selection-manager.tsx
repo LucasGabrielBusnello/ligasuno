@@ -216,17 +216,26 @@ function ExamSection({ league }: { league: any }) {
     try { await rem({ data: { registration_id: id } } as any); toast.success("Substituição feita"); reload(); }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
-  async function doToggleLigante(reg: any) {
+  async function doAddLigante(reg: any) {
     try {
-      const res: any = await toggle({ data: { registration_id: reg.id } } as any);
+      const res: any = await toggle({ data: { registration_id: reg.id, mode: "add" } } as any);
       setLigantes(prev => {
         const next = new Set(prev);
-        if (res?.isLigante) next.add(reg.user_id); else next.delete(reg.user_id);
+        if (res?.isLigante) next.add(reg.user_id);
         return next;
       });
-      toast.success(res?.isLigante ? "Adicionado como ligante" : "Removido de ligante");
+      toast.success(res?.alreadyMember ? "Já é ligante" : "Adicionado como ligante");
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
+  async function doRemoveLigante(reg: any) {
+    if (!confirm("Remover este usuário da liga (ligante)?")) return;
+    try {
+      await toggle({ data: { registration_id: reg.id, mode: "remove" } } as any);
+      setLigantes(prev => { const next = new Set(prev); next.delete(reg.user_id); return next; });
+      toast.success("Removido de ligante");
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
+  }
+
 
   const classified = regs.filter(r => r.ranked_via && r.ranked_via !== "waitlist" && r.ranked_via !== "eliminated")
     .sort((a,b) => (a.ranked_position ?? 0) - (b.ranked_position ?? 0));
@@ -286,13 +295,13 @@ function ExamSection({ league }: { league: any }) {
           {Object.keys(quotaBySem).sort((a,b) => +a - +b).map(sem => (
             <div key={sem} className="space-y-1">
               <Badge className="text-[10px]">Vagas destinadas ao {sem}º semestre</Badge>
-              {quotaBySem[+sem].map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onToggleLigante={() => doToggleLigante(c)} />)}
+              {quotaBySem[+sem].map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onAddLigante={() => doAddLigante(c)} onRemoveLigante={() => doRemoveLigante(c)} />)}
             </div>
           ))}
           {generalClassified.length > 0 && (
             <div className="space-y-1 pt-2 border-t">
               <Badge variant="outline" className="text-[10px]">Vagas gerais</Badge>
-              {generalClassified.map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onToggleLigante={() => doToggleLigante(c)} />)}
+              {generalClassified.map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onAddLigante={() => doAddLigante(c)} onRemoveLigante={() => doRemoveLigante(c)} />)}
             </div>
           )}
         </CardContent></Card>
@@ -313,7 +322,7 @@ function ExamSection({ league }: { league: any }) {
   );
 }
 
-function RankRow({ reg, isLigante, onRemove, onToggleLigante }: { reg: any; isLigante: boolean; onRemove: () => void; onToggleLigante: () => void }) {
+function RankRow({ reg, isLigante, onRemove, onAddLigante, onRemoveLigante }: { reg: any; isLigante: boolean; onRemove: () => void; onAddLigante: () => void; onRemoveLigante: () => void }) {
   return (
     <div className="p-2 rounded border flex items-center justify-between gap-2 text-sm">
       <div className="min-w-0 flex-1">
@@ -321,11 +330,18 @@ function RankRow({ reg, isLigante, onRemove, onToggleLigante }: { reg: any; isLi
         <span className="text-xs text-muted-foreground"> · {reg.semester}º · nota {reg.grade ?? "—"}</span>
       </div>
       <div className="flex gap-1 shrink-0">
-        <Button size="sm" variant={isLigante ? "destructive" : "outline"} onClick={onToggleLigante}>
-          {isLigante ? <><X className="size-3" /> Remover</> : <><UserPlus className="size-3" /> Ligante</>}
-        </Button>
+        {isLigante ? (
+          <Button size="sm" onClick={onRemoveLigante} className="bg-emerald-600 hover:bg-emerald-700 text-white" title="Já é ligante — clique para remover">
+            <UserPlus className="size-3" /> Ligante
+          </Button>
+        ) : (
+          <Button size="sm" variant="outline" onClick={onAddLigante}>
+            <UserPlus className="size-3" /> Ligante
+          </Button>
+        )}
         <Button size="sm" variant="destructive" onClick={onRemove} title="Remover da classificação"><X className="size-3" /></Button>
       </div>
     </div>
   );
 }
+

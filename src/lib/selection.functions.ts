@@ -299,25 +299,31 @@ export const undoLastRanking = createServerFn({ method: "POST" })
 
 export const toggleLigante = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ registration_id: z.string().uuid() }).parse(i))
+  .inputValidator((i: unknown) => z.object({
+    registration_id: z.string().uuid(),
+    mode: z.enum(["add", "remove", "toggle"]).optional(),
+  }).parse(i))
   .handler(async ({ data }) => {
+    const mode = data.mode ?? "toggle";
     const { data: reg } = await (supabaseAdmin as any)
       .from("league_selection_registrations").select("league_id, user_id, full_name, email").eq("id", data.registration_id).maybeSingle();
     if (!reg) throw new Error("Inscrição não encontrada");
     const r: any = reg;
     const { data: existing } = await (supabaseAdmin as any).from("league_memberships")
       .select("id").eq("league_id", r.league_id).eq("user_id", r.user_id).eq("role", "ligante").maybeSingle();
-    if (existing) {
+
+    if (existing && (mode === "remove" || mode === "toggle")) {
       const { error } = await (supabaseAdmin as any).from("league_memberships")
         .delete().eq("league_id", r.league_id).eq("user_id", r.user_id).eq("role", "ligante");
       if (error) throw new Error(error.message);
       return { ok: true, isLigante: false };
     }
+    if (existing) return { ok: true, isLigante: true, alreadyMember: true };
+
     const { error } = await (supabaseAdmin as any).from("league_memberships")
       .upsert({ league_id: r.league_id, user_id: r.user_id, role: "ligante" }, { onConflict: "league_id,user_id" });
     if (error) throw new Error(error.message);
 
-    // Envia e-mail de classificação
     try {
       const { data: league } = await (supabaseAdmin as any)
         .from("leagues").select("name, slug, theme_color").eq("id", r.league_id).maybeSingle();
@@ -337,3 +343,4 @@ export const toggleLigante = createServerFn({ method: "POST" })
   });
 
 export const setAsLigante = toggleLigante;
+
