@@ -21,7 +21,7 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
   const [method, setMethod] = useState<"card" | "pix">("card");
-  const [form, setForm] = useState({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1 });
+  const [form, setForm] = useState({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
   const [fee, setFee] = useState(0);
 
   useEffect(() => {
