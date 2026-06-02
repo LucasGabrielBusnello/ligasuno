@@ -16,6 +16,7 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().min(8).max(30),
   semester: z.number().int().refine(v => [1,3,5,7,9,11].includes(v), "Semestre inválido"),
+  registration_number: z.string().min(1).max(50),
   origin_url: z.string().url(),
 });
 
@@ -33,6 +34,18 @@ export const createSelectionCheckout = createServerFn({ method: "POST" })
     if (!l.selection_open) throw new Error("Inscrições fechadas");
     if (l.selection_deadline && new Date(l.selection_deadline) < new Date()) throw new Error("Prazo de inscrição encerrado");
 
+    // CPF único globalmente (ignora o próprio user em re-inscrição)
+    const cpfChecks = await Promise.all([
+      (supabaseAdmin as any).from("profiles").select("id").eq("cpf", cpf).maybeSingle(),
+      (supabaseAdmin as any).from("league_selection_registrations").select("user_id").eq("cpf", cpf).neq("user_id", userId).limit(1),
+      (supabaseAdmin as any).from("event_registrations").select("user_id").eq("cpf", cpf).neq("user_id", userId).limit(1),
+    ]);
+    if ((cpfChecks[0].data && cpfChecks[0].data.id !== userId) || (cpfChecks[1].data ?? []).length > 0 || (cpfChecks[2].data ?? []).length > 0) {
+      throw new Error("Este CPF já está cadastrado");
+    }
+    // Salva CPF e matrícula no perfil
+    await (supabaseAdmin as any).from("profiles").update({ cpf, registration_number: data.registration_number }).eq("id", userId);
+
     const { data: settings } = await supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle();
     const fee = Number((settings as any)?.league_registration_fee ?? 0);
 
@@ -41,7 +54,7 @@ export const createSelectionCheckout = createServerFn({ method: "POST" })
       .upsert({
         league_id: data.league_id, user_id: userId,
         full_name: data.full_name, cpf, email: data.email, phone: data.phone,
-        semester: data.semester, paid_price: fee,
+        semester: data.semester, paid_price: fee, registration_number: data.registration_number,
         status: fee === 0 ? "paid" : "pending",
       }, { onConflict: "league_id,user_id" })
       .select("*").single();

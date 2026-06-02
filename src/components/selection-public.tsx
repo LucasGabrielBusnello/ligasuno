@@ -21,13 +21,13 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
   const [method, setMethod] = useState<"card" | "pix">("card");
-  const [form, setForm] = useState({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1 });
+  const [form, setForm] = useState({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
   const [fee, setFee] = useState(0);
 
   useEffect(() => {
     if (open) {
       setStep(1); setMethod("card");
-      setForm({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1 });
+      setForm({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
       supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => setFee(Number((data as any)?.league_registration_fee) || 0));
     }
   }, [open, defaultEmail]);
@@ -41,11 +41,13 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
     if (!isValidCPF(cpf)) return toast.error("CPF inválido");
     if (!form.email || !form.email.includes("@")) return toast.error("Email inválido");
     if (!form.phone || form.phone.length < 8) return toast.error("Telefone inválido");
+    if (!form.registration_number || form.registration_number.trim().length < 2) return toast.error("Informe sua matrícula");
     try {
       setSubmitting(true);
       const res: any = await checkout({ data: {
         league_id: league.id, full_name: form.full_name, cpf, email: form.email,
         phone: form.phone, semester: form.semester, payment_method: method,
+        registration_number: form.registration_number.trim(),
         origin_url: window.location.origin,
       } } as any);
       if (res?.free) { toast.success("Inscrição confirmada!"); onPaid?.(); onClose(); return; }
@@ -81,6 +83,7 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
             <div><Label>CPF *</Label><Input inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/[^\d.-]/g, "") })} placeholder="000.000.000-00" /></div>
             <div><Label>E-mail *</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
             <div><Label>Telefone *</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="(49) 99999-9999" /></div>
+            <div><Label>Matrícula *</Label><Input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} placeholder="Sua matrícula institucional" /></div>
             <div>
               <Label>Semestre *</Label>
               <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.semester} onChange={(e) => setForm({ ...form, semester: +e.target.value })}>
@@ -92,6 +95,7 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
               if (!isValidCPF(normalizeCpf(form.cpf))) return toast.error("CPF inválido");
               if (!form.email.includes("@")) return toast.error("Email inválido");
               if (form.phone.length < 8) return toast.error("Telefone inválido");
+              if (!form.registration_number || form.registration_number.trim().length < 2) return toast.error("Informe sua matrícula");
               setStep(2);
             }}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
           </div>

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle } from "lucide-react";
 
 export const Route = createFileRoute("/camed")({ component: CamedPage });
 
@@ -48,6 +48,7 @@ function CamedPage() {
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do CAMED</h1>
         <p className="text-muted-foreground mb-6">Gerencie informações, membros e configurações de ligas.</p>
+        <MultiLeagueAlert />
         <Tabs defaultValue="info">
           <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="info"><SettingsIcon className="size-4 mr-1.5" />Informações</TabsTrigger>
@@ -182,5 +183,62 @@ function LeaguesSettingsTab() {
         <Button onClick={save}>Salvar</Button>
       </CardContent>
     </Card>
+  );
+}
+
+function MultiLeagueAlert() {
+  const [items, setItems] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data: m } = await supabase
+        .from("league_memberships")
+        .select("user_id, league_id, role, leagues(name), profiles(full_name, username, cpf, registration_number, email)")
+        .in("role", ["ligante", "diretor", "presidente"]);
+      const byUser = new Map<string, any>();
+      (m ?? []).forEach((row: any) => {
+        const u = byUser.get(row.user_id) ?? { user_id: row.user_id, profile: row.profiles, leagues: [] };
+        u.leagues.push(row.leagues?.name ?? "—");
+        byUser.set(row.user_id, u);
+      });
+      setItems(Array.from(byUser.values()).filter((u: any) => u.leagues.length > 3));
+    })();
+  }, []);
+
+  if (items.length === 0) return null;
+  return (
+    <>
+      <Card className="mb-6 border-amber-500/40 bg-amber-500/5">
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="size-5 text-amber-600" />
+            <div className="text-sm">
+              <div className="font-black text-amber-700 dark:text-amber-400">Existem {items.length} membro(s) em mais de 3 ligas</div>
+              <div className="text-muted-foreground">Verifique a situação para garantir o cumprimento do regulamento do CAMED.</div>
+            </div>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => setOpen(true)}>Verificar</Button>
+        </CardContent>
+      </Card>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Membros em mais de 3 ligas</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {items.map((it: any) => (
+              <div key={it.user_id} className="p-3 rounded border">
+                <div className="font-bold">{it.profile?.full_name || it.profile?.username || "Membro"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {it.profile?.email}
+                  {it.profile?.cpf ? ` · CPF ${it.profile.cpf}` : ""}
+                  {it.profile?.registration_number ? ` · Matrícula ${it.profile.registration_number}` : ""}
+                </div>
+                <div className="text-sm mt-1"><b>Ligas ({it.leagues.length}):</b> {it.leagues.join(", ")}</div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
