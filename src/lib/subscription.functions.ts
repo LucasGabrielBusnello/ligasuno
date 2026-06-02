@@ -58,8 +58,7 @@ export const createLeagueSubscriptionCheckout = createServerFn({ method: "POST" 
     params.append("line_items[0][price_data][product_data][name]", `Anuidade ${(league as any).name} (Cartão)`);
     params.append("metadata[league_id]", data.league_id);
     params.append("subscription_data[metadata][league_id]", data.league_id);
-    // Anuidade parcelada: marca para o webhook aplicar cancel_at de 12 ciclos
-    params.append("subscription_data[metadata][cancel_after_months]", "12");
+
 
 
 
