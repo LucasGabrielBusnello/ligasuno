@@ -101,3 +101,21 @@ export const getMyPendingLeaveRequest = createServerFn({ method: "POST" })
       .eq("status", "pending").maybeSingle();
     return { request: req };
   });
+
+// Lista pedidos de desistência da liga (para o presidente).
+export const listLeagueLeaveRequests = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ league_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: league } = await (supabaseAdmin as any)
+      .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
+    const { data: isAdmin } = await (supabaseAdmin as any).rpc("is_admin_master", { _user_id: userId });
+    if ((league as any)?.president_id !== userId && !isAdmin) throw new Error("Não autorizado");
+
+    const { data: rows } = await (supabaseAdmin as any).from("league_leave_requests")
+      .select("*, profiles!league_leave_requests_user_id_fkey(full_name, username, email, cpf, registration_number)")
+      .eq("league_id", data.league_id).eq("status", "pending")
+      .order("created_at", { ascending: false });
+    return { requests: rows ?? [] };
+  });
