@@ -295,7 +295,7 @@ function ExamSection({ league }: { league: any }) {
           {Object.keys(quotaBySem).sort((a,b) => +a - +b).map(sem => (
             <div key={sem} className="space-y-1">
               <Badge className="text-[10px]">Vagas destinadas ao {sem}º semestre</Badge>
-              {quotaBySem[+sem].map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onToggleLigante={() => doToggleLigante(c)} />)}
+              {quotaBySem[+sem].map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onAddLigante={() => doAddLigante(c)} onRemoveLigante={() => doRemoveLigante(c)} />)}
             </div>
           ))}
           {generalClassified.length > 0 && (
