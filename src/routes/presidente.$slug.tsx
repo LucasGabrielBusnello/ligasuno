@@ -19,6 +19,7 @@ import { startMpOAuth, disconnectMp } from "@/lib/mp-oauth.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
 import { SemesterDialog, StatusBadge as SemesterStatusBadge } from "@/components/semester-dialog";
 import { listCyclePayments } from "@/lib/semester.functions";
+import { listLeagueLeaveRequests, processLeaveRequest } from "@/lib/leave-request.functions";
 
 export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
 
