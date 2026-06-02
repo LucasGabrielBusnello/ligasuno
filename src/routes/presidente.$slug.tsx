@@ -933,8 +933,9 @@ function MembersTab({ league }: any) {
         {members.map((m) => (
           <div key={m.id} className="flex items-center justify-between p-3 rounded border gap-2 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold">{m.profiles?.username}</span>
+              <span className="font-bold">{m.profiles?.full_name || m.profiles?.username}</span>
               <Badge variant="secondary">{m.role}</Badge>
+              {m.profiles?.registration_number && <span className="text-xs text-muted-foreground">Mat. {m.profiles.registration_number}</span>}
               {["ligante","diretor"].includes(m.role) && statusMap[m.user_id] && (
                 <SemesterStatusBadge status={statusMap[m.user_id]} />
               )}
