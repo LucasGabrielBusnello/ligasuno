@@ -98,6 +98,39 @@ function PresidentePage() {
   );
 }
 
+function ActiveSubscriptionCard({ leagueId, paidUntilFmt }: { leagueId: string; paidUntilFmt: string | null }) {
+  const cancelFn = useServerFn(cancelLeagueSubscription);
+  const [loading, setLoading] = useState(false);
+  async function doCancel() {
+    if (!confirm("Cancelar a assinatura mensal? A liga permanecerá ativa até a data da próxima cobrança e nenhum novo valor será cobrado.")) return;
+    try {
+      setLoading(true);
+      await cancelFn({ data: { league_id: leagueId } } as any);
+      toast.success("Assinatura cancelada. A liga seguirá ativa até o fim do período pago.");
+      setTimeout(() => window.location.reload(), 800);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao cancelar");
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <Card className="mb-6 border-emerald-500/40 bg-emerald-500/5">
+      <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+        <CheckCircle2 className="size-5 text-emerald-600" />
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-emerald-700 dark:text-emerald-400">Liga ativa</p>
+          <p className="text-sm text-muted-foreground">Cobrança mensal recorrente. Próxima cobrança: <span className="font-bold">{paidUntilFmt}</span>.</p>
+        </div>
+        <Button size="sm" variant="outline" disabled={loading} onClick={doCancel}>
+          {loading ? "Cancelando..." : "Cancelar assinatura"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: any }) {
   const startCheckout = useServerFn(createLeagueSubscriptionCheckout);
   const [loading, setLoading] = useState(false);
