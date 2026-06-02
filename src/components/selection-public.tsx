@@ -41,11 +41,13 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
     if (!isValidCPF(cpf)) return toast.error("CPF inválido");
     if (!form.email || !form.email.includes("@")) return toast.error("Email inválido");
     if (!form.phone || form.phone.length < 8) return toast.error("Telefone inválido");
+    if (!form.registration_number || form.registration_number.trim().length < 2) return toast.error("Informe sua matrícula");
     try {
       setSubmitting(true);
       const res: any = await checkout({ data: {
         league_id: league.id, full_name: form.full_name, cpf, email: form.email,
         phone: form.phone, semester: form.semester, payment_method: method,
+        registration_number: form.registration_number.trim(),
         origin_url: window.location.origin,
       } } as any);
       if (res?.free) { toast.success("Inscrição confirmada!"); onPaid?.(); onClose(); return; }
