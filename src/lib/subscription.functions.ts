@@ -78,3 +78,48 @@ export const createLeagueSubscriptionCheckout = createServerFn({ method: "POST" 
 
     return { url: session.url as string };
   });
+
+export const cancelLeagueSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ league_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: league } = await supabase.from("leagues").select("id, president_id").eq("id", data.league_id).maybeSingle();
+    if (!league) throw new Error("Liga não encontrada");
+    if ((league as any).president_id !== userId) throw new Error("Apenas a presidência pode cancelar");
+
+    const { data: sub } = await supabaseAdmin
+      .from("league_subscriptions")
+      .select("stripe_subscription_id, status")
+      .eq("league_id", data.league_id)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!sub?.stripe_subscription_id) throw new Error("Assinatura ativa não encontrada");
+
+    const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
+    const STRIPE_KEY = getStripeConnectionKey();
+    if (!LOVABLE_API_KEY || !STRIPE_KEY) throw new Error("Integração de pagamentos não configurada");
+
+    const body = new URLSearchParams();
+    body.append("cancel_at_period_end", "true");
+    const res = await fetch(`${GATEWAY}/v1/subscriptions/${sub.stripe_subscription_id}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "X-Connection-Api-Key": STRIPE_KEY,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: body.toString(),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(`Falha ao cancelar [${res.status}]: ${JSON.stringify(json)}`);
+
+    await supabaseAdmin.from("league_subscriptions")
+      .update({ cancel_at_period_end: true, updated_at: new Date().toISOString() })
+      .eq("stripe_subscription_id", sub.stripe_subscription_id);
+
+    return { ok: true };
+  });
+
