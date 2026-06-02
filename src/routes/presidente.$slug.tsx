@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
-import { createLeagueSubscriptionCheckout } from "@/lib/subscription.functions";
+import { createLeagueSubscriptionCheckout, cancelLeagueSubscription } from "@/lib/subscription.functions";
 import { startMpOAuth, disconnectMp } from "@/lib/mp-oauth.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
 import { SemesterDialog, StatusBadge as SemesterStatusBadge } from "@/components/semester-dialog";
