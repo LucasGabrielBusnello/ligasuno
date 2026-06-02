@@ -301,7 +301,7 @@ function ExamSection({ league }: { league: any }) {
           {generalClassified.length > 0 && (
             <div className="space-y-1 pt-2 border-t">
               <Badge variant="outline" className="text-[10px]">Vagas gerais</Badge>
-              {generalClassified.map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onToggleLigante={() => doToggleLigante(c)} />)}
+              {generalClassified.map(c => <RankRow key={c.id} reg={c} isLigante={ligantes.has(c.user_id)} onRemove={() => doRemove(c.id)} onAddLigante={() => doAddLigante(c)} onRemoveLigante={() => doRemoveLigante(c)} />)}
             </div>
           )}
         </CardContent></Card>
