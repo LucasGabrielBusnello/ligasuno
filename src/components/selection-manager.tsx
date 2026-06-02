@@ -216,17 +216,26 @@ function ExamSection({ league }: { league: any }) {
     try { await rem({ data: { registration_id: id } } as any); toast.success("Substituição feita"); reload(); }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
-  async function doToggleLigante(reg: any) {
+  async function doAddLigante(reg: any) {
     try {
-      const res: any = await toggle({ data: { registration_id: reg.id } } as any);
+      const res: any = await toggle({ data: { registration_id: reg.id, mode: "add" } } as any);
       setLigantes(prev => {
         const next = new Set(prev);
-        if (res?.isLigante) next.add(reg.user_id); else next.delete(reg.user_id);
+        if (res?.isLigante) next.add(reg.user_id);
         return next;
       });
-      toast.success(res?.isLigante ? "Adicionado como ligante" : "Removido de ligante");
+      toast.success(res?.alreadyMember ? "Já é ligante" : "Adicionado como ligante");
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
+  async function doRemoveLigante(reg: any) {
+    if (!confirm("Remover este usuário da liga (ligante)?")) return;
+    try {
+      await toggle({ data: { registration_id: reg.id, mode: "remove" } } as any);
+      setLigantes(prev => { const next = new Set(prev); next.delete(reg.user_id); return next; });
+      toast.success("Removido de ligante");
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
+  }
+
 
   const classified = regs.filter(r => r.ranked_via && r.ranked_via !== "waitlist" && r.ranked_via !== "eliminated")
     .sort((a,b) => (a.ranked_position ?? 0) - (b.ranked_position ?? 0));
