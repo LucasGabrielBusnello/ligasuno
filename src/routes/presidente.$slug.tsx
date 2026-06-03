@@ -953,7 +953,7 @@ function MembersTab({ league }: any) {
     if (error) return toast.error(error.message);
     toast.success("Removido"); reload();
   }
-  async function changeRole(id: string, newRole: string) {
+  async function changeRole(id: string, newRole: "ligante" | "diretor") {
     const { error } = await supabase.from("league_memberships").update({ role: newRole }).eq("id", id);
     if (error) return toast.error(error.message);
     toast.success("Cargo atualizado"); reload();
