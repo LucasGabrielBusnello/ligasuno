@@ -933,14 +933,31 @@ function MembersTab({ league }: any) {
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [league.id]);
   async function add() {
     if (!query.trim()) return;
-    const q = query.trim();
-    const { data: prof } = await supabase.from("profiles").select("id").or(`email.ilike.${q},username.ilike.${q}`).maybeSingle();
-    if (!prof?.id) return toast.error("Usuário não existe");
+    const q = query.trim().replace(/[%,]/g, "");
+    const { data: profs, error: pe } = await supabase
+      .from("profiles")
+      .select("id,email,username")
+      .or(`email.ilike.%${q}%,username.ilike.%${q}%`)
+      .limit(2);
+    if (pe) return toast.error(pe.message);
+    if (!profs || profs.length === 0) return toast.error("Usuário não existe");
+    if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — seja mais específico");
+    const prof = profs[0];
     const { error } = await supabase.from("league_memberships").upsert({ league_id: league.id, user_id: prof.id, role }, { onConflict: "league_id,user_id" });
     if (error) return toast.error(error.message);
-    toast.success("Adicionado"); setQuery(""); reload();
+    toast.success("Adicionado"); setQuery(""); await reload();
   }
-  async function remove(id: string) { await supabase.from("league_memberships").delete().eq("id", id); reload(); }
+  async function remove(id: string) {
+    if (!confirm("Remover este membro da liga?")) return;
+    const { error } = await supabase.from("league_memberships").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Removido"); reload();
+  }
+  async function changeRole(id: string, newRole: string) {
+    const { error } = await supabase.from("league_memberships").update({ role: newRole }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Cargo atualizado"); reload();
+  }
   return (
     <Card><CardContent className="p-6 space-y-4">
       <LeaveRequestsPanel league={league} onProcessed={reload} />
@@ -956,17 +973,34 @@ function MembersTab({ league }: any) {
         <Button onClick={add}>Adicionar</Button>
       </div>
       <div className="space-y-2">
+        {members.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Nenhum membro ainda.</p>}
         {members.map((m) => (
           <div key={m.id} className="flex items-center justify-between p-3 rounded border gap-2 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold">{m.profiles?.full_name || m.profiles?.username}</span>
-              <Badge variant="secondary">{m.role}</Badge>
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <span className="font-bold truncate">{m.profiles?.full_name || m.profiles?.username}</span>
+              <span className="text-xs text-muted-foreground truncate">{m.profiles?.email}</span>
               {m.profiles?.registration_number && <span className="text-xs text-muted-foreground">Mat. {m.profiles.registration_number}</span>}
               {["ligante","diretor"].includes(m.role) && statusMap[m.user_id] && (
                 <SemesterStatusBadge status={statusMap[m.user_id]} />
               )}
             </div>
-            {m.role !== "presidente" && <Button size="sm" variant="destructive" onClick={() => remove(m.id)}><Trash2 className="size-3" /></Button>}
+            <div className="flex items-center gap-2">
+              {m.role === "presidente" ? (
+                <Badge>Presidente</Badge>
+              ) : (
+                <>
+                  <select
+                    className="px-2 py-1 rounded border bg-background text-xs"
+                    value={m.role}
+                    onChange={(e) => changeRole(m.id, e.target.value)}
+                  >
+                    <option value="ligante">Ligante</option>
+                    <option value="diretor">Diretor</option>
+                  </select>
+                  <Button size="sm" variant="destructive" onClick={() => remove(m.id)} title="Excluir membro"><Trash2 className="size-3" /></Button>
+                </>
+              )}
+            </div>
           </div>
         ))}
       </div>
