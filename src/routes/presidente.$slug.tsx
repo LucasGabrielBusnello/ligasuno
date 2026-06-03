@@ -1004,7 +1004,7 @@ function MembersTab({ league }: any) {
           </div>
         ))}
       </div>
-      <SelectionManagerDialog league={league} open={selOpen} onClose={() => setSelOpen(false)} />
+      <SelectionManagerDialog league={league} open={selOpen} onClose={() => setSelOpen(false)} onMembershipUpdated={reload} />
       <SemesterDialog league={league} open={semOpen} onClose={() => setSemOpen(false)} onUpdated={reload} />
     </CardContent></Card>
   );

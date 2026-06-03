@@ -16,7 +16,7 @@ import { generateRanking, removeFromRanking, undoLastRanking, toggleLigante } fr
 
 const SEMESTERS = [1, 3, 5, 7, 9, 11] as const;
 
-export function SelectionManagerDialog({ league, open, onClose }: { league: any; open: boolean; onClose: () => void }) {
+export function SelectionManagerDialog({ league, open, onClose, onMembershipUpdated }: { league: any; open: boolean; onClose: () => void; onMembershipUpdated?: () => void }) {
   if (!league) return null;
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -30,7 +30,7 @@ export function SelectionManagerDialog({ league, open, onClose }: { league: any;
             <TabsTrigger value="exam"><ClipboardCheck className="size-4 mr-1.5" />Prova e Classificações</TabsTrigger>
           </TabsList>
           <TabsContent value="config" className="mt-4"><ConfigSection league={league} /></TabsContent>
-          <TabsContent value="exam" className="mt-4"><ExamSection league={league} /></TabsContent>
+          <TabsContent value="exam" className="mt-4"><ExamSection league={league} onMembershipUpdated={onMembershipUpdated} /></TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
@@ -167,7 +167,7 @@ function ConfigSection({ league }: { league: any }) {
   );
 }
 
-function ExamSection({ league }: { league: any }) {
+function ExamSection({ league, onMembershipUpdated }: { league: any; onMembershipUpdated?: () => void }) {
   const [regs, setRegs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showWaitlist, setShowWaitlist] = useState(false);
@@ -204,7 +204,12 @@ function ExamSection({ league }: { league: any }) {
   }
 
   async function doGenerate() {
-    try { await gen({ data: { league_id: league.id } } as any); toast.success("Classificação gerada"); reload(); }
+    try {
+      await gen({ data: { league_id: league.id } } as any);
+      toast.success("Classificação gerada");
+      await reload();
+      onMembershipUpdated?.();
+    }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
   async function doUndo() {
@@ -213,7 +218,12 @@ function ExamSection({ league }: { league: any }) {
   }
   async function doRemove(id: string) {
     if (!confirm("Remover este classificado e chamar o próximo?")) return;
-    try { await rem({ data: { registration_id: id } } as any); toast.success("Substituição feita"); reload(); }
+    try {
+      await rem({ data: { registration_id: id } } as any);
+      toast.success("Substituição feita");
+      await reload();
+      onMembershipUpdated?.();
+    }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
   async function doAddLigante(reg: any) {
@@ -225,6 +235,7 @@ function ExamSection({ league }: { league: any }) {
         return next;
       });
       toast.success(res?.alreadyMember ? "Já é ligante" : "Adicionado como ligante");
+      onMembershipUpdated?.();
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
   async function doRemoveLigante(reg: any) {
@@ -233,6 +244,7 @@ function ExamSection({ league }: { league: any }) {
       await toggle({ data: { registration_id: reg.id, mode: "remove" } } as any);
       setLigantes(prev => { const next = new Set(prev); next.delete(reg.user_id); return next; });
       toast.success("Removido de ligante");
+      onMembershipUpdated?.();
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
 
