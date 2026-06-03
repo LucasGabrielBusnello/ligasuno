@@ -992,7 +992,7 @@ function MembersTab({ league }: any) {
                   <select
                     className="px-2 py-1 rounded border bg-background text-xs"
                     value={m.role}
-                    onChange={(e) => changeRole(m.id, e.target.value)}
+                    onChange={(e) => changeRole(m.id, e.target.value as "ligante" | "diretor")}
                   >
                     <option value="ligante">Ligante</option>
                     <option value="diretor">Diretor</option>
