@@ -1,78 +1,121 @@
+# Prova online do Processo Seletivo
 
-# Plano de implementação
-
-Vou implementar as 9 demandas em blocos coesos. Tudo usa o template de e-mail da liga (`emailLayout`) já existente — com a cor de cada liga — e o conector Gmail já conectado.
-
----
-
-## 1. Botão "+ Ligante" na classificação não funciona
-- **Bug**: ao gerar ranking, classificados são adicionados automaticamente como `ligante`, mas o toggle manual depende de buscar o `user_id`. Vou revisar `toggleLigante` e o componente `selection-manager.tsx` para garantir que:
-  - O botão exibe estado correto (já é Ligante ou não)
-  - Insere/remove a membership corretamente
-  - Mostra toast de feedback
-
-## 2. E-mail de boas-vindas ao registrar no site
-- Disparar e-mail decorado quando um novo perfil é criado.
-- Como o `handle_new_user` é um trigger SQL, vou criar um servidor function `sendWelcomeEmail` chamado do client (auth.tsx) logo após signup bem-sucedido.
-- Template: agradecimento + funcionalidades (entrar em ligas, prova de seleção, eventos, minicursos, pagamento de semestralidade). Cor: verde Ligasuno padrão (`#1f5132`).
-
-## 3. E-mail no momento da inscrição em evento/minicurso
-- No webhook `mp-webhook.ts` (após pagamento aprovado) E também para eventos gratuitos: disparar e-mail com todos os dados (título, data, horário, local, descrição, preço pago) no template da liga.
-
-## 4. Lembretes automáticos de evento (7 dias, 1 dia, dia do evento + minicursos)
-- Criar rota `/api/public/cron/event-reminders` que:
-  - Busca eventos com `event_date` em `today + 7`, `today + 1`, `today`
-  - Para cada um, envia e-mail a todos os `event_registrations` com status `paid`
-  - No dia, também envia e-mails dos minicursos do evento aos inscritos
-- Idempotência: tabela nova `event_email_log (event_id, kind, sent_at)` para não duplicar.
-- Cron diário às 8h via pg_cron.
-
-## 5. E-mail ao ser definido como Ligante (botão na aba classificados)
-- Em `toggleLigante` (quando passa para `isLigante: true`), buscar perfil + liga e enviar e-mail "Você foi classificado!" no template da liga, com botão para acessar painel do ligante.
-
-## 6. Desistência de liga (painel do ligante)
-- **DB**: nova tabela `league_leave_requests (id, league_id, user_id, status: pending/approved/rejected, created_at, processed_at)`.
-- **Painel do ligante**: substituir card de semestralidade por aviso quando houver `pending`. Botão "Desistir da Liga" abre confirmação → cria request → envia e-mail para o presidente no template da liga com nome, CPF e matrícula.
-- **Painel do presidente**: nova seção para aprovar/rejeitar pedidos. Aprovar = remove `league_memberships` + marca request como `approved`.
-
-## 7. CAMED — alerta de membros em 3+ ligas
-- Na rota `camed.tsx`: query agregada `user_id, count(*) from league_memberships where role='ligante' group by user_id having count>3`.
-- Mostrar banner amarelo "Existem membros em mais de 3 ligas" + botão "Verificar" que abre modal com a lista (nome, CPF, matrícula, ligas).
-
-## 8. Matrícula
-- **DB**: adicionar `registration_number text` em `profiles` e em `league_selection_registrations`.
-- **Cadastro de usuário** (auth.tsx): campo opcional "Matrícula (deixe em branco caso não tenha)".
-- **Inscrição em liga** (`selection-public.tsx`): campo obrigatório.
-- **Painel admin master**: mostrar matrícula nos cards/lista de usuários.
-- **Painel da liga (presidente)**: aba membros mostra matrícula.
-
-## 9. Limite de vagas (8–12) no processo seletivo
-- No formulário de definir `selection_total_seats`: validação client + server. Toast: "A quantidade de membros não é permitida pelo regulamento do CAMED".
-
-## 10. CPF único globalmente
-- **DB**: 
-  - `profiles`: adicionar coluna `cpf` (nullable). Unique index (case-insensitive, normalizado).
-  - Adicionar `UNIQUE` em `league_selection_registrations.cpf`, `event_registrations.cpf`.
-- **Validação**: helper `assertCpfUnique(cpf, currentUserId?)` chamado nos pontos de inscrição. Mostrar: "Este CPF já está cadastrado".
-- Migrar dados: pegar CPF da primeira registration de cada user e popular `profiles.cpf` quando único.
+## Resumo
+Criar um sistema de prova dentro da plataforma onde:
+- O **presidente** monta o questionário (similar aos quizzes dos diretores) com tempo, opção de e-mail, código de reentrada e controle de presença.
+- O **inscrito que pagou a taxa E está marcado como presente** acessa a prova pelo "Painel do Inscrito" quando liberada.
+- Anti-cola: detecção de troca de aba/janela pausa a prova e exige código fornecido pelo presidente.
+- Embaralhamento por inscrito; nota e ordem de entrega alimentam o ranking existente (`grade` + `delivery_position`).
 
 ---
 
-## Ordem de execução
+## 1. Banco de dados (migração)
 
-1. **Migração DB** (matrícula, CPF em profiles, tabela leave_requests, tabela event_email_log, cron) — single migration
-2. **E-mails** (welcome, evento, minicurso, classificação, lembretes, desistência) em `gmail.server.ts` como templates reutilizáveis
-3. **Backend** (server functions: leave-request, welcome, reminders cron, validações)
-4. **Frontend** (auth.tsx matrícula, selection-public.tsx matrícula+cpf-único, semester-card desistência, presidente painel, camed alerta, selection-manager limite 8-12 + botão ligante)
+**Nova tabela `league_selection_exams`** (1 prova por liga):
+- `league_id` (único), `time_limit_minutes`, `shuffle` (default true), `send_answers_email` (bool), `published` (bool), `reentry_code` (text, 4 dígitos), `created_at`, `updated_at`.
+
+**Nova tabela `league_selection_exam_questions`**:
+- `exam_id`, `question` (text), `options` (jsonb array), `correct_answer` (int index), `display_order`.
+
+**Nova tabela `league_selection_exam_attempts`** (1 tentativa por inscrito):
+- `exam_id`, `registration_id` (único), `user_id`, `question_order` (jsonb), `option_orders` (jsonb), `started_at`, `paused_at`, `time_used_ms`, `submitted_at`, `score`, `total`, `answers` (jsonb), `delivery_position`.
+
+Campo `present` já existe em `league_selection_registrations` — será usado como pré-requisito.
+
+**RLS + GRANTs**:
+- `exams`/`questions`: gerenciados por presidente/admin; leitura só via serverFn (sem expor `correct_answer`).
+- `attempts`: somente o próprio user (insert/update da sua linha) + presidente (select).
+- `reentry_code` lido apenas por serverFn restrito ao presidente.
 
 ---
 
-## Notas técnicas
+## 2. Server functions (`src/lib/exam.functions.ts`)
 
-- Todos os e-mails passam pelo `sendGmail`/`sendGmailBulk` existente, já com encoding base64 corrigido.
-- Templates reutilizam `emailLayout({ brandColor: league.theme_color, leagueName: league.name })`.
-- O cron diário (`mark-overdue` 03h e `event-reminders` 08h) usa `pg_cron + pg_net + apikey` conforme padrão já usado.
-- Toda nova tabela terá `GRANT` + RLS conforme regras do projeto.
-- Vou validar CPF normalizado (apenas dígitos) para a unique constraint funcionar de forma consistente.
+- `upsertExam` / `addExamQuestion` / `updateExamQuestion` / `deleteExamQuestion` / `listExamQuestions` — presidente.
+- `regenerateReentryCode` / `getReentryCode` — presidente.
+- **`startExamAttempt({ league_id })`** — valida:
+  1. inscrito tem `registration.status === 'paid'`
+  2. **`registration.present === true`** (caso contrário, retorna erro "Você precisa ser marcado como presente pelo presidente para iniciar a prova")
+  3. exame existe e está publicado
+  
+  Cria attempt com ordem embaralhada, retorna questões sanitizadas (sem `correct_answer`) e `time_remaining_ms`.
+- `resumeExamAttempt({ league_id, reentry_code })` — valida código + presença + retorna estado.
+- `pauseExamAttempt` — chamado quando o front detecta saída de aba.
+- `saveExamAnswer` — salva resposta parcial.
+- `submitExamAttempt` — calcula `score`, define `delivery_position` sequencial, grava `grade` e `delivery_position` em `league_selection_registrations`, envia e-mail se configurado.
+- Auto-submit server-side se tempo expirar.
 
-Posso prosseguir?
+**Anti-bypass**: cliente nunca recebe `correct_answer`. Tempo é autoritativo do servidor.
+
+---
+
+## 3. UI — Presidente
+
+Em `SelectionManagerDialog` (aba "Processo Seletivo"), nova sub-aba **"Prova"** com `<ExamBuilder>`:
+- Campo **Tempo de prova** (minutos)
+- Switch **Embaralhar questões e alternativas** (default ligado)
+- Switch **Enviar respostas no e-mail ao final**
+- Lista de questões (UI espelhada de `QuizTab` do diretor, sem justificativa)
+- Checkbox **"Criar e Publicar"**
+- Switch separado **"Publicada"** (liga/desliga sem recriar)
+- Seção **Código de reentrada**: botão **"Mostrar código"** + botão **"Gerar novo código"**
+
+Na sub-aba existente de presença/classificação, o presidente continua marcando `present` — esse é o gating de quem pode iniciar a prova.
+
+---
+
+## 4. UI — Inscrito (Painel do Inscrito)
+
+Em `selection-public.tsx` (`SelectionAccessDialog`), quando `registration.status === 'paid'`:
+- Botão **"Acessar Prova"** com três estados:
+  - **Desabilitado (cinza) + texto "Aguardando publicação"** — se exame não publicado.
+  - **Desabilitado (cinza) + texto "Aguardando confirmação de presença"** — se publicado mas `registration.present === false`.
+  - **Habilitado** — se publicado E presente.
+- Ao clicar, abre `<ExamRunner>` em modal full-screen.
+
+**ExamRunner** (`src/components/exam-runner.tsx`):
+- Chama `startExamAttempt` (ou `resumeExamAttempt` se já existir attempt pausado).
+- **Timer regressivo** sincronizado com servidor (heartbeat a cada 30s).
+- Renderiza questões na ordem retornada; cada resposta dispara `saveExamAnswer`.
+- **Anti-cola**:
+  - `visibilitychange` + `window.blur` + `pagehide` → `pauseExamAttempt` + overlay **"Prova pausada — peça o código ao presidente"** com input 4 dígitos → `resumeExamAttempt`.
+  - `contextmenu` desabilitado, `user-select: none` no enunciado.
+- Botão **"Finalizar"** → `submitExamAttempt` → tela de confirmação.
+- Auto-submit se tempo expirar.
+
+---
+
+## 5. Integração com classificação
+
+`submitExamAttempt` grava em `league_selection_registrations`:
+- `grade` = acertos
+- `delivery_position` = posição sequencial entre submissões da liga
+
+`generateRanking` em `selection.functions.ts` já usa esses campos como critério (nota desc, depois delivery_position asc) — sem mudanças.
+
+---
+
+## Detalhes técnicos
+
+- **Pré-requisito de presença**: validado em `startExamAttempt` e `resumeExamAttempt`. Se o presidente desmarcar `present` no meio da prova, o `resume` falha — mas o `submit` continua permitido para não perder respostas já enviadas (decisão a confirmar na implementação).
+- **Embaralhamento determinístico**: ordem gerada uma vez em `startExamAttempt` e persistida em `question_order` + `option_orders`.
+- **Timer autoritativo**: `time_remaining = limite - time_used_ms - (now - started_at se não pausado)`.
+- **Pausa**: `pause` acumula tempo em `time_used_ms`; `resume` valida código e zera `paused_at`.
+- **Código 4 dígitos**: `crypto.randomInt(1000, 10000)`. Regenerar invalida sessões pausadas.
+- **E-mail de respostas**: usa `gmail.server.ts` existente; lista pergunta → alternativa marcada → se acertou.
+- **`delivery_position`**: `coalesce(max,0)+1` dentro do `submit` com lock simples.
+- **Segurança do gabarito**: questões lidas via `supabaseAdmin` em serverFn; RLS nega SELECT direto ao inscrito.
+- **Detecção de aba**: `visibilitychange` (`document.hidden`) + `blur` + `pagehide` cobrem troca, minimizar e Alt+Tab.
+
+---
+
+## Arquivos novos
+- `src/lib/exam.functions.ts`
+- `src/components/exam-builder.tsx`
+- `src/components/exam-runner.tsx`
+- Migração SQL (3 tabelas + RLS + GRANTs)
+
+## Arquivos modificados
+- `src/components/selection-manager.tsx` — sub-aba "Prova" + botão "Mostrar código"
+- `src/components/selection-public.tsx` — botão "Acessar Prova" com estados (publicação + presença)
+- `src/lib/gmail.server.ts` — template `sendExamAnswersEmail`

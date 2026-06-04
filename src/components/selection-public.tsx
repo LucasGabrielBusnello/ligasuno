@@ -8,9 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ChevronRight, CreditCard, QrCode, Calendar, Clock, FileText } from "lucide-react";
+import { ChevronRight, CreditCard, QrCode, Calendar, Clock, FileText, ClipboardCheck } from "lucide-react";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { createSelectionCheckout } from "@/lib/selection.functions";
+import { checkExamAvailability } from "@/lib/exam.functions";
+import { ExamRunner } from "@/components/exam-runner";
 
 const SEMESTERS = [1, 3, 5, 7, 9, 11] as const;
 
@@ -128,14 +130,39 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
 export function SelectionAccessDialog({ league, registration, open, onClose }: { league: any; registration: any; open: boolean; onClose: () => void }) {
   const [myRank, setMyRank] = useState<any | null>(null);
   const [quotas, setQuotas] = useState<any[]>([]);
+  const [examState, setExamState] = useState<{ available: boolean; reason?: string; paused?: boolean } | null>(null);
+  const [runnerOpen, setRunnerOpen] = useState(false);
+  const checkExam = useServerFn(checkExamAvailability);
+
+  async function reloadExam() {
+    if (!registration) return;
+    try {
+      const r: any = await checkExam({ data: { league_id: league.id } } as any);
+      setExamState(r);
+    } catch { setExamState({ available: false, reason: "error" }); }
+  }
 
   useEffect(() => {
     if (!open || !registration) return;
     supabase.from("league_selection_registrations").select("ranked_position, ranked_via, ranked_semester").eq("id", registration.id).maybeSingle().then(({ data }) => setMyRank(data));
     supabase.from("league_selection_quotas").select("*").eq("league_id", league.id).then(({ data }) => setQuotas(data ?? []));
+    reloadExam();
   }, [open, registration?.id]);
 
   if (!league || !registration) return null;
+
+  const examLabel = (() => {
+    if (!examState) return "Carregando prova...";
+    if (examState.available) return examState.paused ? "Retomar Prova (pausada)" : "Acessar Prova";
+    switch (examState.reason) {
+      case "not_published": return "Aguardando publicação da prova";
+      case "not_present": return "Aguardando confirmação de presença";
+      case "already_submitted": return "Prova já enviada";
+      case "not_paid": return "Pagamento pendente";
+      default: return "Prova indisponível";
+    }
+  })();
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[92vh] overflow-y-auto">
@@ -153,6 +180,19 @@ export function SelectionAccessDialog({ league, registration, open, onClose }: {
             </div>
           )}
         </CardContent></Card>
+
+        <Card><CardContent className="p-4 space-y-2">
+          <h4 className="font-black text-sm flex items-center gap-2"><ClipboardCheck className="size-4" /> Prova online</h4>
+          <Button
+            className="w-full"
+            disabled={!examState?.available}
+            onClick={() => setRunnerOpen(true)}
+            style={examState?.available ? { background: league.theme_color } : undefined}
+          >
+            <ClipboardCheck className="size-4" /> {examLabel}
+          </Button>
+        </CardContent></Card>
+
         <Card><CardContent className="p-4 space-y-2 text-sm">
           <h4 className="font-black">Sobre a prova</h4>
           {league.selection_exam_date && <div className="flex items-center gap-2"><Calendar className="size-4" /> {new Date(league.selection_exam_date).toLocaleDateString("pt-BR")}</div>}
@@ -160,7 +200,10 @@ export function SelectionAccessDialog({ league, registration, open, onClose }: {
           {league.selection_exam_description && <p className="whitespace-pre-line">{league.selection_exam_description}</p>}
           <div className="text-xs text-muted-foreground pt-2 border-t">Vagas: {league.selection_total_seats}{quotas.length > 0 && <> · Cotas: {quotas.map((q:any) => `${q.seats}× ${q.semester}º`).join(", ")}</>}</div>
         </CardContent></Card>
+
+        <ExamRunner league={league} open={runnerOpen} onClose={() => { setRunnerOpen(false); reloadExam(); }} />
       </DialogContent>
     </Dialog>
   );
 }
+

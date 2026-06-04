@@ -844,6 +844,145 @@ export type Database = {
         }
         Relationships: []
       }
+      league_selection_exam_attempts: {
+        Row: {
+          answers: Json
+          created_at: string
+          delivery_position: number | null
+          exam_id: string
+          id: string
+          option_orders: Json
+          paused_at: string | null
+          question_order: Json
+          registration_id: string
+          score: number | null
+          started_at: string
+          submitted_at: string | null
+          time_used_ms: number
+          total: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          delivery_position?: number | null
+          exam_id: string
+          id?: string
+          option_orders?: Json
+          paused_at?: string | null
+          question_order?: Json
+          registration_id: string
+          score?: number | null
+          started_at?: string
+          submitted_at?: string | null
+          time_used_ms?: number
+          total?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          delivery_position?: number | null
+          exam_id?: string
+          id?: string
+          option_orders?: Json
+          paused_at?: string | null
+          question_order?: Json
+          registration_id?: string
+          score?: number | null
+          started_at?: string
+          submitted_at?: string | null
+          time_used_ms?: number
+          total?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_selection_exam_attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "league_selection_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_selection_exam_questions: {
+        Row: {
+          correct_answer: number
+          created_at: string
+          display_order: number
+          exam_id: string
+          id: string
+          options: Json
+          question: string
+        }
+        Insert: {
+          correct_answer: number
+          created_at?: string
+          display_order?: number
+          exam_id: string
+          id?: string
+          options: Json
+          question: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string
+          display_order?: number
+          exam_id?: string
+          id?: string
+          options?: Json
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_selection_exam_questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "league_selection_exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_selection_exams: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          published: boolean
+          reentry_code: string
+          send_answers_email: boolean
+          shuffle: boolean
+          time_limit_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          published?: boolean
+          reentry_code?: string
+          send_answers_email?: boolean
+          shuffle?: boolean
+          time_limit_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          published?: boolean
+          reentry_code?: string
+          send_answers_email?: boolean
+          shuffle?: boolean
+          time_limit_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       league_selection_quotas: {
         Row: {
           created_at: string
