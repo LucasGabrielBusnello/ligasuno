@@ -74,11 +74,15 @@ function LeaguesAdmin() {
   };
   useEffect(() => { reload(); }, []);
 
+  const delFn = useServerFn(deleteLeagueWithCancel);
   async function del(l: League) {
-    if (!confirm(`Excluir liga ${l.name}?`)) return;
-    const { error } = await supabase.from("leagues").delete().eq("id", l.id);
-    if (error) return toast.error(error.message);
-    toast.success("Liga excluída"); reload();
+    if (!confirm(`Excluir liga ${l.name}? A assinatura mensal de anuidade (se ativa) será cancelada no Mercado Pago.`)) return;
+    try {
+      await delFn({ data: { league_id: l.id } });
+      toast.success("Liga excluída e assinatura cancelada"); reload();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao excluir liga");
+    }
   }
 
   return (
