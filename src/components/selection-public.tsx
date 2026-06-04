@@ -22,17 +22,17 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
   const checkout = useServerFn(createSelectionCheckout);
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
-  const [method, setMethod] = useState<"card" | "pix">("card");
   const [form, setForm] = useState({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
   const [fee, setFee] = useState(0);
 
   useEffect(() => {
     if (open) {
-      setStep(1); setMethod("card");
+      setStep(1);
       setForm({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
       supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => setFee(Number((data as any)?.league_registration_fee) || 0));
     }
   }, [open, defaultEmail]);
+
 
   const [quotas, setQuotas] = useState<any[]>([]);
   useEffect(() => { if (open) supabase.from("league_selection_quotas").select("*").eq("league_id", league.id).then(({ data }) => setQuotas(data ?? [])); }, [open, league?.id]);
