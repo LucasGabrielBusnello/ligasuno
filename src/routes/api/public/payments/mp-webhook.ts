@@ -209,6 +209,24 @@ async function handlePayment(paymentId: string) {
         }
       }
     }
+  } else if (category === "anuidade_semestral") {
+    if (approved) {
+      // Estende paid_until até o fim do semestre vigente (fev–jul = 31/jul; ago–jan = 31/jan)
+      const { data: lg } = await supabaseAdmin
+        .from("leagues").select("paid_until").eq("id", refId).maybeSingle();
+      const today = new Date();
+      const currentPaid = (lg as any)?.paid_until ? new Date((lg as any).paid_until) : null;
+      const base = currentPaid && currentPaid > today ? currentPaid : today;
+      const y = base.getFullYear();
+      const m = base.getMonth();
+      let end: Date;
+      if (m >= 1 && m <= 6) end = new Date(y, 6, 31);
+      else if (m >= 7) end = new Date(y + 1, 0, 31);
+      else end = new Date(y, 0, 31);
+      await supabaseAdmin.from("leagues")
+        .update({ paid_until: end.toISOString().slice(0, 10), published: true })
+        .eq("id", refId);
+    }
   }
 }
 
