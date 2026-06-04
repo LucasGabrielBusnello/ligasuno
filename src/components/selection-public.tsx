@@ -108,14 +108,15 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
               <div className="text-3xl font-black">R$ {fee.toFixed(2)}</div>
             </CardContent></Card>
             {fee > 0 && (
-              <div>
-                <Label className="mb-2 block">Método de pagamento</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setMethod("card")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "card" ? "border-primary bg-primary/5" : ""}`}><CreditCard className="size-6" /> Cartão</button>
-                  <button type="button" onClick={() => setMethod("pix")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "pix" ? "border-primary bg-primary/5" : ""}`}><QrCode className="size-6" /> Pix</button>
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4 flex items-center gap-3">
+                <QrCode className="size-8 text-emerald-600 shrink-0" />
+                <div className="text-sm">
+                  <div className="font-bold">Pagamento via Pix</div>
+                  <div className="text-xs text-muted-foreground">A inscrição na prova é processada exclusivamente via Pix.</div>
                 </div>
               </div>
             )}
+
             <DialogFooter className="flex-row gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
               <Button onClick={submit} disabled={submitting}>{submitting ? "Processando..." : fee === 0 ? "Confirmar" : "Pagar e inscrever"}</Button>
