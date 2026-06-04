@@ -51,8 +51,6 @@ function PresidentePage() {
   const isOwner = league.president_id === user.id || isAdminMaster;
   if (!isOwner) return <div className="p-12 text-center"><h1 className="text-2xl font-black">Acesso negado</h1></div>;
 
-  const paid = !!(league.paid_until && new Date(league.paid_until) >= new Date());
-  const paidUntilFmt = league.paid_until ? new Date(league.paid_until).toLocaleDateString("pt-BR") : null;
 
   return (
     <div className="min-h-screen">
