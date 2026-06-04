@@ -22,7 +22,6 @@ export const startMpOAuth = createServerFn({ method: "POST" })
   }).parse(i))
   .handler(async ({ data, context }) => {
     const { userId } = context;
-    // Confirma que o usuário é presidente da liga
     const { data: league } = await supabaseAdmin
       .from("leagues").select("id, president_id, slug")
       .eq("id", data.league_id).maybeSingle();
@@ -30,19 +29,27 @@ export const startMpOAuth = createServerFn({ method: "POST" })
       throw new Error("Apenas o presidente da liga pode conectar o Mercado Pago.");
     }
 
+    // Sempre força reconexão do zero — apaga qualquer vínculo prévio
+    // para que cada liga conecte a sua própria conta sem reaproveitar token antigo.
+    await supabaseAdmin.from("league_mp_accounts").delete().eq("league_id", data.league_id);
+
     const { client_id } = getOAuthCredentials();
     const state = `${data.league_id}.${crypto.randomUUID()}`;
-    // Guarda o state (5 min) numa tabela leve via app_settings? Para simplicidade,
-    // codificamos o league_id direto no state — validação extra no callback.
 
-    const url = new URL("https://auth.mercadopago.com.br/authorization");
-    url.searchParams.set("client_id", client_id);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("platform_id", "mp");
-    url.searchParams.set("redirect_uri", callbackUrl());
-    url.searchParams.set("state", state);
+    const auth = new URL("https://auth.mercadopago.com.br/authorization");
+    auth.searchParams.set("client_id", client_id);
+    auth.searchParams.set("response_type", "code");
+    auth.searchParams.set("platform_id", "mp");
+    auth.searchParams.set("redirect_uri", callbackUrl());
+    auth.searchParams.set("state", state);
 
-    return { url: url.toString() };
+    // Encadeia logout do MP antes da tela de autorização, para que o
+    // presidente escolha manualmente qual conta usar (em vez de o MP
+    // reutilizar automaticamente a sessão já logada no navegador).
+    const logout = new URL("https://www.mercadopago.com.br/logout");
+    logout.searchParams.set("go", auth.toString());
+
+    return { url: logout.toString() };
   });
 
 /**
