@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ChevronRight, CreditCard, QrCode, Calendar, Clock, FileText, ClipboardCheck } from "lucide-react";
+import { ChevronRight, QrCode, Calendar, Clock, FileText, ClipboardCheck } from "lucide-react";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { createSelectionCheckout } from "@/lib/selection.functions";
 import { checkExamAvailability } from "@/lib/exam.functions";
