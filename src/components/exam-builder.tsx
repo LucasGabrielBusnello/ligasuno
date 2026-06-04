@@ -186,27 +186,28 @@ export function ExamBuilder({ league }: { league: any }) {
           </div>
           <div className="flex flex-col gap-2 justify-center">
             <label className="flex items-center gap-2 text-sm">
-              <Switch checked={f.shuffle} onCheckedChange={(v) => setF({ ...f, shuffle: v })} />
+              <Switch checked={f.shuffle} onCheckedChange={(v) => updateAndSave({ shuffle: v })} />
               Embaralhar questões e alternativas
             </label>
             <label className="flex items-center gap-2 text-sm">
-              <Switch checked={f.send_answers_email} onCheckedChange={(v) => setF({ ...f, send_answers_email: v })} />
+              <Switch checked={f.send_answers_email} onCheckedChange={(v) => updateAndSave({ send_answers_email: v })} />
               Enviar respostas no e-mail ao final
             </label>
           </div>
         </div>
         <div className="border-t pt-3 space-y-2">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={f.createAndPublish} onChange={(e) => setF({ ...f, createAndPublish: e.target.checked, published: e.target.checked ? true : f.published })} />
+            <input type="checkbox" checked={f.createAndPublish} onChange={(e) => updateAndSave({ createAndPublish: e.target.checked, published: e.target.checked ? true : f.published })} />
             Criar e Publicar
           </label>
           {!f.createAndPublish && (
             <label className="flex items-center gap-2 text-sm">
-              <Switch checked={f.published} onCheckedChange={(v) => setF({ ...f, published: v })} />
+              <Switch checked={f.published} onCheckedChange={(v) => updateAndSave({ published: v })} />
               Prova publicada {f.published ? "(visível aos inscritos)" : "(oculta)"}
             </label>
           )}
         </div>
+
         <Button onClick={doSave}>Salvar configurações</Button>
       </CardContent></Card>
 
