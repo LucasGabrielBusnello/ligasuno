@@ -78,7 +78,7 @@ function PresidentePage() {
             <TabsTrigger value="atividades"><ImageIcon className="size-4 mr-1" />Atividades</TabsTrigger>
             <TabsTrigger value="membros"><Users className="size-4 mr-1" />Membros</TabsTrigger>
           </TabsList>
-          <TabsContent value="config" className="mt-6"><ConfigTab league={league} setLeague={setLeague} paid={paid} /></TabsContent>
+          <TabsContent value="config" className="mt-6"><ConfigTab league={league} setLeague={setLeague} paid={true} /></TabsContent>
           <TabsContent value="about" className="mt-6"><AboutTab league={league} /></TabsContent>
           <TabsContent value="eventos" className="mt-6"><EventsTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
