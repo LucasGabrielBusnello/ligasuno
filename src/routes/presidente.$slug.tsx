@@ -104,6 +104,104 @@ function PresidentePage() {
   );
 }
 
+function ActiveSubscriptionCard({ leagueId, paidUntilFmt, settings }: { leagueId: string; paidUntilFmt: string | null; settings: any }) {
+  const cancelFn = useServerFn(cancelLeagueSubscription);
+  const [loading, setLoading] = useState(false);
+  async function doCancel() {
+    if (!confirm("Cancelar a assinatura mensal? A liga permanece ativa até a data atual de validade. Pagamentos PIX semestrais não são afetados.")) return;
+    try {
+      setLoading(true);
+      await cancelFn({ data: { league_id: leagueId } } as any);
+      toast.success("Assinatura mensal cancelada.");
+      setTimeout(() => window.location.reload(), 800);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao cancelar");
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <Card className="mb-6 border-emerald-500/40 bg-emerald-500/5">
+      <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+        <CheckCircle2 className="size-5 text-emerald-600" />
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-emerald-700 dark:text-emerald-400">Liga ativa</p>
+          <p className="text-sm text-muted-foreground">Válida até <span className="font-bold">{paidUntilFmt}</span>.</p>
+        </div>
+        <Button size="sm" variant="outline" disabled={loading} onClick={doCancel}>
+          {loading ? "Cancelando..." : "Cancelar assinatura mensal"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: any }) {
+  const startMonthly = useServerFn(createLeagueSubscriptionCheckout);
+  const startSemester = useServerFn(createLeagueSemesterPixCheckout);
+  const [loading, setLoading] = useState<null | "monthly" | "semester">(null);
+
+  const monthly = Number(settings?.annual_fee_credit_monthly ?? 0);
+  const semesterFull = monthly * 6;
+  const semesterDiscounted = Math.round(semesterFull * 0.95 * 100) / 100;
+  const discountValue = Math.round((semesterFull - semesterDiscounted) * 100) / 100;
+
+  async function payMonthly() {
+    try {
+      setLoading("monthly");
+      const res = await startMonthly({ data: { league_id: leagueId, origin_url: window.location.origin } });
+      if (res?.url) window.location.href = res.url;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao iniciar pagamento");
+    } finally { setLoading(null); }
+  }
+  async function paySemester() {
+    try {
+      setLoading("semester");
+      const res = await startSemester({ data: { league_id: leagueId, origin_url: window.location.origin } });
+      if (res?.url) window.location.href = res.url;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao iniciar pagamento");
+    } finally { setLoading(null); }
+  }
+
+  return (
+    <Card className="mb-6 border-destructive">
+      <CardHeader>
+        <CardTitle className="text-destructive">Anuidade pendente</CardTitle>
+        <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga. Escolha uma das duas modalidades:</p>
+      </CardHeader>
+      <CardContent>
+        {settings && (
+          <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+            <Card className="border-primary"><CardContent className="p-4 text-center space-y-3">
+              <Badge className="mb-1">Cartão — Mensal</Badge>
+              <div className="text-3xl font-black">R$ {monthly.toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
+              <p className="text-xs text-muted-foreground">Cobrança recorrente automática no cartão. Cancele quando quiser.</p>
+              <Button className="w-full" disabled={loading !== null} onClick={payMonthly}>
+                <DollarSign className="size-4" /> {loading === "monthly" ? "Abrindo..." : "Assinar mensal"}
+              </Button>
+            </CardContent></Card>
+            <Card className="border-emerald-500/60 bg-emerald-500/5"><CardContent className="p-4 text-center space-y-3">
+              <Badge className="mb-1 bg-emerald-600 hover:bg-emerald-600">PIX — Semestral</Badge>
+              <div className="text-3xl font-black">R$ {semesterDiscounted.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                <span className="line-through">R$ {semesterFull.toFixed(2)}</span>{" "}
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">5% OFF (−R$ {discountValue.toFixed(2)})</span>
+              </p>
+              <p className="text-xs text-muted-foreground">Cobre 6 meses (fev–jul ou ago–jan). Pagamento único via PIX.</p>
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading !== null} onClick={paySemester}>
+                <DollarSign className="size-4" /> {loading === "semester" ? "Abrindo..." : "Pagar semestre via PIX"}
+              </Button>
+            </CardContent></Card>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground mt-4 text-center">⚠ Pagamentos não são reembolsáveis. Assinaturas mensais podem ser canceladas a qualquer momento.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function MpConnectCard({ leagueId }: { leagueId: string }) {
   const [account, setAccount] = useState<any>(null);
