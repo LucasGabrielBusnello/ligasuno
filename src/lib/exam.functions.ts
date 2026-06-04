@@ -104,6 +104,25 @@ export const addExamQuestion = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateExamQuestion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({
+    league_id: z.string().uuid(),
+    question_id: z.string().uuid(),
+    question: z.string().min(1).max(2000),
+    options: z.array(z.string().min(1).max(500)).min(2).max(8),
+    correct_answer: z.number().int().min(0),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    await assertPresident(data.league_id, context.userId);
+    if (data.correct_answer >= data.options.length) throw new Error("Alternativa correta inválida");
+    const { error } = await (supabaseAdmin as any).from("league_selection_exam_questions")
+      .update({ question: data.question, options: data.options, correct_answer: data.correct_answer })
+      .eq("id", data.question_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const deleteExamQuestion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({
@@ -117,6 +136,7 @@ export const deleteExamQuestion = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 export const getReentryCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
