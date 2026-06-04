@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
-import { createLeagueSubscriptionCheckout, cancelLeagueSubscription } from "@/lib/subscription.functions";
+
 import { startMpOAuth, disconnectMp } from "@/lib/mp-oauth.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
 import { SemesterDialog, StatusBadge as SemesterStatusBadge } from "@/components/semester-dialog";
@@ -66,11 +66,6 @@ function PresidentePage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Presidente</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
 
-        {paid ? (
-          <ActiveSubscriptionCard leagueId={league.id} paidUntilFmt={paidUntilFmt} />
-        ) : (
-          <PayAnuidadeCard leagueId={league.id} settings={settings} />
-        )}
 
 
         <MpConnectCard leagueId={league.id} />
@@ -98,75 +93,6 @@ function PresidentePage() {
   );
 }
 
-function ActiveSubscriptionCard({ leagueId, paidUntilFmt }: { leagueId: string; paidUntilFmt: string | null }) {
-  const cancelFn = useServerFn(cancelLeagueSubscription);
-  const [loading, setLoading] = useState(false);
-  async function doCancel() {
-    if (!confirm("Cancelar a assinatura mensal? A liga permanecerá ativa até a data da próxima cobrança e nenhum novo valor será cobrado.")) return;
-    try {
-      setLoading(true);
-      await cancelFn({ data: { league_id: leagueId } } as any);
-      toast.success("Assinatura cancelada. A liga seguirá ativa até o fim do período pago.");
-      setTimeout(() => window.location.reload(), 800);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao cancelar");
-    } finally {
-      setLoading(false);
-    }
-  }
-  return (
-    <Card className="mb-6 border-emerald-500/40 bg-emerald-500/5">
-      <CardContent className="p-4 flex items-center gap-3 flex-wrap">
-        <CheckCircle2 className="size-5 text-emerald-600" />
-        <div className="flex-1 min-w-0">
-          <p className="font-black text-emerald-700 dark:text-emerald-400">Liga ativa</p>
-          <p className="text-sm text-muted-foreground">Cobrança mensal recorrente. Próxima cobrança: <span className="font-bold">{paidUntilFmt}</span>.</p>
-        </div>
-        <Button size="sm" variant="outline" disabled={loading} onClick={doCancel}>
-          {loading ? "Cancelando..." : "Cancelar assinatura"}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-
-function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: any }) {
-  const startCheckout = useServerFn(createLeagueSubscriptionCheckout);
-  const [loading, setLoading] = useState(false);
-  async function pay() {
-    try {
-      setLoading(true);
-      const res = await startCheckout({ data: { league_id: leagueId, origin_url: window.location.origin } });
-      if (res?.url) window.location.href = res.url;
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao iniciar pagamento");
-    } finally {
-      setLoading(false);
-    }
-  }
-  const value = Number(settings?.annual_fee_credit_monthly ?? 0);
-  return (
-    <Card className="mb-6 border-destructive">
-      <CardHeader>
-        <CardTitle className="text-destructive">Anuidade pendente</CardTitle>
-        <p className="text-sm text-muted-foreground">A liga não aparecerá na página inicial até a anuidade ser paga. Cobrança recorrente mensal no cartão.</p>
-      </CardHeader>
-      <CardContent>
-        {settings && (
-          <Card className="border-primary max-w-sm mx-auto"><CardContent className="p-4 text-center space-y-3">
-            <Badge className="mb-1">Cartão</Badge>
-            <div className="text-3xl font-black">R$ {value.toFixed(2)}<span className="text-sm font-normal text-muted-foreground">/mês</span></div>
-            <Button className="w-full" disabled={loading} onClick={pay}>
-              <DollarSign className="size-4" /> {loading ? "Abrindo..." : "Pagar com Cartão"}
-            </Button>
-          </CardContent></Card>
-        )}
-        <p className="text-xs text-muted-foreground mt-3 text-center">⚠ Cobrança mensal recorrente. Pode ser cancelada a qualquer momento. Pagamentos não são reembolsáveis.</p>
-      </CardContent>
-    </Card>
-  );
-}
 
 function MpConnectCard({ leagueId }: { leagueId: string }) {
   const [account, setAccount] = useState<any>(null);
