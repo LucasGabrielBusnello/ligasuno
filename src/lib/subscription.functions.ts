@@ -219,6 +219,60 @@ export const deleteLeagueWithCancel = createServerFn({ method: "POST" })
       console.error("Busca de preapproval falhou (seguindo com exclusão)", e);
     }
 
+    // Remove dados filhos (sem FK cascade no schema)
+    const childTables = [
+      "league_activities",
+      "league_attendance",
+      "league_content",
+      "league_leave_requests",
+      "league_memberships",
+      "league_news",
+      "league_notifications",
+      "league_schedule_items",
+      "league_selection_quotas",
+      "league_selection_ranking_history",
+      "league_selection_registrations",
+      "league_subscriptions",
+      "league_mp_accounts",
+      "semester_payments",
+      "semester_cycles",
+    ] as const;
+    for (const t of childTables) {
+      const { error: e } = await supabaseAdmin.from(t).delete().eq("league_id", data.league_id);
+      if (e) console.error(`Falha ao limpar ${t}`, e);
+    }
+
+    // Eventos e tabelas que dependem deles (minicursos, inscrições)
+    const { data: events } = await supabaseAdmin
+      .from("league_events")
+      .select("id")
+      .eq("league_id", data.league_id);
+    const eventIds = (events ?? []).map((e: any) => e.id);
+    if (eventIds.length) {
+      const { data: mcs } = await supabaseAdmin
+        .from("league_minicourses")
+        .select("id")
+        .in("event_id", eventIds);
+      const mcIds = (mcs ?? []).map((m: any) => m.id);
+      if (mcIds.length) {
+        await supabaseAdmin.from("minicourse_registrations").delete().in("minicourse_id", mcIds);
+      }
+      await supabaseAdmin.from("league_minicourses").delete().in("event_id", eventIds);
+      await supabaseAdmin.from("event_registrations").delete().in("event_id", eventIds);
+      await supabaseAdmin.from("league_events").delete().in("id", eventIds);
+    }
+
+    // Quiz sets e perguntas
+    const { data: qsets } = await supabaseAdmin
+      .from("league_quiz_sets")
+      .select("id")
+      .eq("league_id", data.league_id);
+    const qsetIds = (qsets ?? []).map((q: any) => q.id);
+    if (qsetIds.length) {
+      await supabaseAdmin.from("league_quizzes").delete().in("quiz_set_id", qsetIds);
+      await supabaseAdmin.from("league_quiz_sets").delete().in("id", qsetIds);
+    }
+
     const { error } = await supabaseAdmin.from("leagues").delete().eq("id", data.league_id);
     if (error) throw new Error(error.message);
     return { ok: true };
