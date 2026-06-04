@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteLeagueWithCancel } from "@/lib/subscription.functions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
