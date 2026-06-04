@@ -26,12 +26,14 @@ export function SelectionManagerDialog({ league, open, onClose, onMembershipUpda
           <DialogTitle>Processo Seletivo · {league.name}</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="config">
-          <TabsList className="grid grid-cols-2 w-full">
+          <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="config"><Settings className="size-4 mr-1.5" />Configuração</TabsTrigger>
             <TabsTrigger value="exam"><ClipboardCheck className="size-4 mr-1.5" />Prova e Classificações</TabsTrigger>
+            <TabsTrigger value="builder"><FileQuestion className="size-4 mr-1.5" />Prova (Questionário)</TabsTrigger>
           </TabsList>
           <TabsContent value="config" className="mt-4"><ConfigSection league={league} /></TabsContent>
           <TabsContent value="exam" className="mt-4"><ExamSection league={league} onMembershipUpdated={onMembershipUpdated} /></TabsContent>
+          <TabsContent value="builder" className="mt-4"><ExamBuilder league={league} /></TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
