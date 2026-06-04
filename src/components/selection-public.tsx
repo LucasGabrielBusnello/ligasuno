@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ChevronRight, CreditCard, QrCode, Calendar, Clock, FileText, ClipboardCheck } from "lucide-react";
+import { ChevronRight, QrCode, Calendar, Clock, FileText, ClipboardCheck } from "lucide-react";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { createSelectionCheckout } from "@/lib/selection.functions";
 import { checkExamAvailability } from "@/lib/exam.functions";
@@ -22,17 +22,17 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
   const checkout = useServerFn(createSelectionCheckout);
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
-  const [method, setMethod] = useState<"card" | "pix">("card");
   const [form, setForm] = useState({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
   const [fee, setFee] = useState(0);
 
   useEffect(() => {
     if (open) {
-      setStep(1); setMethod("card");
+      setStep(1);
       setForm({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
       supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => setFee(Number((data as any)?.league_registration_fee) || 0));
     }
   }, [open, defaultEmail]);
+
 
   const [quotas, setQuotas] = useState<any[]>([]);
   useEffect(() => { if (open) supabase.from("league_selection_quotas").select("*").eq("league_id", league.id).then(({ data }) => setQuotas(data ?? [])); }, [open, league?.id]);
@@ -48,7 +48,7 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
       setSubmitting(true);
       const res: any = await checkout({ data: {
         league_id: league.id, full_name: form.full_name, cpf, email: form.email,
-        phone: form.phone, semester: form.semester, payment_method: method,
+        phone: form.phone, semester: form.semester, payment_method: "pix",
         registration_number: form.registration_number.trim(),
         origin_url: window.location.origin,
       } } as any);
@@ -108,14 +108,15 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
               <div className="text-3xl font-black">R$ {fee.toFixed(2)}</div>
             </CardContent></Card>
             {fee > 0 && (
-              <div>
-                <Label className="mb-2 block">Método de pagamento</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setMethod("card")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "card" ? "border-primary bg-primary/5" : ""}`}><CreditCard className="size-6" /> Cartão</button>
-                  <button type="button" onClick={() => setMethod("pix")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "pix" ? "border-primary bg-primary/5" : ""}`}><QrCode className="size-6" /> Pix</button>
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4 flex items-center gap-3">
+                <QrCode className="size-8 text-emerald-600 shrink-0" />
+                <div className="text-sm">
+                  <div className="font-bold">Pagamento via Pix</div>
+                  <div className="text-xs text-muted-foreground">A inscrição na prova é processada exclusivamente via Pix.</div>
                 </div>
               </div>
             )}
+
             <DialogFooter className="flex-row gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
               <Button onClick={submit} disabled={submitting}>{submitting ? "Processando..." : fee === 0 ? "Confirmar" : "Pagar e inscrever"}</Button>
