@@ -16,6 +16,11 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
 
 import { startMpOAuth, disconnectMp } from "@/lib/mp-oauth.functions";
+import {
+  createLeagueSubscriptionCheckout,
+  createLeagueSemesterPixCheckout,
+  cancelLeagueSubscription,
+} from "@/lib/subscription.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
 import { SemesterDialog, StatusBadge as SemesterStatusBadge } from "@/components/semester-dialog";
 import { listCyclePayments } from "@/lib/semester.functions";
@@ -52,6 +57,9 @@ function PresidentePage() {
   if (!isOwner) return <div className="p-12 text-center"><h1 className="text-2xl font-black">Acesso negado</h1></div>;
 
 
+  const paid = !!(league.paid_until && new Date(league.paid_until) >= new Date());
+  const paidUntilFmt = league.paid_until ? new Date(league.paid_until).toLocaleDateString("pt-BR") : null;
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-30 bg-card/80 backdrop-blur border-b">
@@ -65,6 +73,11 @@ function PresidentePage() {
         <p className="text-muted-foreground mb-6">{league.name}</p>
 
 
+        {paid ? (
+          <ActiveSubscriptionCard leagueId={league.id} paidUntilFmt={paidUntilFmt} settings={settings} />
+        ) : (
+          <PayAnuidadeCard leagueId={league.id} settings={settings} />
+        )}
 
         <MpConnectCard leagueId={league.id} />
 
@@ -78,7 +91,7 @@ function PresidentePage() {
             <TabsTrigger value="atividades"><ImageIcon className="size-4 mr-1" />Atividades</TabsTrigger>
             <TabsTrigger value="membros"><Users className="size-4 mr-1" />Membros</TabsTrigger>
           </TabsList>
-          <TabsContent value="config" className="mt-6"><ConfigTab league={league} setLeague={setLeague} paid={true} /></TabsContent>
+          <TabsContent value="config" className="mt-6"><ConfigTab league={league} setLeague={setLeague} paid={paid} /></TabsContent>
           <TabsContent value="about" className="mt-6"><AboutTab league={league} /></TabsContent>
           <TabsContent value="eventos" className="mt-6"><EventsTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
