@@ -185,5 +185,44 @@ export const cancelLeagueSubscription = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Cancela qualquer assinatura ativa da liga e exclui a liga.
+ * Apenas admin master pode excluir.
+ */
+export const deleteLeagueWithCancel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ league_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: isAdmin } = await supabaseAdmin.rpc("is_admin_master", { _user_id: userId });
+    if (!isAdmin) throw new Error("Apenas admin master pode excluir ligas.");
+
+    // Best-effort: cancela quaisquer preapprovals ativos da liga
+    try {
+      const search = await mpFetch<any>(
+        `/preapproval/search?external_reference=anuidade:${data.league_id}`,
+      );
+      const results = search?.results ?? [];
+      for (const sub of results) {
+        if (sub?.status === "authorized" || sub?.status === "paused" || sub?.status === "pending") {
+          try {
+            await mpFetch(`/preapproval/${sub.id}`, {
+              method: "PUT",
+              body: { status: "cancelled" },
+            });
+          } catch (e) {
+            console.error("Falha ao cancelar preapproval", sub?.id, e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Busca de preapproval falhou (seguindo com exclusão)", e);
+    }
+
+    const { error } = await supabaseAdmin.from("leagues").delete().eq("id", data.league_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 // Exporta o helper para uso pelo webhook (cálculo de paid_until semestral)
 export { nextSemesterEnd };
