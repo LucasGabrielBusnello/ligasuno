@@ -956,8 +956,58 @@ function MembersTab({ league }: any) {
   const listPays = useServerFn(listCyclePayments);
 
   const reload = async () => {
-    const { data } = await supabase.from("league_memberships").select("*, profiles!inner(username,email,full_name,registration_number)").eq("league_id", league.id);
-    setMembers(data ?? []);
+    const { data: memberships, error: membershipsError } = await supabase
+      .from("league_memberships")
+      .select("id, league_id, user_id, role, created_at")
+      .eq("league_id", league.id)
+      .order("created_at", { ascending: true });
+
+    if (membershipsError) {
+      toast.error(membershipsError.message);
+      setMembers([]);
+      return;
+    }
+
+    const userIds = [...new Set((memberships ?? []).map((member) => member.user_id).filter(Boolean))];
+    const { data: profiles, error: profilesError } = userIds.length
+      ? await supabase
+          .from("profiles")
+          .select("id, username, email, full_name, registration_number")
+          .in("id", userIds)
+      : { data: [], error: null };
+
+    if (profilesError) {
+      toast.error(profilesError.message);
+      setMembers([]);
+      return;
+    }
+
+    const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+    const mergedMembers = (memberships ?? []).map((member) => ({
+      ...member,
+      profiles: profileMap.get(member.user_id) ?? null,
+    }));
+
+    if (league.president_id && !mergedMembers.some((member) => member.user_id === league.president_id)) {
+      const { data: presidentProfile } = await supabase
+        .from("profiles")
+        .select("id, username, email, full_name, registration_number")
+        .eq("id", league.president_id)
+        .maybeSingle();
+
+      if (presidentProfile) {
+        mergedMembers.unshift({
+          id: `presidente-${league.id}`,
+          league_id: league.id,
+          user_id: league.president_id,
+          role: "presidente",
+          created_at: new Date(0).toISOString(),
+          profiles: presidentProfile,
+        });
+      }
+    }
+
+    setMembers(mergedMembers);
     try {
       const r = await listPays({ data: { league_id: league.id } });
       const map: Record<string, string> = {};
