@@ -12,8 +12,8 @@ import { ChevronRight, CreditCard, QrCode, Calendar, Clock, FileText, ClipboardC
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { createSelectionCheckout } from "@/lib/selection.functions";
 import { checkExamAvailability } from "@/lib/exam.functions";
+import { checkExamAvailability } from "@/lib/exam.functions";
 import { ExamRunner } from "@/components/exam-runner";
-import { useServerFn } from "@tanstack/react-start";
 
 const SEMESTERS = [1, 3, 5, 7, 9, 11] as const;
 
