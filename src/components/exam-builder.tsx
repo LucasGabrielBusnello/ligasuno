@@ -101,19 +101,25 @@ export function ExamBuilder({ league }: { league: any }) {
   }
   useEffect(() => { reload(); }, [league.id]);
 
-  async function doSave() {
+  async function persist(next: typeof f, opts?: { silent?: boolean }) {
     try {
       await save({ data: {
         league_id: league.id,
-        time_limit_minutes: Number(f.time_limit_minutes) || 30,
-        shuffle: f.shuffle,
-        send_answers_email: f.send_answers_email,
-        published: f.createAndPublish || f.published,
+        time_limit_minutes: Number(next.time_limit_minutes) || 30,
+        shuffle: next.shuffle,
+        send_answers_email: next.send_answers_email,
+        published: next.createAndPublish || next.published,
       } } as any);
-      toast.success("Configuração salva");
-      await reload();
+      if (!opts?.silent) toast.success("Configuração salva");
     } catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
+  async function doSave() { await persist(f); await reload(); }
+  function updateAndSave(patch: Partial<typeof f>) {
+    const next = { ...f, ...patch };
+    setF(next);
+    persist(next, { silent: true });
+  }
+
 
   function validate(q: QForm) {
     if (!q.question.trim()) return "Preencha o enunciado";
