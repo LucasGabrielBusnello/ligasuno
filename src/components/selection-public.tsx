@@ -48,7 +48,7 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
       setSubmitting(true);
       const res: any = await checkout({ data: {
         league_id: league.id, full_name: form.full_name, cpf, email: form.email,
-        phone: form.phone, semester: form.semester, payment_method: method,
+        phone: form.phone, semester: form.semester, payment_method: "pix",
         registration_number: form.registration_number.trim(),
         origin_url: window.location.origin,
       } } as any);
