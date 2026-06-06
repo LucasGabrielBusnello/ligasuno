@@ -100,8 +100,8 @@ export const verifySelectionPayment = createServerFn({ method: "POST" })
     if ((reg as any).status === "paid") return { status: "paid" };
 
     try {
-      const mpAccount = await loadLeagueMpAccount(supabaseAdmin, (reg as any).league_id);
-      const result = await searchPaymentsByExternalRef(`selection:${(reg as any).id}`, (mpAccount as any).access_token);
+      const platformToken = getPlatformAccessToken();
+      const result = await searchPaymentsByExternalRef(`selection:${(reg as any).id}`, platformToken);
       const payments: any[] = result?.results ?? [];
       const approved = payments.find(p => p.status === "approved");
       if (approved) {
