@@ -438,27 +438,30 @@ function LeaguePage() {
               <Empty icon={<HelpCircle className="size-12" />} title="Nenhum quiz publicado" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {quizSets.map((q) => (
-                  <Card key={q.id} className="overflow-hidden hover:-translate-y-1 transition-all">
-                    <div className="h-2" style={{ background: league.theme_color }} />
-                    <CardContent className="p-5">
-                      <h3 className="font-black text-lg">{q.title}</h3>
-                      {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
-                      {user ? (
-                        isLigante ? (
-                          <Button className="w-full mt-4" style={{ background: league.theme_color }} onClick={() => setActiveQuizSet(q)}>
-                            Acessar quiz <ChevronRight className="size-4" />
-                          </Button>
+                {quizSets.map((q, i) => (
+                  <Reveal key={q.id} delay={i * 70}>
+                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 h-full relative">
+                      <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tcDark})` }} />
+                      <div className="absolute top-3 right-3"><Star className="size-4" style={{ color: tc }} /></div>
+                      <CardContent className="p-5">
+                        <h3 className="font-black text-lg pr-6">{q.title}</h3>
+                        {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
+                        {user ? (
+                          isLigante ? (
+                            <Button className="w-full mt-4 text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} onClick={() => setActiveQuizSet(q)}>
+                              Acessar quiz <ChevronRight className="size-4" />
+                            </Button>
+                          ) : (
+                            <Button disabled className="w-full mt-4">Apenas ligantes</Button>
+                          )
                         ) : (
-                          <Button disabled className="w-full mt-4">Apenas ligantes</Button>
-                        )
-                      ) : (
-                        <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
-                          <LogIn className="size-4" /> Entrar para responder
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
+                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
+                            <LogIn className="size-4" /> Entrar para responder
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Reveal>
                 ))}
               </div>
             )}
