@@ -439,35 +439,75 @@ function LeaguePage() {
               <Empty icon={<HelpCircle className="size-12" />} title="Nenhum quiz publicado" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {quizSets.map((q, i) => (
-                  <Reveal key={q.id} delay={i * 70}>
-                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 h-full relative">
-                      <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tcDark})` }} />
-                      <div className="absolute top-3 right-3"><Star className="size-4" style={{ color: tc }} /></div>
-                      <CardContent className="p-5">
-                        <h3 className="font-black text-lg pr-6">{q.title}</h3>
-                        {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
-                        {user ? (
-                          isLigante ? (
-                            <Button className="w-full mt-4 text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} onClick={() => setActiveQuizSet(q)}>
-                              Acessar quiz <ChevronRight className="size-4" />
-                            </Button>
+                {quizSets.map((q, i) => {
+                  const qCount = quizCounts[q.id] ?? 0;
+                  const createdAt = q.created_at ? new Date(q.created_at) : null;
+                  const isPrivate = !!q.is_private;
+                  return (
+                    <Reveal key={q.id} delay={i * 70}>
+                      <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 h-full relative flex flex-col">
+                        {/* Cabeçalho colorido com ícone grande */}
+                        <div className="relative p-6 pb-8 text-white" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+                          <div className="absolute inset-0 opacity-20" style={{
+                            backgroundImage: "radial-gradient(circle at 20% 20%, rgba(255,255,255,.5) 1px, transparent 1px)",
+                            backgroundSize: "18px 18px",
+                          }} />
+                          <div className="relative flex items-start justify-between gap-3">
+                            <div className="size-16 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
+                              <HelpCircle className="size-9" />
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5">
+                              {isPrivate && <Badge className="bg-white/25 text-white border-white/30 backdrop-blur">🔒 Privado</Badge>}
+                              <Badge className="bg-white text-foreground font-black border-0">
+                                <Sparkles className="size-3" /> {qCount} {qCount === 1 ? "questão" : "questões"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <h3 className="relative font-black text-xl mt-4 leading-tight drop-shadow">{q.title}</h3>
+                        </div>
+
+                        <CardContent className="p-5 flex flex-col flex-1">
+                          {q.description ? (
+                            <p className="text-sm text-muted-foreground line-clamp-3">{q.description}</p>
                           ) : (
-                            <Button disabled className="w-full mt-4">Apenas ligantes</Button>
-                          )
-                        ) : (
-                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
-                            <LogIn className="size-4" /> Entrar para responder
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Reveal>
-                ))}
+                            <p className="text-sm text-muted-foreground italic">Teste seus conhecimentos com este quiz.</p>
+                          )}
+
+                          <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5"><Star className="size-3.5" style={{ color: tc }} /> Quiz</div>
+                            {createdAt && (
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="size-3.5" />
+                                {createdAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-auto pt-4">
+                            {user ? (
+                              isLigante ? (
+                                <Button className="w-full text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} onClick={() => setActiveQuizSet(q)}>
+                                  <Zap className="size-4" /> Começar quiz <ChevronRight className="size-4" />
+                                </Button>
+                              ) : (
+                                <Button disabled className="w-full">🔒 Apenas ligantes</Button>
+                              )
+                            ) : (
+                              <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full">
+                                <LogIn className="size-4" /> Entrar para responder
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Reveal>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
         </Tabs>
+
 
         {!user && (
           <Card className="mt-12 p-8 text-center">
