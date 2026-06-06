@@ -68,6 +68,13 @@ function LeaguePage() {
         setNews(nw.data ?? []);
         setActivities(ac.data ?? []);
         setQuizSets(qs.data ?? []);
+        const setIds = (qs.data ?? []).map((s: any) => s.id);
+        if (setIds.length > 0) {
+          const { data: qzs } = await supabase.from("league_quizzes").select("quiz_set_id").in("quiz_set_id", setIds);
+          const cnt: Record<string, number> = {};
+          (qzs ?? []).forEach((r: any) => { cnt[r.quiz_set_id] = (cnt[r.quiz_set_id] ?? 0) + 1; });
+          setQuizCounts(cnt);
+        }
         const m: Record<string, string> = {};
         (ct.data ?? []).forEach((r: any) => { m[r.content_key] = r.content_value; });
         setContent(m);
