@@ -310,7 +310,7 @@ function LeaguePage() {
 
         {/* Wave separator suave para a próxima seção */}
         <svg className="absolute bottom-0 left-0 right-0 w-full h-12 md:h-20" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true">
-          <path d="M0,60 C240,100 480,0 720,40 C960,80 1200,20 1440,60 L1440,100 L0,100 Z" fill="hsl(var(--background))" />
+          <path d="M0,60 C240,100 480,0 720,40 C960,80 1200,20 1440,60 L1440,100 L0,100 Z" fill="var(--background)" />
         </svg>
       </section>
 
