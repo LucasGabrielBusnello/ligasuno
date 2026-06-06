@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
-import { computeFee, createSplitPreference, loadFeeForCategory, loadLeagueMpAccount, searchPaymentsByExternalRef } from "@/lib/mp.server";
+import { computeFee, createSplitPreference, getPlatformAccessToken, loadFeeForCategory, loadLeagueMpAccount, searchPaymentsByExternalRef } from "@/lib/mp.server";
 import { sendClassifiedAsLiganteEmail } from "@/lib/gmail.server";
 
 const PUBLISHED_URL = "https://ligasuno.lovable.app";
@@ -62,19 +62,19 @@ export const createSelectionCheckout = createServerFn({ method: "POST" })
 
     if (fee === 0) return { free: true, registration_id: (reg as any).id };
 
-    const mpAccount = await loadLeagueMpAccount(supabaseAdmin, data.league_id);
-    const feeCfg = await loadFeeForCategory(supabaseAdmin, "selection");
-    const marketplaceFee = computeFee(fee, feeCfg.pct, feeCfg.fixed);
+    // Pagamento da inscrição na prova vai 100% para a conta da plataforma (CAMED).
+    // Não há split com a liga: o valor é referente ao uso da plataforma de provas/classificações.
+    const platformToken = getPlatformAccessToken();
 
     const origin = data.origin_url.replace(/\/$/, "");
     const pref = await createSplitPreference({
-      sellerAccessToken: (mpAccount as any).access_token,
+      sellerAccessToken: platformToken,
       title: `Inscrição prova — ${l.name}`,
       unitPrice: fee,
       payerEmail: data.email,
       successUrl: `${origin}/${l.slug}?selection_paid=1`,
       failureUrl: `${origin}/${l.slug}?selection_paid=0`,
-      marketplaceFee,
+      marketplaceFee: 0,
       externalReference: `selection:${(reg as any).id}`,
       notificationUrl: WEBHOOK_URL,
       metadata: { selection_registration_id: (reg as any).id, user_id: userId, league_id: data.league_id },
@@ -100,8 +100,8 @@ export const verifySelectionPayment = createServerFn({ method: "POST" })
     if ((reg as any).status === "paid") return { status: "paid" };
 
     try {
-      const mpAccount = await loadLeagueMpAccount(supabaseAdmin, (reg as any).league_id);
-      const result = await searchPaymentsByExternalRef(`selection:${(reg as any).id}`, (mpAccount as any).access_token);
+      const platformToken = getPlatformAccessToken();
+      const result = await searchPaymentsByExternalRef(`selection:${(reg as any).id}`, platformToken);
       const payments: any[] = result?.results ?? [];
       const approved = payments.find(p => p.status === "approved");
       if (approved) {
