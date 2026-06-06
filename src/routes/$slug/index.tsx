@@ -390,22 +390,24 @@ function LeaguePage() {
               <Empty icon={<Newspaper className="size-12" />} title="Nenhuma notícia publicada" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {news.map((n) => (
-                  <Card key={n.id} className="overflow-hidden hover:-translate-y-1 transition-all group">
-                    <div className="aspect-video bg-muted relative overflow-hidden">
-                      {n.image_url ? <img src={n.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="absolute inset-0" style={{ background: league.theme_color }} />}
-                      <Badge className="absolute top-3 left-3" style={{ background: league.theme_color }}>{n.category}</Badge>
-                    </div>
-                    <CardContent className="p-5">
-                      <h3 className="font-black text-lg">{n.title}</h3>
-                      {n.excerpt && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{n.excerpt}</p>}
-                      {n.link && (
-                        <Button asChild variant="outline" className="w-full mt-4">
-                          <a href={n.link} target="_blank" rel="noreferrer">Ler artigo <ChevronRight className="size-4" /></a>
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
+                {news.map((n, i) => (
+                  <Reveal key={n.id} delay={i * 70}>
+                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full">
+                      <div className="aspect-video bg-muted relative overflow-hidden">
+                        {n.image_url ? <img src={n.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
+                        <Badge className="absolute top-3 left-3 text-white border-0" style={{ background: tc }}>{n.category}</Badge>
+                      </div>
+                      <CardContent className="p-5">
+                        <h3 className="font-black text-lg">{n.title}</h3>
+                        {n.excerpt && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{n.excerpt}</p>}
+                        {n.link && (
+                          <Button asChild variant="outline" className="w-full mt-4">
+                            <a href={n.link} target="_blank" rel="noreferrer">Ler artigo <ChevronRight className="size-4" /></a>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Reveal>
                 ))}
               </div>
             )}
