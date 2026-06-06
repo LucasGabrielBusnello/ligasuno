@@ -11,16 +11,17 @@ function callbackUrl() {
 export const Route = createFileRoute("/api/public/payments/mp-oauth-start")({
   server: {
     handlers: {
-      GET: async ({ request }) => {
+      POST: async ({ request }) => {
         try {
           const [{ supabaseAdmin }, { getOAuthCredentials }] = await Promise.all([
             import("@/integrations/supabase/client.server"),
             import("@/lib/mp.server"),
           ]);
 
-          const url = new URL(request.url);
-          const leagueId = url.searchParams.get("league_id");
-          const token = url.searchParams.get("token");
+          const authHeader = request.headers.get("authorization");
+          const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+          const body = await request.json().catch(() => null);
+          const leagueId = body?.league_id as string | undefined;
 
           if (!leagueId || !token) {
             return new Response("Parâmetros faltando", { status: 400 });
@@ -68,7 +69,7 @@ export const Route = createFileRoute("/api/public/payments/mp-oauth-start")({
           const logout = new URL("https://www.mercadopago.com.br/logout");
           logout.searchParams.set("go", auth.toString());
 
-          return Response.redirect(logout.toString(), 302);
+          return Response.json({ url: logout.toString() });
         } catch (e: any) {
           console.error("MP oauth start error", e);
           return new Response(e?.message ?? "Erro ao iniciar conexão", { status: 500 });
