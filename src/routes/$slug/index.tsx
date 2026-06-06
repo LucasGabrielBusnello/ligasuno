@@ -326,19 +326,21 @@ function LeaguePage() {
 
           <TabsContent value="sobre" className="mt-8">
             <div className="grid md:grid-cols-3 gap-6">
-              {PILLARS.map((p) => {
+              {PILLARS.map((p, i) => {
                 const Icon = p.icon;
                 return (
-                  <Card key={p.key} className="overflow-hidden hover:-translate-y-1 transition-all duration-300 group">
-                    <div className="h-2" style={{ background: `linear-gradient(90deg, ${league.theme_color}, ${league.theme_color}88)` }} />
-                    <CardContent className="p-6">
-                      <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 transition-transform" style={{ background: league.theme_color }}>
-                        <Icon className="size-7" />
-                      </div>
-                      <h3 className="font-black text-xl mb-2">{p.label}</h3>
-                      <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{content[p.key] || p.default}</p>
-                    </CardContent>
-                  </Card>
+                  <Reveal key={p.key} delay={i * 100}>
+                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full" style={{ boxShadow: `0 1px 0 ${tc}11` }}>
+                      <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tc}88)` }} />
+                      <CardContent className="p-6">
+                        <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+                          <Icon className="size-7" />
+                        </div>
+                        <h3 className="font-black text-xl mb-2">{p.label}</h3>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{content[p.key] || p.default}</p>
+                      </CardContent>
+                    </Card>
+                  </Reveal>
                 );
               })}
             </div>
