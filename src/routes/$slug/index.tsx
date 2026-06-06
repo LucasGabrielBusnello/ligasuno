@@ -38,6 +38,7 @@ function LeaguePage() {
   const [news, setNews] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [quizSets, setQuizSets] = useState<any[]>([]);
+  const [quizCounts, setQuizCounts] = useState<Record<string, number>>({});
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string | null>(null);
