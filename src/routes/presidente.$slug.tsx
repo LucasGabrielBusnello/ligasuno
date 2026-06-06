@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
 
-import { startMpOAuth, disconnectMp } from "@/lib/mp-oauth.functions";
+import { disconnectMp } from "@/lib/mp-oauth.functions";
 import {
   createLeagueSubscriptionCheckout,
   createLeagueSemesterPixCheckout,
@@ -206,7 +206,6 @@ function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: a
 function MpConnectCard({ leagueId }: { leagueId: string }) {
   const [account, setAccount] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const startOAuth = useServerFn(startMpOAuth);
   const disconnect = useServerFn(disconnectMp);
 
   async function reload() {
@@ -225,8 +224,25 @@ function MpConnectCard({ leagueId }: { leagueId: string }) {
   async function connect() {
     try {
       setLoading(true);
-      const r = await startOAuth({ data: { league_id: leagueId } });
-      if (r?.url) window.location.href = r.url;
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+      if (!token) throw new Error("Você precisa estar logado para conectar a conta.");
+
+      const res = await fetch("/api/public/payments/mp-oauth-start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ league_id: leagueId }),
+      });
+
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.url) {
+        throw new Error(payload?.error || payload?.message || "Falha ao iniciar conexão.");
+      }
+
+      window.location.href = payload.url;
     } catch (e: any) { toast.error(e?.message ?? "Falha"); } finally { setLoading(false); }
   }
   async function unlink() {

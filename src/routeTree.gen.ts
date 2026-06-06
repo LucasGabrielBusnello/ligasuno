@@ -19,6 +19,7 @@ import { Route as LiganteSlugRouteImport } from './routes/ligante.$slug'
 import { Route as DiretorSlugRouteImport } from './routes/diretor.$slug'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicPaymentsMpWebhookRouteImport } from './routes/api/public/payments/mp-webhook'
+import { Route as ApiPublicPaymentsMpOauthStartRouteImport } from './routes/api/public/payments/mp-oauth-start'
 import { Route as ApiPublicPaymentsMpOauthCallbackRouteImport } from './routes/api/public/payments/mp-oauth-callback'
 import { Route as ApiPublicCronMarkOverdueRouteImport } from './routes/api/public/cron/mark-overdue'
 import { Route as ApiPublicCronEventRemindersRouteImport } from './routes/api/public/cron/event-reminders'
@@ -75,6 +76,12 @@ const ApiPublicPaymentsMpWebhookRoute =
     path: '/api/public/payments/mp-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaymentsMpOauthStartRoute =
+  ApiPublicPaymentsMpOauthStartRouteImport.update({
+    id: '/api/public/payments/mp-oauth-start',
+    path: '/api/public/payments/mp-oauth-start',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPaymentsMpOauthCallbackRoute =
   ApiPublicPaymentsMpOauthCallbackRouteImport.update({
     id: '/api/public/payments/mp-oauth-callback',
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/event-reminders': typeof ApiPublicCronEventRemindersRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
+  '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -121,6 +129,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/event-reminders': typeof ApiPublicCronEventRemindersRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
+  '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -137,6 +146,7 @@ export interface FileRoutesById {
   '/api/public/cron/event-reminders': typeof ApiPublicCronEventRemindersRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
+  '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-reminders'
     | '/api/public/cron/mark-overdue'
     | '/api/public/payments/mp-oauth-callback'
+    | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-reminders'
     | '/api/public/cron/mark-overdue'
     | '/api/public/payments/mp-oauth-callback'
+    | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
   id:
@@ -184,6 +196,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-reminders'
     | '/api/public/cron/mark-overdue'
     | '/api/public/payments/mp-oauth-callback'
+    | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -200,6 +213,7 @@ export interface RootRouteChildren {
   ApiPublicCronEventRemindersRoute: typeof ApiPublicCronEventRemindersRoute
   ApiPublicCronMarkOverdueRoute: typeof ApiPublicCronMarkOverdueRoute
   ApiPublicPaymentsMpOauthCallbackRoute: typeof ApiPublicPaymentsMpOauthCallbackRoute
+  ApiPublicPaymentsMpOauthStartRoute: typeof ApiPublicPaymentsMpOauthStartRoute
   ApiPublicPaymentsMpWebhookRoute: typeof ApiPublicPaymentsMpWebhookRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -276,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsMpWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/mp-oauth-start': {
+      id: '/api/public/payments/mp-oauth-start'
+      path: '/api/public/payments/mp-oauth-start'
+      fullPath: '/api/public/payments/mp-oauth-start'
+      preLoaderRoute: typeof ApiPublicPaymentsMpOauthStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/mp-oauth-callback': {
       id: '/api/public/payments/mp-oauth-callback'
       path: '/api/public/payments/mp-oauth-callback'
@@ -312,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronEventRemindersRoute: ApiPublicCronEventRemindersRoute,
   ApiPublicCronMarkOverdueRoute: ApiPublicCronMarkOverdueRoute,
   ApiPublicPaymentsMpOauthCallbackRoute: ApiPublicPaymentsMpOauthCallbackRoute,
+  ApiPublicPaymentsMpOauthStartRoute: ApiPublicPaymentsMpOauthStartRoute,
   ApiPublicPaymentsMpWebhookRoute: ApiPublicPaymentsMpWebhookRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
