@@ -38,6 +38,7 @@ function LeaguePage() {
   const [news, setNews] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [quizSets, setQuizSets] = useState<any[]>([]);
+  const [quizCounts, setQuizCounts] = useState<Record<string, number>>({});
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<string | null>(null);
@@ -67,6 +68,13 @@ function LeaguePage() {
         setNews(nw.data ?? []);
         setActivities(ac.data ?? []);
         setQuizSets(qs.data ?? []);
+        const setIds = (qs.data ?? []).map((s: any) => s.id);
+        if (setIds.length > 0) {
+          const { data: qzs } = await supabase.from("league_quizzes").select("quiz_set_id").in("quiz_set_id", setIds);
+          const cnt: Record<string, number> = {};
+          (qzs ?? []).forEach((r: any) => { cnt[r.quiz_set_id] = (cnt[r.quiz_set_id] ?? 0) + 1; });
+          setQuizCounts(cnt);
+        }
         const m: Record<string, string> = {};
         (ct.data ?? []).forEach((r: any) => { m[r.content_key] = r.content_value; });
         setContent(m);
@@ -220,7 +228,7 @@ function LeaguePage() {
 
   return (
     <div className="min-h-screen" style={{ ["--league-color" as any]: tc, ["--league-color-dark" as any]: tcDark }}>
-      <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b" style={{ borderColor: `${tc}22` }}>
+      <header className="sticky top-0 z-30 backdrop-blur bg-background/85 border-b" style={{ borderColor: `${tc}22` }}>
         <div className="max-w-7xl mx-auto p-4 flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="size-4" /> Hub</Link>
           <div className="flex items-center gap-2 min-w-0">
@@ -235,28 +243,21 @@ function LeaguePage() {
         </div>
       </header>
 
-      {/* HERO cinematográfico com blobs animados, partículas e CTAs */}
+      {/* HERO: gradiente rico (sem animações infinitas pesadas) */}
       <section className="text-white relative overflow-hidden" style={themedHero}>
-        {/* Blobs animados (CSS puro) */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -left-32 size-[28rem] rounded-full opacity-40 blur-3xl animate-blob-1" style={{ background: tc }} />
-          <div className="absolute top-1/3 -right-40 size-[32rem] rounded-full opacity-30 blur-3xl animate-blob-2" style={{ background: tcDark }} />
-          <div className="absolute -bottom-40 left-1/3 size-[28rem] rounded-full opacity-30 blur-3xl animate-blob-3" style={{ background: tc }} />
-          {/* Grid sutil */}
-          <div className="absolute inset-0 opacity-[0.08]" style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
-          }} />
-        </div>
+        {/* Grid sutil estático */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }} />
 
         <div className="max-w-7xl mx-auto px-4 pt-20 pb-28 md:pt-28 md:pb-36 text-center relative z-10 animate-fade-up">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-6 shadow-lg shadow-black/10">
             <Sparkles className="size-3.5" /> Liga Acadêmica · Unochapecó
           </div>
           {league.icon_url && (
-            <div className="relative inline-block mb-6 group">
-              <div className="absolute inset-0 rounded-3xl blur-2xl opacity-60 group-hover:opacity-90 transition-opacity" style={{ background: tc }} />
-              <img src={league.icon_url} alt={league.name} className="relative mx-auto size-32 rounded-3xl border-4 border-white/30 shadow-2xl bg-white/15 backdrop-blur object-contain hover:scale-105 transition-transform duration-500" />
+            <div className="relative inline-block mb-6">
+              <img src={league.icon_url} alt={league.name} className="relative mx-auto size-32 rounded-3xl border-4 border-white/30 shadow-2xl bg-white/15 object-contain" />
             </div>
           )}
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 drop-shadow-2xl">{league.name}</h1>
@@ -330,10 +331,10 @@ function LeaguePage() {
                 const Icon = p.icon;
                 return (
                   <Reveal key={p.key} delay={i * 100}>
-                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full" style={{ boxShadow: `0 1px 0 ${tc}11` }}>
+                    <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full" style={{ boxShadow: `0 1px 0 ${tc}11` }}>
                       <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tc}88)` }} />
                       <CardContent className="p-6">
-                        <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+                        <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
                           <Icon className="size-7" />
                         </div>
                         <h3 className="font-black text-xl mb-2">{p.label}</h3>
@@ -354,9 +355,9 @@ function LeaguePage() {
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {visibleEvents.map((e, i) => (
                     <Reveal key={e.id} delay={i * 70}>
-                      <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full">
+                      <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full">
                         <div className="aspect-video bg-muted relative overflow-hidden">
-                          {e.image_url ? <img src={e.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
+                          {e.image_url ? <img loading="lazy" src={e.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           {e.event_date && (
                             <div className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-background/95 backdrop-blur text-xs font-black">
@@ -392,9 +393,9 @@ function LeaguePage() {
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {news.map((n, i) => (
                   <Reveal key={n.id} delay={i * 70}>
-                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full">
+                    <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full">
                       <div className="aspect-video bg-muted relative overflow-hidden">
-                        {n.image_url ? <img src={n.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
+                        {n.image_url ? <img loading="lazy" src={n.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
                         <Badge className="absolute top-3 left-3 text-white border-0" style={{ background: tc }}>{n.category}</Badge>
                       </div>
                       <CardContent className="p-5">
@@ -438,35 +439,75 @@ function LeaguePage() {
               <Empty icon={<HelpCircle className="size-12" />} title="Nenhum quiz publicado" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {quizSets.map((q, i) => (
-                  <Reveal key={q.id} delay={i * 70}>
-                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 h-full relative">
-                      <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tcDark})` }} />
-                      <div className="absolute top-3 right-3"><Star className="size-4" style={{ color: tc }} /></div>
-                      <CardContent className="p-5">
-                        <h3 className="font-black text-lg pr-6">{q.title}</h3>
-                        {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
-                        {user ? (
-                          isLigante ? (
-                            <Button className="w-full mt-4 text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} onClick={() => setActiveQuizSet(q)}>
-                              Acessar quiz <ChevronRight className="size-4" />
-                            </Button>
+                {quizSets.map((q, i) => {
+                  const qCount = quizCounts[q.id] ?? 0;
+                  const createdAt = q.created_at ? new Date(q.created_at) : null;
+                  const isPrivate = !!q.is_private;
+                  return (
+                    <Reveal key={q.id} delay={i * 70}>
+                      <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 h-full relative flex flex-col">
+                        {/* Cabeçalho colorido com ícone grande */}
+                        <div className="relative p-6 pb-8 text-white" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+                          <div className="absolute inset-0 opacity-20" style={{
+                            backgroundImage: "radial-gradient(circle at 20% 20%, rgba(255,255,255,.5) 1px, transparent 1px)",
+                            backgroundSize: "18px 18px",
+                          }} />
+                          <div className="relative flex items-start justify-between gap-3">
+                            <div className="size-16 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center shadow-lg">
+                              <HelpCircle className="size-9" />
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5">
+                              {isPrivate && <Badge className="bg-white/25 text-white border-white/30 backdrop-blur">🔒 Privado</Badge>}
+                              <Badge className="bg-white text-foreground font-black border-0">
+                                <Sparkles className="size-3" /> {qCount} {qCount === 1 ? "questão" : "questões"}
+                              </Badge>
+                            </div>
+                          </div>
+                          <h3 className="relative font-black text-xl mt-4 leading-tight drop-shadow">{q.title}</h3>
+                        </div>
+
+                        <CardContent className="p-5 flex flex-col flex-1">
+                          {q.description ? (
+                            <p className="text-sm text-muted-foreground line-clamp-3">{q.description}</p>
                           ) : (
-                            <Button disabled className="w-full mt-4">Apenas ligantes</Button>
-                          )
-                        ) : (
-                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
-                            <LogIn className="size-4" /> Entrar para responder
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Reveal>
-                ))}
+                            <p className="text-sm text-muted-foreground italic">Teste seus conhecimentos com este quiz.</p>
+                          )}
+
+                          <div className="flex items-center gap-3 mt-4 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1.5"><Star className="size-3.5" style={{ color: tc }} /> Quiz</div>
+                            {createdAt && (
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="size-3.5" />
+                                {createdAt.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-auto pt-4">
+                            {user ? (
+                              isLigante ? (
+                                <Button className="w-full text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} onClick={() => setActiveQuizSet(q)}>
+                                  <Zap className="size-4" /> Começar quiz <ChevronRight className="size-4" />
+                                </Button>
+                              ) : (
+                                <Button disabled className="w-full">🔒 Apenas ligantes</Button>
+                              )
+                            ) : (
+                              <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full">
+                                <LogIn className="size-4" /> Entrar para responder
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Reveal>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
         </Tabs>
+
 
         {!user && (
           <Card className="mt-12 p-8 text-center">
