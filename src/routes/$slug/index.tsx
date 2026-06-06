@@ -16,7 +16,9 @@ import { toast } from "sonner";
 import { createEventCheckout } from "@/lib/events.functions";
 import { verifySelectionPayment } from "@/lib/selection.functions";
 import { SelectionRegisterDialog, SelectionAccessDialog } from "@/components/selection-public";
-import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList } from "lucide-react";
+import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList, Zap, Star } from "lucide-react";
+import { Reveal } from "@/components/reveal";
+import { LeagueHeartButton } from "@/components/league-heart-button";
 
 export const Route = createFileRoute("/$slug/")({ component: LeaguePage });
 
@@ -199,66 +201,117 @@ function LeaguePage() {
     );
   }
 
+  const tc = league.theme_color;
+  const tcDark = darken(tc);
   const themedHero: React.CSSProperties = {
     background: `
-      radial-gradient(800px 400px at 20% 20%, ${league.theme_color}55, transparent 60%),
-      radial-gradient(700px 350px at 80% 60%, ${league.theme_color}40, transparent 60%),
-      linear-gradient(135deg, ${league.theme_color} 0%, ${darken(league.theme_color)} 100%)`,
+      radial-gradient(900px 500px at 15% 20%, ${tc}66, transparent 60%),
+      radial-gradient(700px 400px at 85% 75%, ${tcDark}88, transparent 60%),
+      radial-gradient(600px 300px at 50% 100%, ${tc}55, transparent 70%),
+      linear-gradient(135deg, ${tc} 0%, ${tcDark} 100%)`,
   };
 
+  const stats = [
+    { icon: Calendar, label: "Eventos", value: events.length },
+    { icon: Newspaper, label: "Notícias", value: news.length },
+    { icon: Activity, label: "Momentos", value: activities.length },
+    { icon: HelpCircle, label: "Quizzes", value: quizSets.length },
+  ];
+
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b border-border/50">
+    <div className="min-h-screen" style={{ ["--league-color" as any]: tc, ["--league-color-dark" as any]: tcDark }}>
+      <header className="sticky top-0 z-30 backdrop-blur-xl bg-background/70 border-b" style={{ borderColor: `${tc}22` }}>
         <div className="max-w-7xl mx-auto p-4 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="size-4" /> Hub</Link>
+          <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="size-4" /> Hub</Link>
           <div className="flex items-center gap-2 min-w-0">
-            {league.icon_url && <img src={league.icon_url} className="size-8 rounded" alt="" />}
+            {league.icon_url && <img src={league.icon_url} className="size-9 rounded-lg ring-2 ring-offset-1" style={{ ["--tw-ring-color" as any]: `${tc}55` }} alt="" />}
             <span className="font-black truncate">{league.name}</span>
           </div>
           <div className="flex items-center gap-1.5">
             {isLigante && <Button asChild size="sm" variant="outline"><Link to="/ligante/$slug" params={{ slug }}><GraduationCap className="size-4" /> Ligante</Link></Button>}
             {(isDiretor || isPresident) && <Button asChild size="sm" variant="outline"><Link to="/diretor/$slug" params={{ slug }}><ShieldCheck className="size-4" /> Diretor</Link></Button>}
-            {isPresident && <Button asChild size="sm"><Link to="/presidente/$slug" params={{ slug }}>Presidente</Link></Button>}
+            {isPresident && <Button asChild size="sm" style={{ background: tc }}><Link to="/presidente/$slug" params={{ slug }}>Presidente</Link></Button>}
           </div>
         </div>
       </header>
 
-      {/* HERO bonito com tema da liga */}
+      {/* HERO cinematográfico com blobs animados, partículas e CTAs */}
       <section className="text-white relative overflow-hidden" style={themedHero}>
-        <div className="max-w-7xl mx-auto px-4 py-24 md:py-32 text-center relative z-10 animate-fade-up">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-6">
+        {/* Blobs animados (CSS puro) */}
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-32 -left-32 size-[28rem] rounded-full opacity-40 blur-3xl animate-blob-1" style={{ background: tc }} />
+          <div className="absolute top-1/3 -right-40 size-[32rem] rounded-full opacity-30 blur-3xl animate-blob-2" style={{ background: tcDark }} />
+          <div className="absolute -bottom-40 left-1/3 size-[28rem] rounded-full opacity-30 blur-3xl animate-blob-3" style={{ background: tc }} />
+          {/* Grid sutil */}
+          <div className="absolute inset-0 opacity-[0.08]" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)",
+            backgroundSize: "44px 44px",
+          }} />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 pt-20 pb-28 md:pt-28 md:pb-36 text-center relative z-10 animate-fade-up">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-6 shadow-lg shadow-black/10">
             <Sparkles className="size-3.5" /> Liga Acadêmica · Unochapecó
           </div>
           {league.icon_url && (
-            <img src={league.icon_url} alt={league.name} className="mx-auto size-28 rounded-3xl border-4 border-white/20 shadow-2xl bg-white/10 backdrop-blur object-contain mb-6" />
+            <div className="relative inline-block mb-6 group">
+              <div className="absolute inset-0 rounded-3xl blur-2xl opacity-60 group-hover:opacity-90 transition-opacity" style={{ background: tc }} />
+              <img src={league.icon_url} alt={league.name} className="relative mx-auto size-32 rounded-3xl border-4 border-white/30 shadow-2xl bg-white/15 backdrop-blur object-contain hover:scale-105 transition-transform duration-500" />
+            </div>
           )}
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 drop-shadow-2xl">{league.name}</h1>
-          {league.description && <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/90 font-medium">{league.description}</p>}
-          {(league as any).selection_open && !isLigante && (() => {
-            const deadlinePassed = (league as any).selection_deadline && new Date((league as any).selection_deadline) < new Date();
-            if (mySelectionReg && mySelectionReg.status === "paid") {
-              return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionPanelOpen(true)}><ClipboardList className="size-5" /> Acessar minha inscrição</Button>;
-            }
-            if (mySelectionReg && mySelectionReg.status !== "paid") {
-              return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" disabled={verifyingSelection} onClick={async () => {
-                setVerifyingSelection(true);
-                try {
-                  const r: any = await verifySelection({ data: { registration_id: mySelectionReg.id } } as any);
-                  const { data: fresh } = await supabase.from("league_selection_registrations").select("*").eq("id", mySelectionReg.id).maybeSingle();
-                  if (fresh) setMySelectionReg(fresh);
-                  if (r?.status === "paid") { toast.success("Pagamento confirmado!"); setSelectionPanelOpen(true); }
-                  else toast.message("Pagamento ainda não confirmado pelo Mercado Pago.");
-                } catch (e: any) { toast.error(e?.message ?? "Falha ao verificar"); }
-                finally { setVerifyingSelection(false); }
-              }}><ClipboardList className="size-5" /> {verifyingSelection ? "Verificando pagamento..." : "Confirmar pagamento da inscrição"}</Button>;
-            }
-            if (deadlinePassed) return <Button size="lg" disabled className="mt-8">Inscrições encerradas</Button>;
-            if (!user) return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => nav({ to: "/auth" })}><LogIn className="size-5" /> Entrar para se inscrever na prova</Button>;
-            return <Button size="lg" className="mt-8 bg-white text-foreground hover:bg-white/90" onClick={() => setSelectionRegOpen(true)}><ClipboardList className="size-5" /> Inscreva-se no processo seletivo</Button>;
-          })()}
+          {league.description && <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/90 font-medium leading-relaxed">{league.description}</p>}
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <LeagueHeartButton leagueId={league.id} userId={user?.id ?? null} themeColor="#ffffff" />
+
+            {(league as any).selection_open && !isLigante && (() => {
+              const deadlinePassed = (league as any).selection_deadline && new Date((league as any).selection_deadline) < new Date();
+              if (mySelectionReg && mySelectionReg.status === "paid") {
+                return <Button size="lg" className="bg-white text-foreground hover:bg-white/90 shadow-xl" onClick={() => setSelectionPanelOpen(true)}><ClipboardList className="size-5" /> Acessar minha inscrição</Button>;
+              }
+              if (mySelectionReg && mySelectionReg.status !== "paid") {
+                return <Button size="lg" className="bg-white text-foreground hover:bg-white/90 shadow-xl" disabled={verifyingSelection} onClick={async () => {
+                  setVerifyingSelection(true);
+                  try {
+                    const r: any = await verifySelection({ data: { registration_id: mySelectionReg.id } } as any);
+                    const { data: fresh } = await supabase.from("league_selection_registrations").select("*").eq("id", mySelectionReg.id).maybeSingle();
+                    if (fresh) setMySelectionReg(fresh);
+                    if (r?.status === "paid") { toast.success("Pagamento confirmado!"); setSelectionPanelOpen(true); }
+                    else toast.message("Pagamento ainda não confirmado pelo Mercado Pago.");
+                  } catch (e: any) { toast.error(e?.message ?? "Falha ao verificar"); }
+                  finally { setVerifyingSelection(false); }
+                }}><ClipboardList className="size-5" /> {verifyingSelection ? "Verificando pagamento..." : "Confirmar pagamento"}</Button>;
+              }
+              if (deadlinePassed) return <Button size="lg" disabled>Inscrições encerradas</Button>;
+              if (!user) return <Button size="lg" className="bg-white text-foreground hover:bg-white/90 shadow-xl" onClick={() => nav({ to: "/auth" })}><LogIn className="size-5" /> Entrar para se inscrever</Button>;
+              return <Button size="lg" className="bg-white text-foreground hover:bg-white/90 shadow-xl" onClick={() => setSelectionRegOpen(true)}><Zap className="size-5" /> Inscreva-se no processo seletivo</Button>;
+            })()}
+          </div>
+
           {!visible && <Badge variant="destructive" className="mt-6">Preview — não publicada</Badge>}
+
+          {/* Stats themed cards */}
+          <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-3xl mx-auto">
+            {stats.map((s, i) => {
+              const Icon = s.icon;
+              return (
+                <Reveal key={s.label} delay={i * 80}>
+                  <div className="p-4 rounded-2xl bg-white/10 border border-white/20 backdrop-blur-md hover:bg-white/15 hover:-translate-y-0.5 transition-all">
+                    <Icon className="size-5 mx-auto mb-2 opacity-90" />
+                    <div className="text-3xl font-black tabular-nums">{s.value}</div>
+                    <div className="text-xs uppercase tracking-wider text-white/80">{s.label}</div>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
         </div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.3)_100%)] pointer-events-none" />
+
+        {/* Wave separator suave para a próxima seção */}
+        <svg className="absolute bottom-0 left-0 right-0 w-full h-12 md:h-20" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0,60 C240,100 480,0 720,40 C960,80 1200,20 1440,60 L1440,100 L0,100 Z" fill="var(--background)" />
+        </svg>
       </section>
 
       <main className="max-w-7xl mx-auto px-4 py-12">
@@ -273,19 +326,21 @@ function LeaguePage() {
 
           <TabsContent value="sobre" className="mt-8">
             <div className="grid md:grid-cols-3 gap-6">
-              {PILLARS.map((p) => {
+              {PILLARS.map((p, i) => {
                 const Icon = p.icon;
                 return (
-                  <Card key={p.key} className="overflow-hidden hover:-translate-y-1 transition-all duration-300 group">
-                    <div className="h-2" style={{ background: `linear-gradient(90deg, ${league.theme_color}, ${league.theme_color}88)` }} />
-                    <CardContent className="p-6">
-                      <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 transition-transform" style={{ background: league.theme_color }}>
-                        <Icon className="size-7" />
-                      </div>
-                      <h3 className="font-black text-xl mb-2">{p.label}</h3>
-                      <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{content[p.key] || p.default}</p>
-                    </CardContent>
-                  </Card>
+                  <Reveal key={p.key} delay={i * 100}>
+                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full" style={{ boxShadow: `0 1px 0 ${tc}11` }}>
+                      <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tc}88)` }} />
+                      <CardContent className="p-6">
+                        <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+                          <Icon className="size-7" />
+                        </div>
+                        <h3 className="font-black text-xl mb-2">{p.label}</h3>
+                        <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{content[p.key] || p.default}</p>
+                      </CardContent>
+                    </Card>
+                  </Reveal>
                 );
               })}
             </div>
@@ -297,26 +352,33 @@ function LeaguePage() {
               if (visibleEvents.length === 0) return <Empty icon={<Calendar className="size-12" />} title="Nenhum evento publicado" />;
               return (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {visibleEvents.map((e) => (
-                    <Card key={e.id} className="overflow-hidden hover:-translate-y-1 transition-all">
-                      <div className="aspect-video bg-muted relative">
-                        {e.image_url ? <img src={e.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: league.theme_color }} />}
-                      </div>
-                      <CardContent className="p-5">
-                        <h3 className="font-black">{e.title}</h3>
-                        {e.event_date && <p className="text-xs text-muted-foreground mt-1">{new Date(e.event_date).toLocaleDateString("pt-BR")}</p>}
-                        {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
-                        {(() => {
-                          const reg = myRegs[e.id];
-                          if (reg) {
-                            return <Button onClick={() => setParticipantEvent(e)} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Acessar Painel do Inscrito <ChevronRight className="size-4" /></Button>;
-                          }
-                          if (e.accepting_registrations === false) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
-                          if (!user) return <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>;
-                          return <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4" style={{ background: league.theme_color }}>Inscreva-se! <ChevronRight className="size-4" /></Button>;
-                        })()}
-                      </CardContent>
-                    </Card>
+                  {visibleEvents.map((e, i) => (
+                    <Reveal key={e.id} delay={i * 70}>
+                      <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full">
+                        <div className="aspect-video bg-muted relative overflow-hidden">
+                          {e.image_url ? <img src={e.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          {e.event_date && (
+                            <div className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-background/95 backdrop-blur text-xs font-black">
+                              {new Date(e.event_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                            </div>
+                          )}
+                        </div>
+                        <CardContent className="p-5">
+                          <h3 className="font-black text-lg">{e.title}</h3>
+                          {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
+                          {(() => {
+                            const reg = myRegs[e.id];
+                            if (reg) {
+                              return <Button onClick={() => setParticipantEvent(e)} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Acessar Painel do Inscrito <ChevronRight className="size-4" /></Button>;
+                            }
+                            if (e.accepting_registrations === false) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
+                            if (!user) return <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>;
+                            return <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4 text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>Inscreva-se! <ChevronRight className="size-4" /></Button>;
+                          })()}
+                        </CardContent>
+                      </Card>
+                    </Reveal>
                   ))}
                 </div>
               );
@@ -328,22 +390,24 @@ function LeaguePage() {
               <Empty icon={<Newspaper className="size-12" />} title="Nenhuma notícia publicada" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {news.map((n) => (
-                  <Card key={n.id} className="overflow-hidden hover:-translate-y-1 transition-all group">
-                    <div className="aspect-video bg-muted relative overflow-hidden">
-                      {n.image_url ? <img src={n.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="absolute inset-0" style={{ background: league.theme_color }} />}
-                      <Badge className="absolute top-3 left-3" style={{ background: league.theme_color }}>{n.category}</Badge>
-                    </div>
-                    <CardContent className="p-5">
-                      <h3 className="font-black text-lg">{n.title}</h3>
-                      {n.excerpt && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{n.excerpt}</p>}
-                      {n.link && (
-                        <Button asChild variant="outline" className="w-full mt-4">
-                          <a href={n.link} target="_blank" rel="noreferrer">Ler artigo <ChevronRight className="size-4" /></a>
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
+                {news.map((n, i) => (
+                  <Reveal key={n.id} delay={i * 70}>
+                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full">
+                      <div className="aspect-video bg-muted relative overflow-hidden">
+                        {n.image_url ? <img src={n.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
+                        <Badge className="absolute top-3 left-3 text-white border-0" style={{ background: tc }}>{n.category}</Badge>
+                      </div>
+                      <CardContent className="p-5">
+                        <h3 className="font-black text-lg">{n.title}</h3>
+                        {n.excerpt && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{n.excerpt}</p>}
+                        {n.link && (
+                          <Button asChild variant="outline" className="w-full mt-4">
+                            <a href={n.link} target="_blank" rel="noreferrer">Ler artigo <ChevronRight className="size-4" /></a>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Reveal>
                 ))}
               </div>
             )}
@@ -374,27 +438,30 @@ function LeaguePage() {
               <Empty icon={<HelpCircle className="size-12" />} title="Nenhum quiz publicado" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {quizSets.map((q) => (
-                  <Card key={q.id} className="overflow-hidden hover:-translate-y-1 transition-all">
-                    <div className="h-2" style={{ background: league.theme_color }} />
-                    <CardContent className="p-5">
-                      <h3 className="font-black text-lg">{q.title}</h3>
-                      {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
-                      {user ? (
-                        isLigante ? (
-                          <Button className="w-full mt-4" style={{ background: league.theme_color }} onClick={() => setActiveQuizSet(q)}>
-                            Acessar quiz <ChevronRight className="size-4" />
-                          </Button>
+                {quizSets.map((q, i) => (
+                  <Reveal key={q.id} delay={i * 70}>
+                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 h-full relative">
+                      <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tcDark})` }} />
+                      <div className="absolute top-3 right-3"><Star className="size-4" style={{ color: tc }} /></div>
+                      <CardContent className="p-5">
+                        <h3 className="font-black text-lg pr-6">{q.title}</h3>
+                        {q.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{q.description}</p>}
+                        {user ? (
+                          isLigante ? (
+                            <Button className="w-full mt-4 text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} onClick={() => setActiveQuizSet(q)}>
+                              Acessar quiz <ChevronRight className="size-4" />
+                            </Button>
+                          ) : (
+                            <Button disabled className="w-full mt-4">Apenas ligantes</Button>
+                          )
                         ) : (
-                          <Button disabled className="w-full mt-4">Apenas ligantes</Button>
-                        )
-                      ) : (
-                        <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
-                          <LogIn className="size-4" /> Entrar para responder
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
+                          <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4">
+                            <LogIn className="size-4" /> Entrar para responder
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Reveal>
                 ))}
               </div>
             )}
