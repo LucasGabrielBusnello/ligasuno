@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { getOAuthCredentials, mpFetch } from "@/lib/mp.server";
 
 const PUBLISHED_URL = "https://ligasuno.lovable.app";
 
@@ -21,6 +19,11 @@ export const startMpOAuth = createServerFn({ method: "POST" })
     league_id: z.string().uuid(),
   }).parse(i))
   .handler(async ({ data, context }) => {
+    const [{ supabaseAdmin }, { getOAuthCredentials }] = await Promise.all([
+      import("@/integrations/supabase/client.server"),
+      import("@/lib/mp.server"),
+    ]);
+
     const { userId } = context;
     const { data: league } = await supabaseAdmin
       .from("leagues").select("id, president_id, slug")
@@ -59,6 +62,8 @@ export const disconnectMp = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ league_id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     const { userId } = context;
     const { data: league } = await supabaseAdmin
       .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
@@ -73,6 +78,7 @@ export const disconnectMp = createServerFn({ method: "POST" })
  * Renova access_token usando o refresh_token. Server-side helper para webhook/checkouts.
  */
 export async function refreshMpToken(refreshToken: string) {
+  const { getOAuthCredentials } = await import("@/lib/mp.server");
   const { client_id, client_secret } = getOAuthCredentials();
   const body = new URLSearchParams();
   body.set("grant_type", "refresh_token");
