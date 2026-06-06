@@ -331,10 +331,10 @@ function LeaguePage() {
                 const Icon = p.icon;
                 return (
                   <Reveal key={p.key} delay={i * 100}>
-                    <Card className="overflow-hidden hover:-translate-y-2 hover:shadow-2xl transition-all duration-500 group h-full" style={{ boxShadow: `0 1px 0 ${tc}11` }}>
+                    <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full" style={{ boxShadow: `0 1px 0 ${tc}11` }}>
                       <div className="h-2" style={{ background: `linear-gradient(90deg, ${tc}, ${tc}88)` }} />
                       <CardContent className="p-6">
-                        <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+                        <div className="size-14 rounded-2xl flex items-center justify-center text-white mb-4 shadow-lg" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
                           <Icon className="size-7" />
                         </div>
                         <h3 className="font-black text-xl mb-2">{p.label}</h3>
