@@ -158,3 +158,11 @@
 }
 .animate-ping-once { animation: pingOnce 700ms ease-out; }
 
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-blob-1, .animate-blob-2, .animate-blob-3,
+  .animate-ping-once { animation: none !important; }
+  * { transition-duration: 0.01ms !important; }
+}
+
+
