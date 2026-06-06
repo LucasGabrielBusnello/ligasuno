@@ -252,16 +252,16 @@ function LeaguePage() {
         }} />
 
         <div className="max-w-7xl mx-auto px-4 pt-20 pb-28 md:pt-28 md:pb-36 text-center relative z-10 animate-fade-up">
-          {league.icon_url && (
-            <div className="flex justify-center mb-6">
-              <img src={league.icon_url} alt={league.name} className="size-32 rounded-3xl border-4 border-white/30 shadow-2xl bg-white/15 object-contain" />
-            </div>
-          )}
           <div className="flex justify-center mb-6">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest shadow-lg shadow-black/10">
               <Sparkles className="size-3.5" /> Liga Acadêmica · Unochapecó
             </div>
           </div>
+          {league.icon_url && (
+            <div className="flex justify-center mb-6">
+              <img src={league.icon_url} alt={league.name} className="size-32 rounded-3xl border-4 border-white/30 shadow-2xl bg-white/15 object-contain" />
+            </div>
+          )}
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 drop-shadow-2xl">{league.name}</h1>
           {league.description && <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/90 font-medium leading-relaxed">{league.description}</p>}
 
