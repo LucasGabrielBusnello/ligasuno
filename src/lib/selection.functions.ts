@@ -62,19 +62,19 @@ export const createSelectionCheckout = createServerFn({ method: "POST" })
 
     if (fee === 0) return { free: true, registration_id: (reg as any).id };
 
-    const mpAccount = await loadLeagueMpAccount(supabaseAdmin, data.league_id);
-    const feeCfg = await loadFeeForCategory(supabaseAdmin, "selection");
-    const marketplaceFee = computeFee(fee, feeCfg.pct, feeCfg.fixed);
+    // Pagamento da inscrição na prova vai 100% para a conta da plataforma (CAMED).
+    // Não há split com a liga: o valor é referente ao uso da plataforma de provas/classificações.
+    const platformToken = getPlatformAccessToken();
 
     const origin = data.origin_url.replace(/\/$/, "");
     const pref = await createSplitPreference({
-      sellerAccessToken: (mpAccount as any).access_token,
+      sellerAccessToken: platformToken,
       title: `Inscrição prova — ${l.name}`,
       unitPrice: fee,
       payerEmail: data.email,
       successUrl: `${origin}/${l.slug}?selection_paid=1`,
       failureUrl: `${origin}/${l.slug}?selection_paid=0`,
-      marketplaceFee,
+      marketplaceFee: 0,
       externalReference: `selection:${(reg as any).id}`,
       notificationUrl: WEBHOOK_URL,
       metadata: { selection_registration_id: (reg as any).id, user_id: userId, league_id: data.league_id },
