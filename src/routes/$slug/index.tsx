@@ -243,28 +243,21 @@ function LeaguePage() {
         </div>
       </header>
 
-      {/* HERO cinematográfico com blobs animados, partículas e CTAs */}
+      {/* HERO: gradiente rico (sem animações infinitas pesadas) */}
       <section className="text-white relative overflow-hidden" style={themedHero}>
-        {/* Blobs animados (CSS puro) */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 -left-32 size-[28rem] rounded-full opacity-40 blur-3xl animate-blob-1" style={{ background: tc }} />
-          <div className="absolute top-1/3 -right-40 size-[32rem] rounded-full opacity-30 blur-3xl animate-blob-2" style={{ background: tcDark }} />
-          <div className="absolute -bottom-40 left-1/3 size-[28rem] rounded-full opacity-30 blur-3xl animate-blob-3" style={{ background: tc }} />
-          {/* Grid sutil */}
-          <div className="absolute inset-0 opacity-[0.08]" style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)",
-            backgroundSize: "44px 44px",
-          }} />
-        </div>
+        {/* Grid sutil estático */}
+        <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{
+          backgroundImage: "linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)",
+          backgroundSize: "44px 44px",
+        }} />
 
         <div className="max-w-7xl mx-auto px-4 pt-20 pb-28 md:pt-28 md:pb-36 text-center relative z-10 animate-fade-up">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-6 shadow-lg shadow-black/10">
             <Sparkles className="size-3.5" /> Liga Acadêmica · Unochapecó
           </div>
           {league.icon_url && (
-            <div className="relative inline-block mb-6 group">
-              <div className="absolute inset-0 rounded-3xl blur-2xl opacity-60 group-hover:opacity-90 transition-opacity" style={{ background: tc }} />
-              <img src={league.icon_url} alt={league.name} className="relative mx-auto size-32 rounded-3xl border-4 border-white/30 shadow-2xl bg-white/15 backdrop-blur object-contain hover:scale-105 transition-transform duration-500" />
+            <div className="relative inline-block mb-6">
+              <img src={league.icon_url} alt={league.name} className="relative mx-auto size-32 rounded-3xl border-4 border-white/30 shadow-2xl bg-white/15 object-contain" />
             </div>
           )}
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 drop-shadow-2xl">{league.name}</h1>
