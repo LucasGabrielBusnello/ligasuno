@@ -228,10 +228,21 @@ function MpConnectCard({ leagueId }: { leagueId: string }) {
       const token = authData.session?.access_token;
       if (!token) throw new Error("Você precisa estar logado para conectar a conta.");
 
-      const url = new URL("/api/public/payments/mp-oauth-start", window.location.origin);
-      url.searchParams.set("league_id", leagueId);
-      url.searchParams.set("token", token);
-      window.location.href = url.toString();
+      const res = await fetch("/api/public/payments/mp-oauth-start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ league_id: leagueId }),
+      });
+
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.url) {
+        throw new Error(payload?.error || payload?.message || "Falha ao iniciar conexão.");
+      }
+
+      window.location.href = payload.url;
     } catch (e: any) { toast.error(e?.message ?? "Falha"); } finally { setLoading(false); }
   }
   async function unlink() {
