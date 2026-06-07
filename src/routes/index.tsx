@@ -1,13 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, signOut, type League } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { sendAnonymousMessage, bookCamedSlot } from "@/lib/camed.functions";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { GraduationCap, Users, Calendar, Shield, LogIn, LogOut, UserCircle, Plus, ArrowRight, Sparkles, Activity, Building2 } from "lucide-react";
+import { GraduationCap, Users, Calendar, Shield, LogIn, LogOut, UserCircle, Plus, ArrowRight, Sparkles, Activity, Building2, MessageCircle, Send, Clock, Video, MapPin, ShieldCheck, CheckCircle2, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/")({ component: HomePage });
 
