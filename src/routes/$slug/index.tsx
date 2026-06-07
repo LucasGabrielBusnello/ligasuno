@@ -940,6 +940,25 @@ function Empty({ icon, title }: { icon: React.ReactNode; title: string }) {
   );
 }
 
+function SectionHeader({ icon: Icon, title, subtitle, tc, tcDark, count }: { icon: any; title: string; subtitle: string; tc: string; tcDark: string; count?: number }) {
+  return (
+    <div className="mb-8 flex items-center gap-4 flex-wrap">
+      <div className="size-14 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+        <Icon className="size-7" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">{title}</h2>
+          {typeof count === "number" && count > 0 && (
+            <Badge className="text-white border-0 shadow" style={{ background: tc }}>{count}</Badge>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+      </div>
+      <div className="hidden md:block h-1 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${tc}, transparent)` }} />
+    </div>
+  );
+
 function darken(hex: string): string {
   try {
     const h = hex.replace("#", "");
