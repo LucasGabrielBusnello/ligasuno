@@ -221,34 +221,45 @@ function HomePage() {
               </div>
             </Card>
 
-            <div>
-              <h3 className="text-2xl font-black mb-6">Membros</h3>
-              {camedMembers.length === 0 ? (
-                <EmptyState icon={<Users className="size-12" />} title="Nenhum membro cadastrado ainda" />
-              ) : (
-                <Carousel className="w-full">
-                  <CarouselContent>
-                    {camedMembers.map((m) => (
-                      <CarouselItem key={m.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
-                        <Card className="h-full overflow-hidden">
-                          <div className="aspect-square bg-muted relative">
-                            {m.image_url ? <img src={m.image_url} alt={m.name} className="absolute inset-0 w-full h-full object-cover" />
-                              : <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><UserCircle className="size-24" /></div>}
-                          </div>
-                          <CardContent className="p-5">
-                            <Badge variant="secondary" className="uppercase text-[10px]">{m.role}</Badge>
-                            <h4 className="font-black text-lg mt-2">{m.name}</h4>
-                            {m.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{m.description}</p>}
-                          </CardContent>
-                        </Card>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  <CarouselPrevious /><CarouselNext />
-                </Carousel>
-              )}
-            </div>
+            <Tabs defaultValue="membros" className="w-full">
+              <TabsList className="grid grid-cols-3 w-full h-auto">
+                <TabsTrigger value="membros" className="py-2"><Users className="size-4 mr-1.5" />Membros</TabsTrigger>
+                <TabsTrigger value="contato" className="py-2"><MessageCircle className="size-4 mr-1.5" />Fale Conosco</TabsTrigger>
+                <TabsTrigger value="horarios" className="py-2"><Clock className="size-4 mr-1.5" />Horários Semanais</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="membros" className="mt-6">
+                {camedMembers.length === 0 ? (
+                  <EmptyState icon={<Users className="size-12" />} title="Nenhum membro cadastrado ainda" />
+                ) : (
+                  <Carousel className="w-full">
+                    <CarouselContent>
+                      {camedMembers.map((m) => (
+                        <CarouselItem key={m.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
+                          <Card className="h-full overflow-hidden">
+                            <div className="aspect-square bg-muted relative">
+                              {m.image_url ? <img src={m.image_url} alt={m.name} className="absolute inset-0 w-full h-full object-cover" />
+                                : <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><UserCircle className="size-24" /></div>}
+                            </div>
+                            <CardContent className="p-5">
+                              <Badge variant="secondary" className="uppercase text-[10px]">{m.role}</Badge>
+                              <h4 className="font-black text-lg mt-2">{m.name}</h4>
+                              {m.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{m.description}</p>}
+                            </CardContent>
+                          </Card>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    <CarouselPrevious /><CarouselNext />
+                  </Carousel>
+                )}
+              </TabsContent>
+
+              <TabsContent value="contato" className="mt-6"><FaleConoscoCard /></TabsContent>
+              <TabsContent value="horarios" className="mt-6"><HorariosCard user={user} /></TabsContent>
+            </Tabs>
           </TabsContent>
+
 
           {/* EVENTOS */}
           <TabsContent value="eventos" className="mt-8">
