@@ -411,8 +411,9 @@ function HorariosCard({ user }: { user: any }) {
   const [busy, setBusy] = useState(false);
 
   async function reload() {
-    const nowIso = new Date().toISOString();
-    const { data } = await supabase.from("camed_slots").select("*").gte("slot_at", nowIso).order("slot_at");
+    // Hide slots less than 24h away — they can't be booked anymore
+    const cutoffIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase.from("camed_slots").select("*").gte("slot_at", cutoffIso).order("slot_at");
     setSlots(data ?? []);
     const ids = (data ?? []).map((s: any) => s.id);
     if (ids.length) {
@@ -421,8 +422,6 @@ function HorariosCard({ user }: { user: any }) {
     } else setBookedIds(new Set());
   }
   useEffect(() => { reload(); }, []);
-
-  const blackout = isBlackoutNow();
 
   async function submit() {
     if (!bookOpen) return;
