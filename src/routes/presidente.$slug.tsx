@@ -96,7 +96,7 @@ function PresidentePage() {
           <TabsContent value="about" className="mt-6"><AboutTab league={league} /></TabsContent>
           <TabsContent value="eventos" className="mt-6"><EventsTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
-          <TabsContent value="quiz" className="mt-6"><QuizTab league={league} /></TabsContent>
+          <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
           <TabsContent value="atividades" className="mt-6"><ActivitiesTab league={league} /></TabsContent>
           <TabsContent value="membros" className="mt-6"><MembersTab league={league} /></TabsContent>
         </Tabs>
