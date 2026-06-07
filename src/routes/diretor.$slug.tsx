@@ -12,7 +12,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3 } from "lucide-react";
+import { LeagueQuizManager } from "@/components/league-quiz-manager";
+import { LeaguePerformanceTab } from "@/components/league-performance-tab";
 
 export const Route = createFileRoute("/diretor/$slug")({ component: DiretorPage });
 
