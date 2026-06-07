@@ -451,11 +451,9 @@ function HorariosCard({ user }: { user: any }) {
               <p className="text-white/80 text-sm">Marque um horário com o CAMED. Reseta todo <b>sábado às 20h</b>.</p>
             </div>
           </div>
-          {blackout && (
-            <div className="mt-4 rounded-xl bg-amber-500/20 border border-amber-300/40 px-4 py-3 text-sm">
-              ⏰ Período de reset: <b>sábado 20h → segunda 07h</b>. Não é possível marcar horários agora.
-            </div>
-          )}
+          <div className="mt-4 rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm">
+            ℹ️ Os horários são resetados toda semana às <b>20h de sábado</b>. Horários devem ser marcados com pelo menos <b>24 horas de antecedência</b>.
+          </div>
         </div>
       </Card>
 
