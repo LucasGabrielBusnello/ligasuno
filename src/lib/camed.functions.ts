@@ -133,32 +133,3 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
-
-      slot_id: data.slot_id,
-      user_id: u.user.id,
-      modality: data.modality,
-      reason: data.reason,
-      extra_participants: data.extra_participants ?? null,
-      phone: data.phone,
-    });
-    if (error) throw new Error(error.message);
-
-    // Notify CAMED email
-    const { data: info } = await admin.from("camed_info").select("email").eq("id", 1).maybeSingle();
-    const to = (info as any)?.email as string | undefined;
-    if (to) {
-      const { data: prof } = await admin.from("profiles").select("full_name,username,email").eq("id", u.user.id).maybeSingle();
-      const userName = (prof as any)?.full_name || (prof as any)?.username || "Usuário";
-      const userEmail = (prof as any)?.email || u.user.email || "";
-      const slotAt = new Date((slot as any).slot_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "full", timeStyle: "short" });
-      try {
-        const { sendGmail } = await import("./gmail.server");
-        await sendGmail({
-          to,
-          subject: `📅 Novo horário marcado — ${slotAt}`,
-          html: buildBookingEmailHtml({ slotAt, modality: data.modality, reason: data.reason, extras: data.extra_participants, phone: data.phone, userName, userEmail }),
-        });
-      } catch (e) { console.error(e); }
-    }
-    return { ok: true };
-  });
