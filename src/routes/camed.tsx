@@ -334,33 +334,171 @@ function MembersTab() {
 
 function LeaguesSettingsTab() {
   const [s, setS] = useState({ league_registration_fee: 0, semestrality_fee: 0 });
-  useEffect(() => {
-    supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
-      if (data) setS({ league_registration_fee: Number((data as any).league_registration_fee) || 0, semestrality_fee: Number((data as any).semestrality_fee) || 0 });
-    });
-  }, []);
-  async function save() {
+  const [leagues, setLeagues] = useState<any[]>([]);
+  const [pointsByLeague, setPointsByLeague] = useState<Record<string, any[]>>({});
+  const [presidents, setPresidents] = useState<Record<string, any>>({});
+  const [addOpen, setAddOpen] = useState<any | null>(null);
+  const [histOpen, setHistOpen] = useState<Record<string, boolean>>({});
+  const [addF, setAddF] = useState({ points: 0, description: "" });
+
+  async function loadSettings() {
+    const { data } = await supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle();
+    if (data) setS({ league_registration_fee: Number((data as any).league_registration_fee) || 0, semestrality_fee: Number((data as any).semestrality_fee) || 0 });
+  }
+  async function loadLeagues() {
+    const { data: lg } = await supabase.from("leagues").select("id, name, slug, theme_color, icon_url, president_id");
+    setLeagues(lg ?? []);
+    const ids = (lg ?? []).map((l: any) => l.president_id).filter(Boolean);
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, username, full_name, email").in("id", ids);
+      const pm: Record<string, any> = {}; (profs ?? []).forEach((p: any) => pm[p.id] = p);
+      setPresidents(pm);
+    }
+    const { data: pts } = await supabase.from("league_points").select("*").order("created_at", { ascending: false });
+    const map: Record<string, any[]> = {};
+    (pts ?? []).forEach((p: any) => { (map[p.league_id] ||= []).push(p); });
+    setPointsByLeague(map);
+  }
+  useEffect(() => { loadSettings(); loadLeagues(); }, []);
+
+  async function saveSettings() {
     const { error } = await supabase.from("camed_settings").update({ ...s, updated_at: new Date().toISOString() }).eq("id", 1);
     if (error) return toast.error(error.message);
     toast.success("Configurações salvas");
   }
+
+  async function addPoints(e: React.FormEvent) {
+    e.preventDefault();
+    if (!addOpen) return;
+    if (!addF.description.trim()) return toast.error("Informe uma descrição");
+    if (!addF.points) return toast.error("Informe quantos pontos");
+    const { error } = await supabase.from("league_points").insert({ league_id: addOpen.id, points: addF.points, description: addF.description.trim() });
+    if (error) return toast.error(error.message);
+    toast.success(`+${addF.points} pontos para ${addOpen.name}`);
+    setAddOpen(null); setAddF({ points: 0, description: "" });
+    loadLeagues();
+  }
+
+  async function removePoints(id: string) {
+    if (!confirm("Remover esta pontuação? Os pontos serão descontados.")) return;
+    const { error } = await supabase.from("league_points").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    loadLeagues();
+  }
+
+  const ranked = leagues
+    .map((l) => ({ ...l, total: (pointsByLeague[l.id] ?? []).reduce((sum, p) => sum + p.points, 0) }))
+    .sort((a, b) => b.total - a.total);
+
+  function rankStyle(pos: number) {
+    if (pos === 0) return { border: "border-yellow-400/70", bg: "bg-gradient-to-br from-yellow-50 to-amber-100/40 dark:from-yellow-950/40 dark:to-amber-900/20", icon: <Crown className="size-5 text-yellow-600" />, badge: "bg-gradient-to-r from-yellow-500 to-amber-500 text-white" };
+    if (pos === 1) return { border: "border-slate-400/70", bg: "bg-gradient-to-br from-slate-50 to-zinc-100/40 dark:from-slate-900/40 dark:to-zinc-800/20", icon: <Medal className="size-5 text-slate-500" />, badge: "bg-gradient-to-r from-slate-400 to-zinc-400 text-white" };
+    if (pos === 2) return { border: "border-orange-400/70", bg: "bg-gradient-to-br from-orange-50 to-amber-100/40 dark:from-orange-950/40 dark:to-amber-900/20", icon: <Trophy className="size-5 text-orange-600" />, badge: "bg-gradient-to-r from-orange-500 to-amber-600 text-white" };
+    return { border: "border-border", bg: "bg-card", icon: <Building2 className="size-5 text-muted-foreground" />, badge: "bg-muted text-foreground" };
+  }
+
   return (
-    <Card>
-      <CardHeader><CardTitle>Valores padrão das ligas</CardTitle></CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Label>Taxa de inscrição na prova de seleção (R$)</Label>
-          <Input type="number" step="0.01" min="0" value={s.league_registration_fee} onChange={(e) => setS({ ...s, league_registration_fee: +e.target.value })} />
-          <p className="text-xs text-muted-foreground mt-1">Valor cobrado de todo candidato que se inscreve na prova de uma liga. Aplica-se a todas as ligas e atualiza automaticamente.</p>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Trophy className="size-5 text-yellow-600" /> Classificação das Ligas</CardTitle>
+          <p className="text-sm text-muted-foreground">Ordenadas pela pontuação total atribuída pelo CAMED.</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {ranked.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma liga cadastrada ainda.</p>}
+          {ranked.map((l, idx) => {
+            const st = rankStyle(idx);
+            const pres = l.president_id ? presidents[l.president_id] : null;
+            const history = pointsByLeague[l.id] ?? [];
+            const open = !!histOpen[l.id];
+            return (
+              <div key={l.id} className={`rounded-2xl border-2 ${st.border} ${st.bg} overflow-hidden transition-all`}>
+                <div className="p-4 flex items-center gap-3 flex-wrap">
+                  <div className={`flex items-center justify-center size-12 rounded-xl font-black text-lg ${st.badge}`}>
+                    {idx + 1}°
+                  </div>
+                  <div className="size-12 rounded-xl flex items-center justify-center text-white font-black overflow-hidden shrink-0" style={{ background: l.theme_color }}>
+                    {l.icon_url ? <img src={l.icon_url} className="size-full object-cover" /> : l.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-[140px]">
+                    <div className="flex items-center gap-2">
+                      {st.icon}
+                      <h4 className="font-black text-base sm:text-lg">{l.name}</h4>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Presidente: <span className="font-semibold text-foreground">{pres?.full_name || pres?.username || "—"}</span></p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-black tabular-nums">{l.total}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground">pontos</div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <Button size="sm" variant="outline" onClick={() => { setAddOpen(l); setAddF({ points: 0, description: "" }); }}><Plus className="size-4" /></Button>
+                    <Button size="sm" variant="outline" onClick={() => setHistOpen((p) => ({ ...p, [l.id]: !p[l.id] }))}>
+                      <History className="size-4" /> {open ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+                {open && (
+                  <div className="border-t border-border/50 bg-background/60 p-4 space-y-2">
+                    <div className="text-xs uppercase tracking-widest font-bold text-muted-foreground mb-2">Histórico de pontuação</div>
+                    {history.length === 0 && <p className="text-sm text-muted-foreground italic">Nenhuma pontuação atribuída ainda.</p>}
+                    {history.map((h: any) => (
+                      <div key={h.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{h.description}</div>
+                          <div className="text-[11px] text-muted-foreground">{new Date(h.created_at).toLocaleString("pt-BR")}</div>
+                        </div>
+                        <Badge className={h.points >= 0 ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}>
+                          {h.points >= 0 ? "+" : ""}{h.points}
+                        </Badge>
+                        <Button size="sm" variant="ghost" onClick={() => removePoints(h.id)}><Trash2 className="size-3.5 text-rose-600" /></Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!addOpen} onOpenChange={(o) => !o && setAddOpen(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Adicionar pontos — {addOpen?.name}</DialogTitle></DialogHeader>
+          <form onSubmit={addPoints} className="space-y-3">
+            <div>
+              <Label>Pontos a adicionar</Label>
+              <Input type="number" required value={addF.points} onChange={(e) => setAddF({ ...addF, points: +e.target.value })} placeholder="Use número negativo para descontar" />
+              <p className="text-xs text-muted-foreground mt-1">Use número negativo para descontar pontos.</p>
+            </div>
+            <div>
+              <Label>Descrição</Label>
+              <Textarea rows={3} required value={addF.description} onChange={(e) => setAddF({ ...addF, description: e.target.value })} placeholder="Ex.: Participação no evento X" />
+            </div>
+            <DialogFooter><Button type="submit">Adicionar</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <details className="rounded-xl border bg-card/50">
+        <summary className="cursor-pointer p-4 text-sm font-semibold text-muted-foreground hover:text-foreground flex items-center gap-2">
+          <SettingsIcon className="size-4" /> Valores padrão das ligas
+        </summary>
+        <div className="p-4 pt-0 space-y-4">
+          <div>
+            <Label className="text-xs">Taxa de inscrição na prova de seleção (R$)</Label>
+            <Input type="number" step="0.01" min="0" value={s.league_registration_fee} onChange={(e) => setS({ ...s, league_registration_fee: +e.target.value })} />
+            <p className="text-[11px] text-muted-foreground mt-1">Valor cobrado de candidatos. Aplica-se a todas as ligas.</p>
+          </div>
+          <div>
+            <Label className="text-xs">Semestralidade padrão (R$)</Label>
+            <Input type="number" step="0.01" min="0" value={s.semestrality_fee} onChange={(e) => setS({ ...s, semestrality_fee: +e.target.value })} />
+            <p className="text-[11px] text-muted-foreground mt-1">Valor de referência (sem cobrança automática).</p>
+          </div>
+          <Button size="sm" onClick={saveSettings}>Salvar valores padrão</Button>
         </div>
-        <div>
-          <Label>Semestralidade padrão (R$)</Label>
-          <Input type="number" step="0.01" min="0" value={s.semestrality_fee} onChange={(e) => setS({ ...s, semestrality_fee: +e.target.value })} />
-          <p className="text-xs text-muted-foreground mt-1">Valor de referência da semestralidade do ligante. (Sem cobrança automática por enquanto.)</p>
-        </div>
-        <Button onClick={save}>Salvar</Button>
-      </CardContent>
-    </Card>
+      </details>
+    </div>
   );
 }
 
