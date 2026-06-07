@@ -824,6 +824,48 @@ export type Database = {
           },
         ]
       }
+      league_points: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          league_id: string
+          points: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          league_id: string
+          points: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          league_id?: string
+          points?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_points_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_points_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_quiz_answers: {
         Row: {
           created_at: string
