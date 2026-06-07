@@ -208,6 +208,9 @@ function SlotsTab() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo horário</DialogTitle></DialogHeader>
+          <div className="rounded-lg border border-emerald-300/50 bg-emerald-50/60 dark:bg-emerald-950/30 p-3 text-xs text-emerald-900 dark:text-emerald-100">
+            ℹ️ Os horários são resetados toda semana às <b>20h de sábado</b>. Horários devem ser marcados com pelo menos <b>24 horas de antecedência</b>.
+          </div>
           <form onSubmit={save} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Data</Label><Input type="date" required value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></div>
