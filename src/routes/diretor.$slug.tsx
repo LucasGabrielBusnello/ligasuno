@@ -8,11 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
+
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3 } from "lucide-react";
+import { LeagueQuizManager } from "@/components/league-quiz-manager";
+import { LeaguePerformanceTab } from "@/components/league-performance-tab";
 
 export const Route = createFileRoute("/diretor/$slug")({ component: DiretorPage });
 
@@ -58,17 +60,19 @@ function DiretorPage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Diretor</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
         <Tabs defaultValue="freq">
-          <TabsList className="grid grid-cols-3 md:grid-cols-5 w-full h-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full h-auto">
             <TabsTrigger value="freq"><CheckSquare className="size-4 mr-1" />Frequência</TabsTrigger>
             <TabsTrigger value="agenda"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
             <TabsTrigger value="news"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
             <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
+            <TabsTrigger value="perf"><BarChart3 className="size-4 mr-1" />Desempenho</TabsTrigger>
             <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1" />Agenda</TabsTrigger>
           </TabsList>
           <TabsContent value="freq" className="mt-6"><FreqTab league={league} /></TabsContent>
           <TabsContent value="agenda" className="mt-6"><EventsListTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
-          <TabsContent value="quiz" className="mt-6"><QuizTab league={league} /></TabsContent>
+          <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
+          <TabsContent value="perf" className="mt-6"><LeaguePerformanceTab league={league} /></TabsContent>
           <TabsContent value="schedule" className="mt-6"><ScheduleTab league={league} /></TabsContent>
         </Tabs>
       </main>
@@ -193,104 +197,6 @@ function NewsTab({ league }: { league: League }) {
   );
 }
 
-function QuizTab({ league }: { league: League }) {
-  const [sets, setSets] = useState<any[]>([]);
-  const [openSet, setOpenSet] = useState<string | null>(null);
-  const [newSet, setNewSet] = useState({ title: "", description: "", is_private: false });
-  const [quizzes, setQuizzes] = useState<any[]>([]);
-  const [nq, setNq] = useState({ question: "", options: ["", "", "", ""], correct_answer: 0, explanation: "" });
-
-  const reload = async () => {
-    const { data } = await supabase.from("league_quiz_sets").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
-    setSets(data ?? []);
-  };
-  useEffect(() => { reload(); }, [league.id]);
-  useEffect(() => {
-    if (!openSet) return;
-    supabase.from("league_quizzes").select("*").eq("quiz_set_id", openSet).order("display_order").then(({ data }) => setQuizzes(data ?? []));
-  }, [openSet]);
-
-  async function createSet() {
-    if (!newSet.title) return;
-    const { error } = await supabase.from("league_quiz_sets").insert({ ...newSet, league_id: league.id });
-    if (error) return toast.error(error.message);
-    setNewSet({ title: "", description: "", is_private: false }); reload();
-  }
-  async function delSet(id: string) { if (!confirm("Excluir caderno e suas questões?")) return; await supabase.from("league_quiz_sets").delete().eq("id", id); reload(); }
-  async function addQuiz() {
-    if (!nq.question || nq.options.some(o => !o)) return toast.error("Preencha pergunta e 4 alternativas");
-    if (!openSet) return;
-    const { error } = await supabase.from("league_quizzes").insert({ ...nq, quiz_set_id: openSet, display_order: quizzes.length });
-    if (error) return toast.error(error.message);
-    setNq({ question: "", options: ["", "", "", ""], correct_answer: 0, explanation: "" });
-    const { data } = await supabase.from("league_quizzes").select("*").eq("quiz_set_id", openSet).order("display_order");
-    setQuizzes(data ?? []);
-  }
-  async function delQuiz(id: string) {
-    await supabase.from("league_quizzes").delete().eq("id", id);
-    const { data } = await supabase.from("league_quizzes").select("*").eq("quiz_set_id", openSet!).order("display_order");
-    setQuizzes(data ?? []);
-  }
-
-  return (
-    <div className="space-y-4">
-      <Card><CardContent className="p-6 space-y-3">
-        <h3 className="font-black">Criar novo caderno</h3>
-        <Input placeholder="Título" value={newSet.title} onChange={(e) => setNewSet({ ...newSet, title: e.target.value })} />
-        <Textarea placeholder="Descrição" value={newSet.description} onChange={(e) => setNewSet({ ...newSet, description: e.target.value })} />
-        <label className="flex items-center gap-2 text-sm"><Switch checked={newSet.is_private} onCheckedChange={(v) => setNewSet({ ...newSet, is_private: v })} /> Privado (somente ligantes)</label>
-        <Button onClick={createSet}><Plus className="size-4" /> Criar caderno</Button>
-      </CardContent></Card>
-
-      <div className="grid sm:grid-cols-2 gap-3">
-        {sets.map((s) => (
-          <Card key={s.id} className={openSet === s.id ? "border-primary" : ""}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-black truncate">{s.title}</h4>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{s.description}</p>
-                  {s.is_private && <Badge variant="secondary" className="mt-1 text-[10px]">Privado</Badge>}
-                </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline" onClick={() => setOpenSet(openSet === s.id ? null : s.id)}>{openSet === s.id ? "Fechar" : "Editar"}</Button>
-                  <Button size="sm" variant="destructive" onClick={() => delSet(s.id)}><Trash2 className="size-3" /></Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {openSet && (
-        <Card><CardHeader><CardTitle>Questões do caderno</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              {quizzes.map((q, i) => (
-                <div key={q.id} className="p-3 rounded border flex justify-between gap-2">
-                  <div className="text-sm"><span className="font-bold">Q{i + 1}.</span> {q.question}</div>
-                  <Button size="sm" variant="destructive" onClick={() => delQuiz(q.id)}><Trash2 className="size-3" /></Button>
-                </div>
-              ))}
-            </div>
-            <div className="border-t pt-4 space-y-2">
-              <Label className="font-black">Nova questão</Label>
-              <Textarea placeholder="Enunciado" value={nq.question} onChange={(e) => setNq({ ...nq, question: e.target.value })} />
-              {nq.options.map((opt, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input type="radio" checked={nq.correct_answer === i} onChange={() => setNq({ ...nq, correct_answer: i })} />
-                  <Input placeholder={`Alternativa ${String.fromCharCode(65 + i)}`} value={opt} onChange={(e) => { const o = [...nq.options]; o[i] = e.target.value; setNq({ ...nq, options: o }); }} />
-                </div>
-              ))}
-              <Textarea placeholder="Explicação (mostrada após responder)" value={nq.explanation} onChange={(e) => setNq({ ...nq, explanation: e.target.value })} />
-              <Button onClick={addQuiz}><Plus className="size-4" /> Adicionar questão</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
 
 function ScheduleTab({ league }: { league: League }) {
   const [list, setList] = useState<any[]>([]);
