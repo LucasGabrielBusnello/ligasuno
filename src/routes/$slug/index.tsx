@@ -350,6 +350,7 @@ function LeaguePage() {
           </TabsContent>
 
           <TabsContent value="eventos" className="mt-8">
+            <SectionHeader icon={Calendar} title="Eventos" subtitle="Inscreva-se, salve datas, participe de simpósios e jornadas." tc={tc} tcDark={tcDark} count={events.filter(e => e.published !== false || isPresident || isAdminMaster).length} />
             {(() => {
               const visibleEvents = events.filter(e => e.published !== false || isPresident || isAdminMaster);
               if (visibleEvents.length === 0) return <Empty icon={<Calendar className="size-12" />} title="Nenhum evento publicado" />;
@@ -357,18 +358,21 @@ function LeaguePage() {
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {visibleEvents.map((e, i) => (
                     <Reveal key={e.id} delay={i * 70}>
-                      <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full">
+                      <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full relative">
+                        <div className="absolute top-0 left-0 right-0 h-1 z-10" style={{ background: `linear-gradient(90deg, ${tc}, ${tcDark})` }} />
                         <div className="aspect-video bg-muted relative overflow-hidden">
-                          {e.image_url ? <img loading="lazy" src={e.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                          {e.image_url ? <img loading="lazy" src={e.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}><Calendar className="size-16 text-white/40" /></div>}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                           {e.event_date && (
-                            <div className="absolute top-3 right-3 px-3 py-1.5 rounded-lg bg-background/95 backdrop-blur text-xs font-black">
-                              {new Date(e.event_date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                            <div className="absolute top-3 right-3 px-3 py-2 rounded-xl bg-background/95 backdrop-blur shadow-lg text-center">
+                              <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: tc }}>{new Date(e.event_date).toLocaleDateString("pt-BR", { month: "short" })}</div>
+                              <div className="text-lg font-black leading-none">{new Date(e.event_date).getDate()}</div>
                             </div>
                           )}
+                          <Badge className="absolute bottom-3 left-3 text-white border-0 shadow-lg" style={{ background: tc }}><Calendar className="size-3 mr-1" /> Evento</Badge>
                         </div>
                         <CardContent className="p-5">
-                          <h3 className="font-black text-lg">{e.title}</h3>
+                          <h3 className="font-black text-lg leading-tight">{e.title}</h3>
                           {e.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{e.description}</p>}
                           {(() => {
                             const reg = myRegs[e.id];
@@ -389,19 +393,22 @@ function LeaguePage() {
           </TabsContent>
 
           <TabsContent value="news" className="mt-8">
+            <SectionHeader icon={Newspaper} title="Notícias" subtitle="Atualizações, artigos publicados e conquistas da liga." tc={tc} tcDark={tcDark} count={news.length} />
             {news.length === 0 ? (
               <Empty icon={<Newspaper className="size-12" />} title="Nenhuma notícia publicada" />
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {news.map((n, i) => (
                   <Reveal key={n.id} delay={i * 70}>
-                    <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full">
+                    <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 group h-full relative">
+                      <div className="absolute top-0 left-0 right-0 h-1 z-10" style={{ background: `linear-gradient(90deg, ${tc}, ${tcDark})` }} />
                       <div className="aspect-video bg-muted relative overflow-hidden">
-                        {n.image_url ? <img loading="lazy" src={n.image_url} className="absolute inset-0 w-full h-full object-cover" /> : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }} />}
-                        <Badge className="absolute top-3 left-3 text-white border-0" style={{ background: tc }}>{n.category}</Badge>
+                        {n.image_url ? <img loading="lazy" src={n.image_url} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" /> : <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}><Newspaper className="size-16 text-white/40" /></div>}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                        <Badge className="absolute top-3 left-3 text-white border-0 shadow-lg" style={{ background: tc }}>{n.category}</Badge>
                       </div>
                       <CardContent className="p-5">
-                        <h3 className="font-black text-lg">{n.title}</h3>
+                        <h3 className="font-black text-lg leading-tight">{n.title}</h3>
                         {n.excerpt && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{n.excerpt}</p>}
                         {n.link && (
                           <Button asChild variant="outline" className="w-full mt-4">
@@ -417,17 +424,25 @@ function LeaguePage() {
           </TabsContent>
 
           <TabsContent value="atividades" className="mt-8">
+            <SectionHeader icon={Activity} title="Atividades" subtitle="Galeria de momentos: aulas, projetos e bastidores da liga." tc={tc} tcDark={tcDark} count={activities.length} />
             {activities.length === 0 ? (
               <Empty icon={<Activity className="size-12" />} title="Nenhuma atividade registrada" />
             ) : (
               <Carousel className="w-full">
                 <CarouselContent>
-                  {activities.map((a) => (
+                  {activities.map((a, i) => (
                     <CarouselItem key={a.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
-                      <Card className="overflow-hidden h-full">
-                        <div className="aspect-video bg-muted"><img src={a.image_url} className="w-full h-full object-cover" /></div>
-                        {a.caption && <CardContent className="p-4"><p className="text-sm text-muted-foreground">{a.caption}</p></CardContent>}
-                      </Card>
+                      <Reveal delay={i * 60}>
+                        <Card className="overflow-hidden h-full group hover:shadow-xl transition-all relative">
+                          <div className="absolute top-0 left-0 right-0 h-1 z-10" style={{ background: `linear-gradient(90deg, ${tc}, ${tcDark})` }} />
+                          <div className="aspect-video bg-muted overflow-hidden relative">
+                            <img loading="lazy" src={a.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Badge className="absolute top-3 left-3 text-white border-0 shadow-lg" style={{ background: tc }}><Activity className="size-3 mr-1" /> Atividade</Badge>
+                          </div>
+                          {a.caption && <CardContent className="p-4"><p className="text-sm text-muted-foreground italic">"{a.caption}"</p></CardContent>}
+                        </Card>
+                      </Reveal>
                     </CarouselItem>
                   ))}
                 </CarouselContent>
@@ -435,6 +450,7 @@ function LeaguePage() {
               </Carousel>
             )}
           </TabsContent>
+
 
           <TabsContent value="quizzes" className="mt-8">
             {quizSets.length === 0 ? (
@@ -923,6 +939,27 @@ function Empty({ icon, title }: { icon: React.ReactNode; title: string }) {
     </Card>
   );
 }
+
+function SectionHeader({ icon: Icon, title, subtitle, tc, tcDark, count }: { icon: any; title: string; subtitle: string; tc: string; tcDark: string; count?: number }) {
+  return (
+    <div className="mb-8 flex items-center gap-4 flex-wrap">
+      <div className="size-14 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>
+        <Icon className="size-7" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="text-3xl md:text-4xl font-black tracking-tighter">{title}</h2>
+          {typeof count === "number" && count > 0 && (
+            <Badge className="text-white border-0 shadow" style={{ background: tc }}>{count}</Badge>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
+      </div>
+      <div className="hidden md:block h-1 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${tc}, transparent)` }} />
+    </div>
+  );
+}
+
 
 function darken(hex: string): string {
   try {
