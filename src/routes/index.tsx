@@ -463,7 +463,7 @@ function HorariosCard({ user }: { user: any }) {
           <Card className="p-8 text-center text-muted-foreground">Nenhum horário aberto pelo CAMED.</Card>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {available.map((s) => <SlotCard key={s.id} slot={s} status="open" onBook={() => { if (blackout) return toast.error("Período de reset — tente após segunda 07h"); if (!user) return toast.error("Faça login para marcar"); setBookOpen(s); setF((p) => ({ ...p, modality: s.allow_in_person ? "presencial" : "online" })); }} />)}
+            {available.map((s) => <SlotCard key={s.id} slot={s} status="open" onBook={() => { if (!user) return toast.error("Faça login para marcar"); setBookOpen(s); setF((p) => ({ ...p, modality: s.allow_in_person ? "presencial" : "online" })); }} />)}
           </div>
         )}
       </section>
