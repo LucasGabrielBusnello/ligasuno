@@ -59,9 +59,51 @@ export type Database = {
         }
         Relationships: []
       }
+      camed_bookings: {
+        Row: {
+          created_at: string
+          extra_participants: string | null
+          id: string
+          modality: string
+          phone: string
+          reason: string
+          slot_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          extra_participants?: string | null
+          id?: string
+          modality: string
+          phone: string
+          reason: string
+          slot_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          extra_participants?: string | null
+          id?: string
+          modality?: string
+          phone?: string
+          reason?: string
+          slot_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camed_bookings_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: true
+            referencedRelation: "camed_slots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       camed_info: {
         Row: {
           description: string
+          email: string | null
           id: number
           subtitle: string
           title: string
@@ -69,6 +111,7 @@ export type Database = {
         }
         Insert: {
           description?: string
+          email?: string | null
           id?: number
           subtitle?: string
           title?: string
@@ -76,6 +119,7 @@ export type Database = {
         }
         Update: {
           description?: string
+          email?: string | null
           id?: number
           subtitle?: string
           title?: string
@@ -110,6 +154,24 @@ export type Database = {
           image_url?: string | null
           name?: string
           role?: string
+        }
+        Relationships: []
+      }
+      camed_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
         }
         Relationships: []
       }
@@ -148,6 +210,39 @@ export type Database = {
           id?: number
           league_registration_fee?: number
           semestrality_fee?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      camed_slots: {
+        Row: {
+          allow_in_person: boolean
+          allow_online: boolean
+          attendant_name: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          slot_at: string
+          updated_at: string
+        }
+        Insert: {
+          allow_in_person?: boolean
+          allow_online?: boolean
+          attendant_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          slot_at: string
+          updated_at?: string
+        }
+        Update: {
+          allow_in_person?: boolean
+          allow_online?: boolean
+          attendant_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          slot_at?: string
           updated_at?: string
         }
         Relationships: []
