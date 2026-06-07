@@ -100,6 +100,12 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
     if (data.modality === "online" && !(slot as any).allow_online) throw new Error("Online não disponível para este horário");
     if (data.modality === "presencial" && !(slot as any).allow_in_person) throw new Error("Presencial não disponível para este horário");
 
+    // Enforce 24h advance booking rule
+    const slotMs = new Date((slot as any).slot_at).getTime();
+    if (slotMs - Date.now() < 24 * 60 * 60 * 1000) {
+      throw new Error("Horários devem ser marcados com pelo menos 24 horas de antecedência");
+    }
+
     // ensure not already booked
     const { data: existing } = await admin.from("camed_bookings").select("id").eq("slot_id", data.slot_id).maybeSingle();
     if (existing) throw new Error("Horário já agendado");

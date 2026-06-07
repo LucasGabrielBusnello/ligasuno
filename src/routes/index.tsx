@@ -411,8 +411,9 @@ function HorariosCard({ user }: { user: any }) {
   const [busy, setBusy] = useState(false);
 
   async function reload() {
-    const nowIso = new Date().toISOString();
-    const { data } = await supabase.from("camed_slots").select("*").gte("slot_at", nowIso).order("slot_at");
+    // Hide slots less than 24h away — they can't be booked anymore
+    const cutoffIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase.from("camed_slots").select("*").gte("slot_at", cutoffIso).order("slot_at");
     setSlots(data ?? []);
     const ids = (data ?? []).map((s: any) => s.id);
     if (ids.length) {
@@ -421,8 +422,6 @@ function HorariosCard({ user }: { user: any }) {
     } else setBookedIds(new Set());
   }
   useEffect(() => { reload(); }, []);
-
-  const blackout = isBlackoutNow();
 
   async function submit() {
     if (!bookOpen) return;
@@ -452,11 +451,9 @@ function HorariosCard({ user }: { user: any }) {
               <p className="text-white/80 text-sm">Marque um horário com o CAMED. Reseta todo <b>sábado às 20h</b>.</p>
             </div>
           </div>
-          {blackout && (
-            <div className="mt-4 rounded-xl bg-amber-500/20 border border-amber-300/40 px-4 py-3 text-sm">
-              ⏰ Período de reset: <b>sábado 20h → segunda 07h</b>. Não é possível marcar horários agora.
-            </div>
-          )}
+          <div className="mt-4 rounded-xl bg-white/10 border border-white/20 px-4 py-3 text-sm">
+            ℹ️ Os horários são resetados toda semana às <b>20h de sábado</b>. Horários devem ser marcados com pelo menos <b>24 horas de antecedência</b>.
+          </div>
         </div>
       </Card>
 
@@ -466,7 +463,7 @@ function HorariosCard({ user }: { user: any }) {
           <Card className="p-8 text-center text-muted-foreground">Nenhum horário aberto pelo CAMED.</Card>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {available.map((s) => <SlotCard key={s.id} slot={s} status="open" onBook={() => { if (blackout) return toast.error("Período de reset — tente após segunda 07h"); if (!user) return toast.error("Faça login para marcar"); setBookOpen(s); setF((p) => ({ ...p, modality: s.allow_in_person ? "presencial" : "online" })); }} />)}
+            {available.map((s) => <SlotCard key={s.id} slot={s} status="open" onBook={() => { if (!user) return toast.error("Faça login para marcar"); setBookOpen(s); setF((p) => ({ ...p, modality: s.allow_in_person ? "presencial" : "online" })); }} />)}
           </div>
         )}
       </section>
