@@ -969,5 +969,5 @@ function darken(hex: string): string {
     const g = Math.max(0, ((n >> 8) & 255) - 50);
     const b = Math.max(0, (n & 255) - 50);
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
-  } catch { return hex; }
+  } catch (e) { return hex; }
 }
