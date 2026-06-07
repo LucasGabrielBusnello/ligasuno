@@ -958,6 +958,8 @@ function SectionHeader({ icon: Icon, title, subtitle, tc, tcDark, count }: { ico
       <div className="hidden md:block h-1 flex-1 rounded-full" style={{ background: `linear-gradient(90deg, ${tc}, transparent)` }} />
     </div>
   );
+}
+
 
 function darken(hex: string): string {
   try {
