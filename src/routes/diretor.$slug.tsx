@@ -60,17 +60,19 @@ function DiretorPage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Diretor</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
         <Tabs defaultValue="freq">
-          <TabsList className="grid grid-cols-3 md:grid-cols-5 w-full h-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full h-auto">
             <TabsTrigger value="freq"><CheckSquare className="size-4 mr-1" />Frequência</TabsTrigger>
             <TabsTrigger value="agenda"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
             <TabsTrigger value="news"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
             <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
+            <TabsTrigger value="perf"><BarChart3 className="size-4 mr-1" />Desempenho</TabsTrigger>
             <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1" />Agenda</TabsTrigger>
           </TabsList>
           <TabsContent value="freq" className="mt-6"><FreqTab league={league} /></TabsContent>
           <TabsContent value="agenda" className="mt-6"><EventsListTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
-          <TabsContent value="quiz" className="mt-6"><QuizTab league={league} /></TabsContent>
+          <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
+          <TabsContent value="perf" className="mt-6"><LeaguePerformanceTab league={league} /></TabsContent>
           <TabsContent value="schedule" className="mt-6"><ScheduleTab league={league} /></TabsContent>
         </Tabs>
       </main>
