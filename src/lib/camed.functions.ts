@@ -87,19 +87,11 @@ function buildBookingEmailHtml(args: { slotAt: string; modality: string; reason:
 }
 
 export const bookCamedSlot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => bookSchema.parse(d))
-  .handler(async ({ data }) => {
-    const { getRequestHeader } = await import("@tanstack/react-start/server");
-    const auth = getRequestHeader("authorization");
-    if (!auth?.startsWith("Bearer ")) throw new Error("Não autenticado");
-    const token = auth.slice(7);
+  .handler(async ({ data, context }) => {
+    const userId = context.userId;
     const { createClient } = await import("@supabase/supabase-js");
-    const userClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const { data: u } = await userClient.auth.getUser();
-    if (!u?.user) throw new Error("Não autenticado");
-
     const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
     // load slot
@@ -113,6 +105,35 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
     if (existing) throw new Error("Horário já agendado");
 
     const { error } = await admin.from("camed_bookings").insert({
+      slot_id: data.slot_id,
+      user_id: userId,
+      modality: data.modality,
+      reason: data.reason,
+      extra_participants: data.extra_participants ?? null,
+      phone: data.phone,
+    });
+    if (error) throw new Error(error.message);
+
+    // Notify CAMED email
+    const { data: info } = await admin.from("camed_info").select("email").eq("id", 1).maybeSingle();
+    const to = (info as any)?.email as string | undefined;
+    if (to) {
+      const { data: prof } = await admin.from("profiles").select("full_name,username,email").eq("id", userId).maybeSingle();
+      const userName = (prof as any)?.full_name || (prof as any)?.username || "Usuário";
+      const userEmail = (prof as any)?.email || "";
+      const slotAt = new Date((slot as any).slot_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "full", timeStyle: "short" });
+      try {
+        const { sendGmail } = await import("./gmail.server");
+        await sendGmail({
+          to,
+          subject: `📅 Novo horário marcado — ${slotAt}`,
+          html: buildBookingEmailHtml({ slotAt, modality: data.modality, reason: data.reason, extras: data.extra_participants, phone: data.phone, userName, userEmail }),
+        });
+      } catch (e) { console.error(e); }
+    }
+    return { ok: true };
+  });
+
       slot_id: data.slot_id,
       user_id: u.user.id,
       modality: data.modality,
