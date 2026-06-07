@@ -4,14 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const msgSchema = z.object({ message: z.string().trim().min(1).max(5000) });
 
-const bookSchema = z.object({
-  slot_id: z.string().uuid(),
-  modality: z.enum(["online", "presencial"]),
-  reason: z.string().trim().min(1).max(500),
-  extra_participants: z.string().trim().max(500).optional().nullable(),
-  phone: z.string().trim().min(1).max(40),
-});
-
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
