@@ -400,9 +400,18 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
       return { already_paid: true };
     }
 
-    // Calcula valor (com taxa de atraso se vencido)
-    const isOverdue = new Date((cycle as any).due_date) < new Date(new Date().toISOString().slice(0, 10));
-    const totalCents = ((payment as any).amount_due_cents ?? baseAmountCents) + (isOverdue ? (cycle as any).late_fee_cents : 0);
+    // Calcula valor proporcional aos dias restantes do semestre (sempre mantendo o desconto/valor base).
+    const today = new Date(new Date().toISOString().slice(0, 10));
+    const startD = new Date((cycle as any).start_date);
+    const endD = new Date((cycle as any).end_date);
+    const MS_DAY = 86_400_000;
+    const totalDays = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / MS_DAY) + 1);
+    const remainingDays = Math.max(1, Math.round((endD.getTime() - today.getTime()) / MS_DAY) + 1);
+    const fraction = Math.min(1, remainingDays / totalDays);
+    const baseDueCents = (payment as any).amount_due_cents ?? baseAmountCents;
+    const proratedCents = Math.max(100, Math.round(baseDueCents * fraction));
+    const isOverdue = new Date((cycle as any).due_date) < today;
+    const totalCents = proratedCents + (isOverdue ? (cycle as any).late_fee_cents : 0);
     const totalReais = totalCents / 100;
     if (totalReais <= 0) throw new Error("Valor inválido");
 
