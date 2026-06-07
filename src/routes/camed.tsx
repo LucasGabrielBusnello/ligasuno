@@ -137,9 +137,15 @@ function SlotsTab() {
   async function reload() {
     const { data } = await supabase.from("camed_slots").select("*").order("slot_at");
     setSlots(data ?? []);
-    const { data: bks } = await supabase.from("camed_bookings").select("*, profiles(full_name, username, email)");
+    const { data: bks } = await supabase.from("camed_bookings").select("*");
+    const userIds = Array.from(new Set((bks ?? []).map((b: any) => b.user_id).filter(Boolean)));
+    const profMap: Record<string, any> = {};
+    if (userIds.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, full_name, username, email").in("id", userIds);
+      (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+    }
     const m: Record<string, any> = {};
-    (bks ?? []).forEach((b: any) => { m[b.slot_id] = b; });
+    (bks ?? []).forEach((b: any) => { m[b.slot_id] = { ...b, profiles: profMap[b.user_id] ?? null }; });
     setBookings(m);
   }
   useEffect(() => { reload(); }, []);
