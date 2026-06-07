@@ -339,3 +339,213 @@ function EmptyState({ icon, title, desc, action }: { icon: React.ReactNode; titl
     </Card>
   );
 }
+
+function FaleConoscoCard() {
+  const send = useServerFn(sendAnonymousMessage);
+  const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  async function submit() {
+    const m = msg.trim();
+    if (m.length < 3) return toast.error("Escreva uma mensagem maior.");
+    if (m.length > 5000) return toast.error("Mensagem muito longa.");
+    setSending(true);
+    try {
+      const r = await send({ data: { message: m } });
+      if ((r as any)?.emailed === false) toast.warning("Mensagem registrada, mas o e-mail do CAMED não está configurado.");
+      else toast.success("Mensagem enviada anonimamente!");
+      setSent(true); setMsg("");
+    } catch (e: any) { toast.error(e?.message ?? "Erro ao enviar"); }
+    finally { setSending(false); }
+  }
+  return (
+    <Card className="overflow-hidden border-emerald-300/40">
+      <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 text-white p-7">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="size-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center backdrop-blur"><MessageCircle className="size-6" /></div>
+          <div>
+            <Badge className="bg-white/20 text-white border-white/30 mb-1"><Lock className="size-3 mr-1" /> 100% Anônimo</Badge>
+            <h3 className="text-2xl font-black tracking-tight">Fale Conosco</h3>
+          </div>
+        </div>
+        <p className="text-white/85 text-sm leading-relaxed max-w-2xl">
+          Canal direto para <b>denúncias, sugestões, reclamações</b> e outras manifestações.
+          As mensagens são enviadas para o e-mail do CAMED em nome do <b>LIGASUNO</b>,
+          <b> sem nenhuma identificação do remetente original</b>.
+        </p>
+      </div>
+      <CardContent className="p-6 space-y-3">
+        <div>
+          <Label className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Sua mensagem anônima</Label>
+          <Textarea rows={7} value={msg} onChange={(e) => setMsg(e.target.value)} maxLength={5000} placeholder="Escreva aqui sua mensagem... ninguém saberá que foi você." className="mt-1.5 resize-none" />
+          <div className="text-xs text-muted-foreground mt-1 flex justify-between">
+            <span className="flex items-center gap-1"><ShieldCheck className="size-3 text-emerald-600" /> Sem registro de identidade</span>
+            <span>{msg.length}/5000</span>
+          </div>
+        </div>
+        <Button onClick={submit} disabled={sending || msg.trim().length < 3} className="w-full bg-gradient-to-r from-emerald-700 to-emerald-600 hover:opacity-90 text-white">
+          {sending ? "Enviando..." : (<><Send className="size-4" /> Enviar anonimamente</>)}
+        </Button>
+        {sent && <p className="text-xs text-center text-emerald-700 dark:text-emerald-400 flex items-center justify-center gap-1"><CheckCircle2 className="size-3.5" /> Recebido pelo CAMED</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function isBlackoutNow(now = new Date()) {
+  // Saturday 20:00 → Monday 07:00 (Brazil local)
+  const d = now.getDay(); // 0=Sun ... 6=Sat
+  const h = now.getHours();
+  if (d === 6 && h >= 20) return true;
+  if (d === 0) return true;
+  if (d === 1 && h < 7) return true;
+  return false;
+}
+
+function HorariosCard({ user }: { user: any }) {
+  const book = useServerFn(bookCamedSlot);
+  const [slots, setSlots] = useState<any[]>([]);
+  const [bookedIds, setBookedIds] = useState<Set<string>>(new Set());
+  const [bookOpen, setBookOpen] = useState<any | null>(null);
+  const [f, setF] = useState({ modality: "presencial" as "online" | "presencial", reason: "", extras: "", phone: "" });
+  const [busy, setBusy] = useState(false);
+
+  async function reload() {
+    const nowIso = new Date().toISOString();
+    const { data } = await supabase.from("camed_slots").select("*").gte("slot_at", nowIso).order("slot_at");
+    setSlots(data ?? []);
+    const ids = (data ?? []).map((s: any) => s.id);
+    if (ids.length) {
+      const { data: bks } = await supabase.from("camed_bookings").select("slot_id").in("slot_id", ids);
+      setBookedIds(new Set((bks ?? []).map((b: any) => b.slot_id)));
+    } else setBookedIds(new Set());
+  }
+  useEffect(() => { reload(); }, []);
+
+  const blackout = isBlackoutNow();
+
+  async function submit() {
+    if (!bookOpen) return;
+    if (!f.reason.trim()) return toast.error("Diga em poucas palavras o motivo");
+    if (!f.phone.trim()) return toast.error("Informe um telefone para contato");
+    setBusy(true);
+    try {
+      await book({ data: { slot_id: bookOpen.id, modality: f.modality, reason: f.reason.trim(), extra_participants: f.extras.trim() || undefined, phone: f.phone.trim() } });
+      toast.success("Horário marcado! O CAMED foi notificado.");
+      setBookOpen(null); setF({ modality: "presencial", reason: "", extras: "", phone: "" });
+      reload();
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
+    finally { setBusy(false); }
+  }
+
+  const available = slots.filter((s) => !bookedIds.has(s.id));
+  const taken = slots.filter((s) => bookedIds.has(s.id));
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-emerald-300/40 overflow-hidden">
+        <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-emerald-700 text-white p-6">
+          <div className="flex items-center gap-3">
+            <div className="size-12 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center"><Clock className="size-6" /></div>
+            <div>
+              <h3 className="text-xl font-black">Horários Semanais</h3>
+              <p className="text-white/80 text-sm">Marque um horário com o CAMED. Reseta todo <b>sábado às 20h</b>.</p>
+            </div>
+          </div>
+          {blackout && (
+            <div className="mt-4 rounded-xl bg-amber-500/20 border border-amber-300/40 px-4 py-3 text-sm">
+              ⏰ Período de reset: <b>sábado 20h → segunda 07h</b>. Não é possível marcar horários agora.
+            </div>
+          )}
+        </div>
+      </Card>
+
+      <section>
+        <h4 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-600" /> Disponíveis</h4>
+        {available.length === 0 ? (
+          <Card className="p-8 text-center text-muted-foreground">Nenhum horário aberto pelo CAMED.</Card>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {available.map((s) => <SlotCard key={s.id} slot={s} status="open" onBook={() => { if (blackout) return toast.error("Período de reset — tente após segunda 07h"); if (!user) return toast.error("Faça login para marcar"); setBookOpen(s); setF((p) => ({ ...p, modality: s.allow_in_person ? "presencial" : "online" })); }} />)}
+          </div>
+        )}
+      </section>
+
+      {taken.length > 0 && (
+        <section>
+          <h4 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2"><Lock className="size-4" /> Já marcados</h4>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 opacity-70">
+            {taken.map((s) => <SlotCard key={s.id} slot={s} status="taken" />)}
+          </div>
+        </section>
+      )}
+
+      <Dialog open={!!bookOpen} onOpenChange={() => !busy && setBookOpen(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Marcar horário</DialogTitle></DialogHeader>
+          {bookOpen && (
+            <div className="space-y-3">
+              <div className="p-3 rounded-lg bg-gradient-to-br from-emerald-50 to-emerald-100/40 dark:from-emerald-950/40 dark:to-emerald-900/20 border border-emerald-200/60 dark:border-emerald-900/40">
+                <div className="font-black text-emerald-900 dark:text-emerald-100">{new Date(bookOpen.slot_at).toLocaleString("pt-BR", { dateStyle: "full", timeStyle: "short" })}</div>
+                {bookOpen.attendant_name && <div className="text-xs text-emerald-800 dark:text-emerald-300">Atendente: <b>{bookOpen.attendant_name}</b></div>}
+              </div>
+              <div>
+                <Label>Modalidade</Label>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {bookOpen.allow_in_person && (
+                    <button type="button" onClick={() => setF({ ...f, modality: "presencial" })} className={`p-3 rounded-lg border-2 text-sm font-bold transition-all ${f.modality === "presencial" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40" : "border-border"}`}>
+                      <MapPin className="size-4 mx-auto mb-1" /> Presencial
+                    </button>
+                  )}
+                  {bookOpen.allow_online && (
+                    <button type="button" onClick={() => setF({ ...f, modality: "online" })} className={`p-3 rounded-lg border-2 text-sm font-bold transition-all ${f.modality === "online" ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40" : "border-border"}`}>
+                      <Video className="size-4 mx-auto mb-1" /> Online
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Label>Digite em poucas palavras o motivo de contato</Label>
+                <Textarea rows={3} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} maxLength={1000} />
+              </div>
+              <div>
+                <Label>Mais pessoas irão participar? Cite aqui. <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+                <Textarea rows={2} value={f.extras} onChange={(e) => setF({ ...f, extras: e.target.value })} maxLength={1000} />
+              </div>
+              <div>
+                <Label>Telefone de contato (WhatsApp)</Label>
+                <Input value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="(49) 9 9999-9999" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setBookOpen(null)} disabled={busy}>Cancelar</Button>
+            <Button onClick={submit} disabled={busy} className="bg-gradient-to-r from-emerald-700 to-emerald-600 text-white">{busy ? "Marcando..." : "Confirmar marcação"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function SlotCard({ slot, status, onBook }: { slot: any; status: "open" | "taken"; onBook?: () => void }) {
+  const dt = new Date(slot.slot_at);
+  return (
+    <Card className={`overflow-hidden ${status === "open" ? "hover:-translate-y-1 hover:shadow-xl transition-all border-emerald-300/50" : "border-amber-300/40"}`}>
+      <div className={`p-1 ${status === "open" ? "bg-gradient-to-r from-emerald-500 to-teal-500" : "bg-gradient-to-r from-amber-500 to-orange-500"}`} />
+      <CardContent className="p-5">
+        <Badge className={status === "open" ? "bg-emerald-500" : "bg-amber-500"}>{status === "open" ? "Disponível" : "Marcado"}</Badge>
+        <div className="mt-3 font-black text-lg capitalize">{dt.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}</div>
+        <div className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5"><Clock className="size-3.5" /> {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}h</div>
+        <div className="flex gap-1.5 mt-3 flex-wrap">
+          {slot.allow_online && <Badge variant="outline" className="text-[10px]"><Video className="size-3 mr-1" />Online</Badge>}
+          {slot.allow_in_person && <Badge variant="outline" className="text-[10px]"><MapPin className="size-3 mr-1" />Presencial</Badge>}
+        </div>
+        {slot.attendant_name && <div className="text-xs text-muted-foreground mt-3 pt-3 border-t">Atende: <b className="text-foreground">{slot.attendant_name}</b></div>}
+        {status === "open" && onBook && (
+          <Button onClick={onBook} className="w-full mt-4 bg-gradient-to-r from-emerald-700 to-emerald-600 text-white hover:opacity-90">Marcar este horário <ArrowRight className="size-4" /></Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
