@@ -13,13 +13,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { createEventCheckout } from "@/lib/events.functions";
+import { createEventPix, getEventPaymentStatus } from "@/lib/event-pix.functions";
 import { verifySelectionPayment } from "@/lib/selection.functions";
 import { SelectionRegisterDialog, SelectionAccessDialog } from "@/components/selection-public";
 import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList, Zap, Star } from "lucide-react";
 import { Reveal } from "@/components/reveal";
 import { QrImage, downloadQrPng } from "@/components/qr-image";
 import { LeagueHeartButton } from "@/components/league-heart-button";
+import { PixPaymentDialog, type PixPaymentData } from "@/components/pix-payment-dialog";
 
 export const Route = createFileRoute("/$slug/")({ component: LeaguePage });
 
@@ -381,6 +382,7 @@ function LeaguePage() {
                               return <Button onClick={() => setParticipantEvent(e)} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Acessar Painel do Inscrito <ChevronRight className="size-4" /></Button>;
                             }
                             if (e.accepting_registrations === false) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
+                            if (e.registration_deadline && new Date(e.registration_deadline) < new Date()) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
                             if (!user) return <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>;
                             return <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4 text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>Inscreva-se! <ChevronRight className="size-4" /></Button>;
                           })()}
