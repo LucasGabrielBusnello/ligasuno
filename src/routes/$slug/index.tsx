@@ -547,13 +547,14 @@ function LeaguePage() {
 }
 
 function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string; onSuccess?: (reg: any) => void }) {
-  const checkout = useServerFn(createEventCheckout);
+  const createPix = useServerFn(createEventPix);
+  const checkStatus = useServerFn(getEventPaymentStatus);
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ full_name: "", social_name: "", cpf: "", course: "medicina" as const });
-  const [method, setMethod] = useState<"card" | "pix">("card");
+  const [pix, setPix] = useState<PixPaymentData | null>(null);
 
-  useEffect(() => { if (event) { setStep(1); setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" }); setMethod("card"); } }, [event]);
+  useEffect(() => { if (event) { setStep(1); setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" }); setPix(null); } }, [event]);
 
   const { price, label, discount } = useMemo(() => {
     if (!event) return { price: 0, label: "", discount: null as string | null };
@@ -573,87 +574,107 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
     if (!isValidCPF(normalizedCpf)) return toast.error("Informe um CPF válido");
     try {
       setSubmitting(true);
-      const res = await checkout({ data: {
+      const res: any = await createPix({ data: {
         event_id: event.id,
         full_name: form.full_name,
         social_name: form.social_name || null,
         cpf: normalizedCpf,
         course: form.course,
-        payment_method: method,
-        origin_url: window.location.origin,
       }});
-      if ((res as any).free) { toast.success("Inscrição confirmada!"); onSuccess?.({ event_id: event.id, status: "paid", paid_price: 0, full_name: form.full_name }); onClose(); return; }
-      if ((res as any).url) window.location.href = (res as any).url;
+      if (res.free) {
+        toast.success("Inscrição confirmada!");
+        onSuccess?.({ event_id: event.id, status: "paid", paid_price: 0, full_name: form.full_name });
+        onClose();
+        return;
+      }
+      setPix({
+        registration_id: res.registration_id,
+        payment_id: res.payment_id,
+        amount: res.amount,
+        qr_code: res.qr_code,
+        qr_code_base64: res.qr_code_base64,
+        ticket_url: res.ticket_url,
+        expires_at: res.expires_at,
+      });
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao iniciar inscrição");
     } finally { setSubmitting(false); }
   }
 
   return (
-    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{event.title}</DialogTitle>
-          <div className="flex gap-2 mt-2">
-            <Badge variant={step === 1 ? "default" : "secondary"}>1. Dados</Badge>
-            <Badge variant={step === 2 ? "default" : "secondary"}>2. Pagamento</Badge>
-          </div>
-        </DialogHeader>
-        {step === 1 ? (
-          <div className="space-y-3">
-            <div>
-              <Label>Nome completo *</Label>
-              <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-              <p className="text-[11px] text-muted-foreground mt-1">Será usado para emitir seu certificado — digite o nome completo, sem abreviações.</p>
+    <>
+      <Dialog open={!!event && !pix} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{event.title}</DialogTitle>
+            <div className="flex gap-2 mt-2">
+              <Badge variant={step === 1 ? "default" : "secondary"}>1. Dados</Badge>
+              <Badge variant={step === 2 ? "default" : "secondary"}>2. Pagamento</Badge>
             </div>
-            <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
-            <div><Label>CPF *</Label><Input inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/[^\d.-]/g, "") })} placeholder="000.000.000-00" /></div>
-            <div>
-              <Label>Curso *</Label>
-              <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value as any })}>
-                <option value="medicina">Medicina</option>
-                <option value="enfermagem">Enfermagem</option>
-                <option value="egresso_medicina">Egresso de Medicina</option>
-                <option value="outro">Outro curso</option>
-                <option value="egresso_outro">Egresso de outro curso</option>
-              </select>
-            </div>
-            <DialogFooter><Button onClick={() => {
-              if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
-              if (!isValidCPF(normalizeCpf(form.cpf))) return toast.error("Informe um CPF válido");
-              setStep(2);
-            }}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Card className="border-primary/40 bg-primary/5">
-              <CardContent className="p-4 text-center space-y-1">
-                <div className="text-xs text-muted-foreground">Categoria: {label}</div>
-                <div className="text-3xl font-black">R$ {price.toFixed(2)}</div>
-                {discount && <Badge variant="secondary" className="mt-1">{discount}</Badge>}
-              </CardContent>
-            </Card>
-            {price > 0 && (
+          </DialogHeader>
+          {step === 1 ? (
+            <div className="space-y-3">
               <div>
-                <Label className="mb-2 block">Método de pagamento</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setMethod("card")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "card" ? "border-primary bg-primary/5" : ""}`}>
-                    <CreditCard className="size-6" /> Cartão
-                  </button>
-                  <button type="button" onClick={() => setMethod("pix")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "pix" ? "border-primary bg-primary/5" : ""}`}>
-                    <QrCode className="size-6" /> Pix
-                  </button>
-                </div>
+                <Label>Nome completo *</Label>
+                <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+                <p className="text-[11px] text-muted-foreground mt-1">Será usado para emitir seu certificado — digite o nome completo, sem abreviações.</p>
               </div>
-            )}
-            <DialogFooter className="flex-row gap-2">
-              <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
-              <Button onClick={submit} disabled={submitting}>{submitting ? "Processando..." : price === 0 ? "Confirmar inscrição" : "Pagar e inscrever"}</Button>
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
+              <div><Label>CPF *</Label><Input inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/[^\d.-]/g, "") })} placeholder="000.000.000-00" /></div>
+              <div>
+                <Label>Curso *</Label>
+                <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value as any })}>
+                  <option value="medicina">Medicina</option>
+                  <option value="enfermagem">Enfermagem</option>
+                  <option value="egresso_medicina">Egresso de Medicina</option>
+                  <option value="outro">Outro curso</option>
+                  <option value="egresso_outro">Egresso de outro curso</option>
+                </select>
+              </div>
+              <DialogFooter><Button onClick={() => {
+                if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
+                if (!isValidCPF(normalizeCpf(form.cpf))) return toast.error("Informe um CPF válido");
+                setStep(2);
+              }}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Card className="border-primary/40 bg-primary/5">
+                <CardContent className="p-4 text-center space-y-1">
+                  <div className="text-xs text-muted-foreground">Categoria: {label}</div>
+                  <div className="text-3xl font-black">R$ {price.toFixed(2)}</div>
+                  {discount && <Badge variant="secondary" className="mt-1">{discount}</Badge>}
+                </CardContent>
+              </Card>
+              {price > 0 && (
+                <div className="p-3 rounded border bg-muted/30 flex items-center gap-3">
+                  <QrCode className="size-6" />
+                  <div className="text-sm">
+                    <div className="font-black">Pagamento via Pix</div>
+                    <div className="text-xs text-muted-foreground">Confirmação automática em segundos.</div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter className="flex-row gap-2">
+                <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
+                <Button onClick={submit} disabled={submitting}>{submitting ? "Gerando Pix..." : price === 0 ? "Confirmar inscrição" : "Gerar Pix"}</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <PixPaymentDialog
+        open={!!pix}
+        data={pix}
+        onClose={() => { setPix(null); onClose(); }}
+        checkStatus={async (rid) => checkStatus({ data: { registration_id: rid } } as any) as any}
+        onPaid={() => {
+          onSuccess?.({ event_id: event.id, status: "paid", paid_price: price, full_name: form.full_name });
+          setPix(null);
+          onClose();
+        }}
+      />
+    </>
   );
 }
 
