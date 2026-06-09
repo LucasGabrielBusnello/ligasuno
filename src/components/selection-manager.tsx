@@ -219,13 +219,16 @@ function ExamSection({ league, onMembershipUpdated }: { league: any; onMembershi
 
   async function doGenerate() {
     try {
-      await gen({ data: { league_id: league.id } } as any);
+      const res: any = await gen({ data: { league_id: league.id } } as any);
       toast.success("Classificação gerada");
+      const warnings: string[] = res?.warnings ?? [];
+      warnings.forEach(w => toast.warning(w, { duration: 8000 }));
       await reload();
       onMembershipUpdated?.();
     }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
+
   async function doUndo() {
     try { await undo({ data: { league_id: league.id } } as any); toast.success("Última ação desfeita"); reload(); }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
