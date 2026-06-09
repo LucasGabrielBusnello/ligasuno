@@ -358,9 +358,14 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
     </Card>
   );
 
-  const presentes = list.filter((l) => l.present).length;
-  const faltas = list.length - presentes;
-  const pct = Math.round((presentes / list.length) * 100);
+  const getStatus = (a: any): "presente" | "justificada" | "ausente" =>
+    a.status ?? (a.present ? "presente" : "ausente");
+  const presentes = list.filter((l) => getStatus(l) === "presente").length;
+  const justificadas = list.filter((l) => getStatus(l) === "justificada").length;
+  const faltas = list.filter((l) => getStatus(l) === "ausente").length;
+  // Para o cálculo do percentual nesta aba, justificadas contam como presença
+  const pct = Math.round(((presentes + justificadas) / list.length) * 100);
+
   const tier = pct >= 75 ? { color: "from-emerald-400 to-emerald-600", text: "text-emerald-600", label: "Frequência excelente" }
     : pct >= 50 ? { color: "from-amber-400 to-orange-500", text: "text-amber-600", label: "Atenção à frequência" }
     : { color: "from-rose-400 to-rose-600", text: "text-rose-600", label: "Frequência crítica" };
@@ -396,23 +401,32 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
               <p className="text-xs font-bold uppercase tracking-widest opacity-90 flex items-center justify-center md:justify-start gap-1.5">
                 <Flame className="size-3.5" /> {tier.label}
               </p>
-              <h2 className="text-2xl md:text-3xl font-black mt-1">{presentes} de {list.length}</h2>
-              <p className="text-sm opacity-90 mt-1">atividades com presença</p>
+              <h2 className="text-2xl md:text-3xl font-black mt-1">{presentes + justificadas} de {list.length}</h2>
+              <p className="text-sm opacity-90 mt-1">atividades com presença{justificadas > 0 ? ` (inclui ${justificadas} justificada${justificadas > 1 ? "s" : ""})` : ""}</p>
+
             </div>
           </div>
         </div>
-        <CardContent className="p-4 grid grid-cols-2 gap-3">
+        <CardContent className={`p-4 grid gap-3 ${justificadas > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
           <div className="p-3 rounded-xl bg-emerald-500/10 text-center">
             <CheckCircle className="size-5 mx-auto text-emerald-600 mb-1" />
             <p className="text-2xl font-black text-emerald-600">{presentes}</p>
             <p className="text-[10px] uppercase font-bold text-muted-foreground">Presenças</p>
           </div>
+          {justificadas > 0 && (
+            <div className="p-3 rounded-xl bg-amber-500/10 text-center">
+              <CheckCircle className="size-5 mx-auto text-amber-600 mb-1" />
+              <p className="text-2xl font-black text-amber-600">{justificadas}</p>
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Justificadas</p>
+            </div>
+          )}
           <div className="p-3 rounded-xl bg-rose-500/10 text-center">
             <XCircle className="size-5 mx-auto text-rose-600 mb-1" />
             <p className="text-2xl font-black text-rose-600">{faltas}</p>
             <p className="text-[10px] uppercase font-bold text-muted-foreground">Faltas</p>
           </div>
         </CardContent>
+
       </Card>
 
       <Card>
@@ -420,8 +434,14 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
         <CardContent className="space-y-2">
           {list.map((a) => {
             const d = new Date(a.activity_date + "T00:00:00");
+            const st = getStatus(a);
+            const styles = st === "presente"
+              ? "border-l-emerald-500 bg-emerald-500/5"
+              : st === "justificada"
+              ? "border-l-amber-500 bg-amber-500/5"
+              : "border-l-rose-500 bg-rose-500/5";
             return (
-              <div key={a.id} className={`flex items-center gap-3 p-3 rounded-xl border-l-4 ${a.present ? "border-l-emerald-500 bg-emerald-500/5" : "border-l-rose-500 bg-rose-500/5"}`}>
+              <div key={a.id} className={`flex items-center gap-3 p-3 rounded-xl border-l-4 ${styles}`}>
                 <div className="size-12 rounded-lg bg-card border flex flex-col items-center justify-center shrink-0">
                   <span className="text-[10px] font-bold uppercase text-muted-foreground">{d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}</span>
                   <span className="text-lg font-black leading-none">{d.getDate()}</span>
@@ -430,12 +450,13 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
                   <p className="font-bold truncate">{a.activity}</p>
                   <p className="text-xs text-muted-foreground">{d.toLocaleDateString("pt-BR", { weekday: "long" })}</p>
                 </div>
-                {a.present
-                  ? <Badge className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="size-3 mr-1" />Presente</Badge>
-                  : <Badge variant="destructive"><XCircle className="size-3 mr-1" />Faltou</Badge>}
+                {st === "presente" && <Badge className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="size-3 mr-1" />Presente</Badge>}
+                {st === "justificada" && <Badge className="bg-amber-500 hover:bg-amber-600"><CheckCircle className="size-3 mr-1" />Justificada</Badge>}
+                {st === "ausente" && <Badge variant="destructive"><XCircle className="size-3 mr-1" />Faltou</Badge>}
               </div>
             );
           })}
+
         </CardContent>
       </Card>
     </div>
