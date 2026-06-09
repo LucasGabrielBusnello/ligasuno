@@ -323,7 +323,7 @@ function ConfigTab({ league, setLeague, paid }: any) {
         <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
         <Button onClick={save}>Salvar</Button>
       </CardContent></Card>
-      <SheetsSyncCard league={league} />
+      
     </div>
   );
 }
@@ -521,6 +521,7 @@ function EventsTab({ league }: any) {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+            <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
             <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
             <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
             <div className="grid grid-cols-3 gap-2">
@@ -716,15 +717,6 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
           </Button>
           <Button size="sm" variant="outline" className="w-full" onClick={generateBadges} disabled={busy === "badges"}>
             <QrCode className="size-3 mr-1" /> {busy === "badges" ? "Gerando..." : "Crachás (PDF)"}
-          </Button>
-          <Button size="sm" variant="outline" className="w-full" onClick={() => exportData("csv")} disabled={busy === "csv"}>
-            <Download className="size-3 mr-1" /> CSV
-          </Button>
-          <Button size="sm" variant="outline" className="w-full" onClick={() => exportData("json")} disabled={busy === "json"}>
-            <Download className="size-3 mr-1" /> JSON
-          </Button>
-          <Button size="sm" variant="outline" className="w-full" onClick={syncSheet} disabled={busy === "sync"}>
-            <FileSpreadsheet className="size-3 mr-1" /> {busy === "sync" ? "Sincronizando..." : "Sync Sheets"}
           </Button>
           <Button size="sm" variant="ghost" className="w-full col-span-2 sm:col-span-1" onClick={onExpand}>
             {expanded ? "Esconder inscritos" : "Inscritos / Arrecadação"}
