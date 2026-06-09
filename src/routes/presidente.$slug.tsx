@@ -688,8 +688,9 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
-  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false };
+  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
+  const [checkinMc, setCheckinMc] = useState<any | null>(null);
 
   async function reload() {
     const { data } = await supabase.from("league_minicourses").select("*").eq("event_id", event.id).order("starts_at", { ascending: true });
@@ -721,6 +722,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       is_free: !!mc.is_free, price: Number(mc.price) || 0,
       max_registrations: Number(mc.max_registrations) || 20,
       published: !!mc.published,
+      total_hours: Number(mc.total_hours) || 0,
     });
     setFormOpen(true);
   }
@@ -735,6 +737,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       is_free: !!f.is_free, price: f.is_free ? 0 : Number(f.price) || 0,
       max_registrations: Math.max(1, Number(f.max_registrations) || 1),
       published: !!f.published,
+      total_hours: Number(f.total_hours) || 0,
     };
     const { error } = editing
       ? await supabase.from("league_minicourses").update(payload).eq("id", editing.id)
@@ -787,6 +790,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
                           {mc.location && <p className="text-[11px] text-muted-foreground">📍 {mc.location}</p>}
                         </div>
                         <div className="flex gap-1 shrink-0">
+                          <Button size="sm" variant="default" onClick={() => setCheckinMc(mc)}><ClipboardCheck className="size-3" /></Button>
                           <Button size="sm" variant="outline" onClick={() => openEdit(mc)}>Editar</Button>
                           <Button size="sm" variant="destructive" onClick={() => del(mc.id)}><Trash2 className="size-3" /></Button>
                         </div>
@@ -834,6 +838,11 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
             {!f.is_free && (
               <div><Label>Valor adicional (R$)</Label><Input type="number" step="0.01" min="0.50" value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Mínimo R$ 0,50 (limite do gateway).</p></div>
             )}
+            <div className="rounded border p-2 bg-muted/30">
+              <Label className="text-xs">Horas no certificado</Label>
+              <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
+              <p className="text-[11px] text-muted-foreground mt-1">Minicursos têm 1 credenciamento — esta é a carga horária total no certificado.</p>
+            </div>
             <label className="flex items-center justify-between gap-2 p-3 rounded border">
               <div>
                 <span className="text-sm font-medium">Publicar imediatamente</span>
