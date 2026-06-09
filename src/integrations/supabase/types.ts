@@ -247,6 +247,60 @@ export type Database = {
         }
         Relationships: []
       }
+      certificate_email_log: {
+        Row: {
+          cpf: string | null
+          email: string
+          error: string | null
+          full_name: string
+          id: string
+          league_id: string
+          sent_at: string
+          status: string
+          total_hours: number
+          user_id: string
+        }
+        Insert: {
+          cpf?: string | null
+          email: string
+          error?: string | null
+          full_name: string
+          id?: string
+          league_id: string
+          sent_at?: string
+          status?: string
+          total_hours?: number
+          user_id: string
+        }
+        Update: {
+          cpf?: string | null
+          email?: string
+          error?: string | null
+          full_name?: string
+          id?: string
+          league_id?: string
+          sent_at?: string
+          status?: string
+          total_hours?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_email_log_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificate_email_log_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_email_log: {
         Row: {
           event_id: string
@@ -383,27 +437,36 @@ export type Database = {
           activity: string
           activity_date: string
           created_at: string
+          description: string | null
+          hours: number
           id: string
           league_id: string
           present: boolean
+          status: string
           user_id: string
         }
         Insert: {
           activity: string
           activity_date: string
           created_at?: string
+          description?: string | null
+          hours?: number
           id?: string
           league_id: string
           present?: boolean
+          status?: string
           user_id: string
         }
         Update: {
           activity?: string
           activity_date?: string
           created_at?: string
+          description?: string | null
+          hours?: number
           id?: string
           league_id?: string
           present?: boolean
+          status?: string
           user_id?: string
         }
         Relationships: [
@@ -861,6 +924,51 @@ export type Database = {
             foreignKeyName: "league_points_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      league_president_signatures: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          president_name: string | null
+          signature_url: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          president_name?: string | null
+          signature_url: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          president_name?: string | null
+          signature_url?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_president_signatures_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_president_signatures_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
             referencedRelation: "public_leagues"
             referencedColumns: ["id"]
           },
