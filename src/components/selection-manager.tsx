@@ -50,6 +50,7 @@ function ConfigSection({ league }: { league: any }) {
     selection_total_seats: Number(league.selection_total_seats) || 0,
   });
   const [quotas, setQuotas] = useState<Record<number, number>>({});
+  const [restricts, setRestricts] = useState<Record<number, boolean>>({});
   const [quotasEnabled, setQuotasEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -70,10 +71,13 @@ function ConfigSection({ league }: { league: any }) {
       });
     }
     const m: Record<number, number> = {};
-    (qs ?? []).forEach((q: any) => { if (q.seats > 0) m[q.semester] = q.seats; });
+    const r: Record<number, boolean> = {};
+    (qs ?? []).forEach((q: any) => { if (q.seats > 0) { m[q.semester] = q.seats; r[q.semester] = !!q.restrict_to_semester; } });
     setQuotas(m);
+    setRestricts(r);
     setQuotasEnabled(Object.keys(m).length > 0);
   }
+
   useEffect(() => { loadAll(); }, [league.id]);
 
   async function save() {
