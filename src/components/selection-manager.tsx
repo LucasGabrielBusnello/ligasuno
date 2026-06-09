@@ -152,23 +152,29 @@ function ConfigSection({ league }: { league: any }) {
         <div className="flex items-center justify-between">
           <div>
             <div className="font-black">Vagas exclusivas por semestre?</div>
-            <div className="text-xs text-muted-foreground">Reserve vagas para semestres específicos. Sobras voltam para a vaga geral.</div>
+            <div className="text-xs text-muted-foreground">Reserve vagas para semestres específicos. Sobras voltam para a vaga geral. Marque "Restringir" para também limitar o total de classificados desse semestre (impede ampla concorrência adicional).</div>
           </div>
           <Switch checked={quotasEnabled} onCheckedChange={setQuotasEnabled} />
         </div>
         {quotasEnabled && (
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {SEMESTERS.map(sem => (
-              <div key={sem}>
-                <Label className="text-xs">{sem}º semestre</Label>
+              <div key={sem} className="p-2 rounded border space-y-1.5">
+                <Label className="text-xs font-bold">{sem}º semestre</Label>
                 <Input type="number" min="0" placeholder="0"
                   value={quotas[sem] ?? ""}
                   onChange={(e) => setQuotas({ ...quotas, [sem]: +e.target.value })} />
+                <label className="flex items-center gap-1.5 text-[11px] cursor-pointer text-muted-foreground">
+                  <input type="checkbox" checked={!!restricts[sem]}
+                    onChange={(e) => setRestricts({ ...restricts, [sem]: e.target.checked })} />
+                  Restringir total a este semestre
+                </label>
               </div>
             ))}
           </div>
         )}
       </CardContent></Card>
+
 
       <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar configuração"}</Button>
     </div>
