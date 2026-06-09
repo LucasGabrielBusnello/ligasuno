@@ -227,8 +227,8 @@ export const sendSemesterCertificates = createServerFn({ method: "POST" })
     }
 
     // Ciclo atual (se houver) para nome do semestre
-    const { data: cycle } = await admin.from("semester_cycles").select("name, label").eq("league_id", data.league_id).eq("is_current", true).maybeSingle();
-    const cycleName = (cycle?.label || cycle?.name || `semestre de ${new Date().getFullYear()}`) as string;
+    const { data: cycle } = await admin.from("semester_cycles").select("semester, year").eq("league_id", data.league_id).eq("is_current", true).maybeSingle();
+    const cycleName = cycle ? `${cycle.semester}º semestre de ${cycle.year}` : `semestre de ${new Date().getFullYear()}`;
 
     const { data: attendance } = await admin.from("league_attendance").select("user_id, activity, activity_date, status, hours").eq("league_id", data.league_id);
     const byUser = new Map<string, Array<any>>();
