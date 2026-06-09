@@ -782,6 +782,13 @@ function ParticipantPanelDialog({ event, registration, league, onClose, onUpdate
         </Tabs>
         <DialogFooter><Button onClick={onClose} variant="outline">Fechar</Button></DialogFooter>
       </DialogContent>
+      <PixPaymentDialog
+        open={!!pix}
+        data={pix}
+        onClose={() => setPix(null)}
+        checkStatus={async (rid) => checkStatus({ data: { registration_id: rid } } as any) as any}
+        onPaid={() => { setPix(null); onUpdate?.({ ...(reg ?? {}), status: "paid" }); }}
+      />
     </Dialog>
   );
 }
