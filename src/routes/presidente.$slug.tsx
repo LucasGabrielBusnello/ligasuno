@@ -13,7 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award } from "lucide-react";
+import { CertificatesDialog } from "@/components/certificates-dialog";
 
 import { disconnectMp } from "@/lib/mp-oauth.functions";
 import {
