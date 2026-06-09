@@ -13,13 +13,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { createEventCheckout } from "@/lib/events.functions";
+import { createEventPix, getEventPaymentStatus } from "@/lib/event-pix.functions";
 import { verifySelectionPayment } from "@/lib/selection.functions";
 import { SelectionRegisterDialog, SelectionAccessDialog } from "@/components/selection-public";
 import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList, Zap, Star } from "lucide-react";
 import { Reveal } from "@/components/reveal";
 import { QrImage, downloadQrPng } from "@/components/qr-image";
 import { LeagueHeartButton } from "@/components/league-heart-button";
+import { PixPaymentDialog, type PixPaymentData } from "@/components/pix-payment-dialog";
 
 export const Route = createFileRoute("/$slug/")({ component: LeaguePage });
 
@@ -381,6 +382,7 @@ function LeaguePage() {
                               return <Button onClick={() => setParticipantEvent(e)} className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white">Acessar Painel do Inscrito <ChevronRight className="size-4" /></Button>;
                             }
                             if (e.accepting_registrations === false) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
+                            if (e.registration_deadline && new Date(e.registration_deadline) < new Date()) return <Button disabled className="w-full mt-4">Inscrições encerradas</Button>;
                             if (!user) return <Button onClick={() => nav({ to: "/auth" })} variant="outline" className="w-full mt-4"><LogIn className="size-4" /> Entrar para se inscrever</Button>;
                             return <Button onClick={() => setRegisterEvent(e)} className="w-full mt-4 text-white hover:opacity-90" style={{ background: `linear-gradient(135deg, ${tc}, ${tcDark})` }}>Inscreva-se! <ChevronRight className="size-4" /></Button>;
                           })()}
@@ -536,7 +538,7 @@ function LeaguePage() {
         )}
       </main>
       <RegisterEventDialog event={registerEvent} onClose={() => setRegisterEvent(null)} myLeagueIds={myLeagueIds} leagueId={league.id} onSuccess={(reg) => { if (reg) setMyRegs(prev => ({ ...prev, [reg.event_id]: reg })); }} />
-      <ParticipantPanelDialog event={participantEvent} registration={participantEvent ? myRegs[participantEvent.id] : null} league={league} onClose={() => setParticipantEvent(null)} />
+      <ParticipantPanelDialog event={participantEvent} registration={participantEvent ? myRegs[participantEvent.id] : null} league={league} onClose={() => setParticipantEvent(null)} onUpdate={(reg) => { if (participantEvent) setMyRegs(prev => ({ ...prev, [participantEvent.id]: { ...(prev[participantEvent.id] ?? {}), ...reg } })); }} />
       <PublicQuizDialog quizSet={activeQuizSet} league={league} userId={user?.id ?? null} onClose={() => setActiveQuizSet(null)} />
       <SelectionRegisterDialog league={league} open={selectionRegOpen} onClose={() => setSelectionRegOpen(false)} defaultEmail={user?.email ?? undefined} onPaid={() => { supabase.from("league_selection_registrations").select("*").eq("league_id", league.id).eq("user_id", user?.id ?? "").maybeSingle().then(({ data }) => { setMySelectionReg(data); if (data) setSelectionPanelOpen(true); }); }} />
       <SelectionAccessDialog league={league} registration={mySelectionReg} open={selectionPanelOpen} onClose={() => setSelectionPanelOpen(false)} />
@@ -545,13 +547,14 @@ function LeaguePage() {
 }
 
 function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess }: { event: any; onClose: () => void; myLeagueIds: string[]; leagueId: string; onSuccess?: (reg: any) => void }) {
-  const checkout = useServerFn(createEventCheckout);
+  const createPix = useServerFn(createEventPix);
+  const checkStatus = useServerFn(getEventPaymentStatus);
   const [step, setStep] = useState<1 | 2>(1);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ full_name: "", social_name: "", cpf: "", course: "medicina" as const });
-  const [method, setMethod] = useState<"card" | "pix">("card");
+  const [pix, setPix] = useState<PixPaymentData | null>(null);
 
-  useEffect(() => { if (event) { setStep(1); setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" }); setMethod("card"); } }, [event]);
+  useEffect(() => { if (event) { setStep(1); setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" }); setPix(null); } }, [event]);
 
   const { price, label, discount } = useMemo(() => {
     if (!event) return { price: 0, label: "", discount: null as string | null };
@@ -571,94 +574,145 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
     if (!isValidCPF(normalizedCpf)) return toast.error("Informe um CPF válido");
     try {
       setSubmitting(true);
-      const res = await checkout({ data: {
+      const res: any = await createPix({ data: {
         event_id: event.id,
         full_name: form.full_name,
         social_name: form.social_name || null,
         cpf: normalizedCpf,
         course: form.course,
-        payment_method: method,
-        origin_url: window.location.origin,
       }});
-      if ((res as any).free) { toast.success("Inscrição confirmada!"); onSuccess?.({ event_id: event.id, status: "paid", paid_price: 0, full_name: form.full_name }); onClose(); return; }
-      if ((res as any).url) window.location.href = (res as any).url;
+      if (res.free) {
+        toast.success("Inscrição confirmada!");
+        onSuccess?.({ event_id: event.id, status: "paid", paid_price: 0, full_name: form.full_name });
+        onClose();
+        return;
+      }
+      setPix({
+        registration_id: res.registration_id,
+        payment_id: res.payment_id,
+        amount: res.amount,
+        qr_code: res.qr_code,
+        qr_code_base64: res.qr_code_base64,
+        ticket_url: res.ticket_url,
+        expires_at: res.expires_at,
+      });
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao iniciar inscrição");
     } finally { setSubmitting(false); }
   }
 
   return (
-    <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{event.title}</DialogTitle>
-          <div className="flex gap-2 mt-2">
-            <Badge variant={step === 1 ? "default" : "secondary"}>1. Dados</Badge>
-            <Badge variant={step === 2 ? "default" : "secondary"}>2. Pagamento</Badge>
-          </div>
-        </DialogHeader>
-        {step === 1 ? (
-          <div className="space-y-3">
-            <div>
-              <Label>Nome completo *</Label>
-              <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
-              <p className="text-[11px] text-muted-foreground mt-1">Será usado para emitir seu certificado — digite o nome completo, sem abreviações.</p>
+    <>
+      <Dialog open={!!event && !pix} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{event.title}</DialogTitle>
+            <div className="flex gap-2 mt-2">
+              <Badge variant={step === 1 ? "default" : "secondary"}>1. Dados</Badge>
+              <Badge variant={step === 2 ? "default" : "secondary"}>2. Pagamento</Badge>
             </div>
-            <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
-            <div><Label>CPF *</Label><Input inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/[^\d.-]/g, "") })} placeholder="000.000.000-00" /></div>
-            <div>
-              <Label>Curso *</Label>
-              <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value as any })}>
-                <option value="medicina">Medicina</option>
-                <option value="enfermagem">Enfermagem</option>
-                <option value="egresso_medicina">Egresso de Medicina</option>
-                <option value="outro">Outro curso</option>
-                <option value="egresso_outro">Egresso de outro curso</option>
-              </select>
-            </div>
-            <DialogFooter><Button onClick={() => {
-              if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
-              if (!isValidCPF(normalizeCpf(form.cpf))) return toast.error("Informe um CPF válido");
-              setStep(2);
-            }}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <Card className="border-primary/40 bg-primary/5">
-              <CardContent className="p-4 text-center space-y-1">
-                <div className="text-xs text-muted-foreground">Categoria: {label}</div>
-                <div className="text-3xl font-black">R$ {price.toFixed(2)}</div>
-                {discount && <Badge variant="secondary" className="mt-1">{discount}</Badge>}
-              </CardContent>
-            </Card>
-            {price > 0 && (
+          </DialogHeader>
+          {step === 1 ? (
+            <div className="space-y-3">
               <div>
-                <Label className="mb-2 block">Método de pagamento</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setMethod("card")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "card" ? "border-primary bg-primary/5" : ""}`}>
-                    <CreditCard className="size-6" /> Cartão
-                  </button>
-                  <button type="button" onClick={() => setMethod("pix")} className={`p-4 rounded border flex flex-col items-center gap-2 text-sm ${method === "pix" ? "border-primary bg-primary/5" : ""}`}>
-                    <QrCode className="size-6" /> Pix
-                  </button>
-                </div>
+                <Label>Nome completo *</Label>
+                <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+                <p className="text-[11px] text-muted-foreground mt-1">Será usado para emitir seu certificado — digite o nome completo, sem abreviações.</p>
               </div>
-            )}
-            <DialogFooter className="flex-row gap-2">
-              <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
-              <Button onClick={submit} disabled={submitting}>{submitting ? "Processando..." : price === 0 ? "Confirmar inscrição" : "Pagar e inscrever"}</Button>
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
+              <div><Label>CPF *</Label><Input inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/[^\d.-]/g, "") })} placeholder="000.000.000-00" /></div>
+              <div>
+                <Label>Curso *</Label>
+                <select className="w-full h-9 px-3 rounded-md border bg-background text-sm" value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value as any })}>
+                  <option value="medicina">Medicina</option>
+                  <option value="enfermagem">Enfermagem</option>
+                  <option value="egresso_medicina">Egresso de Medicina</option>
+                  <option value="outro">Outro curso</option>
+                  <option value="egresso_outro">Egresso de outro curso</option>
+                </select>
+              </div>
+              <DialogFooter><Button onClick={() => {
+                if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
+                if (!isValidCPF(normalizeCpf(form.cpf))) return toast.error("Informe um CPF válido");
+                setStep(2);
+              }}>Continuar <ChevronRight className="size-4" /></Button></DialogFooter>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Card className="border-primary/40 bg-primary/5">
+                <CardContent className="p-4 text-center space-y-1">
+                  <div className="text-xs text-muted-foreground">Categoria: {label}</div>
+                  <div className="text-3xl font-black">R$ {price.toFixed(2)}</div>
+                  {discount && <Badge variant="secondary" className="mt-1">{discount}</Badge>}
+                </CardContent>
+              </Card>
+              {price > 0 && (
+                <div className="p-3 rounded border bg-muted/30 flex items-center gap-3">
+                  <QrCode className="size-6" />
+                  <div className="text-sm">
+                    <div className="font-black">Pagamento via Pix</div>
+                    <div className="text-xs text-muted-foreground">Confirmação automática em segundos.</div>
+                  </div>
+                </div>
+              )}
+              <DialogFooter className="flex-row gap-2">
+                <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
+                <Button onClick={submit} disabled={submitting}>{submitting ? "Gerando Pix..." : price === 0 ? "Confirmar inscrição" : "Gerar Pix"}</Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+      <PixPaymentDialog
+        open={!!pix}
+        data={pix}
+        onClose={() => { setPix(null); onClose(); }}
+        checkStatus={async (rid) => checkStatus({ data: { registration_id: rid } } as any) as any}
+        onPaid={() => {
+          onSuccess?.({ event_id: event.id, status: "paid", paid_price: price, full_name: form.full_name });
+          setPix(null);
+          onClose();
+        }}
+      />
+    </>
   );
 }
 
 
-function ParticipantPanelDialog({ event, registration, league, onClose }: { event: any; registration: any; league: League; onClose: () => void }) {
+function ParticipantPanelDialog({ event, registration, league, onClose, onUpdate }: { event: any; registration: any; league: League; onClose: () => void; onUpdate?: (reg: any) => void }) {
   if (!event) return null;
   const reg = registration;
+  const createPix = useServerFn(createEventPix);
+  const checkStatus = useServerFn(getEventPaymentStatus);
+  const [pix, setPix] = useState<PixPaymentData | null>(null);
+  const [genBusy, setGenBusy] = useState(false);
+  async function payNow() {
+    if (!reg) return;
+    setGenBusy(true);
+    try {
+      const res: any = await createPix({ data: {
+        event_id: event.id,
+        full_name: reg.full_name || "Aluno",
+        social_name: reg.social_name || null,
+        cpf: reg.cpf || "00000000000",
+        course: reg.course || "medicina",
+      }});
+      if (res.free) {
+        onUpdate?.({ ...reg, status: "paid" });
+        return;
+      }
+      setPix({
+        registration_id: res.registration_id,
+        payment_id: res.payment_id,
+        amount: res.amount,
+        qr_code: res.qr_code,
+        qr_code_base64: res.qr_code_base64,
+        ticket_url: res.ticket_url,
+        expires_at: res.expires_at,
+      });
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao gerar Pix"); }
+    finally { setGenBusy(false); }
+  }
   return (
     <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -697,13 +751,18 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
               </div>
             )}
             {reg && (
-              <Card className="border-emerald-500/40 bg-emerald-500/5"><CardContent className="p-4 space-y-1">
+              <Card className={reg.status === "paid" ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5"}><CardContent className="p-4 space-y-2">
                 <div className="text-xs text-muted-foreground">Status da inscrição</div>
                 <div className="flex items-center justify-between gap-2">
                   <Badge className={reg.status === "paid" ? "bg-emerald-600" : "bg-amber-600"}>{reg.status === "paid" ? "Inscrição confirmada" : "Pagamento pendente"}</Badge>
                   <div className="text-lg font-black">R$ {Number(reg.paid_price ?? 0).toFixed(2)}</div>
                 </div>
                 {reg.discount_reason && <div className="text-[11px] text-muted-foreground">{reg.discount_reason}</div>}
+                {reg.status !== "paid" && Number(reg.paid_price) > 0 && (
+                  <Button className="w-full mt-2" onClick={payNow} disabled={genBusy}>
+                    <QrCode className="size-4 mr-1" /> {genBusy ? "Gerando Pix..." : "Realizar pagamento via Pix"}
+                  </Button>
+                )}
               </CardContent></Card>
             )}
           </TabsContent>
@@ -723,6 +782,13 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
         </Tabs>
         <DialogFooter><Button onClick={onClose} variant="outline">Fechar</Button></DialogFooter>
       </DialogContent>
+      <PixPaymentDialog
+        open={!!pix}
+        data={pix}
+        onClose={() => setPix(null)}
+        checkStatus={async (rid) => checkStatus({ data: { registration_id: rid } } as any) as any}
+        onPaid={() => { setPix(null); onUpdate?.({ ...(reg ?? {}), status: "paid" }); }}
+      />
     </Dialog>
   );
 }
@@ -754,8 +820,8 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const [list, setList] = useState<any[] | null>(null);
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [payOpen, setPayOpen] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pix, setPix] = useState<PixPaymentData | null>(null);
 
   async function reload() {
     const { data: mcs } = await supabase
@@ -780,38 +846,36 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   }
   useEffect(() => { reload(); }, [event.id, user?.id]);
 
-  // Detecta retorno do checkout: ?mc_paid=1
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const u = new URL(window.location.href);
-    if (u.searchParams.get("mc_paid") === "1") {
-      toast.success("Inscrição no minicurso confirmada!");
-      u.searchParams.delete("mc_paid");
-      window.history.replaceState({}, "", u.toString());
-      reload();
-    }
-  }, []);
-
-  async function register(mc: any, method: "card" | "pix") {
+  async function register(mc: any) {
     if (!user) { toast.error("Faça login primeiro"); return; }
     setBusy(true);
     try {
-      const { createMinicourseCheckout } = await import("@/lib/minicourses.functions");
-      const res: any = await createMinicourseCheckout({
-        data: { minicourse_id: mc.id, payment_method: method, origin_url: window.location.origin },
-      } as any);
+      const { createMinicoursePix } = await import("@/lib/event-pix.functions");
+      const res: any = await createMinicoursePix({ data: { minicourse_id: mc.id } } as any);
       if (res?.free) {
         toast.success("Inscrição confirmada!");
-        setPayOpen(null);
         reload();
-      } else if (res?.url) {
-        window.location.href = res.url;
+      } else {
+        setPix({
+          registration_id: res.registration_id,
+          payment_id: res.payment_id,
+          amount: res.amount,
+          qr_code: res.qr_code,
+          qr_code_base64: res.qr_code_base64,
+          ticket_url: res.ticket_url,
+          expires_at: res.expires_at,
+        });
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao inscrever");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function checkMcStatus(rid: string) {
+    const { getMinicoursePaymentStatus } = await import("@/lib/event-pix.functions");
+    return getMinicoursePaymentStatus({ data: { registration_id: rid } } as any) as any;
   }
 
   if (!isPaid) {
@@ -843,18 +907,18 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
                   {mc.location && <p className="text-xs text-muted-foreground">📍 {mc.location}</p>}
                   {mc.description && <p className="text-xs mt-1 whitespace-pre-line">{mc.description}</p>}
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] text-muted-foreground mb-1">{used}/{cap || "∞"} vagas</div>
+                <div className="shrink-0 text-right space-y-1">
+                  <div className="text-[10px] text-muted-foreground">{used}/{cap || "∞"} vagas</div>
                   {mine?.status === "paid" ? (
                     <Badge className="bg-emerald-600">Inscrito</Badge>
                   ) : mine?.status === "pending" ? (
-                    <Badge variant="secondary">Pagamento pendente</Badge>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => register(mc)}>
+                      <QrCode className="size-3 mr-1" /> Pagar Pix
+                    </Button>
                   ) : full ? (
                     <Badge variant="outline">Esgotado</Badge>
-                  ) : mc.is_free ? (
-                    <Button size="sm" disabled={busy} onClick={() => register(mc, "card")}>Inscrever-se</Button>
                   ) : (
-                    <Button size="sm" disabled={busy} onClick={() => setPayOpen(mc)}>Inscrever-se</Button>
+                    <Button size="sm" disabled={busy} onClick={() => register(mc)}>Inscrever-se</Button>
                   )}
                 </div>
               </div>
@@ -863,24 +927,17 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
         );
       })}
 
-      <Dialog open={!!payOpen} onOpenChange={(v) => !v && setPayOpen(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Pagamento · {payOpen?.title}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Valor: <b>R$ {Number(payOpen?.price ?? 0).toFixed(2)}</b></p>
-          <p className="text-xs text-muted-foreground">Escolha o método de pagamento:</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => register(payOpen, "pix")}>
-              <QrCode className="size-4 mr-1" /> Pix
-            </Button>
-            <Button disabled={busy} onClick={() => register(payOpen, "card")}>
-              <CreditCard className="size-4 mr-1" /> Cartão
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PixPaymentDialog
+        open={!!pix}
+        data={pix}
+        onClose={() => setPix(null)}
+        checkStatus={checkMcStatus}
+        onPaid={() => { setPix(null); reload(); }}
+      />
     </div>
   );
 }
+
 
 
 function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; league: League; userId: string | null; onClose: () => void }) {

@@ -192,3 +192,56 @@ export async function getPayment(id: string, accessToken?: string) {
 export async function getMerchantOrder(id: string, accessToken?: string) {
   return mpFetch<any>(`/merchant_orders/${id}`, { accessToken });
 }
+
+/**
+ * Cria pagamento Pix direto na conta do vendedor (split via application_fee).
+ * Retorna qr_code (copia e cola) + qr_code_base64 (imagem).
+ */
+export async function createPixPayment(args: {
+  sellerAccessToken: string;
+  amount: number;
+  description: string;
+  payerEmail: string;
+  payerFirstName: string;
+  payerLastName: string;
+  payerCpf: string;
+  externalReference: string;
+  notificationUrl: string;
+  applicationFee: number;
+  metadata?: Record<string, any>;
+  expiresInMinutes?: number;
+  idempotencyKey?: string;
+}) {
+  const exp = new Date(Date.now() + (args.expiresInMinutes ?? 30) * 60_000);
+  // Formato ISO com offset (MP exige) → 2024-01-01T12:00:00.000-03:00
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const off = -exp.getTimezoneOffset();
+  const sign = off >= 0 ? "+" : "-";
+  const oh = pad(Math.floor(Math.abs(off) / 60));
+  const om = pad(Math.abs(off) % 60);
+  const expIso = `${exp.getFullYear()}-${pad(exp.getMonth() + 1)}-${pad(exp.getDate())}T${pad(exp.getHours())}:${pad(exp.getMinutes())}:${pad(exp.getSeconds())}.000${sign}${oh}:${om}`;
+
+  const body: any = {
+    transaction_amount: Math.round(args.amount * 100) / 100,
+    description: args.description.slice(0, 250),
+    payment_method_id: "pix",
+    payer: {
+      email: args.payerEmail,
+      first_name: args.payerFirstName,
+      last_name: args.payerLastName,
+      identification: { type: "CPF", number: args.payerCpf },
+    },
+    external_reference: args.externalReference,
+    notification_url: args.notificationUrl,
+    application_fee: args.applicationFee,
+    date_of_expiration: expIso,
+    metadata: args.metadata ?? {},
+    statement_descriptor: "LIGASUNO",
+  };
+  return mpFetch<any>("/v1/payments", {
+    method: "POST",
+    body,
+    accessToken: args.sellerAccessToken,
+    idempotencyKey: args.idempotencyKey ?? `${args.externalReference}-${Date.now()}`,
+  });
+}
