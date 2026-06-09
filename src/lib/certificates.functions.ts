@@ -163,13 +163,13 @@ async function buildCertificatePdf(opts: {
   // Subtítulo da liga (acima do título)
   const upper = opts.leagueName.toUpperCase();
   const upperW = sansBold.widthOfTextAtSize(upper, 10);
-  page.drawText(upper, { x: W / 2 - upperW / 2, y: H - 60, size: 10, font: sansBold, color: themeDark, characterSpacing: 4 });
+  page.drawText(upper, { x: W / 2 - upperW / 2, y: H - 60, size: 10, font: sansBold, color: themeDark });
 
   // Título principal — serifa, em maiúsculas espaçadas
   const title = "CERTIFICADO";
   const titleSize = 42;
   const titleW = bold.widthOfTextAtSize(title, titleSize);
-  page.drawText(title, { x: W / 2 - titleW / 2, y: headerY - 38, size: titleSize, font: bold, color: themeDark, characterSpacing: 6 });
+  page.drawText(title, { x: W / 2 - titleW / 2, y: headerY - 38, size: titleSize, font: bold, color: themeDark });
 
   // Filete decorativo abaixo do título
   page.drawLine({ start: { x: W / 2 - 70, y: headerY - 50 }, end: { x: W / 2 + 70, y: headerY - 50 }, thickness: 1.2, color: theme });
@@ -178,7 +178,7 @@ async function buildCertificatePdf(opts: {
   // Subtítulo "DE PARTICIPAÇÃO"
   const sub = "DE PARTICIPAÇÃO";
   const subW = sans.widthOfTextAtSize(sub, 11);
-  page.drawText(sub, { x: W / 2 - subW / 2, y: headerY - 72, size: 11, font: sans, color: muted, characterSpacing: 6 });
+  page.drawText(sub, { x: W / 2 - subW / 2, y: headerY - 72, size: 11, font: sans, color: muted });
 
   // "Certificamos que"
   const intro = "Certificamos que";
@@ -196,7 +196,7 @@ async function buildCertificatePdf(opts: {
   // CPF discreto
   const cpfLine = `CPF ${opts.cpf || "—"}`;
   const cpfW = sans.widthOfTextAtSize(cpfLine, 10);
-  page.drawText(cpfLine, { x: W / 2 - cpfW / 2, y: 336, size: 10, font: sans, color: muted, characterSpacing: 1 });
+  page.drawText(cpfLine, { x: W / 2 - cpfW / 2, y: 336, size: 10, font: sans, color: muted });
 
   // Texto principal
   const body = `participou da ${opts.leagueName} durante ${opts.cycleName}, completando carga horária total de ${opts.totalHours.toFixed(1).replace(".", ",")} horas em atividades acadêmico-científicas, conforme registro oficial da liga.`;
@@ -220,17 +220,17 @@ async function buildCertificatePdf(opts: {
   page.drawText(hoursTxt, { x: medCx - hoursW / 2, y: medCy - 2, size: hoursSize, font: bold, color: themeDark });
   const hLabel = "HORAS";
   const hLabelW = sansBold.widthOfTextAtSize(hLabel, 8);
-  page.drawText(hLabel, { x: medCx - hLabelW / 2, y: medCy - 18, size: 8, font: sansBold, color: themeDark, characterSpacing: 2 });
+  page.drawText(hLabel, { x: medCx - hLabelW / 2, y: medCy - 18, size: 8, font: sansBold, color: themeDark });
   const hTop = "CARGA";
   const hTopW = sansBold.widthOfTextAtSize(hTop, 7);
-  page.drawText(hTop, { x: medCx - hTopW / 2, y: medCy + 20, size: 7, font: sansBold, color: themeDark, characterSpacing: 2 });
+  page.drawText(hTop, { x: medCx - hTopW / 2, y: medCy + 20, size: 7, font: sansBold, color: themeDark });
 
   // Lista de atividades à direita do medalhão
   const present = opts.activities.filter((a) => a.status === "presente" && a.hours > 0);
   const listX = 180;
   let listY = 270;
   const listTitle = "Atividades realizadas";
-  page.drawText(listTitle, { x: listX, y: listY, size: 10, font: sansBold, color: themeDark, characterSpacing: 1 });
+  page.drawText(listTitle, { x: listX, y: listY, size: 10, font: sansBold, color: themeDark });
   page.drawLine({ start: { x: listX, y: listY - 3 }, end: { x: listX + sansBold.widthOfTextAtSize(listTitle, 10), y: listY - 3 }, thickness: 0.6, color: theme });
   listY -= 16;
   if (present.length === 0) {
@@ -296,10 +296,10 @@ async function buildCertificatePdf(opts: {
     const py = sealCy + Math.sin(ang) * 33;
     page.drawRectangle({ x: px - 1.5, y: py - 1.5, width: 3, height: 3, color: theme, rotate: degrees(45) });
   }
-  page.drawText("LIGA", { x: sealCx - sans.widthOfTextAtSize("LIGA", 7) / 2, y: sealCy + 6, size: 7, font: sansBold, color: themeDark, characterSpacing: 2 });
-  page.drawText("OFICIAL", { x: sealCx - sans.widthOfTextAtSize("OFICIAL", 8) / 2, y: sealCy - 4, size: 8, font: sansBold, color: themeDark, characterSpacing: 1 });
+  page.drawText("LIGA", { x: sealCx - sans.widthOfTextAtSize("LIGA", 7) / 2, y: sealCy + 6, size: 7, font: sansBold, color: themeDark });
+  page.drawText("OFICIAL", { x: sealCx - sans.widthOfTextAtSize("OFICIAL", 8) / 2, y: sealCy - 4, size: 8, font: sansBold, color: themeDark });
   const yearStr = String(new Date().getFullYear());
-  page.drawText(yearStr, { x: sealCx - sans.widthOfTextAtSize(yearStr, 7) / 2, y: sealCy - 14, size: 7, font: sans, color: muted, characterSpacing: 2 });
+  page.drawText(yearStr, { x: sealCx - sans.widthOfTextAtSize(yearStr, 7) / 2, y: sealCy - 14, size: 7, font: sans, color: muted });
 
   // Rodapé
   const issued = `Emitido em ${new Date().toLocaleDateString("pt-BR")}  ·  Documento gerado por LIGASUNO`;
