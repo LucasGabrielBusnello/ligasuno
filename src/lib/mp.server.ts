@@ -233,7 +233,7 @@ export async function createPixPayment(args: {
     },
     external_reference: args.externalReference,
     notification_url: args.notificationUrl,
-    application_fee: args.applicationFee,
+    // application_fee só funciona com marketplace OAuth; omitido para evitar erro 400
     date_of_expiration: expIso,
     metadata: args.metadata ?? {},
     statement_descriptor: "LIGASUNO",
