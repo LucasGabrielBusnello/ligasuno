@@ -1161,6 +1161,7 @@ export type Database = {
           created_at: string
           id: string
           league_id: string
+          restrict_to_semester: boolean
           seats: number
           semester: number
         }
@@ -1168,6 +1169,7 @@ export type Database = {
           created_at?: string
           id?: string
           league_id: string
+          restrict_to_semester?: boolean
           seats?: number
           semester: number
         }
@@ -1175,6 +1177,7 @@ export type Database = {
           created_at?: string
           id?: string
           league_id?: string
+          restrict_to_semester?: boolean
           seats?: number
           semester?: number
         }
