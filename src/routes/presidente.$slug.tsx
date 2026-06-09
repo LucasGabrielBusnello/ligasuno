@@ -865,8 +865,9 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
                           <p className="text-xs text-muted-foreground">{mc.instructor} · {new Date(mc.starts_at).toLocaleString("pt-BR")}</p>
                           {mc.location && <p className="text-[11px] text-muted-foreground">📍 {mc.location}</p>}
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="default" onClick={() => setCheckinMc(mc)}><ClipboardCheck className="size-3" /></Button>
+                        <div className="flex flex-wrap gap-1 shrink-0">
+                          <Button size="sm" variant="default" onClick={() => setCheckinMc(mc)} title="Credenciamento"><ClipboardCheck className="size-3" /></Button>
+                          <Button size="sm" variant="secondary" onClick={() => setCertMc(mc)} title="Certificados"><Award className="size-3" /></Button>
                           <Button size="sm" variant="outline" onClick={() => openEdit(mc)}>Editar</Button>
                           <Button size="sm" variant="destructive" onClick={() => del(mc.id)}><Trash2 className="size-3" /></Button>
                         </div>
