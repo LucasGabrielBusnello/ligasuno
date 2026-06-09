@@ -673,11 +673,27 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
           <Button size="sm" variant="outline" className="w-full" onClick={() => setMcOpen(true)}>
             <BookOpen className="size-3 mr-1" /> Minicursos
           </Button>
-          <Button size="sm" variant="ghost" className="w-full" onClick={onExpand}>
+          <Button size="sm" variant="outline" className="w-full" onClick={() => setCertOpen(true)}>
+            <Award className="size-3 mr-1" /> Certificados
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={generateBadges} disabled={busy === "badges"}>
+            <QrCode className="size-3 mr-1" /> {busy === "badges" ? "Gerando..." : "Crachás (PDF)"}
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={() => exportData("csv")} disabled={busy === "csv"}>
+            <Download className="size-3 mr-1" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={() => exportData("json")} disabled={busy === "json"}>
+            <Download className="size-3 mr-1" /> JSON
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={syncSheet} disabled={busy === "sync"}>
+            <FileSpreadsheet className="size-3 mr-1" /> {busy === "sync" ? "Sincronizando..." : "Sync Sheets"}
+          </Button>
+          <Button size="sm" variant="ghost" className="w-full col-span-2 sm:col-span-1" onClick={onExpand}>
             {expanded ? "Esconder inscritos" : "Inscritos / Arrecadação"}
           </Button>
         </div>
         <CheckinDialog mode={checkinOpen ? { kind: "event", event } : null} open={checkinOpen} onClose={() => setCheckinOpen(false)} />
+        <EventCertificatesDialog mode={certOpen ? { kind: "event", event, leagueId: event.league_id } : null} open={certOpen} onClose={() => setCertOpen(false)} />
         {expanded && (
           <div className="pt-3 border-t space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
