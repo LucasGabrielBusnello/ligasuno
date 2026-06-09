@@ -882,6 +882,7 @@ function MembersTab({ league }: any) {
   const [role, setRole] = useState<"ligante" | "diretor">("ligante");
   const [selOpen, setSelOpen] = useState(false);
   const [semOpen, setSemOpen] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const listPays = useServerFn(listCyclePayments);
 
