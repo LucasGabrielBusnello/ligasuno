@@ -732,35 +732,36 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Visitantes</div><div className="font-black">{counts.visitor}</div></div>
               <div className="p-2 rounded bg-primary/10"><div className="text-xs text-muted-foreground">Arrecadado</div><div className="font-black">R$ {total.toFixed(2)}</div></div>
             </div>
-            {regs === null ? <p className="text-xs text-muted-foreground">Carregando inscritos...</p> : (() => {
-              const paidOnly = regs.filter((r: any) => r.status === "paid");
-              if (paidOnly.length === 0) return <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito confirmado ainda.</p>;
-              return (
-                <>
-                  <div className="flex justify-end">
-                    <Button size="sm" variant="outline" onClick={async () => {
-                      const names = paidOnly.map((r: any) => r.full_name).filter(Boolean).join("\n");
-                      try { await navigator.clipboard.writeText(names); toast.success(`${paidOnly.length} inscritos copiados`); }
-                      catch { toast.error("Não foi possível copiar"); }
-                    }}>Copiar Inscritos</Button>
-                  </div>
-                  <div className="space-y-1">
-                    {paidOnly.map((r: any) => (
-                      <button key={r.id} onClick={() => setSelected(r)} className="w-full text-left p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-bold truncate">{r.full_name}</div>
-                          <div className="text-[11px] text-muted-foreground">{r.profiles?.email}</div>
-                        </div>
-                        <div className="flex flex-col items-end shrink-0">
-                          <Badge variant="default" className="text-[10px]">Pago</Badge>
-                          <span className="text-[10px] text-muted-foreground mt-0.5">{r.category} · R${Number(r.paid_price).toFixed(2)}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              );
-            })()}
+            {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
+            {regs !== null && regs.filter((r: any) => r.status === "paid").length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito confirmado ainda.</p>
+            )}
+            {regs !== null && regs.filter((r: any) => r.status === "paid").length > 0 && (
+              <>
+                <div className="flex justify-end">
+                  <Button size="sm" variant="outline" onClick={async () => {
+                    const paid = regs.filter((r: any) => r.status === "paid");
+                    const names = paid.map((r: any) => r.full_name).filter(Boolean).join("\n");
+                    try { await navigator.clipboard.writeText(names); toast.success(`${paid.length} inscritos copiados`); }
+                    catch { toast.error("Não foi possível copiar"); }
+                  }}>Copiar Inscritos</Button>
+                </div>
+                <div className="space-y-1">
+                  {regs.filter((r: any) => r.status === "paid").map((r: any) => (
+                    <button key={r.id} onClick={() => setSelected(r)} className="w-full text-left p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-bold truncate">{r.full_name}</div>
+                        <div className="text-[11px] text-muted-foreground">{r.profiles?.email}</div>
+                      </div>
+                      <div className="flex flex-col items-end shrink-0">
+                        <Badge variant="default" className="text-[10px]">Pago</Badge>
+                        <span className="text-[10px] text-muted-foreground mt-0.5">{r.category} · R${Number(r.paid_price).toFixed(2)}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
           </div>
         )}
