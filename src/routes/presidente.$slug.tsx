@@ -676,9 +676,20 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   }, [expanded]);
 
   const paidRegs = (regs ?? []).filter(r => r.status === "paid");
+  const hasPaidRegs = paidRegs.length > 0;
   const counts = { ligante: 0, partner: 0, visitor: 0 };
   let total = 0;
   paidRegs.forEach(r => { counts[r.category as keyof typeof counts] = (counts[r.category as keyof typeof counts] ?? 0) + 1; total += Number(r.paid_price) || 0; });
+
+  async function copyPaidRegistrations() {
+    const names = paidRegs.map((r: any) => r.full_name).filter(Boolean).join("\n");
+    try {
+      await navigator.clipboard.writeText(names);
+      toast.success(`${paidRegs.length} inscritos copiados`);
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  }
 
   return (
     <Card>
@@ -733,21 +744,16 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               <div className="p-2 rounded bg-primary/10"><div className="text-xs text-muted-foreground">Arrecadado</div><div className="font-black">R$ {total.toFixed(2)}</div></div>
             </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
-            {regs !== null && regs.filter((r: any) => r.status === "paid").length === 0 && (
+            {regs !== null && !hasPaidRegs && (
               <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito confirmado ainda.</p>
             )}
-            {regs !== null && regs.filter((r: any) => r.status === "paid").length > 0 && (
+            {regs !== null && hasPaidRegs && (
               <>
                 <div className="flex justify-end">
-                  <Button size="sm" variant="outline" onClick={async () => {
-                    const paid = regs.filter((r: any) => r.status === "paid");
-                    const names = paid.map((r: any) => r.full_name).filter(Boolean).join("\n");
-                    try { await navigator.clipboard.writeText(names); toast.success(`${paid.length} inscritos copiados`); }
-                    catch { toast.error("Não foi possível copiar"); }
-                  }}>Copiar Inscritos</Button>
+                  <Button size="sm" variant="outline" onClick={copyPaidRegistrations}>Copiar Inscritos</Button>
                 </div>
                 <div className="space-y-1">
-                  {regs.filter((r: any) => r.status === "paid").map((r: any) => (
+                  {paidRegs.map((r: any) => (
                     <button key={r.id} onClick={() => setSelected(r)} className="w-full text-left p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-bold truncate">{r.full_name}</div>
