@@ -553,6 +553,7 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const [regs, setRegs] = useState<any[] | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
   const [mcOpen, setMcOpen] = useState(false);
+  const [checkinOpen, setCheckinOpen] = useState(false);
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
@@ -606,7 +607,10 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             <Switch checked={!!event.accepting_registrations} onCheckedChange={(v) => onToggle(event.id, "accepting_registrations", v)} />
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <Button size="sm" variant="default" className="w-full" onClick={() => setCheckinOpen(true)}>
+            <ClipboardCheck className="size-3 mr-1" /> Credenciamento
+          </Button>
           <Button size="sm" variant="outline" className="w-full" onClick={() => setMcOpen(true)}>
             <BookOpen className="size-3 mr-1" /> Minicursos
           </Button>
@@ -614,6 +618,7 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             {expanded ? "Esconder inscritos" : "Inscritos / Arrecadação"}
           </Button>
         </div>
+        <CheckinDialog mode={checkinOpen ? { kind: "event", event } : null} open={checkinOpen} onClose={() => setCheckinOpen(false)} />
         {expanded && (
           <div className="pt-3 border-t space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
