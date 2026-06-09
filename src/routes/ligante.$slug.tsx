@@ -401,8 +401,9 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
               <p className="text-xs font-bold uppercase tracking-widest opacity-90 flex items-center justify-center md:justify-start gap-1.5">
                 <Flame className="size-3.5" /> {tier.label}
               </p>
-              <h2 className="text-2xl md:text-3xl font-black mt-1">{presentes} de {list.length}</h2>
-              <p className="text-sm opacity-90 mt-1">atividades com presença</p>
+              <h2 className="text-2xl md:text-3xl font-black mt-1">{presentes + justificadas} de {list.length}</h2>
+              <p className="text-sm opacity-90 mt-1">atividades com presença{justificadas > 0 ? ` (inclui ${justificadas} justificada${justificadas > 1 ? "s" : ""})` : ""}</p>
+
             </div>
           </div>
         </div>
