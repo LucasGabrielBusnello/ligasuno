@@ -766,6 +766,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
   const [checkinMc, setCheckinMc] = useState<any | null>(null);
+  const [certMc, setCertMc] = useState<any | null>(null);
 
   async function reload() {
     const { data } = await supabase.from("league_minicourses").select("*").eq("event_id", event.id).order("starts_at", { ascending: true });
