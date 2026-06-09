@@ -978,6 +978,7 @@ function MembersTab({ league }: any) {
     <Card><CardContent className="p-6 space-y-4">
       <LeaveRequestsPanel league={league} onProcessed={reload} />
       <div className="flex justify-end gap-2 flex-wrap">
+        <Button onClick={() => setCertOpen(true)} variant="outline"><Award className="size-4" /> Certificados do Semestre</Button>
         <Button onClick={() => setSemOpen(true)} variant="outline"><DollarSign className="size-4" /> Semestralidade</Button>
         <Button onClick={() => setSelOpen(true)} variant="outline"><ClipboardCheck className="size-4" /> Processo Seletivo</Button>
       </div>
