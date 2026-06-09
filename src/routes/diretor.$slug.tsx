@@ -219,47 +219,61 @@ function NewsTab({ league }: { league: League }) {
   const [open, setOpen] = useState(false);
   const blank = { title: "", excerpt: "", image_url: "", category: "Geral", link: "" };
   const [f, setF] = useState(blank);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const reload = async () => {
     const { data } = await supabase.from("league_news").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
     setList(data ?? []);
   };
   useEffect(() => { reload(); }, [league.id]);
+  function openNew() { setEditingId(null); setF(blank); setOpen(true); }
+  function openEdit(n: any) {
+    setEditingId(n.id);
+    setF({ title: n.title ?? "", excerpt: n.excerpt ?? "", image_url: n.image_url ?? "", category: n.category ?? "Geral", link: n.link ?? "" });
+    setOpen(true);
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const { error } = await supabase.from("league_news").insert({ ...f, league_id: league.id, image_url: f.image_url || null, link: f.link || null });
+    const payload = { ...f, league_id: league.id, image_url: f.image_url || null, link: f.link || null };
+    const { error } = editingId
+      ? await supabase.from("league_news").update(payload).eq("id", editingId)
+      : await supabase.from("league_news").insert(payload);
     if (error) return toast.error(error.message);
-    toast.success("Publicado"); setOpen(false); setF(blank); reload();
+    toast.success(editingId ? "Notícia atualizada" : "Publicado"); setOpen(false); setF(blank); setEditingId(null); reload();
   }
   async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_news").delete().eq("id", id); reload(); }
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button onClick={() => setOpen(true)}><Plus className="size-4" /> Nova notícia</Button></div>
+      <div className="flex justify-end"><Button onClick={openNew}><Plus className="size-4" /> Nova notícia</Button></div>
       <div className="grid sm:grid-cols-2 gap-3">
         {list.map((n) => (
           <Card key={n.id}><CardContent className="p-4 flex gap-3">
             {n.image_url && <img src={n.image_url} className="size-16 rounded object-cover" />}
-            <div className="flex-1"><Badge variant="secondary" className="text-[10px]">{n.category}</Badge><h4 className="font-black mt-1">{n.title}</h4><p className="text-xs text-muted-foreground line-clamp-2">{n.excerpt}</p></div>
-            <Button size="sm" variant="destructive" onClick={() => del(n.id)}><Trash2 className="size-3" /></Button>
+            <div className="flex-1 min-w-0"><Badge variant="secondary" className="text-[10px]">{n.category}</Badge><h4 className="font-black mt-1 truncate">{n.title}</h4><p className="text-xs text-muted-foreground line-clamp-2">{n.excerpt}</p></div>
+            <div className="flex flex-col gap-1 shrink-0">
+              <Button size="sm" variant="outline" onClick={() => openEdit(n)}>Editar</Button>
+              <Button size="sm" variant="destructive" onClick={() => del(n.id)}><Trash2 className="size-3" /></Button>
+            </div>
           </CardContent></Card>
         ))}
         {list.length === 0 && <p className="text-sm text-muted-foreground col-span-2 text-center py-4">Nenhuma notícia ainda.</p>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Notícia</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar Notícia" : "Nova Notícia"}</DialogTitle></DialogHeader>
           <form onSubmit={save} className="space-y-3">
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
             <div><Label>Resumo</Label><Textarea value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} /></div>
             <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
             <div><Label>Link externo</Label><Input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></div>
-            <DialogFooter><Button type="submit">Publicar</Button></DialogFooter>
+            <DialogFooter><Button type="submit">{editingId ? "Salvar" : "Publicar"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
 
 
 function ScheduleTab({ league }: { league: League }) {
