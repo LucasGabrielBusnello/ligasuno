@@ -487,6 +487,48 @@ function EventsTab({ league }: any) {
               <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
             </div>
             <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
+
+            {/* CERTIFICADO E CREDENCIAMENTOS */}
+            <div className="rounded border p-3 space-y-3 bg-muted/30">
+              <h4 className="text-sm font-bold flex items-center gap-1"><Award className="size-4" /> Certificado e Credenciamentos</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Horas totais do evento</Label>
+                  <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">Essa será a quantidade de horas em certificado.</p>
+                </div>
+                <div>
+                  <Label className="text-xs">Quantidade de credenciamentos</Label>
+                  <Input type="number" min="1" max="10" value={f.checkin_count} onChange={(e) => updateScheduleCount(+e.target.value)} />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Cada credenciamento valerá <b>{f.checkin_count > 0 ? (Number(f.total_hours) / f.checkin_count).toFixed(2) : "0"}h</b>.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {(f.checkin_schedule || []).map((s: any, i: number) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-5">
+                      <Label className="text-[10px]">Nome do {i + 1}° credenciamento</Label>
+                      <Input value={s.label || ""} onChange={(e) => updateScheduleItem(i, { label: e.target.value })} />
+                    </div>
+                    <div className="col-span-5">
+                      <Label className="text-[10px]">Data / Hora</Label>
+                      <Input type="datetime-local" value={s.starts_at || ""} onChange={(e) => updateScheduleItem(i, { starts_at: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-[10px]">Intervalo (min)</Label>
+                      <Input type="number" min="1" value={s.interval_min || 30} onChange={(e) => updateScheduleItem(i, { interval_min: +e.target.value })} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <label className="flex items-center justify-between gap-2 text-xs p-2 rounded border bg-background">
+                <span>Congelar inscrições no dia do evento (segurança)</span>
+                <Switch checked={!!f.freeze_on_event_day} onCheckedChange={(v) => setF({ ...f, freeze_on_event_day: v })} />
+              </label>
+            </div>
+
             <div>
               <Label>Ligas parceiras (recebem o valor de parceiro)</Label>
               <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1">
