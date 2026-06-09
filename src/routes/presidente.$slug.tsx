@@ -558,6 +558,61 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const [selected, setSelected] = useState<any | null>(null);
   const [mcOpen, setMcOpen] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const listRosterFn = useServerFn(listEventCheckinRoster);
+  const syncFn = useServerFn(syncEventToSheet);
+
+  async function exportData(kind: "csv" | "json") {
+    setBusy(kind);
+    try {
+      const r: any = await listRosterFn({ data: { event_id: event.id } } as any);
+      const members = r.members || [];
+      let blob: Blob;
+      let filename: string;
+      if (kind === "json") {
+        blob = new Blob([JSON.stringify({ event, members }, null, 2)], { type: "application/json" });
+        filename = `${event.title}-inscritos.json`;
+      } else {
+        const header = ["Nome", "CPF", "E-mail", "Código", "Credenciamentos"].join(";");
+        const lines = members.map((m: any) =>
+          [m.full_name, m.cpf, m.email, m.checkin_code, Object.keys(m.checkins || {}).join(",")].map((x: any) => `"${String(x ?? "").replace(/"/g, '""')}"`).join(";"));
+        blob = new Blob(["\uFEFF" + [header, ...lines].join("\n")], { type: "text/csv" });
+        filename = `${event.title}-inscritos.csv`;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setBusy(null); }
+  }
+
+  async function generateBadges() {
+    setBusy("badges");
+    try {
+      const r: any = await listRosterFn({ data: { event_id: event.id } } as any);
+      const rows = (r.members || []).filter((m: any) => m.full_name && m.checkin_code);
+      if (rows.length === 0) return toast.error("Nenhum inscrito pago com nome");
+      const blob = await generateBadgesPdf({
+        eventTitle: event.title, leagueName: "LIGASUNO",
+        themeColor: undefined, rows,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `${event.title}-crachas.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setBusy(null); }
+  }
+
+  async function syncSheet() {
+    setBusy("sync");
+    try {
+      const r: any = await syncFn({ data: { event_id: event.id } } as any);
+      toast.success(`Sincronizado: ${r.rows} linha(s) → "${r.sheet}"`);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setBusy(null); }
+  }
+
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
