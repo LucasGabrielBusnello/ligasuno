@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award } from "lucide-react";
 import { CertificatesDialog } from "@/components/certificates-dialog";
+import { CheckinDialog } from "@/components/event-checkin-dialog";
 
 import { disconnectMp } from "@/lib/mp-oauth.functions";
 import {
@@ -364,6 +365,10 @@ function EventsTab({ league }: any) {
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
     max_seats: 0,
+    total_hours: 0,
+    checkin_count: 1,
+    checkin_schedule: [{ idx: 1, label: "1° Credenciamento", starts_at: "", interval_min: 30 }] as any[],
+    freeze_on_event_day: true,
   };
   const [f, setF] = useState<any>(blank);
   const reload = async () => {
@@ -378,6 +383,10 @@ function EventsTab({ league }: any) {
   function openNew() { setEditing(null); setF(blank); setOpen(true); }
   function openEdit(ev: any) {
     setEditing(ev);
+    const cn = Math.max(1, Number(ev.checkin_count) || 1);
+    const sched = Array.isArray(ev.checkin_schedule) && ev.checkin_schedule.length > 0
+      ? ev.checkin_schedule
+      : Array.from({ length: cn }, (_, i) => ({ idx: i + 1, label: `${i + 1}° Credenciamento`, starts_at: "", interval_min: 30 }));
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
       event_date: ev.event_date ?? "", schedule: ev.schedule ?? "",
@@ -386,12 +395,23 @@ function EventsTab({ league }: any) {
       price_visitor: Number(ev.price_visitor) || 0,
       partner_league_ids: ev.partner_league_ids ?? [],
       max_seats: Number(ev.max_seats) || 0,
+      total_hours: Number(ev.total_hours) || 0,
+      checkin_count: cn,
+      checkin_schedule: sched,
+      freeze_on_event_day: ev.freeze_on_event_day !== false,
     });
     setOpen(true);
   }
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const payload = {
+    const cn = Math.max(1, Math.min(10, Number(f.checkin_count) || 1));
+    const sched = (f.checkin_schedule || []).slice(0, cn).map((s: any, i: number) => ({
+      idx: i + 1,
+      label: s?.label || `${i + 1}° Credenciamento`,
+      starts_at: s?.starts_at || null,
+      interval_min: Number(s?.interval_min) || 30,
+    }));
+    const payload: any = {
       league_id: league.id,
       title: f.title,
       description: f.description,
@@ -403,12 +423,27 @@ function EventsTab({ league }: any) {
       price_visitor: Number(f.price_visitor) || 0,
       partner_league_ids: f.partner_league_ids,
       max_seats: Number(f.max_seats) > 0 ? Number(f.max_seats) : null,
+      total_hours: Number(f.total_hours) || 0,
+      checkin_count: cn,
+      checkin_schedule: sched,
+      freeze_on_event_day: !!f.freeze_on_event_day,
     };
     const { error } = editing
       ? await supabase.from("league_events").update(payload).eq("id", editing.id)
       : await supabase.from("league_events").insert(payload);
     if (error) return toast.error(error.message);
     toast.success(editing ? "Atualizado" : "Criado"); setOpen(false); setF(blank); setEditing(null); reload();
+  }
+  function updateScheduleCount(n: number) {
+    n = Math.max(1, Math.min(10, n));
+    setF((p: any) => {
+      const existing = p.checkin_schedule || [];
+      const sched = Array.from({ length: n }, (_, i) => existing[i] || { idx: i + 1, label: `${i + 1}° Credenciamento`, starts_at: "", interval_min: 30 });
+      return { ...p, checkin_count: n, checkin_schedule: sched };
+    });
+  }
+  function updateScheduleItem(i: number, patch: any) {
+    setF((p: any) => ({ ...p, checkin_schedule: p.checkin_schedule.map((s: any, k: number) => k === i ? { ...s, ...patch } : s) }));
   }
   async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_events").delete().eq("id", id); reload(); }
   async function toggleField(id: string, field: "published" | "accepting_registrations", v: boolean) {
