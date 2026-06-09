@@ -624,6 +624,7 @@ export type Database = {
           price_partner: number
           price_visitor: number
           published: boolean
+          registration_deadline: string | null
           registration_link: string | null
           schedule: string | null
           title: string
@@ -647,6 +648,7 @@ export type Database = {
           price_partner?: number
           price_visitor?: number
           published?: boolean
+          registration_deadline?: string | null
           registration_link?: string | null
           schedule?: string | null
           title: string
@@ -670,6 +672,7 @@ export type Database = {
           price_partner?: number
           price_visitor?: number
           published?: boolean
+          registration_deadline?: string | null
           registration_link?: string | null
           schedule?: string | null
           title?: string
