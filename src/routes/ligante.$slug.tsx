@@ -358,9 +358,14 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
     </Card>
   );
 
-  const presentes = list.filter((l) => l.present).length;
-  const faltas = list.length - presentes;
-  const pct = Math.round((presentes / list.length) * 100);
+  const getStatus = (a: any): "presente" | "justificada" | "ausente" =>
+    a.status ?? (a.present ? "presente" : "ausente");
+  const presentes = list.filter((l) => getStatus(l) === "presente").length;
+  const justificadas = list.filter((l) => getStatus(l) === "justificada").length;
+  const faltas = list.filter((l) => getStatus(l) === "ausente").length;
+  // Para o cálculo do percentual nesta aba, justificadas contam como presença
+  const pct = Math.round(((presentes + justificadas) / list.length) * 100);
+
   const tier = pct >= 75 ? { color: "from-emerald-400 to-emerald-600", text: "text-emerald-600", label: "Frequência excelente" }
     : pct >= 50 ? { color: "from-amber-400 to-orange-500", text: "text-amber-600", label: "Atenção à frequência" }
     : { color: "from-rose-400 to-rose-600", text: "text-rose-600", label: "Frequência crítica" };
