@@ -732,13 +732,15 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Visitantes</div><div className="font-black">{counts.visitor}</div></div>
               <div className="p-2 rounded bg-primary/10"><div className="text-xs text-muted-foreground">Arrecadado</div><div className="font-black">R$ {total.toFixed(2)}</div></div>
             </div>
-            {regs === null ? <p className="text-xs text-muted-foreground">Carregando inscritos...</p> :
-              regs.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p> : (
+            {regs === null ? <p className="text-xs text-muted-foreground">Carregando inscritos...</p> : (() => {
+              const paidOnly = regs.filter((r: any) => r.status === "paid");
+              if (paidOnly.length === 0) return <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito confirmado ainda.</p>;
+              return (
                 <>
                   <div className="flex justify-end">
                     <Button size="sm" variant="outline" onClick={async () => {
-                      const names = regs.map((r: any) => r.full_name).filter(Boolean).join("\n");
-                      try { await navigator.clipboard.writeText(names); toast.success(`${regs.length} inscritos copiados`); }
+                      const names = paidOnly.map((r: any) => r.full_name).filter(Boolean).join("\n");
+                      try { await navigator.clipboard.writeText(names); toast.success(`${paidOnly.length} inscritos copiados`); }
                       catch { toast.error("Não foi possível copiar"); }
                     }}>Copiar Inscritos</Button>
                   </div>
