@@ -420,3 +420,67 @@ export async function sendLeaveRequestEmail(args: {
   });
 }
 
+// ============== Envio com anexo (PDF) ==============
+export async function sendGmailWithAttachment(args: {
+  to: string;
+  subject: string;
+  html: string;
+  attachment: { filename: string; mimeType: string; contentBase64: string };
+}): Promise<{ id?: string; skipped?: boolean }> {
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  const gmailKey = process.env.GOOGLE_MAIL_API_KEY;
+  if (!lovableKey || !gmailKey) {
+    console.warn("sendGmailWithAttachment: chaves ausentes — pulando");
+    return { skipped: true };
+  }
+  if (!args.to || !args.to.includes("@")) return { skipped: true };
+
+  const boundary = `=_lvb_${Math.random().toString(36).slice(2)}`;
+  const subjectB64 = Buffer.from(args.subject, "utf-8").toString("base64");
+  const htmlB64 = Buffer.from(args.html, "utf-8").toString("base64").replace(/(.{76})/g, "$1\r\n");
+  const attB64 = args.attachment.contentBase64.replace(/(.{76})/g, "$1\r\n");
+
+  const mime = [
+    `To: ${args.to}`,
+    `Subject: =?UTF-8?B?${subjectB64}?=`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/html; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    htmlB64,
+    "",
+    `--${boundary}`,
+    `Content-Type: ${args.attachment.mimeType}; name="${args.attachment.filename}"`,
+    `Content-Disposition: attachment; filename="${args.attachment.filename}"`,
+    "Content-Transfer-Encoding: base64",
+    "",
+    attB64,
+    "",
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+
+  const raw = Buffer.from(mime, "utf-8").toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+
+  const res = await fetch(`${GMAIL_GATEWAY}/users/me/messages/send`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${lovableKey}`,
+      "X-Connection-Api-Key": gmailKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ raw }),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    console.error(`Gmail attach send failed [${res.status}]: ${text}`);
+    throw new Error(`Falha ao enviar e-mail com anexo (${res.status})`);
+  }
+  let json: any = {};
+  try { json = JSON.parse(text); } catch {}
+  return { id: json?.id };
+}
+
