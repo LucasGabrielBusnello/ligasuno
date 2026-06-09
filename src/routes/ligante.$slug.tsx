@@ -407,18 +407,26 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
             </div>
           </div>
         </div>
-        <CardContent className="p-4 grid grid-cols-2 gap-3">
+        <CardContent className={`p-4 grid gap-3 ${justificadas > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
           <div className="p-3 rounded-xl bg-emerald-500/10 text-center">
             <CheckCircle className="size-5 mx-auto text-emerald-600 mb-1" />
             <p className="text-2xl font-black text-emerald-600">{presentes}</p>
             <p className="text-[10px] uppercase font-bold text-muted-foreground">Presenças</p>
           </div>
+          {justificadas > 0 && (
+            <div className="p-3 rounded-xl bg-amber-500/10 text-center">
+              <CheckCircle className="size-5 mx-auto text-amber-600 mb-1" />
+              <p className="text-2xl font-black text-amber-600">{justificadas}</p>
+              <p className="text-[10px] uppercase font-bold text-muted-foreground">Justificadas</p>
+            </div>
+          )}
           <div className="p-3 rounded-xl bg-rose-500/10 text-center">
             <XCircle className="size-5 mx-auto text-rose-600 mb-1" />
             <p className="text-2xl font-black text-rose-600">{faltas}</p>
             <p className="text-[10px] uppercase font-bold text-muted-foreground">Faltas</p>
           </div>
         </CardContent>
+
       </Card>
 
       <Card>
