@@ -301,6 +301,54 @@ export type Database = {
           },
         ]
       }
+      event_checkins: {
+        Row: {
+          by_user_id: string | null
+          checked_in_at: string
+          checkin_index: number
+          created_at: string
+          event_id: string
+          id: string
+          method: string
+          registration_id: string
+        }
+        Insert: {
+          by_user_id?: string | null
+          checked_in_at?: string
+          checkin_index: number
+          created_at?: string
+          event_id: string
+          id?: string
+          method?: string
+          registration_id: string
+        }
+        Update: {
+          by_user_id?: string | null
+          checked_in_at?: string
+          checkin_index?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          method?: string
+          registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_checkins_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "league_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_checkins_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "event_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_email_log: {
         Row: {
           event_id: string
@@ -332,6 +380,7 @@ export type Database = {
         Row: {
           base_price: number
           category: string
+          checkin_code: string | null
           course: string
           cpf: string
           created_at: string
@@ -349,6 +398,7 @@ export type Database = {
         Insert: {
           base_price?: number
           category?: string
+          checkin_code?: string | null
           course: string
           cpf: string
           created_at?: string
@@ -366,6 +416,7 @@ export type Database = {
         Update: {
           base_price?: number
           category?: string
+          checkin_code?: string | null
           course?: string
           cpf?: string
           created_at?: string
@@ -383,6 +434,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "league_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_snapshots: {
+        Row: {
+          event_id: string
+          id: string
+          payload: Json
+          taken_at: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          payload: Json
+          taken_at?: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          payload?: Json
+          taken_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_snapshots_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "league_events"
@@ -528,9 +608,13 @@ export type Database = {
       league_events: {
         Row: {
           accepting_registrations: boolean
+          checkin_count: number
+          checkin_schedule: Json
           created_at: string
           description: string | null
           event_date: string | null
+          freeze_on_event_day: boolean
+          full_name_required: boolean
           id: string
           image_url: string | null
           league_id: string
@@ -543,12 +627,17 @@ export type Database = {
           registration_link: string | null
           schedule: string | null
           title: string
+          total_hours: number | null
         }
         Insert: {
           accepting_registrations?: boolean
+          checkin_count?: number
+          checkin_schedule?: Json
           created_at?: string
           description?: string | null
           event_date?: string | null
+          freeze_on_event_day?: boolean
+          full_name_required?: boolean
           id?: string
           image_url?: string | null
           league_id: string
@@ -561,12 +650,17 @@ export type Database = {
           registration_link?: string | null
           schedule?: string | null
           title: string
+          total_hours?: number | null
         }
         Update: {
           accepting_registrations?: boolean
+          checkin_count?: number
+          checkin_schedule?: Json
           created_at?: string
           description?: string | null
           event_date?: string | null
+          freeze_on_event_day?: boolean
+          full_name_required?: boolean
           id?: string
           image_url?: string | null
           league_id?: string
@@ -579,6 +673,7 @@ export type Database = {
           registration_link?: string | null
           schedule?: string | null
           title?: string
+          total_hours?: number | null
         }
         Relationships: [
           {
@@ -716,6 +811,7 @@ export type Database = {
           published: boolean
           starts_at: string
           title: string
+          total_hours: number | null
           updated_at: string
         }
         Insert: {
@@ -731,6 +827,7 @@ export type Database = {
           published?: boolean
           starts_at: string
           title: string
+          total_hours?: number | null
           updated_at?: string
         }
         Update: {
@@ -746,6 +843,7 @@ export type Database = {
           published?: boolean
           starts_at?: string
           title?: string
+          total_hours?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1381,6 +1479,51 @@ export type Database = {
         }
         Relationships: []
       }
+      league_sheets_sync: {
+        Row: {
+          created_at: string
+          id: string
+          last_error: string | null
+          last_synced_at: string | null
+          league_id: string
+          spreadsheet_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          league_id: string
+          spreadsheet_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_synced_at?: string | null
+          league_id?: string
+          spreadsheet_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_sheets_sync_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_sheets_sync_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -1489,10 +1632,58 @@ export type Database = {
         }
         Relationships: []
       }
+      minicourse_checkins: {
+        Row: {
+          by_user_id: string | null
+          checked_in_at: string
+          created_at: string
+          id: string
+          method: string
+          minicourse_id: string
+          registration_id: string
+        }
+        Insert: {
+          by_user_id?: string | null
+          checked_in_at?: string
+          created_at?: string
+          id?: string
+          method?: string
+          minicourse_id: string
+          registration_id: string
+        }
+        Update: {
+          by_user_id?: string | null
+          checked_in_at?: string
+          created_at?: string
+          id?: string
+          method?: string
+          minicourse_id?: string
+          registration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minicourse_checkins_minicourse_id_fkey"
+            columns: ["minicourse_id"]
+            isOneToOne: false
+            referencedRelation: "league_minicourses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minicourse_checkins_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: true
+            referencedRelation: "minicourse_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       minicourse_registrations: {
         Row: {
+          checkin_code: string | null
+          cpf: string | null
           created_at: string
           event_registration_id: string
+          full_name: string | null
           id: string
           minicourse_id: string
           paid_price: number
@@ -1502,8 +1693,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          checkin_code?: string | null
+          cpf?: string | null
           created_at?: string
           event_registration_id: string
+          full_name?: string | null
           id?: string
           minicourse_id: string
           paid_price?: number
@@ -1513,8 +1707,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          checkin_code?: string | null
+          cpf?: string | null
           created_at?: string
           event_registration_id?: string
+          full_name?: string | null
           id?: string
           minicourse_id?: string
           paid_price?: number
@@ -1840,6 +2037,7 @@ export type Database = {
       }
     }
     Functions: {
+      gen_checkin_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

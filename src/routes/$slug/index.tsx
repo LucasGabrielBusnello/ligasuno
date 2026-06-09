@@ -18,6 +18,7 @@ import { verifySelectionPayment } from "@/lib/selection.functions";
 import { SelectionRegisterDialog, SelectionAccessDialog } from "@/components/selection-public";
 import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList, Zap, Star } from "lucide-react";
 import { Reveal } from "@/components/reveal";
+import { QrImage, downloadQrPng } from "@/components/qr-image";
 import { LeagueHeartButton } from "@/components/league-heart-button";
 
 export const Route = createFileRoute("/$slug/")({ component: LeaguePage });
@@ -667,8 +668,9 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
         </DialogHeader>
         {event.image_url && <img src={event.image_url} className="w-full aspect-video object-cover rounded" />}
         <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-3 w-full">
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="info">Evento</TabsTrigger>
+            <TabsTrigger value="badge">Crachá</TabsTrigger>
             <TabsTrigger value="schedule">Cronograma</TabsTrigger>
             <TabsTrigger value="mc">Minicursos</TabsTrigger>
           </TabsList>
@@ -676,7 +678,24 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
             {event.event_date && (
               <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span><b>Data:</b> {new Date(event.event_date).toLocaleDateString("pt-BR")}</span></div>
             )}
+            {Number(event.total_hours) > 0 && (
+              <div className="text-xs text-muted-foreground">Carga horária do certificado: <b>{Number(event.total_hours)}h</b></div>
+            )}
             {event.description && <div><div className="text-xs font-black uppercase text-muted-foreground mb-1">Descrição</div><p className="text-sm whitespace-pre-line">{event.description}</p></div>}
+            {Array.isArray(event.checkin_schedule) && event.checkin_schedule.length > 0 && (
+              <div>
+                <div className="text-xs font-black uppercase text-muted-foreground mb-1">Credenciamentos</div>
+                <div className="space-y-1">
+                  {event.checkin_schedule.map((s: any, i: number) => (
+                    <div key={i} className="text-xs p-2 rounded border bg-muted/30">
+                      <b>{s.label || `${i + 1}° Credenciamento`}</b>
+                      {s.starts_at && <> · {new Date(s.starts_at).toLocaleString("pt-BR")}</>}
+                      {s.interval_min && <> · janela de {s.interval_min} min</>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {reg && (
               <Card className="border-emerald-500/40 bg-emerald-500/5"><CardContent className="p-4 space-y-1">
                 <div className="text-xs text-muted-foreground">Status da inscrição</div>
@@ -687,6 +706,9 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
                 {reg.discount_reason && <div className="text-[11px] text-muted-foreground">{reg.discount_reason}</div>}
               </CardContent></Card>
             )}
+          </TabsContent>
+          <TabsContent value="badge" className="pt-3">
+            <BadgeTab event={event} registration={reg} themeColor={league.theme_color} />
           </TabsContent>
           <TabsContent value="schedule" className="pt-3">
             {event.schedule ? (
@@ -702,6 +724,28 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
         <DialogFooter><Button onClick={onClose} variant="outline">Fechar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function BadgeTab({ event, registration, themeColor }: { event: any; registration: any; themeColor?: string }) {
+  if (!registration || registration.status !== "paid") {
+    return <p className="text-sm text-muted-foreground italic p-3 rounded border bg-muted/30">O crachá será liberado após a confirmação do pagamento.</p>;
+  }
+  const code = registration.checkin_code || "------";
+  return (
+    <div className="space-y-3 text-center">
+      <div className="p-5 rounded-xl border-2" style={{ borderColor: themeColor || "var(--primary)" }}>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Crachá de credenciamento</div>
+        <div className="font-black text-lg mt-1">{registration.full_name || "—"}</div>
+        <div className="text-xs text-muted-foreground mb-3">{event.title}</div>
+        <div className="flex justify-center"><QrImage value={code} size={220} /></div>
+        <div className="font-mono text-2xl font-black mt-3 tracking-widest">{code}</div>
+        <div className="text-[10px] text-muted-foreground mt-1">Apresente este código no credenciamento</div>
+      </div>
+      <Button variant="outline" size="sm" onClick={() => downloadQrPng(code, `cracha-${code}.png`)}>
+        Baixar QR Code (PNG)
+      </Button>
+    </div>
   );
 }
 

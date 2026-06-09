@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award } from "lucide-react";
 import { CertificatesDialog } from "@/components/certificates-dialog";
+import { CheckinDialog } from "@/components/event-checkin-dialog";
 
 import { disconnectMp } from "@/lib/mp-oauth.functions";
 import {
@@ -364,6 +365,10 @@ function EventsTab({ league }: any) {
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
     max_seats: 0,
+    total_hours: 0,
+    checkin_count: 1,
+    checkin_schedule: [{ idx: 1, label: "1° Credenciamento", starts_at: "", interval_min: 30 }] as any[],
+    freeze_on_event_day: true,
   };
   const [f, setF] = useState<any>(blank);
   const reload = async () => {
@@ -378,6 +383,10 @@ function EventsTab({ league }: any) {
   function openNew() { setEditing(null); setF(blank); setOpen(true); }
   function openEdit(ev: any) {
     setEditing(ev);
+    const cn = Math.max(1, Number(ev.checkin_count) || 1);
+    const sched = Array.isArray(ev.checkin_schedule) && ev.checkin_schedule.length > 0
+      ? ev.checkin_schedule
+      : Array.from({ length: cn }, (_, i) => ({ idx: i + 1, label: `${i + 1}° Credenciamento`, starts_at: "", interval_min: 30 }));
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
       event_date: ev.event_date ?? "", schedule: ev.schedule ?? "",
@@ -386,12 +395,23 @@ function EventsTab({ league }: any) {
       price_visitor: Number(ev.price_visitor) || 0,
       partner_league_ids: ev.partner_league_ids ?? [],
       max_seats: Number(ev.max_seats) || 0,
+      total_hours: Number(ev.total_hours) || 0,
+      checkin_count: cn,
+      checkin_schedule: sched,
+      freeze_on_event_day: ev.freeze_on_event_day !== false,
     });
     setOpen(true);
   }
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const payload = {
+    const cn = Math.max(1, Math.min(10, Number(f.checkin_count) || 1));
+    const sched = (f.checkin_schedule || []).slice(0, cn).map((s: any, i: number) => ({
+      idx: i + 1,
+      label: s?.label || `${i + 1}° Credenciamento`,
+      starts_at: s?.starts_at || null,
+      interval_min: Number(s?.interval_min) || 30,
+    }));
+    const payload: any = {
       league_id: league.id,
       title: f.title,
       description: f.description,
@@ -403,12 +423,27 @@ function EventsTab({ league }: any) {
       price_visitor: Number(f.price_visitor) || 0,
       partner_league_ids: f.partner_league_ids,
       max_seats: Number(f.max_seats) > 0 ? Number(f.max_seats) : null,
+      total_hours: Number(f.total_hours) || 0,
+      checkin_count: cn,
+      checkin_schedule: sched,
+      freeze_on_event_day: !!f.freeze_on_event_day,
     };
     const { error } = editing
       ? await supabase.from("league_events").update(payload).eq("id", editing.id)
       : await supabase.from("league_events").insert(payload);
     if (error) return toast.error(error.message);
     toast.success(editing ? "Atualizado" : "Criado"); setOpen(false); setF(blank); setEditing(null); reload();
+  }
+  function updateScheduleCount(n: number) {
+    n = Math.max(1, Math.min(10, n));
+    setF((p: any) => {
+      const existing = p.checkin_schedule || [];
+      const sched = Array.from({ length: n }, (_, i) => existing[i] || { idx: i + 1, label: `${i + 1}° Credenciamento`, starts_at: "", interval_min: 30 });
+      return { ...p, checkin_count: n, checkin_schedule: sched };
+    });
+  }
+  function updateScheduleItem(i: number, patch: any) {
+    setF((p: any) => ({ ...p, checkin_schedule: p.checkin_schedule.map((s: any, k: number) => k === i ? { ...s, ...patch } : s) }));
   }
   async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_events").delete().eq("id", id); reload(); }
   async function toggleField(id: string, field: "published" | "accepting_registrations", v: boolean) {
@@ -452,6 +487,48 @@ function EventsTab({ league }: any) {
               <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
             </div>
             <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
+
+            {/* CERTIFICADO E CREDENCIAMENTOS */}
+            <div className="rounded border p-3 space-y-3 bg-muted/30">
+              <h4 className="text-sm font-bold flex items-center gap-1"><Award className="size-4" /> Certificado e Credenciamentos</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">Horas totais do evento</Label>
+                  <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">Essa será a quantidade de horas em certificado.</p>
+                </div>
+                <div>
+                  <Label className="text-xs">Quantidade de credenciamentos</Label>
+                  <Input type="number" min="1" max="10" value={f.checkin_count} onChange={(e) => updateScheduleCount(+e.target.value)} />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Cada credenciamento valerá <b>{f.checkin_count > 0 ? (Number(f.total_hours) / f.checkin_count).toFixed(2) : "0"}h</b>.
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {(f.checkin_schedule || []).map((s: any, i: number) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-5">
+                      <Label className="text-[10px]">Nome do {i + 1}° credenciamento</Label>
+                      <Input value={s.label || ""} onChange={(e) => updateScheduleItem(i, { label: e.target.value })} />
+                    </div>
+                    <div className="col-span-5">
+                      <Label className="text-[10px]">Data / Hora</Label>
+                      <Input type="datetime-local" value={s.starts_at || ""} onChange={(e) => updateScheduleItem(i, { starts_at: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-[10px]">Intervalo (min)</Label>
+                      <Input type="number" min="1" value={s.interval_min || 30} onChange={(e) => updateScheduleItem(i, { interval_min: +e.target.value })} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <label className="flex items-center justify-between gap-2 text-xs p-2 rounded border bg-background">
+                <span>Congelar inscrições no dia do evento (segurança)</span>
+                <Switch checked={!!f.freeze_on_event_day} onCheckedChange={(v) => setF({ ...f, freeze_on_event_day: v })} />
+              </label>
+            </div>
+
             <div>
               <Label>Ligas parceiras (recebem o valor de parceiro)</Label>
               <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1">
@@ -476,6 +553,7 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const [regs, setRegs] = useState<any[] | null>(null);
   const [selected, setSelected] = useState<any | null>(null);
   const [mcOpen, setMcOpen] = useState(false);
+  const [checkinOpen, setCheckinOpen] = useState(false);
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
@@ -529,7 +607,10 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             <Switch checked={!!event.accepting_registrations} onCheckedChange={(v) => onToggle(event.id, "accepting_registrations", v)} />
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <Button size="sm" variant="default" className="w-full" onClick={() => setCheckinOpen(true)}>
+            <ClipboardCheck className="size-3 mr-1" /> Credenciamento
+          </Button>
           <Button size="sm" variant="outline" className="w-full" onClick={() => setMcOpen(true)}>
             <BookOpen className="size-3 mr-1" /> Minicursos
           </Button>
@@ -537,6 +618,7 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             {expanded ? "Esconder inscritos" : "Inscritos / Arrecadação"}
           </Button>
         </div>
+        <CheckinDialog mode={checkinOpen ? { kind: "event", event } : null} open={checkinOpen} onClose={() => setCheckinOpen(false)} />
         {expanded && (
           <div className="pt-3 border-t space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
@@ -606,8 +688,9 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
-  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false };
+  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
+  const [checkinMc, setCheckinMc] = useState<any | null>(null);
 
   async function reload() {
     const { data } = await supabase.from("league_minicourses").select("*").eq("event_id", event.id).order("starts_at", { ascending: true });
@@ -639,6 +722,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       is_free: !!mc.is_free, price: Number(mc.price) || 0,
       max_registrations: Number(mc.max_registrations) || 20,
       published: !!mc.published,
+      total_hours: Number(mc.total_hours) || 0,
     });
     setFormOpen(true);
   }
@@ -653,6 +737,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       is_free: !!f.is_free, price: f.is_free ? 0 : Number(f.price) || 0,
       max_registrations: Math.max(1, Number(f.max_registrations) || 1),
       published: !!f.published,
+      total_hours: Number(f.total_hours) || 0,
     };
     const { error } = editing
       ? await supabase.from("league_minicourses").update(payload).eq("id", editing.id)
@@ -705,6 +790,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
                           {mc.location && <p className="text-[11px] text-muted-foreground">📍 {mc.location}</p>}
                         </div>
                         <div className="flex gap-1 shrink-0">
+                          <Button size="sm" variant="default" onClick={() => setCheckinMc(mc)}><ClipboardCheck className="size-3" /></Button>
                           <Button size="sm" variant="outline" onClick={() => openEdit(mc)}>Editar</Button>
                           <Button size="sm" variant="destructive" onClick={() => del(mc.id)}><Trash2 className="size-3" /></Button>
                         </div>
@@ -752,6 +838,11 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
             {!f.is_free && (
               <div><Label>Valor adicional (R$)</Label><Input type="number" step="0.01" min="0.50" value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Mínimo R$ 0,50 (limite do gateway).</p></div>
             )}
+            <div className="rounded border p-2 bg-muted/30">
+              <Label className="text-xs">Horas no certificado</Label>
+              <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
+              <p className="text-[11px] text-muted-foreground mt-1">Minicursos têm 1 credenciamento — esta é a carga horária total no certificado.</p>
+            </div>
             <label className="flex items-center justify-between gap-2 p-3 rounded border">
               <div>
                 <span className="text-sm font-medium">Publicar imediatamente</span>
@@ -786,6 +877,8 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
           )}
         </DialogContent>
       </Dialog>
+
+      <CheckinDialog mode={checkinMc ? { kind: "minicourse", minicourse: checkinMc } : null} open={!!checkinMc} onClose={() => setCheckinMc(null)} />
     </>
   );
 }
