@@ -401,6 +401,7 @@ function EventsTab({ league }: any) {
   const blank = {
     title: "", description: "", image_url: "",
     event_date: "", schedule: "",
+    registration_deadline: "",
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
     max_seats: 0,
@@ -429,6 +430,7 @@ function EventsTab({ league }: any) {
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
       event_date: ev.event_date ?? "", schedule: ev.schedule ?? "",
+      registration_deadline: ev.registration_deadline ? new Date(ev.registration_deadline).toISOString().slice(0, 16) : "",
       price_ligante: Number(ev.price_ligante) || 0,
       price_partner: Number(ev.price_partner) || 0,
       price_visitor: Number(ev.price_visitor) || 0,
@@ -457,6 +459,7 @@ function EventsTab({ league }: any) {
       image_url: f.image_url || null,
       event_date: f.event_date || null,
       schedule: f.schedule || null,
+      registration_deadline: f.registration_deadline ? new Date(f.registration_deadline).toISOString() : null,
       price_ligante: Number(f.price_ligante) || 0,
       price_partner: Number(f.price_partner) || 0,
       price_visitor: Number(f.price_visitor) || 0,
