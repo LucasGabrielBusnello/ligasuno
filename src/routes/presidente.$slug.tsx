@@ -745,21 +745,22 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                     }}>Copiar Inscritos</Button>
                   </div>
                   <div className="space-y-1">
-                    {regs.map(r => (
+                    {paidOnly.map((r: any) => (
                       <button key={r.id} onClick={() => setSelected(r)} className="w-full text-left p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-bold truncate">{r.full_name}</div>
                           <div className="text-[11px] text-muted-foreground">{r.profiles?.email}</div>
                         </div>
                         <div className="flex flex-col items-end shrink-0">
-                          <Badge variant={r.status === "paid" ? "default" : "secondary"} className="text-[10px]">{r.status === "paid" ? "Pago" : "Pendente"}</Badge>
+                          <Badge variant="default" className="text-[10px]">Pago</Badge>
                           <span className="text-[10px] text-muted-foreground mt-0.5">{r.category} · R${Number(r.paid_price).toFixed(2)}</span>
                         </div>
                       </button>
                     ))}
                   </div>
                 </>
-              )}
+              );
+            })()}
 
           </div>
         )}
