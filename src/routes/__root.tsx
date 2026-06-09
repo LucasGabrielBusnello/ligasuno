@@ -73,6 +73,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "google", content: "notranslate" },
+      { httpEquiv: "Content-Language", content: "pt-BR" },
       { title: "Ligas Unochapecó" },
       { name: "description", content: "Centralizes all academic leagues, offering a unified platform for information, management, and event participation." },
       { name: "author", content: "Lovable" },
