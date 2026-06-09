@@ -311,17 +311,52 @@ function ConfigTab({ league, setLeague, paid }: any) {
     toast.success(v ? "Publicado" : "Despublicado");
   }
   return (
-    <Card><CardContent className="p-6 space-y-4">
-      <div className="flex items-center justify-between p-4 rounded border">
-        <div><div className="font-black">Site publicado</div><div className="text-sm text-muted-foreground">Aparece na página inicial quando ativo.</div></div>
-        <Switch checked={pub} onCheckedChange={togglePub} />
-      </div>
-      <div><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-      <div><Label>Ícone (URL)</Label><Input value={f.icon_url} onChange={(e) => setF({ ...f, icon_url: e.target.value })} /></div>
-      <div><Label>Cor tema</Label><Input type="color" value={f.theme_color} onChange={(e) => setF({ ...f, theme_color: e.target.value })} /></div>
-      <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-      <Button onClick={save}>Salvar</Button>
-    </CardContent></Card>
+    <div className="space-y-4">
+      <Card><CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between p-4 rounded border">
+          <div><div className="font-black">Site publicado</div><div className="text-sm text-muted-foreground">Aparece na página inicial quando ativo.</div></div>
+          <Switch checked={pub} onCheckedChange={togglePub} />
+        </div>
+        <div><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+        <div><Label>Ícone (URL)</Label><Input value={f.icon_url} onChange={(e) => setF({ ...f, icon_url: e.target.value })} /></div>
+        <div><Label>Cor tema</Label><Input type="color" value={f.theme_color} onChange={(e) => setF({ ...f, theme_color: e.target.value })} /></div>
+        <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+        <Button onClick={save}>Salvar</Button>
+      </CardContent></Card>
+      <SheetsSyncCard league={league} />
+    </div>
+  );
+}
+
+function SheetsSyncCard({ league }: any) {
+  const getCfg = useServerFn(getSheetConfig);
+  const saveCfg = useServerFn(saveSheetConfig);
+  const [sid, setSid] = useState("");
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [lastErr, setLastErr] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r: any = await getCfg({ data: { league_id: league.id } } as any);
+        if (r) { setSid(r.spreadsheet_id || ""); setLastSync(r.last_synced_at); setLastErr(r.last_error); }
+      } catch {}
+    })();
+  }, [league.id]);
+  async function save() {
+    try { const r: any = await saveCfg({ data: { league_id: league.id, spreadsheet_id: sid } } as any); setSid(r.spreadsheet_id); toast.success("Planilha vinculada"); }
+    catch (e: any) { toast.error(e?.message ?? "Falha"); }
+  }
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="size-4" /> Backup em Google Sheets</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">Cole o ID ou URL completa da planilha Google Sheets. Use o botão "Sync Sheets" em cada evento para enviar os inscritos.</p>
+        <Input value={sid} onChange={(e) => setSid(e.target.value)} placeholder="ID da planilha ou URL completa" />
+        <Button size="sm" onClick={save}>Salvar planilha</Button>
+        {lastSync && <p className="text-[11px] text-muted-foreground">Última sincronização: {new Date(lastSync).toLocaleString("pt-BR")}</p>}
+        {lastErr && <p className="text-[11px] text-destructive">Último erro: {lastErr}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
