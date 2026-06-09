@@ -13,9 +13,13 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award, Download, FileSpreadsheet, QrCode } from "lucide-react";
 import { CertificatesDialog } from "@/components/certificates-dialog";
 import { CheckinDialog } from "@/components/event-checkin-dialog";
+import { EventCertificatesDialog } from "@/components/event-certificates-dialog";
+import { generateBadgesPdf } from "@/lib/badge-pdf";
+import { syncEventToSheet, getSheetConfig, saveSheetConfig } from "@/lib/sheets-sync.functions";
+import { listEventCheckinRoster } from "@/lib/event-checkin.functions";
 
 import { disconnectMp } from "@/lib/mp-oauth.functions";
 import {
@@ -307,17 +311,52 @@ function ConfigTab({ league, setLeague, paid }: any) {
     toast.success(v ? "Publicado" : "Despublicado");
   }
   return (
-    <Card><CardContent className="p-6 space-y-4">
-      <div className="flex items-center justify-between p-4 rounded border">
-        <div><div className="font-black">Site publicado</div><div className="text-sm text-muted-foreground">Aparece na página inicial quando ativo.</div></div>
-        <Switch checked={pub} onCheckedChange={togglePub} />
-      </div>
-      <div><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-      <div><Label>Ícone (URL)</Label><Input value={f.icon_url} onChange={(e) => setF({ ...f, icon_url: e.target.value })} /></div>
-      <div><Label>Cor tema</Label><Input type="color" value={f.theme_color} onChange={(e) => setF({ ...f, theme_color: e.target.value })} /></div>
-      <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-      <Button onClick={save}>Salvar</Button>
-    </CardContent></Card>
+    <div className="space-y-4">
+      <Card><CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between p-4 rounded border">
+          <div><div className="font-black">Site publicado</div><div className="text-sm text-muted-foreground">Aparece na página inicial quando ativo.</div></div>
+          <Switch checked={pub} onCheckedChange={togglePub} />
+        </div>
+        <div><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+        <div><Label>Ícone (URL)</Label><Input value={f.icon_url} onChange={(e) => setF({ ...f, icon_url: e.target.value })} /></div>
+        <div><Label>Cor tema</Label><Input type="color" value={f.theme_color} onChange={(e) => setF({ ...f, theme_color: e.target.value })} /></div>
+        <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+        <Button onClick={save}>Salvar</Button>
+      </CardContent></Card>
+      <SheetsSyncCard league={league} />
+    </div>
+  );
+}
+
+function SheetsSyncCard({ league }: any) {
+  const getCfg = useServerFn(getSheetConfig);
+  const saveCfg = useServerFn(saveSheetConfig);
+  const [sid, setSid] = useState("");
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [lastErr, setLastErr] = useState<string | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r: any = await getCfg({ data: { league_id: league.id } } as any);
+        if (r) { setSid(r.spreadsheet_id || ""); setLastSync(r.last_synced_at); setLastErr(r.last_error); }
+      } catch {}
+    })();
+  }, [league.id]);
+  async function save() {
+    try { const r: any = await saveCfg({ data: { league_id: league.id, spreadsheet_id: sid } } as any); setSid(r.spreadsheet_id); toast.success("Planilha vinculada"); }
+    catch (e: any) { toast.error(e?.message ?? "Falha"); }
+  }
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="size-4" /> Backup em Google Sheets</CardTitle></CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">Cole o ID ou URL completa da planilha Google Sheets. Use o botão "Sync Sheets" em cada evento para enviar os inscritos.</p>
+        <Input value={sid} onChange={(e) => setSid(e.target.value)} placeholder="ID da planilha ou URL completa" />
+        <Button size="sm" onClick={save}>Salvar planilha</Button>
+        {lastSync && <p className="text-[11px] text-muted-foreground">Última sincronização: {new Date(lastSync).toLocaleString("pt-BR")}</p>}
+        {lastErr && <p className="text-[11px] text-destructive">Último erro: {lastErr}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -554,6 +593,61 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const [selected, setSelected] = useState<any | null>(null);
   const [mcOpen, setMcOpen] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const listRosterFn = useServerFn(listEventCheckinRoster);
+  const syncFn = useServerFn(syncEventToSheet);
+
+  async function exportData(kind: "csv" | "json") {
+    setBusy(kind);
+    try {
+      const r: any = await listRosterFn({ data: { event_id: event.id } } as any);
+      const members = r.members || [];
+      let blob: Blob;
+      let filename: string;
+      if (kind === "json") {
+        blob = new Blob([JSON.stringify({ event, members }, null, 2)], { type: "application/json" });
+        filename = `${event.title}-inscritos.json`;
+      } else {
+        const header = ["Nome", "CPF", "E-mail", "Código", "Credenciamentos"].join(";");
+        const lines = members.map((m: any) =>
+          [m.full_name, m.cpf, m.email, m.checkin_code, Object.keys(m.checkins || {}).join(",")].map((x: any) => `"${String(x ?? "").replace(/"/g, '""')}"`).join(";"));
+        blob = new Blob(["\uFEFF" + [header, ...lines].join("\n")], { type: "text/csv" });
+        filename = `${event.title}-inscritos.csv`;
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setBusy(null); }
+  }
+
+  async function generateBadges() {
+    setBusy("badges");
+    try {
+      const r: any = await listRosterFn({ data: { event_id: event.id } } as any);
+      const rows = (r.members || []).filter((m: any) => m.full_name && m.checkin_code);
+      if (rows.length === 0) return toast.error("Nenhum inscrito pago com nome");
+      const blob = await generateBadgesPdf({
+        eventTitle: event.title, leagueName: "LIGASUNO",
+        themeColor: undefined, rows,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = `${event.title}-crachas.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setBusy(null); }
+  }
+
+  async function syncSheet() {
+    setBusy("sync");
+    try {
+      const r: any = await syncFn({ data: { event_id: event.id } } as any);
+      toast.success(`Sincronizado: ${r.rows} linha(s) → "${r.sheet}"`);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setBusy(null); }
+  }
+
 
   useEffect(() => {
     if (!expanded || regs !== null) return;
@@ -614,11 +708,27 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
           <Button size="sm" variant="outline" className="w-full" onClick={() => setMcOpen(true)}>
             <BookOpen className="size-3 mr-1" /> Minicursos
           </Button>
-          <Button size="sm" variant="ghost" className="w-full" onClick={onExpand}>
+          <Button size="sm" variant="outline" className="w-full" onClick={() => setCertOpen(true)}>
+            <Award className="size-3 mr-1" /> Certificados
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={generateBadges} disabled={busy === "badges"}>
+            <QrCode className="size-3 mr-1" /> {busy === "badges" ? "Gerando..." : "Crachás (PDF)"}
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={() => exportData("csv")} disabled={busy === "csv"}>
+            <Download className="size-3 mr-1" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={() => exportData("json")} disabled={busy === "json"}>
+            <Download className="size-3 mr-1" /> JSON
+          </Button>
+          <Button size="sm" variant="outline" className="w-full" onClick={syncSheet} disabled={busy === "sync"}>
+            <FileSpreadsheet className="size-3 mr-1" /> {busy === "sync" ? "Sincronizando..." : "Sync Sheets"}
+          </Button>
+          <Button size="sm" variant="ghost" className="w-full col-span-2 sm:col-span-1" onClick={onExpand}>
             {expanded ? "Esconder inscritos" : "Inscritos / Arrecadação"}
           </Button>
         </div>
         <CheckinDialog mode={checkinOpen ? { kind: "event", event } : null} open={checkinOpen} onClose={() => setCheckinOpen(false)} />
+        <EventCertificatesDialog mode={certOpen ? { kind: "event", event, leagueId: event.league_id } : null} open={certOpen} onClose={() => setCertOpen(false)} />
         {expanded && (
           <div className="pt-3 border-t space-y-3">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
@@ -691,6 +801,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
   const [checkinMc, setCheckinMc] = useState<any | null>(null);
+  const [certMc, setCertMc] = useState<any | null>(null);
 
   async function reload() {
     const { data } = await supabase.from("league_minicourses").select("*").eq("event_id", event.id).order("starts_at", { ascending: true });
@@ -789,8 +900,9 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
                           <p className="text-xs text-muted-foreground">{mc.instructor} · {new Date(mc.starts_at).toLocaleString("pt-BR")}</p>
                           {mc.location && <p className="text-[11px] text-muted-foreground">📍 {mc.location}</p>}
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button size="sm" variant="default" onClick={() => setCheckinMc(mc)}><ClipboardCheck className="size-3" /></Button>
+                        <div className="flex flex-wrap gap-1 shrink-0">
+                          <Button size="sm" variant="default" onClick={() => setCheckinMc(mc)} title="Credenciamento"><ClipboardCheck className="size-3" /></Button>
+                          <Button size="sm" variant="secondary" onClick={() => setCertMc(mc)} title="Certificados"><Award className="size-3" /></Button>
                           <Button size="sm" variant="outline" onClick={() => openEdit(mc)}>Editar</Button>
                           <Button size="sm" variant="destructive" onClick={() => del(mc.id)}><Trash2 className="size-3" /></Button>
                         </div>
@@ -879,6 +991,10 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       </Dialog>
 
       <CheckinDialog mode={checkinMc ? { kind: "minicourse", minicourse: checkinMc } : null} open={!!checkinMc} onClose={() => setCheckinMc(null)} />
+      <EventCertificatesDialog
+        mode={certMc ? { kind: "minicourse", minicourse: certMc, leagueId: event.league_id } : null}
+        open={!!certMc} onClose={() => setCertMc(null)}
+      />
     </>
   );
 }
