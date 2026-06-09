@@ -13,7 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award } from "lucide-react";
+import { CertificatesDialog } from "@/components/certificates-dialog";
 
 import { disconnectMp } from "@/lib/mp-oauth.functions";
 import {
@@ -881,6 +882,7 @@ function MembersTab({ league }: any) {
   const [role, setRole] = useState<"ligante" | "diretor">("ligante");
   const [selOpen, setSelOpen] = useState(false);
   const [semOpen, setSemOpen] = useState(false);
+  const [certOpen, setCertOpen] = useState(false);
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const listPays = useServerFn(listCyclePayments);
 
@@ -976,6 +978,7 @@ function MembersTab({ league }: any) {
     <Card><CardContent className="p-6 space-y-4">
       <LeaveRequestsPanel league={league} onProcessed={reload} />
       <div className="flex justify-end gap-2 flex-wrap">
+        <Button onClick={() => setCertOpen(true)} variant="outline"><Award className="size-4" /> Certificados do Semestre</Button>
         <Button onClick={() => setSemOpen(true)} variant="outline"><DollarSign className="size-4" /> Semestralidade</Button>
         <Button onClick={() => setSelOpen(true)} variant="outline"><ClipboardCheck className="size-4" /> Processo Seletivo</Button>
       </div>
@@ -1020,6 +1023,7 @@ function MembersTab({ league }: any) {
       </div>
       <SelectionManagerDialog league={league} open={selOpen} onClose={() => setSelOpen(false)} onMembershipUpdated={reload} />
       <SemesterDialog league={league} open={semOpen} onClose={() => setSemOpen(false)} onUpdated={reload} />
+      <CertificatesDialog league={league} open={certOpen} onClose={() => setCertOpen(false)} />
     </CardContent></Card>
   );
 }

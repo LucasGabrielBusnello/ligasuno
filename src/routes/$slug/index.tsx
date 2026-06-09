@@ -598,7 +598,11 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
         </DialogHeader>
         {step === 1 ? (
           <div className="space-y-3">
-            <div><Label>Nome completo *</Label><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+            <div>
+              <Label>Nome completo *</Label>
+              <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+              <p className="text-[11px] text-muted-foreground mt-1">Será usado para emitir seu certificado — digite o nome completo, sem abreviações.</p>
+            </div>
             <div><Label>Nome social (opcional)</Label><Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} /></div>
             <div><Label>CPF *</Label><Input inputMode="numeric" value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value.replace(/[^\d.-]/g, "") })} placeholder="000.000.000-00" /></div>
             <div>

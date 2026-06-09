@@ -83,8 +83,10 @@ function DiretorPage() {
 function FreqTab({ league }: { league: League }) {
   const [activity, setActivity] = useState("");
   const [date, setDate] = useState("");
+  const [hours, setHours] = useState<string>("1");
+  const [description, setDescription] = useState("");
   const [members, setMembers] = useState<any[]>([]);
-  const [presence, setPresence] = useState<Record<string, boolean>>({});
+  const [status, setStatus] = useState<Record<string, "presente" | "ausente" | "justificada">>({});
   const [sessions, setSessions] = useState<any[]>([]);
   const [editingKey, setEditingKey] = useState<string | null>(null);
 
@@ -103,7 +105,7 @@ function FreqTab({ league }: { league: League }) {
     const grouped: Record<string, any> = {};
     (data ?? []).forEach((r: any) => {
       const key = `${r.activity}|${r.activity_date}`;
-      if (!grouped[key]) grouped[key] = { key, activity: r.activity, activity_date: r.activity_date, rows: [] };
+      if (!grouped[key]) grouped[key] = { key, activity: r.activity, activity_date: r.activity_date, hours: Number(r.hours) || 0, description: r.description ?? "", rows: [] };
       grouped[key].rows.push(r);
     });
     setSessions(Object.values(grouped));
@@ -113,23 +115,31 @@ function FreqTab({ league }: { league: League }) {
 
   async function save() {
     if (!activity || !date) return toast.error("Preencha atividade e data");
+    const h = Number(hours);
+    if (isNaN(h) || h < 0) return toast.error("Horas inválidas");
     const rows = members.map((m) => ({
       league_id: league.id, activity, activity_date: date,
-      user_id: m.user_id, present: !!presence[m.user_id],
+      user_id: m.user_id,
+      status: status[m.user_id] ?? "ausente",
+      present: (status[m.user_id] ?? "ausente") === "presente",
+      hours: h,
+      description: description || null,
     }));
     const { error } = await supabase.from("league_attendance").upsert(rows, { onConflict: "league_id,activity,activity_date,user_id" });
     if (error) return toast.error(error.message);
     toast.success("Frequência salva");
-    setActivity(""); setDate(""); setPresence({}); setEditingKey(null);
+    setActivity(""); setDate(""); setHours("1"); setDescription(""); setStatus({}); setEditingKey(null);
     loadSessions();
   }
 
   function startEdit(s: any) {
     setActivity(s.activity);
     setDate(s.activity_date);
-    const p: Record<string, boolean> = {};
-    s.rows.forEach((r: any) => { p[r.user_id] = !!r.present; });
-    setPresence(p);
+    setHours(String(s.hours ?? 0));
+    setDescription(s.description ?? "");
+    const st: Record<string, "presente" | "ausente" | "justificada"> = {};
+    s.rows.forEach((r: any) => { st[r.user_id] = (r.status as any) ?? (r.present ? "presente" : "ausente"); });
+    setStatus(st);
     setEditingKey(s.key);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -140,8 +150,12 @@ function FreqTab({ league }: { league: League }) {
       .eq("league_id", league.id).eq("activity", s.activity).eq("activity_date", s.activity_date);
     if (error) return toast.error(error.message);
     toast.success("Frequência excluída");
-    if (editingKey === s.key) { setActivity(""); setDate(""); setPresence({}); setEditingKey(null); }
+    if (editingKey === s.key) { setActivity(""); setDate(""); setHours("1"); setDescription(""); setStatus({}); setEditingKey(null); }
     loadSessions();
+  }
+
+  function setStatusFor(uid: string, st: "presente" | "ausente" | "justificada") {
+    setStatus((s) => ({ ...s, [uid]: st }));
   }
 
   return (
@@ -149,19 +163,39 @@ function FreqTab({ league }: { league: League }) {
       <Card><CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-black">{editingKey ? "Editar frequência" : "Nova frequência"}</h3>
-          {editingKey && <Button size="sm" variant="ghost" onClick={() => { setActivity(""); setDate(""); setPresence({}); setEditingKey(null); }}>Cancelar edição</Button>}
+          {editingKey && <Button size="sm" variant="ghost" onClick={() => { setActivity(""); setDate(""); setHours("1"); setDescription(""); setStatus({}); setEditingKey(null); }}>Cancelar edição</Button>}
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
-          <div><Label>Atividade</Label><Input value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="Ex: Aula de Cardio" /></div>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-2"><Label>Atividade</Label><Input value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="Ex: Aula de Cardio" /></div>
           <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+          <div>
+            <Label>Horas equivalentes</Label>
+            <Input type="number" step="0.5" min="0" value={hours} onChange={(e) => setHours(e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Descrição (opcional)</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Observações sobre a atividade" />
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground bg-muted/40 rounded p-2 border-l-2 border-primary/50">
+          As <strong>horas equivalentes</strong> definem quantas horas essa atividade vale no <strong>certificado oficial</strong> do semestre.
+          Apenas membros marcados como <strong>Presente</strong> recebem essas horas. <strong>Justificada</strong> e <strong>Ausente</strong> contam 0 horas.
+        </p>
+
         <div className="space-y-2">
-          {members.map((m) => (
-            <label key={m.user_id} className="flex items-center justify-between p-3 rounded border cursor-pointer hover:bg-muted/50">
-              <span><span className="font-bold">{m.profiles?.username}</span> <Badge variant="secondary" className="ml-2">{m.role}</Badge></span>
-              <input type="checkbox" checked={!!presence[m.user_id]} onChange={(e) => setPresence({ ...presence, [m.user_id]: e.target.checked })} />
-            </label>
-          ))}
+          {members.map((m) => {
+            const st = status[m.user_id] ?? "ausente";
+            return (
+              <div key={m.user_id} className="flex items-center justify-between p-3 rounded border gap-2 flex-wrap">
+                <span><span className="font-bold">{m.profiles?.username}</span> <Badge variant="secondary" className="ml-2">{m.role}</Badge></span>
+                <div className="flex gap-1">
+                  <Button type="button" size="sm" variant={st === "presente" ? "default" : "outline"} onClick={() => setStatusFor(m.user_id, "presente")} className={st === "presente" ? "bg-green-600 hover:bg-green-700" : ""}>Presente</Button>
+                  <Button type="button" size="sm" variant={st === "justificada" ? "default" : "outline"} onClick={() => setStatusFor(m.user_id, "justificada")} className={st === "justificada" ? "bg-amber-600 hover:bg-amber-700" : ""}>Justificada</Button>
+                  <Button type="button" size="sm" variant={st === "ausente" ? "destructive" : "outline"} onClick={() => setStatusFor(m.user_id, "ausente")}>Ausente</Button>
+                </div>
+              </div>
+            );
+          })}
           {members.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum ligante cadastrado.</p>}
         </div>
         <Button onClick={save} className="w-full"><Users className="size-4" /> {editingKey ? "Atualizar Presenças" : "Salvar Presenças"}</Button>
@@ -172,14 +206,17 @@ function FreqTab({ league }: { league: League }) {
         <CardContent className="space-y-2">
           {sessions.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhuma frequência registrada ainda.</p>}
           {sessions.map((s) => {
-            const presentCount = s.rows.filter((r: any) => r.present).length;
+            const presentes = s.rows.filter((r: any) => (r.status ?? (r.present ? "presente" : "ausente")) === "presente").length;
+            const justificadas = s.rows.filter((r: any) => r.status === "justificada").length;
+            const ausentes = s.rows.length - presentes - justificadas;
             return (
-              <div key={s.key} className="p-3 rounded border flex items-center gap-3">
+              <div key={s.key} className="p-3 rounded border flex items-center gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold truncate">{s.activity}</div>
+                  <div className="font-bold truncate">{s.activity} <Badge variant="secondary" className="ml-1 text-[10px]">{Number(s.hours).toFixed(1).replace(".", ",")}h</Badge></div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(s.activity_date).toLocaleDateString("pt-BR")} · {presentCount}/{s.rows.length} presentes
+                    {new Date(s.activity_date).toLocaleDateString("pt-BR")} · {presentes}P · {justificadas}J · {ausentes}A
                   </div>
+                  {s.description && <div className="text-xs text-muted-foreground italic mt-0.5">{s.description}</div>}
                 </div>
                 <Button size="sm" variant="outline" onClick={() => startEdit(s)}>Editar</Button>
                 <Button size="sm" variant="destructive" onClick={() => delSession(s)}><Trash2 className="size-3" /></Button>
