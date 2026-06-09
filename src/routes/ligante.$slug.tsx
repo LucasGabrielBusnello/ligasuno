@@ -434,8 +434,14 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
         <CardContent className="space-y-2">
           {list.map((a) => {
             const d = new Date(a.activity_date + "T00:00:00");
+            const st = getStatus(a);
+            const styles = st === "presente"
+              ? "border-l-emerald-500 bg-emerald-500/5"
+              : st === "justificada"
+              ? "border-l-amber-500 bg-amber-500/5"
+              : "border-l-rose-500 bg-rose-500/5";
             return (
-              <div key={a.id} className={`flex items-center gap-3 p-3 rounded-xl border-l-4 ${a.present ? "border-l-emerald-500 bg-emerald-500/5" : "border-l-rose-500 bg-rose-500/5"}`}>
+              <div key={a.id} className={`flex items-center gap-3 p-3 rounded-xl border-l-4 ${styles}`}>
                 <div className="size-12 rounded-lg bg-card border flex flex-col items-center justify-center shrink-0">
                   <span className="text-[10px] font-bold uppercase text-muted-foreground">{d.toLocaleDateString("pt-BR", { month: "short" }).replace(".", "")}</span>
                   <span className="text-lg font-black leading-none">{d.getDate()}</span>
@@ -444,12 +450,13 @@ function AttendanceView({ league, userId }: { league: League; userId: string }) 
                   <p className="font-bold truncate">{a.activity}</p>
                   <p className="text-xs text-muted-foreground">{d.toLocaleDateString("pt-BR", { weekday: "long" })}</p>
                 </div>
-                {a.present
-                  ? <Badge className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="size-3 mr-1" />Presente</Badge>
-                  : <Badge variant="destructive"><XCircle className="size-3 mr-1" />Faltou</Badge>}
+                {st === "presente" && <Badge className="bg-emerald-600 hover:bg-emerald-700"><CheckCircle className="size-3 mr-1" />Presente</Badge>}
+                {st === "justificada" && <Badge className="bg-amber-500 hover:bg-amber-600"><CheckCircle className="size-3 mr-1" />Justificada</Badge>}
+                {st === "ausente" && <Badge variant="destructive"><XCircle className="size-3 mr-1" />Faltou</Badge>}
               </div>
             );
           })}
+
         </CardContent>
       </Card>
     </div>
