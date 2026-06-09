@@ -85,18 +85,31 @@ function FreqTab({ league }: { league: League }) {
   const [date, setDate] = useState("");
   const [members, setMembers] = useState<any[]>([]);
   const [presence, setPresence] = useState<Record<string, boolean>>({});
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const { data: mships } = await supabase.from("league_memberships").select("user_id, role, profiles!inner(username,email)").eq("league_id", league.id);
-      const list = (mships ?? []).filter((m: any) => ["ligante", "diretor"].includes(m.role));
-      if (league.president_id && !list.some((m: any) => m.user_id === league.president_id)) {
-        const { data: pres } = await supabase.from("profiles").select("username,email").eq("id", league.president_id).maybeSingle();
-        if (pres) list.push({ user_id: league.president_id, role: "presidente", profiles: pres } as any);
-      }
-      setMembers(list);
-    })();
-  }, [league.id, league.president_id]);
+  async function loadMembers() {
+    const { data: mships } = await supabase.from("league_memberships").select("user_id, role, profiles!inner(username,email)").eq("league_id", league.id);
+    const list = (mships ?? []).filter((m: any) => ["ligante", "diretor"].includes(m.role));
+    if (league.president_id && !list.some((m: any) => m.user_id === league.president_id)) {
+      const { data: pres } = await supabase.from("profiles").select("username,email").eq("id", league.president_id).maybeSingle();
+      if (pres) list.push({ user_id: league.president_id, role: "presidente", profiles: pres } as any);
+    }
+    setMembers(list);
+  }
+
+  async function loadSessions() {
+    const { data } = await supabase.from("league_attendance").select("*").eq("league_id", league.id).order("activity_date", { ascending: false });
+    const grouped: Record<string, any> = {};
+    (data ?? []).forEach((r: any) => {
+      const key = `${r.activity}|${r.activity_date}`;
+      if (!grouped[key]) grouped[key] = { key, activity: r.activity, activity_date: r.activity_date, rows: [] };
+      grouped[key].rows.push(r);
+    });
+    setSessions(Object.values(grouped));
+  }
+
+  useEffect(() => { loadMembers(); loadSessions(); }, [league.id, league.president_id]);
 
   async function save() {
     if (!activity || !date) return toast.error("Preencha atividade e data");
@@ -107,27 +120,78 @@ function FreqTab({ league }: { league: League }) {
     const { error } = await supabase.from("league_attendance").upsert(rows, { onConflict: "league_id,activity,activity_date,user_id" });
     if (error) return toast.error(error.message);
     toast.success("Frequência salva");
+    setActivity(""); setDate(""); setPresence({}); setEditingKey(null);
+    loadSessions();
+  }
+
+  function startEdit(s: any) {
+    setActivity(s.activity);
+    setDate(s.activity_date);
+    const p: Record<string, boolean> = {};
+    s.rows.forEach((r: any) => { p[r.user_id] = !!r.present; });
+    setPresence(p);
+    setEditingKey(s.key);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function delSession(s: any) {
+    if (!confirm(`Excluir frequência de "${s.activity}" em ${new Date(s.activity_date).toLocaleDateString("pt-BR")}?`)) return;
+    const { error } = await supabase.from("league_attendance").delete()
+      .eq("league_id", league.id).eq("activity", s.activity).eq("activity_date", s.activity_date);
+    if (error) return toast.error(error.message);
+    toast.success("Frequência excluída");
+    if (editingKey === s.key) { setActivity(""); setDate(""); setPresence({}); setEditingKey(null); }
+    loadSessions();
   }
 
   return (
-    <Card><CardContent className="p-6 space-y-4">
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div><Label>Atividade</Label><Input value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="Ex: Aula de Cardio" /></div>
-        <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-      </div>
-      <div className="space-y-2">
-        {members.map((m) => (
-          <label key={m.user_id} className="flex items-center justify-between p-3 rounded border cursor-pointer hover:bg-muted/50">
-            <span><span className="font-bold">{m.profiles?.username}</span> <Badge variant="secondary" className="ml-2">{m.role}</Badge></span>
-            <input type="checkbox" checked={!!presence[m.user_id]} onChange={(e) => setPresence({ ...presence, [m.user_id]: e.target.checked })} />
-          </label>
-        ))}
-        {members.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum ligante cadastrado.</p>}
-      </div>
-      <Button onClick={save} className="w-full"><Users className="size-4" /> Salvar Presenças</Button>
-    </CardContent></Card>
+    <div className="space-y-4">
+      <Card><CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-black">{editingKey ? "Editar frequência" : "Nova frequência"}</h3>
+          {editingKey && <Button size="sm" variant="ghost" onClick={() => { setActivity(""); setDate(""); setPresence({}); setEditingKey(null); }}>Cancelar edição</Button>}
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div><Label>Atividade</Label><Input value={activity} onChange={(e) => setActivity(e.target.value)} placeholder="Ex: Aula de Cardio" /></div>
+          <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        </div>
+        <div className="space-y-2">
+          {members.map((m) => (
+            <label key={m.user_id} className="flex items-center justify-between p-3 rounded border cursor-pointer hover:bg-muted/50">
+              <span><span className="font-bold">{m.profiles?.username}</span> <Badge variant="secondary" className="ml-2">{m.role}</Badge></span>
+              <input type="checkbox" checked={!!presence[m.user_id]} onChange={(e) => setPresence({ ...presence, [m.user_id]: e.target.checked })} />
+            </label>
+          ))}
+          {members.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum ligante cadastrado.</p>}
+        </div>
+        <Button onClick={save} className="w-full"><Users className="size-4" /> {editingKey ? "Atualizar Presenças" : "Salvar Presenças"}</Button>
+      </CardContent></Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Frequências registradas</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {sessions.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhuma frequência registrada ainda.</p>}
+          {sessions.map((s) => {
+            const presentCount = s.rows.filter((r: any) => r.present).length;
+            return (
+              <div key={s.key} className="p-3 rounded border flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold truncate">{s.activity}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(s.activity_date).toLocaleDateString("pt-BR")} · {presentCount}/{s.rows.length} presentes
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => startEdit(s)}>Editar</Button>
+                <Button size="sm" variant="destructive" onClick={() => delSession(s)}><Trash2 className="size-3" /></Button>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
+
 
 function EventsListTab({ league }: { league: League }) {
   const [events, setEvents] = useState<any[]>([]);
@@ -155,47 +219,61 @@ function NewsTab({ league }: { league: League }) {
   const [open, setOpen] = useState(false);
   const blank = { title: "", excerpt: "", image_url: "", category: "Geral", link: "" };
   const [f, setF] = useState(blank);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const reload = async () => {
     const { data } = await supabase.from("league_news").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
     setList(data ?? []);
   };
   useEffect(() => { reload(); }, [league.id]);
+  function openNew() { setEditingId(null); setF(blank); setOpen(true); }
+  function openEdit(n: any) {
+    setEditingId(n.id);
+    setF({ title: n.title ?? "", excerpt: n.excerpt ?? "", image_url: n.image_url ?? "", category: n.category ?? "Geral", link: n.link ?? "" });
+    setOpen(true);
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const { error } = await supabase.from("league_news").insert({ ...f, league_id: league.id, image_url: f.image_url || null, link: f.link || null });
+    const payload = { ...f, league_id: league.id, image_url: f.image_url || null, link: f.link || null };
+    const { error } = editingId
+      ? await supabase.from("league_news").update(payload).eq("id", editingId)
+      : await supabase.from("league_news").insert(payload);
     if (error) return toast.error(error.message);
-    toast.success("Publicado"); setOpen(false); setF(blank); reload();
+    toast.success(editingId ? "Notícia atualizada" : "Publicado"); setOpen(false); setF(blank); setEditingId(null); reload();
   }
   async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_news").delete().eq("id", id); reload(); }
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button onClick={() => setOpen(true)}><Plus className="size-4" /> Nova notícia</Button></div>
+      <div className="flex justify-end"><Button onClick={openNew}><Plus className="size-4" /> Nova notícia</Button></div>
       <div className="grid sm:grid-cols-2 gap-3">
         {list.map((n) => (
           <Card key={n.id}><CardContent className="p-4 flex gap-3">
             {n.image_url && <img src={n.image_url} className="size-16 rounded object-cover" />}
-            <div className="flex-1"><Badge variant="secondary" className="text-[10px]">{n.category}</Badge><h4 className="font-black mt-1">{n.title}</h4><p className="text-xs text-muted-foreground line-clamp-2">{n.excerpt}</p></div>
-            <Button size="sm" variant="destructive" onClick={() => del(n.id)}><Trash2 className="size-3" /></Button>
+            <div className="flex-1 min-w-0"><Badge variant="secondary" className="text-[10px]">{n.category}</Badge><h4 className="font-black mt-1 truncate">{n.title}</h4><p className="text-xs text-muted-foreground line-clamp-2">{n.excerpt}</p></div>
+            <div className="flex flex-col gap-1 shrink-0">
+              <Button size="sm" variant="outline" onClick={() => openEdit(n)}>Editar</Button>
+              <Button size="sm" variant="destructive" onClick={() => del(n.id)}><Trash2 className="size-3" /></Button>
+            </div>
           </CardContent></Card>
         ))}
         {list.length === 0 && <p className="text-sm text-muted-foreground col-span-2 text-center py-4">Nenhuma notícia ainda.</p>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova Notícia</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar Notícia" : "Nova Notícia"}</DialogTitle></DialogHeader>
           <form onSubmit={save} className="space-y-3">
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
             <div><Label>Resumo</Label><Textarea value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} /></div>
             <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
             <div><Label>Link externo</Label><Input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></div>
-            <DialogFooter><Button type="submit">Publicar</Button></DialogFooter>
+            <DialogFooter><Button type="submit">{editingId ? "Salvar" : "Publicar"}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
 
 
 function ScheduleTab({ league }: { league: League }) {

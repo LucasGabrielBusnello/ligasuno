@@ -50,6 +50,7 @@ function ConfigSection({ league }: { league: any }) {
     selection_total_seats: Number(league.selection_total_seats) || 0,
   });
   const [quotas, setQuotas] = useState<Record<number, number>>({});
+  const [restricts, setRestricts] = useState<Record<number, boolean>>({});
   const [quotasEnabled, setQuotasEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -70,10 +71,13 @@ function ConfigSection({ league }: { league: any }) {
       });
     }
     const m: Record<number, number> = {};
-    (qs ?? []).forEach((q: any) => { if (q.seats > 0) m[q.semester] = q.seats; });
+    const r: Record<number, boolean> = {};
+    (qs ?? []).forEach((q: any) => { if (q.seats > 0) { m[q.semester] = q.seats; r[q.semester] = !!q.restrict_to_semester; } });
     setQuotas(m);
+    setRestricts(r);
     setQuotasEnabled(Object.keys(m).length > 0);
   }
+
   useEffect(() => { loadAll(); }, [league.id]);
 
   async function save() {
@@ -99,9 +103,10 @@ function ConfigSection({ league }: { league: any }) {
         const seats = Number(target[sem]) || 0;
         if (seats > 0) {
           const { error: qe } = await supabase.from("league_selection_quotas").upsert(
-            { league_id: league.id, semester: sem, seats } as any,
+            { league_id: league.id, semester: sem, seats, restrict_to_semester: !!restricts[sem] } as any,
             { onConflict: "league_id,semester" } as any
           );
+
           if (qe) { toast.error(qe.message); return; }
         } else {
           await supabase.from("league_selection_quotas").delete().eq("league_id", league.id).eq("semester", sem);
@@ -147,23 +152,29 @@ function ConfigSection({ league }: { league: any }) {
         <div className="flex items-center justify-between">
           <div>
             <div className="font-black">Vagas exclusivas por semestre?</div>
-            <div className="text-xs text-muted-foreground">Reserve vagas para semestres específicos. Sobras voltam para a vaga geral.</div>
+            <div className="text-xs text-muted-foreground">Reserve vagas para semestres específicos. Sobras voltam para a vaga geral. Marque "Restringir" para também limitar o total de classificados desse semestre (impede ampla concorrência adicional).</div>
           </div>
           <Switch checked={quotasEnabled} onCheckedChange={setQuotasEnabled} />
         </div>
         {quotasEnabled && (
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {SEMESTERS.map(sem => (
-              <div key={sem}>
-                <Label className="text-xs">{sem}º semestre</Label>
+              <div key={sem} className="p-2 rounded border space-y-1.5">
+                <Label className="text-xs font-bold">{sem}º semestre</Label>
                 <Input type="number" min="0" placeholder="0"
                   value={quotas[sem] ?? ""}
                   onChange={(e) => setQuotas({ ...quotas, [sem]: +e.target.value })} />
+                <label className="flex items-center gap-1.5 text-[11px] cursor-pointer text-muted-foreground">
+                  <input type="checkbox" checked={!!restricts[sem]}
+                    onChange={(e) => setRestricts({ ...restricts, [sem]: e.target.checked })} />
+                  Restringir total a este semestre
+                </label>
               </div>
             ))}
           </div>
         )}
       </CardContent></Card>
+
 
       <Button onClick={save} disabled={saving}>{saving ? "Salvando..." : "Salvar configuração"}</Button>
     </div>
@@ -208,13 +219,16 @@ function ExamSection({ league, onMembershipUpdated }: { league: any; onMembershi
 
   async function doGenerate() {
     try {
-      await gen({ data: { league_id: league.id } } as any);
+      const res: any = await gen({ data: { league_id: league.id } } as any);
       toast.success("Classificação gerada");
+      const warnings: string[] = res?.warnings ?? [];
+      warnings.forEach(w => toast.warning(w, { duration: 8000 }));
       await reload();
       onMembershipUpdated?.();
     }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }
   }
+
   async function doUndo() {
     try { await undo({ data: { league_id: league.id } } as any); toast.success("Última ação desfeita"); reload(); }
     catch (e: any) { toast.error(e?.message ?? "Erro"); }

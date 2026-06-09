@@ -178,11 +178,14 @@ export const generateRanking = createServerFn({ method: "POST" })
     const used = new Set<string>();
     let pos = 1;
     const updates: { id: string; ranked_position: number; ranked_via: string; ranked_semester: number | null }[] = [];
+    const warnings: string[] = [];
+    const restrictedExcluded = new Set<number>();
 
     // 1. Cotas primeiro
     for (const q of quotas) {
       const sem = Number(q.semester);
       const seats = Math.max(0, Number(q.seats) || 0);
+      const restrict = !!q.restrict_to_semester;
       if (seats === 0) continue;
       const candidates = rankPool(present.filter((r:any) => r.semester === sem && !used.has(r.id)));
       const taken = candidates.slice(0, seats);
@@ -190,18 +193,23 @@ export const generateRanking = createServerFn({ method: "POST" })
         used.add(c.id);
         updates.push({ id: c.id, ranked_position: pos++, ranked_via: "quota", ranked_semester: sem });
       }
+      if (taken.length < seats) {
+        const faltantes = seats - taken.length;
+        warnings.push(`Não houve inscritos suficientes do ${sem}º semestre — ${faltantes} vaga(s) preenchida(s) por ampla concorrência.`);
+      }
+      if (restrict) restrictedExcluded.add(sem);
     }
 
-    // 2. Geral preenche restantes
+    // 2. Geral preenche restantes (excluindo semestres restritos que já atingiram seu teto)
     const remainingSeats = Math.max(0, total - updates.length);
-    const generalPool = rankPool(present.filter((r:any) => !used.has(r.id)));
+    const generalPool = rankPool(present.filter((r:any) => !used.has(r.id) && !restrictedExcluded.has(Number(r.semester))));
     const taken = generalPool.slice(0, remainingSeats);
     for (const c of taken) {
       used.add(c.id);
       updates.push({ id: c.id, ranked_position: pos++, ranked_via: "general", ranked_semester: null });
     }
 
-    // 3. Waitlist
+    // 3. Waitlist (inclui restritos excedentes, na espera)
     const waitlist = rankPool(present.filter((r:any) => !used.has(r.id)));
     let wpos = 1;
     for (const c of waitlist) {
@@ -225,8 +233,9 @@ export const generateRanking = createServerFn({ method: "POST" })
       }
     }
 
-    return { ok: true, classified: classifiedIds.length };
+    return { ok: true, classified: classifiedIds.length, warnings };
   });
+
 
 export const removeFromRanking = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
