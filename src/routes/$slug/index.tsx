@@ -820,8 +820,8 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const [list, setList] = useState<any[] | null>(null);
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [payOpen, setPayOpen] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pix, setPix] = useState<PixPaymentData | null>(null);
 
   async function reload() {
     const { data: mcs } = await supabase
@@ -846,38 +846,36 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   }
   useEffect(() => { reload(); }, [event.id, user?.id]);
 
-  // Detecta retorno do checkout: ?mc_paid=1
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const u = new URL(window.location.href);
-    if (u.searchParams.get("mc_paid") === "1") {
-      toast.success("Inscrição no minicurso confirmada!");
-      u.searchParams.delete("mc_paid");
-      window.history.replaceState({}, "", u.toString());
-      reload();
-    }
-  }, []);
-
-  async function register(mc: any, method: "card" | "pix") {
+  async function register(mc: any) {
     if (!user) { toast.error("Faça login primeiro"); return; }
     setBusy(true);
     try {
-      const { createMinicourseCheckout } = await import("@/lib/minicourses.functions");
-      const res: any = await createMinicourseCheckout({
-        data: { minicourse_id: mc.id, payment_method: method, origin_url: window.location.origin },
-      } as any);
+      const { createMinicoursePix } = await import("@/lib/event-pix.functions");
+      const res: any = await createMinicoursePix({ data: { minicourse_id: mc.id } } as any);
       if (res?.free) {
         toast.success("Inscrição confirmada!");
-        setPayOpen(null);
         reload();
-      } else if (res?.url) {
-        window.location.href = res.url;
+      } else {
+        setPix({
+          registration_id: res.registration_id,
+          payment_id: res.payment_id,
+          amount: res.amount,
+          qr_code: res.qr_code,
+          qr_code_base64: res.qr_code_base64,
+          ticket_url: res.ticket_url,
+          expires_at: res.expires_at,
+        });
       }
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao inscrever");
     } finally {
       setBusy(false);
     }
+  }
+
+  async function checkMcStatus(rid: string) {
+    const { getMinicoursePaymentStatus } = await import("@/lib/event-pix.functions");
+    return getMinicoursePaymentStatus({ data: { registration_id: rid } } as any) as any;
   }
 
   if (!isPaid) {
@@ -909,18 +907,18 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
                   {mc.location && <p className="text-xs text-muted-foreground">📍 {mc.location}</p>}
                   {mc.description && <p className="text-xs mt-1 whitespace-pre-line">{mc.description}</p>}
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[10px] text-muted-foreground mb-1">{used}/{cap || "∞"} vagas</div>
+                <div className="shrink-0 text-right space-y-1">
+                  <div className="text-[10px] text-muted-foreground">{used}/{cap || "∞"} vagas</div>
                   {mine?.status === "paid" ? (
                     <Badge className="bg-emerald-600">Inscrito</Badge>
                   ) : mine?.status === "pending" ? (
-                    <Badge variant="secondary">Pagamento pendente</Badge>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => register(mc)}>
+                      <QrCode className="size-3 mr-1" /> Pagar Pix
+                    </Button>
                   ) : full ? (
                     <Badge variant="outline">Esgotado</Badge>
-                  ) : mc.is_free ? (
-                    <Button size="sm" disabled={busy} onClick={() => register(mc, "card")}>Inscrever-se</Button>
                   ) : (
-                    <Button size="sm" disabled={busy} onClick={() => setPayOpen(mc)}>Inscrever-se</Button>
+                    <Button size="sm" disabled={busy} onClick={() => register(mc)}>Inscrever-se</Button>
                   )}
                 </div>
               </div>
@@ -929,24 +927,17 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
         );
       })}
 
-      <Dialog open={!!payOpen} onOpenChange={(v) => !v && setPayOpen(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Pagamento · {payOpen?.title}</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Valor: <b>R$ {Number(payOpen?.price ?? 0).toFixed(2)}</b></p>
-          <p className="text-xs text-muted-foreground">Escolha o método de pagamento:</p>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="outline" disabled={busy} onClick={() => register(payOpen, "pix")}>
-              <QrCode className="size-4 mr-1" /> Pix
-            </Button>
-            <Button disabled={busy} onClick={() => register(payOpen, "card")}>
-              <CreditCard className="size-4 mr-1" /> Cartão
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PixPaymentDialog
+        open={!!pix}
+        data={pix}
+        onClose={() => setPix(null)}
+        checkStatus={checkMcStatus}
+        onPaid={() => { setPix(null); reload(); }}
+      />
     </div>
   );
 }
+
 
 
 function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; league: League; userId: string | null; onClose: () => void }) {
