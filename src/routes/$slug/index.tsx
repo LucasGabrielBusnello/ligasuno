@@ -679,9 +679,40 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
 }
 
 
-function ParticipantPanelDialog({ event, registration, league, onClose }: { event: any; registration: any; league: League; onClose: () => void }) {
+function ParticipantPanelDialog({ event, registration, league, onClose, onUpdate }: { event: any; registration: any; league: League; onClose: () => void; onUpdate?: (reg: any) => void }) {
   if (!event) return null;
   const reg = registration;
+  const createPix = useServerFn(createEventPix);
+  const checkStatus = useServerFn(getEventPaymentStatus);
+  const [pix, setPix] = useState<PixPaymentData | null>(null);
+  const [genBusy, setGenBusy] = useState(false);
+  async function payNow() {
+    if (!reg) return;
+    setGenBusy(true);
+    try {
+      const res: any = await createPix({ data: {
+        event_id: event.id,
+        full_name: reg.full_name || "Aluno",
+        social_name: reg.social_name || null,
+        cpf: reg.cpf || "00000000000",
+        course: reg.course || "medicina",
+      }});
+      if (res.free) {
+        onUpdate?.({ ...reg, status: "paid" });
+        return;
+      }
+      setPix({
+        registration_id: res.registration_id,
+        payment_id: res.payment_id,
+        amount: res.amount,
+        qr_code: res.qr_code,
+        qr_code_base64: res.qr_code_base64,
+        ticket_url: res.ticket_url,
+        expires_at: res.expires_at,
+      });
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao gerar Pix"); }
+    finally { setGenBusy(false); }
+  }
   return (
     <Dialog open={!!event} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -720,13 +751,18 @@ function ParticipantPanelDialog({ event, registration, league, onClose }: { even
               </div>
             )}
             {reg && (
-              <Card className="border-emerald-500/40 bg-emerald-500/5"><CardContent className="p-4 space-y-1">
+              <Card className={reg.status === "paid" ? "border-emerald-500/40 bg-emerald-500/5" : "border-amber-500/40 bg-amber-500/5"}><CardContent className="p-4 space-y-2">
                 <div className="text-xs text-muted-foreground">Status da inscrição</div>
                 <div className="flex items-center justify-between gap-2">
                   <Badge className={reg.status === "paid" ? "bg-emerald-600" : "bg-amber-600"}>{reg.status === "paid" ? "Inscrição confirmada" : "Pagamento pendente"}</Badge>
                   <div className="text-lg font-black">R$ {Number(reg.paid_price ?? 0).toFixed(2)}</div>
                 </div>
                 {reg.discount_reason && <div className="text-[11px] text-muted-foreground">{reg.discount_reason}</div>}
+                {reg.status !== "paid" && Number(reg.paid_price) > 0 && (
+                  <Button className="w-full mt-2" onClick={payNow} disabled={genBusy}>
+                    <QrCode className="size-4 mr-1" /> {genBusy ? "Gerando Pix..." : "Realizar pagamento via Pix"}
+                  </Button>
+                )}
               </CardContent></Card>
             )}
           </TabsContent>
