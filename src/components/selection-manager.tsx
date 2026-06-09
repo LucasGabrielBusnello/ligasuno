@@ -103,9 +103,10 @@ function ConfigSection({ league }: { league: any }) {
         const seats = Number(target[sem]) || 0;
         if (seats > 0) {
           const { error: qe } = await supabase.from("league_selection_quotas").upsert(
-            { league_id: league.id, semester: sem, seats } as any,
+            { league_id: league.id, semester: sem, seats, restrict_to_semester: !!restricts[sem] } as any,
             { onConflict: "league_id,semester" } as any
           );
+
           if (qe) { toast.error(qe.message); return; }
         } else {
           await supabase.from("league_selection_quotas").delete().eq("league_id", league.id).eq("semester", sem);
