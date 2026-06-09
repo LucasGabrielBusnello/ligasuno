@@ -956,6 +956,10 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       </Dialog>
 
       <CheckinDialog mode={checkinMc ? { kind: "minicourse", minicourse: checkinMc } : null} open={!!checkinMc} onClose={() => setCheckinMc(null)} />
+      <EventCertificatesDialog
+        mode={certMc ? { kind: "minicourse", minicourse: certMc, leagueId: event.league_id } : null}
+        open={!!certMc} onClose={() => setCertMc(null)}
+      />
     </>
   );
 }
