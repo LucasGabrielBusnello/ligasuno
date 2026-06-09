@@ -101,210 +101,167 @@ async function buildCertificatePdf(opts: {
   signaturePngBytes: Uint8Array | null;
   presidentName: string;
 }): Promise<Uint8Array> {
-  const { PDFDocument, StandardFonts, rgb, degrees } = await import("pdf-lib");
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([842, 595]); // A4 paisagem
-  const font = await pdf.embedFont(StandardFonts.TimesRoman);
-  const bold = await pdf.embedFont(StandardFonts.TimesRomanBold);
-  const italic = await pdf.embedFont(StandardFonts.TimesRomanItalic);
+  const serif = await pdf.embedFont(StandardFonts.TimesRoman);
+  const serifBold = await pdf.embedFont(StandardFonts.TimesRomanBold);
+  const serifItalic = await pdf.embedFont(StandardFonts.TimesRomanItalic);
   const sans = await pdf.embedFont(StandardFonts.Helvetica);
   const sansBold = await pdf.embedFont(StandardFonts.HelveticaBold);
 
   const { r, g, b } = hexToRgb(opts.themeColor || "#1f5132");
   const theme = rgb(r, g, b);
-  // Tom mais escuro para acentos profundos
-  const themeDark = rgb(Math.max(0, r * 0.55), Math.max(0, g * 0.55), Math.max(0, b * 0.55));
-  // Tom claro para fundos sutis
-  const themeSoft = rgb(r + (1 - r) * 0.92, g + (1 - g) * 0.92, b + (1 - b) * 0.92);
-  const ink = rgb(0.12, 0.12, 0.14);
-  const muted = rgb(0.42, 0.42, 0.46);
-  const paper = rgb(0.992, 0.988, 0.976); // creme suave
+  const themeDark = rgb(Math.max(0, r * 0.5), Math.max(0, g * 0.5), Math.max(0, b * 0.5));
+  const ink = rgb(0.14, 0.16, 0.15);
+  const muted = rgb(0.45, 0.48, 0.46);
+  const hairline = rgb(0.82, 0.86, 0.83);
+  const paper = rgb(1, 1, 1);
 
   const W = 842, H = 595;
 
-  // Fundo creme
+  // Fundo branco limpo
   page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: paper });
 
-  // Faixa diagonal decorativa sutil no canto superior direito
-  page.drawRectangle({ x: W - 220, y: H - 30, width: 260, height: 60, color: theme, rotate: degrees(-12), opacity: 0.08 });
-  page.drawRectangle({ x: -40, y: 10, width: 260, height: 60, color: theme, rotate: degrees(-12), opacity: 0.08 });
+  // Barra lateral esquerda (tema da liga) — estilo cartão ligasuno
+  const sideW = 14;
+  page.drawRectangle({ x: 0, y: 0, width: sideW, height: H, color: theme });
 
-  // Moldura dupla
-  const margin = 24;
-  page.drawRectangle({ x: margin, y: margin, width: W - margin * 2, height: H - margin * 2, borderColor: theme, borderWidth: 2 });
-  page.drawRectangle({ x: margin + 6, y: margin + 6, width: W - (margin + 6) * 2, height: H - (margin + 6) * 2, borderColor: theme, borderWidth: 0.5, opacity: 0.6 });
+  // Moldura sutil
+  page.drawRectangle({
+    x: 28, y: 28, width: W - 56, height: H - 56,
+    borderColor: hairline, borderWidth: 0.8,
+  });
 
-  // Ornamentos nos cantos (pequenos quadrados rotacionados = losangos)
-  const cornerDiamond = (cx: number, cy: number) => {
-    page.drawRectangle({ x: cx - 4, y: cy - 4, width: 8, height: 8, color: theme, rotate: degrees(45) });
-    page.drawRectangle({ x: cx - 9, y: cy - 9, width: 18, height: 18, borderColor: theme, borderWidth: 0.7, rotate: degrees(45), opacity: 0.6 });
-  };
-  cornerDiamond(margin + 6, H - margin - 6);
-  cornerDiamond(W - margin - 6, H - margin - 6);
-  cornerDiamond(margin + 6, margin + 6);
-  cornerDiamond(W - margin - 6, margin + 6);
+  // Cabeçalho — marca
+  const brand = "LIGASUNO";
+  const brandSize = 9;
+  page.drawText(brand, { x: 56, y: H - 56, size: brandSize, font: sansBold, color: themeDark });
+  // ponto separador
+  page.drawCircle({ x: 56 + sansBold.widthOfTextAtSize(brand, brandSize) + 8, y: H - 53, size: 1.6, color: theme });
+  const leagueTag = opts.leagueName.toUpperCase();
+  page.drawText(leagueTag, { x: 56 + sansBold.widthOfTextAtSize(brand, brandSize) + 16, y: H - 56, size: brandSize, font: sans, color: muted });
 
-  // Cabeçalho com filete e pequenas estrelas
-  const headerY = H - 80;
-  const drawStar = (cx: number, cy: number, size: number, color: any) => {
-    // estrela simples 4 pontas usando dois losangos
-    page.drawRectangle({ x: cx - size / 2, y: cy - size / 2, width: size, height: size, color, rotate: degrees(45) });
-    page.drawRectangle({ x: cx - size / 4, y: cy - size * 0.9, width: size / 2, height: size * 1.8, color, opacity: 0.0 });
-  };
-  // Linha ornamental ao redor do título
-  const lineY = headerY + 4;
-  page.drawLine({ start: { x: 110, y: lineY }, end: { x: 320, y: lineY }, thickness: 0.7, color: theme });
-  page.drawLine({ start: { x: W - 320, y: lineY }, end: { x: W - 110, y: lineY }, thickness: 0.7, color: theme });
-  drawStar(105, lineY, 5, theme);
-  drawStar(W - 105, lineY, 5, theme);
-  drawStar(325, lineY, 4, theme);
-  drawStar(W - 325, lineY, 4, theme);
+  // Ciclo no canto direito
+  const cycle = opts.cycleName.toUpperCase();
+  const cycleW = sans.widthOfTextAtSize(cycle, 9);
+  page.drawText(cycle, { x: W - 56 - cycleW, y: H - 56, size: 9, font: sans, color: muted });
 
-  // Subtítulo da liga (acima do título)
-  const upper = opts.leagueName.toUpperCase();
-  const upperW = sansBold.widthOfTextAtSize(upper, 10);
-  page.drawText(upper, { x: W / 2 - upperW / 2, y: H - 60, size: 10, font: sansBold, color: themeDark });
+  // Linha fina sob o header
+  page.drawLine({ start: { x: 56, y: H - 70 }, end: { x: W - 56, y: H - 70 }, thickness: 0.5, color: hairline });
 
-  // Título principal — serifa, em maiúsculas espaçadas
-  const title = "CERTIFICADO";
-  const titleSize = 42;
-  const titleW = bold.widthOfTextAtSize(title, titleSize);
-  page.drawText(title, { x: W / 2 - titleW / 2, y: headerY - 38, size: titleSize, font: bold, color: themeDark });
+  // Etiqueta
+  const eyebrow = "CERTIFICADO DE PARTICIPAÇÃO";
+  const eyebrowSize = 10;
+  const eyebrowW = sansBold.widthOfTextAtSize(eyebrow, eyebrowSize);
+  page.drawText(eyebrow, { x: W / 2 - eyebrowW / 2, y: H - 120, size: eyebrowSize, font: sansBold, color: theme });
 
-  // Filete decorativo abaixo do título
-  page.drawLine({ start: { x: W / 2 - 70, y: headerY - 50 }, end: { x: W / 2 + 70, y: headerY - 50 }, thickness: 1.2, color: theme });
-  page.drawRectangle({ x: W / 2 - 3, y: headerY - 54, width: 6, height: 6, color: theme, rotate: degrees(45) });
+  // Título principal — serifa elegante
+  const title = "Participação acadêmica";
+  const titleSize = 36;
+  const titleW = serif.widthOfTextAtSize(title, titleSize);
+  page.drawText(title, { x: W / 2 - titleW / 2, y: H - 168, size: titleSize, font: serif, color: ink });
 
-  // Subtítulo "DE PARTICIPAÇÃO"
-  const sub = "DE PARTICIPAÇÃO";
-  const subW = sans.widthOfTextAtSize(sub, 11);
-  page.drawText(sub, { x: W / 2 - subW / 2, y: headerY - 72, size: 11, font: sans, color: muted });
+  // Filete curto
+  page.drawLine({ start: { x: W / 2 - 24, y: H - 188 }, end: { x: W / 2 + 24, y: H - 188 }, thickness: 1, color: theme });
 
   // "Certificamos que"
   const intro = "Certificamos que";
-  const introSize = 13;
-  const introW = italic.widthOfTextAtSize(intro, introSize);
-  page.drawText(intro, { x: W / 2 - introW / 2, y: 400, size: introSize, font: italic, color: muted });
+  const introSize = 12;
+  const introW = serifItalic.widthOfTextAtSize(intro, introSize);
+  page.drawText(intro, { x: W / 2 - introW / 2, y: H - 220, size: introSize, font: serifItalic, color: muted });
 
   // Nome — destaque
-  const nameSize = 34;
-  const nameW = bold.widthOfTextAtSize(opts.fullName, nameSize);
-  page.drawText(opts.fullName, { x: W / 2 - nameW / 2, y: 360, size: nameSize, font: bold, color: ink });
-  // Sublinhado decorativo do nome
-  page.drawLine({ start: { x: W / 2 - Math.max(140, nameW / 2 + 20), y: 352 }, end: { x: W / 2 + Math.max(140, nameW / 2 + 20), y: 352 }, thickness: 0.6, color: theme, opacity: 0.6 });
+  const nameSize = 32;
+  const nameW = serifBold.widthOfTextAtSize(opts.fullName, nameSize);
+  page.drawText(opts.fullName, { x: W / 2 - nameW / 2, y: H - 258, size: nameSize, font: serifBold, color: ink });
 
   // CPF discreto
   const cpfLine = `CPF ${opts.cpf || "—"}`;
-  const cpfW = sans.widthOfTextAtSize(cpfLine, 10);
-  page.drawText(cpfLine, { x: W / 2 - cpfW / 2, y: 336, size: 10, font: sans, color: muted });
+  const cpfW = sans.widthOfTextAtSize(cpfLine, 9);
+  page.drawText(cpfLine, { x: W / 2 - cpfW / 2, y: H - 276, size: 9, font: sans, color: muted });
 
   // Texto principal
   const body = `participou da ${opts.leagueName} durante ${opts.cycleName}, completando carga horária total de ${opts.totalHours.toFixed(1).replace(".", ",")} horas em atividades acadêmico-científicas, conforme registro oficial da liga.`;
-  drawWrappedCentered(page, body, { x: 110, y: 306, width: W - 220, size: 12.5, font, color: ink, lineHeight: 18 });
+  drawWrappedCentered(page, body, { x: 120, y: H - 310, width: W - 240, size: 12, font: serif, color: ink, lineHeight: 18 });
 
-  // Medalhão lateral esquerdo com horas
-  const medCx = 105, medCy = 230, medR = 46;
-  // círculo externo cheio
-  page.drawCircle({ x: medCx, y: medCy, size: medR, color: theme });
-  // círculo interno (creme)
-  page.drawCircle({ x: medCx, y: medCy, size: medR - 6, color: paper });
-  // anel fino
-  page.drawCircle({ x: medCx, y: medCy, size: medR - 6, borderColor: theme, borderWidth: 0.8 });
-  // raio de "fitas" pequenos atrás do medalhão
-  page.drawRectangle({ x: medCx - 14, y: medCy - medR - 22, width: 12, height: 26, color: theme });
-  page.drawRectangle({ x: medCx + 2, y: medCy - medR - 22, width: 12, height: 26, color: themeDark });
-  // Conteúdo do medalhão
+  // Bloco de carga horária — cartão minimal
+  const cardW = 170, cardH = 78;
+  const cardX = 60, cardY = 130;
+  page.drawRectangle({ x: cardX, y: cardY, width: cardW, height: cardH, color: theme });
   const hoursTxt = opts.totalHours.toFixed(1).replace(".", ",");
-  const hoursSize = hoursTxt.length > 4 ? 18 : 22;
-  const hoursW = bold.widthOfTextAtSize(hoursTxt, hoursSize);
-  page.drawText(hoursTxt, { x: medCx - hoursW / 2, y: medCy - 2, size: hoursSize, font: bold, color: themeDark });
-  const hLabel = "HORAS";
-  const hLabelW = sansBold.widthOfTextAtSize(hLabel, 8);
-  page.drawText(hLabel, { x: medCx - hLabelW / 2, y: medCy - 18, size: 8, font: sansBold, color: themeDark });
-  const hTop = "CARGA";
-  const hTopW = sansBold.widthOfTextAtSize(hTop, 7);
-  page.drawText(hTop, { x: medCx - hTopW / 2, y: medCy + 20, size: 7, font: sansBold, color: themeDark });
+  const hoursSize = hoursTxt.length > 4 ? 32 : 40;
+  const hoursW = serifBold.widthOfTextAtSize(hoursTxt, hoursSize);
+  const hLabel = "horas certificadas";
+  const hLabelW = sans.widthOfTextAtSize(hLabel, 9);
+  page.drawText(hoursTxt, { x: cardX + cardW / 2 - hoursW / 2, y: cardY + cardH / 2 - 4, size: hoursSize, font: serifBold, color: rgb(1, 1, 1) });
+  page.drawText(hLabel, { x: cardX + cardW / 2 - hLabelW / 2, y: cardY + 14, size: 9, font: sans, color: rgb(1, 1, 1) });
 
-  // Lista de atividades à direita do medalhão
+  // Lista de atividades à direita
   const present = opts.activities.filter((a) => a.status === "presente" && a.hours > 0);
-  const listX = 180;
-  let listY = 270;
-  const listTitle = "Atividades realizadas";
-  page.drawText(listTitle, { x: listX, y: listY, size: 10, font: sansBold, color: themeDark });
-  page.drawLine({ start: { x: listX, y: listY - 3 }, end: { x: listX + sansBold.widthOfTextAtSize(listTitle, 10), y: listY - 3 }, thickness: 0.6, color: theme });
-  listY -= 16;
+  const listX = cardX + cardW + 30;
+  const listTop = cardY + cardH - 4;
+  page.drawText("ATIVIDADES REALIZADAS", { x: listX, y: listTop, size: 8, font: sansBold, color: themeDark });
+  page.drawLine({ start: { x: listX, y: listTop - 4 }, end: { x: listX + 110, y: listTop - 4 }, thickness: 0.6, color: theme });
+
+  let listY = listTop - 18;
   if (present.length === 0) {
-    page.drawText("—", { x: listX, y: listY, size: 9, font, color: muted });
+    page.drawText("Sem atividades registradas no período.", { x: listX, y: listY, size: 9, font: serifItalic, color: muted });
   } else {
     const cols = 2;
-    const colW = 290;
+    const colW = 250;
     const perCol = Math.ceil(present.length / cols);
+    const lineH = 12;
     present.forEach((a, idx) => {
       const col = Math.floor(idx / perCol);
       const row = idx % perCol;
       const x = listX + col * colW;
-      const y = listY - row * 12;
-      if (y < 140) return;
+      const y = listY - row * lineH;
+      if (y < cardY - 6) return;
       const date = (() => { const [Y, M, D] = a.date.split("T")[0].split("-"); return `${D}/${M}/${Y.slice(2)}`; })();
-      // bullet losango
-      page.drawRectangle({ x: x - 2, y: y + 3, width: 4, height: 4, color: theme, rotate: degrees(45) });
-      const hoursStr = `(${a.hours.toFixed(1).replace(".", ",")}h)`;
+      const hoursStr = `${a.hours.toFixed(1).replace(".", ",")}h`;
+      const hoursStrW = sans.widthOfTextAtSize(hoursStr, 8.5);
+      // marcador
+      page.drawRectangle({ x: x, y: y + 3, width: 3, height: 3, color: theme });
       const left = `${date}  ${a.activity}`;
-      const maxLeftW = colW - 50;
+      const maxLeftW = colW - hoursStrW - 24;
       let leftTrim = left;
-      while (font.widthOfTextAtSize(leftTrim, 8.5) > maxLeftW && leftTrim.length > 4) leftTrim = leftTrim.slice(0, -1);
+      while (serif.widthOfTextAtSize(leftTrim, 9) > maxLeftW && leftTrim.length > 4) leftTrim = leftTrim.slice(0, -1);
       if (leftTrim !== left) leftTrim = leftTrim.slice(0, -1) + "…";
-      page.drawText(leftTrim, { x: x + 8, y, size: 8.5, font, color: ink });
-      page.drawText(hoursStr, { x: x + colW - 40 - font.widthOfTextAtSize(hoursStr, 8) + 38, y, size: 8, font: italic, color: themeDark });
+      page.drawText(leftTrim, { x: x + 8, y, size: 9, font: serif, color: ink });
+      page.drawText(hoursStr, { x: x + colW - hoursStrW - 10, y, size: 8.5, font: sansBold, color: themeDark });
     });
   }
 
-  // Assinatura
-  const sigCx = W / 2;
-  const sigBaseY = 110;
+  // Assinatura — direita, minimalista
+  const sigRight = W - 60;
+  const sigLineY = 130;
+  const sigLineW = 220;
   if (opts.signaturePngBytes) {
     try {
       const img = await pdf.embedPng(opts.signaturePngBytes);
-      const maxW = 220, maxH = 70;
+      const maxW = 180, maxH = 56;
       const ratio = Math.min(maxW / img.width, maxH / img.height);
       const w = img.width * ratio, h = img.height * ratio;
-      page.drawImage(img, { x: sigCx - w / 2, y: sigBaseY + 6, width: w, height: h });
+      page.drawImage(img, { x: sigRight - sigLineW / 2 - w / 2, y: sigLineY + 6, width: w, height: h });
     } catch (e) {
       console.warn("falha ao embutir assinatura", e);
     }
   }
-  // Linha de assinatura com pequenos diamantes nas pontas
-  page.drawLine({ start: { x: sigCx - 140, y: sigBaseY }, end: { x: sigCx + 140, y: sigBaseY }, thickness: 0.8, color: ink });
-  page.drawRectangle({ x: sigCx - 143, y: sigBaseY - 3, width: 6, height: 6, color: theme, rotate: degrees(45) });
-  page.drawRectangle({ x: sigCx + 137, y: sigBaseY - 3, width: 6, height: 6, color: theme, rotate: degrees(45) });
-
+  page.drawLine({ start: { x: sigRight - sigLineW, y: sigLineY }, end: { x: sigRight, y: sigLineY }, thickness: 0.6, color: ink });
   const presLine = opts.presidentName || "Presidência";
-  const presW = bold.widthOfTextAtSize(presLine, 12);
-  page.drawText(presLine, { x: sigCx - presW / 2, y: sigBaseY - 16, size: 12, font: bold, color: ink });
-  const presSub = `Presidente da ${opts.leagueName}`;
-  const presSubW = italic.widthOfTextAtSize(presSub, 9.5);
-  page.drawText(presSub, { x: sigCx - presSubW / 2, y: sigBaseY - 30, size: 9.5, font: italic, color: muted });
-
-  // Selo no canto inferior direito
-  const sealCx = W - 110, sealCy = 120;
-  page.drawCircle({ x: sealCx, y: sealCy, size: 36, borderColor: theme, borderWidth: 1.2 });
-  page.drawCircle({ x: sealCx, y: sealCy, size: 30, borderColor: theme, borderWidth: 0.4, opacity: 0.6 });
-  // estrelinhas ao redor
-  for (let i = 0; i < 8; i++) {
-    const ang = (i / 8) * Math.PI * 2;
-    const px = sealCx + Math.cos(ang) * 33;
-    const py = sealCy + Math.sin(ang) * 33;
-    page.drawRectangle({ x: px - 1.5, y: py - 1.5, width: 3, height: 3, color: theme, rotate: degrees(45) });
-  }
-  page.drawText("LIGA", { x: sealCx - sans.widthOfTextAtSize("LIGA", 7) / 2, y: sealCy + 6, size: 7, font: sansBold, color: themeDark });
-  page.drawText("OFICIAL", { x: sealCx - sans.widthOfTextAtSize("OFICIAL", 8) / 2, y: sealCy - 4, size: 8, font: sansBold, color: themeDark });
-  const yearStr = String(new Date().getFullYear());
-  page.drawText(yearStr, { x: sealCx - sans.widthOfTextAtSize(yearStr, 7) / 2, y: sealCy - 14, size: 7, font: sans, color: muted });
+  const presW = serifBold.widthOfTextAtSize(presLine, 11);
+  page.drawText(presLine, { x: sigRight - sigLineW / 2 - presW / 2, y: sigLineY - 14, size: 11, font: serifBold, color: ink });
+  const presSub = `Presidente · ${opts.leagueName}`;
+  const presSubW = sans.widthOfTextAtSize(presSub, 8.5);
+  page.drawText(presSub, { x: sigRight - sigLineW / 2 - presSubW / 2, y: sigLineY - 26, size: 8.5, font: sans, color: muted });
 
   // Rodapé
-  const issued = `Emitido em ${new Date().toLocaleDateString("pt-BR")}  ·  Documento gerado por LIGASUNO`;
-  const issuedW = italic.widthOfTextAtSize(issued, 8);
-  page.drawText(issued, { x: W / 2 - issuedW / 2, y: 42, size: 8, font: italic, color: muted });
+  const issued = `Emitido em ${new Date().toLocaleDateString("pt-BR")}`;
+  page.drawText(issued, { x: 56, y: 46, size: 8, font: sans, color: muted });
+  const foot = "Documento gerado por LIGASUNO · ligasuno.lovable.app";
+  const footW = sans.widthOfTextAtSize(foot, 8);
+  page.drawText(foot, { x: W - 56 - footW, y: 46, size: 8, font: sans, color: muted });
 
   return pdf.save();
 }
