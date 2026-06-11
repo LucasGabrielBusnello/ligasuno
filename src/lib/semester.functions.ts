@@ -91,6 +91,10 @@ async function ensurePaymentsForCycle(
     .eq("league_id", leagueId)
     .in("role", ["ligante", "diretor", "presidente"]);
   const list = (members ?? []) as Array<{ user_id: string; role: string }>;
+  // Garante o presidente mesmo sem linha em memberships
+  if (presidentId && !list.some((m) => m.user_id === presidentId)) {
+    list.push({ user_id: presidentId, role: "presidente" });
+  }
   if (!list.length) return;
 
   for (const m of list) {
