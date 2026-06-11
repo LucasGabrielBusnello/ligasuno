@@ -91,13 +91,18 @@ function FreqTab({ league }: { league: League }) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
 
   async function loadMembers() {
-    const { data: mships } = await supabase.from("league_memberships").select("user_id, role, profiles!inner(username,email)").eq("league_id", league.id);
-    const list = (mships ?? []).filter((m: any) => ["ligante", "diretor"].includes(m.role));
+    const { data: mships } = await supabase.from("league_memberships").select("user_id, role").eq("league_id", league.id);
+    const list = ((mships ?? []) as any[]).filter((m: any) => ["ligante", "diretor", "presidente"].includes(m.role));
     if (league.president_id && !list.some((m: any) => m.user_id === league.president_id)) {
-      const { data: pres } = await supabase.from("profiles").select("username,email").eq("id", league.president_id).maybeSingle();
-      if (pres) list.push({ user_id: league.president_id, role: "presidente", profiles: pres } as any);
+      list.push({ user_id: league.president_id, role: "presidente" });
     }
-    setMembers(list);
+    const ids = list.map((m: any) => m.user_id);
+    let profById = new Map<string, any>();
+    if (ids.length) {
+      const { data: profs } = await supabase.from("profiles").select("id, username, email").in("id", ids);
+      profById = new Map((profs ?? []).map((p: any) => [p.id, p]));
+    }
+    setMembers(list.map((m: any) => ({ ...m, profiles: profById.get(m.user_id) ?? { username: "", email: "" } })));
   }
 
   async function loadSessions() {
