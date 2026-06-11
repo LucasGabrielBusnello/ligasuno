@@ -88,6 +88,10 @@ function PresidentePage() {
 
         <MpConnectCard leagueId={league.id} />
 
+        <div className="mt-4">
+          <LiganteSemestralidadeCard leagueId={league.id} />
+        </div>
+
         <Tabs defaultValue="config">
           <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
             <TabsTrigger value="config"><Settings className="size-4 mr-1" />Config</TabsTrigger>
