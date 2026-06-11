@@ -29,6 +29,7 @@ import {
 } from "@/lib/subscription.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
 import { SemesterDialog, StatusBadge as SemesterStatusBadge } from "@/components/semester-dialog";
+import { LiganteSemestralidadeCard } from "@/components/ligante-semestralidade-card";
 import { listCyclePayments } from "@/lib/semester.functions";
 import { listLeagueLeaveRequests, processLeaveRequest } from "@/lib/leave-request.functions";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
