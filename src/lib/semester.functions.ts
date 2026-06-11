@@ -400,17 +400,28 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
       return { already_paid: true };
     }
 
-    // Calcula valor proporcional aos dias restantes do semestre (sempre mantendo o desconto/valor base).
-    const today = new Date(new Date().toISOString().slice(0, 10));
-    const startD = new Date((cycle as any).start_date);
-    const endD = new Date((cycle as any).end_date);
-    const MS_DAY = 86_400_000;
-    const totalDays = Math.max(1, Math.round((endD.getTime() - startD.getTime()) / MS_DAY) + 1);
-    const remainingDays = Math.max(1, Math.round((endD.getTime() - today.getTime()) / MS_DAY) + 1);
-    const fraction = Math.min(1, remainingDays / totalDays);
+    // Calcula valor proporcional aos meses e dias restantes até o fim do semestre.
+    // monthlyCents = valor base / total de meses do ciclo
+    // mesesRestantes = (meses inteiros até o fim) + (dias restantes no mês atual / dias do mês atual)
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth(); // 0-11
+    const todayYear = today.getFullYear();
+    const [sy, sm] = ((cycle as any).start_date as string).split("-").map(Number);
+    const [ey, em] = ((cycle as any).end_date as string).split("-").map(Number);
+    const totalMonths = Math.max(1, (ey - sy) * 12 + (em - sm) + 1);
     const baseDueCents = (payment as any).amount_due_cents ?? baseAmountCents;
-    const proratedCents = Math.max(100, Math.round(baseDueCents * fraction));
-    const isOverdue = new Date((cycle as any).due_date) < today;
+    const monthlyCents = baseDueCents / totalMonths;
+    // Meses inteiros restantes (incluindo o mês atual)
+    let monthsLeft = (ey - todayYear) * 12 + ((em - 1) - todayMonth) + 1;
+    // Subtrai a fração do mês corrente já decorrida
+    const daysInThisMonth = new Date(todayYear, todayMonth + 1, 0).getDate();
+    const fractionUsed = Math.max(0, Math.min(1, (todayDay - 1) / daysInThisMonth));
+    monthsLeft = Math.max(0, monthsLeft - fractionUsed);
+    const effectiveMonths = Math.min(totalMonths, monthsLeft);
+    const proratedCents = Math.max(100, Math.round(monthlyCents * effectiveMonths));
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const isOverdue = (cycle as any).due_date < todayISO;
     const totalCents = proratedCents + (isOverdue ? (cycle as any).late_fee_cents : 0);
     const totalReais = totalCents / 100;
     if (totalReais <= 0) throw new Error("Valor inválido");
