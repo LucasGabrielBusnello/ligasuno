@@ -29,6 +29,7 @@ import {
 } from "@/lib/subscription.functions";
 import { SelectionManagerDialog } from "@/components/selection-manager";
 import { SemesterDialog, StatusBadge as SemesterStatusBadge } from "@/components/semester-dialog";
+import { LiganteSemestralidadeCard } from "@/components/ligante-semestralidade-card";
 import { listCyclePayments } from "@/lib/semester.functions";
 import { listLeagueLeaveRequests, processLeaveRequest } from "@/lib/leave-request.functions";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
@@ -87,6 +88,10 @@ function PresidentePage() {
         )}
 
         <MpConnectCard leagueId={league.id} />
+
+        <div className="mt-4">
+          <LiganteSemestralidadeCard leagueId={league.id} />
+        </div>
 
         <Tabs defaultValue="config">
           <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
