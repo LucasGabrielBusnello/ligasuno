@@ -15,6 +15,7 @@ import {
 import { saveSignature, getSignaturePreview } from "@/lib/certificates.functions";
 import { SignaturePad } from "./signature-pad";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
+import { CertificateTemplateEditor } from "./certificate-template-editor";
 
 type Mode = { kind: "event"; event: any; leagueId: string } | { kind: "minicourse"; minicourse: any; leagueId: string };
 
@@ -131,6 +132,8 @@ export function EventCertificatesDialog({ mode, open, onClose }: { mode: Mode | 
                 <Button size="sm" onClick={saveSigClick} disabled={!sigDirty}>Salvar assinatura</Button>
               </div>
             </div>
+
+            <CertificateTemplateEditor leagueId={mode.leagueId} />
 
             <div className="rounded-lg border">
               <div className="flex items-center justify-between p-3 border-b bg-muted/30">

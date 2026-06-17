@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award, Download, FileSpreadsheet, QrCode } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award, Download, FileSpreadsheet, QrCode, Copy } from "lucide-react";
 import { CertificatesDialog } from "@/components/certificates-dialog";
 import { CheckinDialog } from "@/components/event-checkin-dialog";
 import { EventCertificatesDialog } from "@/components/event-certificates-dialog";
@@ -152,11 +152,15 @@ function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: a
   const startMonthly = useServerFn(createLeagueSubscriptionCheckout);
   const startSemester = useServerFn(createLeagueSemesterPixCheckout);
   const [loading, setLoading] = useState<null | "monthly" | "semester">(null);
+  const [pixData, setPixData] = useState<any>(null);
+  const [pixOpen, setPixOpen] = useState(false);
 
   const monthly = Number(settings?.annual_fee_credit_monthly ?? 0);
-  const semesterFull = monthly * 6;
-  const semesterDiscounted = Math.round(semesterFull * 0.95 * 100) / 100;
-  const discountValue = Math.round((semesterFull - semesterDiscounted) * 100) / 100;
+  const pixMonthly = Number(settings?.annual_fee_pix_monthly ?? settings?.annual_fee_credit_monthly ?? 0);
+  const pixQuote = calculateAnuidadePixQuote(pixMonthly);
+  const semesterFull = pixQuote.full;
+  const semesterDiscounted = pixQuote.discounted;
+  const discountValue = pixQuote.discount;
 
   async function payMonthly() {
     try {
@@ -171,10 +175,17 @@ function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: a
     try {
       setLoading("semester");
       const res = await startSemester({ data: { league_id: leagueId, origin_url: window.location.origin } });
-      if (res?.url) window.location.href = res.url;
+      setPixData(res);
+      setPixOpen(true);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao iniciar pagamento");
     } finally { setLoading(null); }
+  }
+
+  async function copyPix() {
+    if (!pixData?.qr_code) return;
+    await navigator.clipboard.writeText(pixData.qr_code);
+    toast.success("Código Pix copiado");
   }
 
   return (
@@ -201,7 +212,7 @@ function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: a
                 <span className="line-through">R$ {semesterFull.toFixed(2)}</span>{" "}
                 <span className="text-emerald-700 dark:text-emerald-400 font-bold">5% OFF (−R$ {discountValue.toFixed(2)})</span>
               </p>
-              <p className="text-xs text-muted-foreground">Cobre 6 meses (fev–jul ou ago–jan). Pagamento único via PIX.</p>
+              <p className="text-xs text-muted-foreground">Cobre proporcionalmente até {pixQuote.untilLabel}. Pagamento único via PIX.</p>
               <Button className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading !== null} onClick={paySemester}>
                 <DollarSign className="size-4" /> {loading === "semester" ? "Abrindo..." : "Pagar semestre via PIX"}
               </Button>
@@ -210,8 +221,43 @@ function PayAnuidadeCard({ leagueId, settings }: { leagueId: string; settings: a
         )}
         <p className="text-xs text-muted-foreground mt-4 text-center">⚠ Pagamentos não são reembolsáveis. Assinaturas mensais podem ser canceladas a qualquer momento.</p>
       </CardContent>
+      <Dialog open={pixOpen} onOpenChange={setPixOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Pagamento via Pix</DialogTitle></DialogHeader>
+          <div className="space-y-4 text-center">
+            <div className="text-3xl font-black">R$ {Number(pixData?.amount ?? semesterDiscounted).toFixed(2)}</div>
+            {pixData?.qr_code_base64 ? (
+              <img src={`data:image/png;base64,${pixData.qr_code_base64}`} alt="QR Code Pix" className="size-56 border rounded bg-white p-2 mx-auto" />
+            ) : <div className="size-56 bg-muted rounded mx-auto" />}
+            <div className="flex gap-2">
+              <Input readOnly value={pixData?.qr_code ?? ""} className="font-mono text-xs" />
+              <Button type="button" variant="outline" size="icon" onClick={copyPix}><Copy className="size-4" /></Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Após a confirmação do pagamento, a liga será ativada automaticamente até {pixData?.paid_until ? new Date(pixData.paid_until).toLocaleDateString("pt-BR") : pixQuote.untilLabel}.</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
+}
+
+function calculateAnuidadePixQuote(monthlyPix: number) {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  const end = m >= 1 && m <= 6 ? new Date(y, 6, 31) : m >= 7 ? new Date(y + 1, 0, 31) : new Date(y, 0, 31);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const currentMonthFraction = Math.max(0, Math.min(1, (daysInMonth - today.getDate() + 1) / daysInMonth));
+  const fullMonthsAfterCurrent = Math.max(0, (end.getFullYear() - y) * 12 + (end.getMonth() - m));
+  const monthsLeft = Math.min(6, Math.max(0, fullMonthsAfterCurrent + currentMonthFraction));
+  const full = Math.round(monthlyPix * monthsLeft * 100) / 100;
+  const discounted = Math.round(full * 0.95 * 100) / 100;
+  return {
+    full,
+    discounted,
+    discount: Math.round((full - discounted) * 100) / 100,
+    untilLabel: end.toLocaleDateString("pt-BR"),
+  };
 }
 
 

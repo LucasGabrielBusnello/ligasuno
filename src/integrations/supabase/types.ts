@@ -566,6 +566,54 @@ export type Database = {
           },
         ]
       }
+      league_certificate_templates: {
+        Row: {
+          created_at: string
+          font_family: string
+          id: string
+          league_id: string
+          name_box: Json
+          signature_box: Json
+          template_url: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          font_family?: string
+          id?: string
+          league_id: string
+          name_box?: Json
+          signature_box?: Json
+          template_url: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          font_family?: string
+          id?: string
+          league_id?: string
+          name_box?: Json
+          signature_box?: Json
+          template_url?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_certificate_templates_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_certificate_templates_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_content: {
         Row: {
           content_key: string

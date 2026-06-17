@@ -11,6 +11,7 @@ import { Award, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { previewCertificates, sendSemesterCertificates, saveSignature, getSignaturePreview } from "@/lib/certificates.functions";
 import { SignaturePad } from "./signature-pad";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
+import { CertificateTemplateEditor } from "./certificate-template-editor";
 
 type Recipient = {
   user_id: string;
@@ -125,6 +126,8 @@ export function CertificatesDialog({ league, open, onClose }: { league: any; ope
                 <Button size="sm" onClick={saveSig} disabled={!signatureDirty}>Salvar assinatura</Button>
               </div>
             </div>
+
+            <CertificateTemplateEditor leagueId={league.id} />
 
             {/* Tabela de membros */}
             <div className="rounded-lg border overflow-hidden">

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { buildTemplateCertificatePdf, loadCertificateTemplate } from "@/lib/certificates.functions";
 
 async function adminClient() {
   const { createClient } = await import("@supabase/supabase-js");
@@ -269,6 +270,7 @@ export const sendEventCertificates = createServerFn({ method: "POST" })
     const ev: any = await ensureEventOwner(admin, data.event_id, context.userId);
     const league = ev.leagues;
     const { bytes: signatureBytes, presidentName: defaultPres } = await loadSignatureBytes(admin, league.id);
+    const certificateTemplate = await loadCertificateTemplate(admin, league.id);
     const presidentName = data.president_name || defaultPres;
     const dateLabel = ev.event_date ? new Date(ev.event_date).toLocaleDateString("pt-BR") : "";
 
@@ -279,17 +281,19 @@ export const sendEventCertificates = createServerFn({ method: "POST" })
         const to = prof?.email;
         if (!to) throw new Error("E-mail não encontrado");
 
-        const pdfBytes = await buildEventCertPdf({
-          fullName: rec.full_name, cpf: rec.cpf, leagueName: league.name,
-          contextLabel: `${ev.title}${dateLabel ? " – " + dateLabel : ""}`,
-          detailLines: [
-            `Evento: ${ev.title}`,
-            ...(dateLabel ? [`Data: ${dateLabel}`] : []),
-            `Carga horária: ${rec.hours.toFixed(1).replace(".", ",")}h`,
-          ],
-          totalHours: rec.hours, themeColor: league.theme_color || "#1f5132",
-          signaturePngBytes: signatureBytes, presidentName,
-        });
+        const pdfBytes = certificateTemplate
+          ? await buildTemplateCertificatePdf({ fullName: rec.full_name, template: certificateTemplate, signaturePngBytes: signatureBytes })
+          : await buildEventCertPdf({
+              fullName: rec.full_name, cpf: rec.cpf, leagueName: league.name,
+              contextLabel: `${ev.title}${dateLabel ? " – " + dateLabel : ""}`,
+              detailLines: [
+                `Evento: ${ev.title}`,
+                ...(dateLabel ? [`Data: ${dateLabel}`] : []),
+                `Carga horária: ${rec.hours.toFixed(1).replace(".", ",")}h`,
+              ],
+              totalHours: rec.hours, themeColor: league.theme_color || "#1f5132",
+              signaturePngBytes: signatureBytes, presidentName,
+            });
 
         const base64 = Buffer.from(pdfBytes).toString("base64");
         const { sendGmailWithAttachment, emailLayout } = await import("./gmail.server");
@@ -330,6 +334,7 @@ export const sendMinicourseCertificates = createServerFn({ method: "POST" })
     const mc: any = await ensureMcOwner(admin, data.minicourse_id, context.userId);
     const ev = mc.league_events; const league = ev.leagues;
     const { bytes: signatureBytes, presidentName: defaultPres } = await loadSignatureBytes(admin, league.id);
+    const certificateTemplate = await loadCertificateTemplate(admin, league.id);
     const presidentName = data.president_name || defaultPres;
     const dateLabel = mc.starts_at ? new Date(mc.starts_at).toLocaleDateString("pt-BR") : "";
 
@@ -340,19 +345,21 @@ export const sendMinicourseCertificates = createServerFn({ method: "POST" })
         const to = prof?.email;
         if (!to) throw new Error("E-mail não encontrado");
 
-        const pdfBytes = await buildEventCertPdf({
-          fullName: rec.full_name, cpf: rec.cpf, leagueName: league.name,
-          contextLabel: `Minicurso "${mc.title}" — ${ev.title}`,
-          detailLines: [
-            `Minicurso: ${mc.title}`,
-            `Evento: ${ev.title}`,
-            ...(dateLabel ? [`Data: ${dateLabel}`] : []),
-            ...(mc.instructor ? [`Lecionado por: ${mc.instructor}`] : []),
-            `Carga horária: ${rec.hours.toFixed(1).replace(".", ",")}h`,
-          ],
-          totalHours: rec.hours, themeColor: league.theme_color || "#1f5132",
-          signaturePngBytes: signatureBytes, presidentName,
-        });
+        const pdfBytes = certificateTemplate
+          ? await buildTemplateCertificatePdf({ fullName: rec.full_name, template: certificateTemplate, signaturePngBytes: signatureBytes })
+          : await buildEventCertPdf({
+              fullName: rec.full_name, cpf: rec.cpf, leagueName: league.name,
+              contextLabel: `Minicurso "${mc.title}" — ${ev.title}`,
+              detailLines: [
+                `Minicurso: ${mc.title}`,
+                `Evento: ${ev.title}`,
+                ...(dateLabel ? [`Data: ${dateLabel}`] : []),
+                ...(mc.instructor ? [`Lecionado por: ${mc.instructor}`] : []),
+                `Carga horária: ${rec.hours.toFixed(1).replace(".", ",")}h`,
+              ],
+              totalHours: rec.hours, themeColor: league.theme_color || "#1f5132",
+              signaturePngBytes: signatureBytes, presidentName,
+            });
 
         const base64 = Buffer.from(pdfBytes).toString("base64");
         const { sendGmailWithAttachment, emailLayout } = await import("./gmail.server");
