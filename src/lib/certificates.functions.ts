@@ -15,6 +15,30 @@ const sendSchema = z.object({
   president_name: z.string().trim().min(2).optional(),
 });
 
+const boxSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().min(0.02).max(1),
+  height: z.number().min(0.02).max(1),
+});
+
+const templateSchema = z.object({
+  league_id: z.string().uuid(),
+  image_base64: z.string().optional(),
+  name_box: boxSchema,
+  signature_box: boxSchema,
+  font_family: z.enum(["TimesRoman", "TimesRomanBold", "Helvetica", "HelveticaBold", "Courier", "CourierBold"]),
+});
+
+export type CertificateBox = z.infer<typeof boxSchema>;
+export type CertificateTemplatePayload = {
+  imageBytes: Uint8Array;
+  mimeType: "image/png" | "image/jpeg";
+  nameBox: CertificateBox;
+  signatureBox: CertificateBox;
+  fontFamily: string;
+};
+
 async function adminClient() {
   const { createClient } = await import("@supabase/supabase-js");
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -88,6 +112,69 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const v = m.length === 3 ? m.split("").map((c) => c + c).join("") : m;
   const n = parseInt(v.slice(0, 6) || "1f5132", 16);
   return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
+}
+
+function clampBox(box: any): CertificateBox {
+  const x = Math.max(0, Math.min(0.98, Number(box?.x ?? 0)));
+  const y = Math.max(0, Math.min(0.98, Number(box?.y ?? 0)));
+  const width = Math.max(0.02, Math.min(1 - x, Number(box?.width ?? 0.2)));
+  const height = Math.max(0.02, Math.min(1 - y, Number(box?.height ?? 0.08)));
+  return { x, y, width, height };
+}
+
+function fontName(fontFamily: string) {
+  return ["TimesRoman", "TimesRomanBold", "Helvetica", "HelveticaBold", "Courier", "CourierBold"].includes(fontFamily) ? fontFamily : "TimesRomanBold";
+}
+
+export async function loadCertificateTemplate(admin: any, leagueId: string): Promise<CertificateTemplatePayload | null> {
+  const { data: row } = await admin.from("league_certificate_templates").select("*").eq("league_id", leagueId).maybeSingle();
+  if (!row?.template_url) return null;
+  const { data: blob } = await admin.storage.from("league-signatures").download(row.template_url);
+  if (!blob) return null;
+  const type = blob.type === "image/jpeg" || String(row.template_url).toLowerCase().endsWith(".jpg") ? "image/jpeg" : "image/png";
+  return {
+    imageBytes: new Uint8Array(await blob.arrayBuffer()),
+    mimeType: type,
+    nameBox: clampBox(row.name_box),
+    signatureBox: clampBox(row.signature_box),
+    fontFamily: fontName(row.font_family),
+  };
+}
+
+export async function buildTemplateCertificatePdf(opts: {
+  fullName: string;
+  template: CertificateTemplatePayload;
+  signaturePngBytes: Uint8Array | null;
+}): Promise<Uint8Array> {
+  const { PDFDocument, StandardFonts, rgb } = await import("pdf-lib");
+  const pdf = await PDFDocument.create();
+  const bg = opts.template.mimeType === "image/jpeg"
+    ? await pdf.embedJpg(opts.template.imageBytes)
+    : await pdf.embedPng(opts.template.imageBytes);
+  const page = pdf.addPage([842, 595]);
+  const W = 842, H = 595;
+  page.drawImage(bg, { x: 0, y: 0, width: W, height: H });
+
+  const font = await pdf.embedFont((StandardFonts as any)[opts.template.fontFamily] ?? StandardFonts.TimesRomanBold);
+  const box = opts.template.nameBox;
+  const x = box.x * W, yTop = box.y * H, w = box.width * W, h = box.height * H;
+  let size = Math.min(44, h * 0.62);
+  while (size > 7 && font.widthOfTextAtSize(opts.fullName, size) > w * 0.96) size -= 1;
+  const textW = font.widthOfTextAtSize(opts.fullName, size);
+  page.drawText(opts.fullName, { x: x + (w - textW) / 2, y: H - yTop - h / 2 - size / 3, size, font, color: rgb(0.1, 0.1, 0.1) });
+
+  if (opts.signaturePngBytes) {
+    try {
+      const img = await pdf.embedPng(opts.signaturePngBytes);
+      const sbox = opts.template.signatureBox;
+      const sx = sbox.x * W, syTop = sbox.y * H, sw = sbox.width * W, sh = sbox.height * H;
+      const ratio = Math.min(sw / img.width, sh / img.height);
+      const iw = img.width * ratio, ih = img.height * ratio;
+      page.drawImage(img, { x: sx + (sw - iw) / 2, y: H - syTop - sh + (sh - ih) / 2, width: iw, height: ih });
+    } catch (e) { console.warn("falha ao embutir assinatura no modelo", e); }
+  }
+
+  return pdf.save();
 }
 
 async function buildCertificatePdf(opts: {
@@ -311,6 +398,8 @@ export const sendSemesterCertificates = createServerFn({ method: "POST" })
       } catch (e) { console.warn("falha ao baixar assinatura", e); }
     }
 
+    const certificateTemplate = await loadCertificateTemplate(admin, data.league_id);
+
     // Ciclo atual (se houver) para nome do semestre
     const { data: cycle } = await admin.from("semester_cycles").select("semester, year").eq("league_id", data.league_id).eq("is_current", true).maybeSingle();
     const cycleName = cycle ? `${cycle.semester}º semestre de ${cycle.year}` : `semestre de ${new Date().getFullYear()}`;
@@ -333,17 +422,19 @@ export const sendSemesterCertificates = createServerFn({ method: "POST" })
         const to = prof?.email as string | undefined;
         if (!to) throw new Error("E-mail não encontrado");
 
-        const pdfBytes = await buildCertificatePdf({
-          fullName: rec.full_name,
-          cpf: rec.cpf,
-          leagueName: league.name,
-          cycleName,
-          totalHours: total,
-          activities: acts,
-          themeColor: league.theme_color || "#1f5132",
-          signaturePngBytes: signatureBytes,
-          presidentName,
-        });
+        const pdfBytes = certificateTemplate
+          ? await buildTemplateCertificatePdf({ fullName: rec.full_name, template: certificateTemplate, signaturePngBytes: signatureBytes })
+          : await buildCertificatePdf({
+              fullName: rec.full_name,
+              cpf: rec.cpf,
+              leagueName: league.name,
+              cycleName,
+              totalHours: total,
+              activities: acts,
+              themeColor: league.theme_color || "#1f5132",
+              signaturePngBytes: signatureBytes,
+              presidentName,
+            });
 
         const base64 = Buffer.from(pdfBytes).toString("base64");
         const { sendGmailWithAttachment, emailLayout } = await import("./gmail.server");
@@ -433,4 +524,50 @@ export const getSignaturePreview = createServerFn({ method: "POST" })
     if (!blob) return { png_base64: null, president_name: row.president_name };
     const buf = Buffer.from(await blob.arrayBuffer()).toString("base64");
     return { png_base64: `data:image/png;base64,${buf}`, president_name: row.president_name };
+  });
+
+export const saveCertificateTemplate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => templateSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    await ensurePresidentOrAdmin(context.supabase, data.league_id, context.userId);
+    const admin = await adminClient();
+    let templateUrl: string | null = null;
+    if (data.image_base64) {
+      const match = data.image_base64.match(/^data:(image\/(png|jpeg));base64,(.+)$/);
+      if (!match) throw new Error("Envie uma imagem PNG ou JPG do certificado.");
+      const bytes = Buffer.from(match[3], "base64");
+      if (bytes.length === 0) throw new Error("Imagem vazia");
+      if (bytes.length > 4_000_000) throw new Error("Imagem muito grande (máx 4MB)");
+      const ext = match[1] === "image/jpeg" ? "jpg" : "png";
+      templateUrl = `${data.league_id}/certificate-template.${ext}`;
+      const { error } = await admin.storage.from("league-signatures").upload(templateUrl, bytes, { upsert: true, contentType: match[1] });
+      if (error) throw new Error(error.message);
+    } else {
+      const { data: existing } = await admin.from("league_certificate_templates").select("template_url").eq("league_id", data.league_id).maybeSingle();
+      templateUrl = existing?.template_url ?? null;
+    }
+    if (!templateUrl) throw new Error("Envie a imagem do modelo de certificado.");
+    await admin.from("league_certificate_templates").upsert({
+      league_id: data.league_id,
+      template_url: templateUrl,
+      name_box: data.name_box,
+      signature_box: data.signature_box,
+      font_family: data.font_family,
+    }, { onConflict: "league_id" });
+    return { ok: true };
+  });
+
+export const getCertificateTemplate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ league_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await ensurePresidentOrAdmin(context.supabase, data.league_id, context.userId);
+    const admin = await adminClient();
+    const { data: row } = await admin.from("league_certificate_templates").select("*").eq("league_id", data.league_id).maybeSingle();
+    if (!row?.template_url) return { template: null };
+    const { data: blob } = await admin.storage.from("league-signatures").download(row.template_url);
+    const mime = blob?.type || (String(row.template_url).toLowerCase().endsWith(".jpg") ? "image/jpeg" : "image/png");
+    const base64 = blob ? `data:${mime};base64,${Buffer.from(await blob.arrayBuffer()).toString("base64")}` : null;
+    return { template: { image_base64: base64, name_box: clampBox(row.name_box), signature_box: clampBox(row.signature_box), font_family: fontName(row.font_family) } };
   });

@@ -4,9 +4,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   createPreapproval,
+  createPixPayment,
   mpFetch,
   getPlatformAccessToken,
 } from "@/lib/mp.server";
+import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 
 const PUBLISHED_URL = "https://ligasuno.lovable.app";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
@@ -39,6 +41,34 @@ async function loadMonthlyFee(): Promise<number> {
     .eq("id", 1)
     .maybeSingle();
   return Number(data?.annual_fee_credit_monthly ?? 9.8);
+}
+
+async function loadPixMonthlyFee(): Promise<number> {
+  const { data } = await supabaseAdmin
+    .from("app_settings")
+    .select("annual_fee_pix_monthly, annual_fee_credit_monthly")
+    .eq("id", 1)
+    .maybeSingle();
+  return Number(data?.annual_fee_pix_monthly ?? data?.annual_fee_credit_monthly ?? 9.8);
+}
+
+function currentBillingSemester(baseDate: Date): { start: Date; end: Date } {
+  const y = baseDate.getFullYear();
+  const m = baseDate.getMonth();
+  if (m >= 1 && m <= 6) return { start: new Date(y, 1, 1), end: new Date(y, 6, 31) };
+  if (m >= 7) return { start: new Date(y, 7, 1), end: new Date(y + 1, 0, 31) };
+  return { start: new Date(y - 1, 7, 1), end: new Date(y, 0, 31) };
+}
+
+function calculateProratedPixAmount(monthlyPix: number, baseDate = new Date()) {
+  const { end } = currentBillingSemester(baseDate);
+  const daysInMonth = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate();
+  const currentMonthFraction = Math.max(0, Math.min(1, (daysInMonth - baseDate.getDate() + 1) / daysInMonth));
+  const fullMonthsAfterCurrent = Math.max(0, (end.getFullYear() - baseDate.getFullYear()) * 12 + (end.getMonth() - baseDate.getMonth()));
+  const monthsAndDaysLeft = Math.min(6, Math.max(0, fullMonthsAfterCurrent + currentMonthFraction));
+  const proportionalFull = Math.round(monthlyPix * monthsAndDaysLeft * 100) / 100;
+  const discounted = Math.round(proportionalFull * 0.95 * 100) / 100;
+  return { amount: discounted, full: proportionalFull, discount: Math.round((proportionalFull - discounted) * 100) / 100, monthsAndDaysLeft, end };
 }
 
 /**
@@ -103,54 +133,57 @@ export const createLeagueSemesterPixCheckout = createServerFn({ method: "POST" }
       throw new Error("Apenas a presidência pode pagar a anuidade");
     }
 
-    const monthly = await loadMonthlyFee();
-    const semesterPrice = Math.round(monthly * 6 * 0.95 * 100) / 100;
+    const monthly = await loadPixMonthlyFee();
+    const pricing = calculateProratedPixAmount(monthly);
+    const semesterPrice = pricing.amount;
+    if (semesterPrice <= 0) throw new Error("Não há valor proporcional a cobrar neste semestre");
 
     const { data: prof } = await supabaseAdmin
-      .from("profiles").select("email, full_name").eq("id", userId).maybeSingle();
+      .from("profiles").select("email, full_name, username, cpf").eq("id", userId).maybeSingle();
     const payerEmail = (prof as any)?.email;
     if (!payerEmail) throw new Error("E-mail do presidente não encontrado");
+    const payerCpf = normalizeCpf((prof as any)?.cpf ?? "");
+    if (!isValidCPF(payerCpf)) throw new Error("Cadastre um CPF válido no seu perfil antes de pagar via Pix.");
+
+    const fullName = String((prof as any)?.full_name || (prof as any)?.username || "Presidente").trim();
+    const [firstName, ...rest] = fullName.split(/\s+/);
 
     const origin = data.origin_url.replace(/\/$/, "");
-
-    // Cria preferência PIX (sem split, na conta da plataforma)
-    const token = getPlatformAccessToken();
-    const pref = await mpFetch<{ id: string; init_point: string }>(
-      "/checkout/preferences",
-      {
-        method: "POST",
-        accessToken: token,
-        body: {
-          items: [{
-            title: `Anuidade semestral — ${(league as any).name}`,
-            quantity: 1,
-            unit_price: semesterPrice,
-            currency_id: "BRL",
-          }],
-          payer: { email: payerEmail },
-          back_urls: {
-            success: `${origin}/presidente/${(league as any).slug}?anuidade=ok`,
-            failure: `${origin}/presidente/${(league as any).slug}?anuidade=fail`,
-            pending: `${origin}/presidente/${(league as any).slug}?anuidade=pending`,
-          },
-          auto_return: "approved",
-          external_reference: `anuidade_semestral:${data.league_id}`,
-          notification_url: WEBHOOK_URL,
-          metadata: { league_id: data.league_id, kind: "anuidade_semestral" },
-          statement_descriptor: "LIGASUNO",
-          payment_methods: {
-            excluded_payment_types: [
-              { id: "credit_card" }, { id: "debit_card" },
-              { id: "ticket" }, { id: "atm" },
-            ],
-            installments: 1,
-            default_payment_method_id: "pix",
-          },
-        },
+    const pay = await createPixPayment({
+      sellerAccessToken: getPlatformAccessToken(),
+      amount: semesterPrice,
+      description: `Anuidade semestral proporcional — ${(league as any).name}`,
+      payerEmail,
+      payerFirstName: firstName || "Presidente",
+      payerLastName: rest.join(" ") || firstName || "Liga",
+      payerCpf,
+      externalReference: `anuidade_semestral:${data.league_id}`,
+      notificationUrl: WEBHOOK_URL,
+      applicationFee: 0,
+      metadata: {
+        league_id: data.league_id,
+        user_id: userId,
+        kind: "anuidade_semestral",
+        success_url: `${origin}/presidente/${(league as any).slug}?anuidade=ok`,
+        failure_url: `${origin}/presidente/${(league as any).slug}?anuidade=fail`,
       },
-    );
+      expiresInMinutes: 60,
+      idempotencyKey: `anuidade-semestral-${data.league_id}-${Date.now()}`,
+    });
+    const tx = pay?.point_of_interaction?.transaction_data ?? {};
 
-    return { url: pref.init_point, amount: semesterPrice };
+    return {
+      payment_id: String(pay?.id ?? ""),
+      amount: semesterPrice,
+      full_amount: pricing.full,
+      discount: pricing.discount,
+      months_left: pricing.monthsAndDaysLeft,
+      paid_until: pricing.end.toISOString().slice(0, 10),
+      qr_code: tx.qr_code as string | undefined,
+      qr_code_base64: tx.qr_code_base64 as string | undefined,
+      ticket_url: tx.ticket_url as string | undefined,
+      expires_at: pay?.date_of_expiration as string | undefined,
+    };
   });
 
 /**
