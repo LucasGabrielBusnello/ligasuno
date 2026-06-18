@@ -548,3 +548,36 @@ function SlotCard({ slot, status, onBook }: { slot: any; status: "open" | "taken
     </Card>
   );
 }
+
+function CamedNewsList() {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false })
+      .then(({ data }) => setItems((data as any[]) ?? []));
+  }, []);
+  if (items.length === 0) {
+    return <EmptyState icon={<Newspaper className="size-12" />} title="Nenhuma notícia publicada ainda" desc="As notícias publicadas pelo CAMED aparecerão aqui." />;
+  }
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {items.map((n) => (
+        <Card key={n.id} className="overflow-hidden hover:-translate-y-1 transition-all">
+          {n.image_url && <div className="aspect-video bg-muted"><img src={n.image_url} alt={n.title} className="w-full h-full object-cover" /></div>}
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="secondary" className="text-[10px] uppercase">{n.category ?? "Geral"}</Badge>
+              <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
+            </div>
+            <h3 className="font-black text-lg mt-2">{n.title}</h3>
+            {n.excerpt && <p className="text-sm text-muted-foreground mt-1.5 line-clamp-4 whitespace-pre-line">{n.excerpt}</p>}
+            {n.link && (
+              <Button asChild size="sm" variant="outline" className="mt-3">
+                <a href={n.link} target="_blank" rel="noreferrer">Saiba mais <ExternalLink className="size-3.5" /></a>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
