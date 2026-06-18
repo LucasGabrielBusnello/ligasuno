@@ -51,15 +51,17 @@ function CamedPage() {
         <p className="text-muted-foreground mb-6">Gerencie informações, membros e configurações de ligas.</p>
         <MultiLeagueAlert />
         <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-2 md:grid-cols-5 w-full h-auto">
+          <TabsList className="grid grid-cols-2 md:grid-cols-6 w-full h-auto">
             <TabsTrigger value="info" className="py-2"><SettingsIcon className="size-4 mr-1.5" />Info</TabsTrigger>
             <TabsTrigger value="membros" className="py-2"><UsersIcon className="size-4 mr-1.5" />Membros</TabsTrigger>
+            <TabsTrigger value="noticias" className="py-2"><Newspaper className="size-4 mr-1.5" />Notícias</TabsTrigger>
             <TabsTrigger value="ligas" className="py-2"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
             <TabsTrigger value="mensagens" className="py-2"><MessageSquare className="size-4 mr-1.5" />Mensagens</TabsTrigger>
             <TabsTrigger value="horarios" className="py-2"><CalIcon className="size-4 mr-1.5" />Horários</TabsTrigger>
           </TabsList>
           <TabsContent value="info" className="mt-6"><InfoTab /></TabsContent>
           <TabsContent value="membros" className="mt-6"><MembersTab /></TabsContent>
+          <TabsContent value="noticias" className="mt-6"><NewsTab /></TabsContent>
           <TabsContent value="ligas" className="mt-6"><LeaguesSettingsTab /></TabsContent>
           <TabsContent value="mensagens" className="mt-6"><MessagesTab /></TabsContent>
           <TabsContent value="horarios" className="mt-6"><SlotsTab /></TabsContent>
