@@ -560,3 +560,77 @@ function MultiLeagueAlert() {
     </>
   );
 }
+
+function NewsTab() {
+  const [list, setList] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const blank = { title: "", excerpt: "", image_url: "", category: "Geral", link: "" };
+  const [f, setF] = useState<any>(blank);
+  async function reload() {
+    const { data } = await supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false });
+    setList((data as any[]) ?? []);
+  }
+  useEffect(() => { reload(); }, []);
+  function openNew() { setEditing(null); setF(blank); setOpen(true); }
+  function openEdit(n: any) { setEditing(n); setF({ title: n.title, excerpt: n.excerpt ?? "", image_url: n.image_url ?? "", category: n.category ?? "Geral", link: n.link ?? "" }); setOpen(true); }
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const payload: any = { title: f.title, excerpt: f.excerpt || null, image_url: f.image_url || null, category: f.category || "Geral", link: f.link || null };
+    const { error } = editing
+      ? await supabase.from("camed_news" as any).update(payload).eq("id", editing.id)
+      : await supabase.from("camed_news" as any).insert(payload);
+    if (error) return toast.error(error.message);
+    toast.success(editing ? "Notícia atualizada" : "Notícia publicada");
+    setOpen(false); reload();
+  }
+  async function del(id: string) {
+    if (!confirm("Excluir notícia?")) return;
+    const { error } = await supabase.from("camed_news" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    reload();
+  }
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="flex items-center gap-2"><Newspaper className="size-5" /> Notícias do CAMED</CardTitle>
+        <Button size="sm" onClick={openNew}><Plus className="size-4" /> Nova notícia</Button>
+      </CardHeader>
+      <CardContent>
+        {list.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma notícia publicada ainda.</p>}
+        <div className="grid sm:grid-cols-2 gap-3">
+          {list.map((n) => (
+            <div key={n.id} className="rounded-xl border p-4 flex gap-3">
+              {n.image_url && <img src={n.image_url} className="size-20 rounded object-cover shrink-0" />}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-[10px]">{n.category ?? "Geral"}</Badge>
+                  <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
+                </div>
+                <h4 className="font-black mt-1 truncate">{n.title}</h4>
+                {n.excerpt && <p className="text-xs text-muted-foreground line-clamp-2">{n.excerpt}</p>}
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="outline" onClick={() => openEdit(n)}><Edit className="size-3" /></Button>
+                  <Button size="sm" variant="destructive" onClick={() => del(n.id)}><Trash2 className="size-3" /></Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editing ? "Editar notícia" : "Nova notícia"}</DialogTitle></DialogHeader>
+          <form onSubmit={save} className="space-y-3">
+            <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+            <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
+            <div><Label>Resumo</Label><Textarea rows={4} value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} /></div>
+            <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
+            <div><Label>Link externo (opcional)</Label><Input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></div>
+            <DialogFooter><Button type="submit">{editing ? "Salvar" : "Publicar"}</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
