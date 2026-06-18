@@ -222,8 +222,9 @@ function HomePage() {
             </Card>
 
             <Tabs defaultValue="membros" className="w-full">
-              <TabsList className="grid grid-cols-3 w-full h-auto">
+              <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto">
                 <TabsTrigger value="membros" className="py-2"><Users className="size-4 mr-1.5" />Membros</TabsTrigger>
+                <TabsTrigger value="noticias" className="py-2"><Newspaper className="size-4 mr-1.5" />Notícias</TabsTrigger>
                 <TabsTrigger value="contato" className="py-2"><MessageCircle className="size-4 mr-1.5" />Fale Conosco</TabsTrigger>
                 <TabsTrigger value="horarios" className="py-2"><Clock className="size-4 mr-1.5" />Horários Semanais</TabsTrigger>
               </TabsList>
@@ -255,6 +256,7 @@ function HomePage() {
                 )}
               </TabsContent>
 
+              <TabsContent value="noticias" className="mt-6"><CamedNewsList /></TabsContent>
               <TabsContent value="contato" className="mt-6"><FaleConoscoCard /></TabsContent>
               <TabsContent value="horarios" className="mt-6"><HorariosCard user={user} /></TabsContent>
             </Tabs>
