@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle, Mail, MessageSquare, Calendar as CalIcon, Clock, Eye, Phone, Video, MapPin, History, Trophy, Medal, Crown, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle, Mail, MessageSquare, Calendar as CalIcon, Clock, Eye, Phone, Video, MapPin, History, Trophy, Medal, Crown, ChevronDown, ChevronUp, Newspaper } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/camed")({ component: CamedPage });
