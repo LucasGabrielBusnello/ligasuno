@@ -175,6 +175,36 @@ export type Database = {
         }
         Relationships: []
       }
+      camed_news: {
+        Row: {
+          category: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          image_url: string | null
+          link: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          link?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          link?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       camed_presidents: {
         Row: {
           created_at: string

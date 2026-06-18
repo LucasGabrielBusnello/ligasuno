@@ -4,13 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Image as ImageIcon, Loader2 } from "lucide-react";
+import { Image as ImageIcon, Loader2, Upload, MousePointer2 } from "lucide-react";
 import { getCertificateTemplate, saveCertificateTemplate } from "@/lib/certificates.functions";
 
 type Box = { x: number; y: number; width: number; height: number };
+type Handle = "move" | "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
-const defaultNameBox: Box = { x: 0.28, y: 0.42, width: 0.44, height: 0.09 };
-const defaultSignatureBox: Box = { x: 0.58, y: 0.68, width: 0.24, height: 0.1 };
+const defaultNameBox: Box = { x: 0.25, y: 0.4, width: 0.5, height: 0.12 };
+const defaultSignatureBox: Box = { x: 0.55, y: 0.68, width: 0.3, height: 0.1 };
+const MIN = 0.04;
+
 const fonts = [
   { value: "TimesRoman", label: "Clássica" },
   { value: "TimesRomanBold", label: "Clássica forte" },
@@ -26,17 +29,26 @@ function cssFont(value: string) {
   return "Times New Roman, serif";
 }
 
-function normalizeBox(a: Box, b: Box): Box {
-  const x = Math.max(0, Math.min(a.x, b.x));
-  const y = Math.max(0, Math.min(a.y, b.y));
-  const right = Math.min(1, Math.max(a.x, b.x));
-  const bottom = Math.min(1, Math.max(a.y, b.y));
-  return { x, y, width: Math.max(0.02, right - x), height: Math.max(0.02, bottom - y) };
+function clamp(n: number, min = 0, max = 1) { return Math.max(min, Math.min(max, n)); }
+
+function applyHandle(box: Box, h: Handle, dx: number, dy: number): Box {
+  let { x, y, width: w, height: ht } = box;
+  if (h === "move") {
+    x = clamp(x + dx, 0, 1 - w);
+    y = clamp(y + dy, 0, 1 - ht);
+    return { x, y, width: w, height: ht };
+  }
+  if (h.includes("w")) { const nx = clamp(x + dx, 0, x + w - MIN); w = w - (nx - x); x = nx; }
+  if (h.includes("e")) { w = clamp(w + dx, MIN, 1 - x); }
+  if (h.includes("n")) { const ny = clamp(y + dy, 0, y + ht - MIN); ht = ht - (ny - y); y = ny; }
+  if (h.includes("s")) { ht = clamp(ht + dy, MIN, 1 - y); }
+  return { x, y, width: w, height: ht };
 }
 
 export function CertificateTemplateEditor({ leagueId }: { leagueId: string }) {
   const getTemplate = useServerFn(getCertificateTemplate);
   const saveTemplate = useServerFn(saveCertificateTemplate);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -46,7 +58,7 @@ export function CertificateTemplateEditor({ leagueId }: { leagueId: string }) {
   const [signatureBox, setSignatureBox] = useState<Box>(defaultSignatureBox);
   const [fontFamily, setFontFamily] = useState<(typeof fonts)[number]["value"]>("TimesRomanBold");
   const [active, setActive] = useState<"name" | "signature">("name");
-  const [dragStart, setDragStart] = useState<Box | null>(null);
+  const drag = useRef<{ which: "name" | "signature"; handle: Handle; startBox: Box; startX: number; startY: number } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,22 +78,6 @@ export function CertificateTemplateEditor({ leagueId }: { leagueId: string }) {
     return () => { cancelled = true; };
   }, [leagueId]);
 
-  function point(e: PointerEvent<HTMLDivElement>): Box | null {
-    const rect = previewRef.current?.getBoundingClientRect();
-    if (!rect) return null;
-    return {
-      x: Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)),
-      y: Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height)),
-      width: 0,
-      height: 0,
-    };
-  }
-
-  function setActiveBox(box: Box) {
-    if (active === "name") setNameBox(box);
-    else setSignatureBox(box);
-  }
-
   function onFile(file?: File) {
     if (!file) return;
     if (!/^image\/(png|jpeg)$/.test(file.type)) return toast.error("Envie PNG ou JPG.");
@@ -95,6 +91,33 @@ export function CertificateTemplateEditor({ leagueId }: { leagueId: string }) {
     reader.readAsDataURL(file);
   }
 
+  function startDrag(which: "name" | "signature", handle: Handle) {
+    return (e: PointerEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      e.preventDefault();
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      const rect = previewRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setActive(which);
+      drag.current = {
+        which, handle,
+        startBox: which === "name" ? nameBox : signatureBox,
+        startX: e.clientX, startY: e.clientY,
+      };
+    };
+  }
+
+  function onMove(e: PointerEvent<HTMLDivElement>) {
+    if (!drag.current) return;
+    const rect = previewRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const dx = (e.clientX - drag.current.startX) / rect.width;
+    const dy = (e.clientY - drag.current.startY) / rect.height;
+    const next = applyHandle(drag.current.startBox, drag.current.handle, dx, dy);
+    if (drag.current.which === "name") setNameBox(next); else setSignatureBox(next);
+  }
+  function endDrag() { drag.current = null; }
+
   async function save() {
     try {
       setSaving(true);
@@ -105,24 +128,60 @@ export function CertificateTemplateEditor({ leagueId }: { leagueId: string }) {
     finally { setSaving(false); }
   }
 
-  const areaClass = "absolute border-2 border-primary bg-primary/10 shadow-sm";
+  function ResizableBox({ which, box, color, label }: { which: "name" | "signature"; box: Box; color: string; label: string }) {
+    const isActive = active === which;
+    const ring = isActive ? "ring-2 ring-offset-1 ring-primary" : "";
+    const handles: { h: Handle; style: React.CSSProperties; cursor: string }[] = [
+      { h: "nw", style: { left: -6, top: -6 }, cursor: "nwse-resize" },
+      { h: "ne", style: { right: -6, top: -6 }, cursor: "nesw-resize" },
+      { h: "sw", style: { left: -6, bottom: -6 }, cursor: "nesw-resize" },
+      { h: "se", style: { right: -6, bottom: -6 }, cursor: "nwse-resize" },
+      { h: "n", style: { left: "50%", top: -6, transform: "translateX(-50%)" }, cursor: "ns-resize" },
+      { h: "s", style: { left: "50%", bottom: -6, transform: "translateX(-50%)" }, cursor: "ns-resize" },
+      { h: "w", style: { left: -6, top: "50%", transform: "translateY(-50%)" }, cursor: "ew-resize" },
+      { h: "e", style: { right: -6, top: "50%", transform: "translateY(-50%)" }, cursor: "ew-resize" },
+    ];
+    return (
+      <div
+        className={`absolute select-none ${ring}`}
+        style={{ left: `${box.x * 100}%`, top: `${box.y * 100}%`, width: `${box.width * 100}%`, height: `${box.height * 100}%`, cursor: "move", border: `2px solid ${color}`, background: `${color}1a` }}
+        onPointerDown={startDrag(which, "move")}
+        onClick={() => setActive(which)}
+      >
+        <div className="absolute -top-6 left-0 text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: color, color: "#fff" }}>{label}</div>
+        {which === "name" ? (
+          <div className="flex size-full items-center justify-center px-2 text-center font-semibold pointer-events-none" style={{ color, fontFamily: cssFont(fontFamily), fontSize: "clamp(10px, 2.4vw, 28px)" }}>
+            Nome Aparecerá Aqui
+          </div>
+        ) : (
+          <div className="grid size-full place-items-center text-xs font-medium pointer-events-none" style={{ color }}>Assinatura</div>
+        )}
+        {handles.map((hd) => (
+          <div key={hd.h} onPointerDown={startDrag(which, hd.h)} className="absolute size-3 rounded-sm bg-background shadow" style={{ ...hd.style, border: `2px solid ${color}`, cursor: hd.cursor }} />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-lg border p-4 space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div>
           <h3 className="font-bold">Modelo visual do certificado</h3>
-          <p className="text-xs text-muted-foreground">Envie a imagem do certificado e arraste no preview para marcar a área do nome e da assinatura.</p>
+          <p className="text-xs text-muted-foreground flex items-center gap-1"><MousePointer2 className="size-3" /> Arraste as bordas para redimensionar as áreas, ou o centro para mover.</p>
         </div>
         {loading && <Badge variant="outline"><Loader2 className="size-3 mr-1 animate-spin" />Carregando</Badge>}
       </div>
 
-      <div className="grid lg:grid-cols-[220px_1fr] gap-4">
+      <div className="grid lg:grid-cols-[240px_1fr] gap-4">
         <div className="space-y-3">
-          <div>
-            <Label className="text-xs">Imagem do modelo</Label>
-            <input type="file" accept="image/png,image/jpeg" onChange={(e) => onFile(e.target.files?.[0])} className="mt-1 block w-full text-xs" />
-          </div>
+          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg" onChange={(e) => onFile(e.target.files?.[0])} className="hidden" />
+          <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition p-4 text-center cursor-pointer">
+            <Upload className="size-6 mx-auto text-primary" />
+            <div className="font-bold text-sm mt-2">{imageBase64 ? "Trocar imagem do modelo" : "Enviar imagem do certificado"}</div>
+            <div className="text-[11px] text-muted-foreground mt-1">PNG ou JPG, até 4MB</div>
+          </button>
+
           <div>
             <Label className="text-xs">Fonte do nome</Label>
             <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value as any)} className="mt-1 h-9 w-full rounded-md border bg-background px-3 text-sm">
@@ -130,7 +189,7 @@ export function CertificateTemplateEditor({ leagueId }: { leagueId: string }) {
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Button type="button" size="sm" variant={active === "name" ? "default" : "outline"} onClick={() => setActive("name")}>Área do nome</Button>
+            <Button type="button" size="sm" variant={active === "name" ? "default" : "outline"} onClick={() => setActive("name")}>Nome</Button>
             <Button type="button" size="sm" variant={active === "signature" ? "default" : "outline"} onClick={() => setActive("signature")}>Assinatura</Button>
           </div>
           <Button type="button" className="w-full" onClick={save} disabled={saving || !imageBase64}>{saving ? "Salvando..." : "Salvar modelo"}</Button>
@@ -138,20 +197,19 @@ export function CertificateTemplateEditor({ leagueId }: { leagueId: string }) {
 
         <div
           ref={previewRef}
-          className="relative aspect-[842/595] overflow-hidden rounded border bg-muted select-none"
-          onPointerDown={(e) => { const p = point(e); if (p) setDragStart(p); }}
-          onPointerMove={(e) => { const p = point(e); if (p && dragStart) setActiveBox(normalizeBox(dragStart, p)); }}
-          onPointerUp={(e) => { const p = point(e); if (p && dragStart) setActiveBox(normalizeBox(dragStart, p)); setDragStart(null); }}
+          className="relative aspect-[842/595] overflow-hidden rounded border bg-muted touch-none"
+          onPointerMove={onMove}
+          onPointerUp={endDrag}
+          onPointerLeave={endDrag}
         >
-          {imageBase64 ? <img src={imageBase64} alt="Modelo do certificado" className="absolute inset-0 size-full object-fill" /> : (
-            <div className="absolute inset-0 flex items-center justify-center gap-2 text-sm text-muted-foreground"><ImageIcon className="size-5" /> Envie uma imagem para pré-visualizar</div>
+          {imageBase64 ? <img src={imageBase64} alt="Modelo do certificado" className="absolute inset-0 size-full object-fill pointer-events-none" /> : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+              <ImageIcon className="size-8" />
+              Envie uma imagem para começar
+            </div>
           )}
-          <div className={areaClass} style={{ left: `${nameBox.x * 100}%`, top: `${nameBox.y * 100}%`, width: `${nameBox.width * 100}%`, height: `${nameBox.height * 100}%` }}>
-            <div className="flex size-full items-center justify-center px-2 text-center font-semibold text-primary" style={{ fontFamily: cssFont(fontFamily), fontSize: "clamp(10px, 2.4vw, 28px)" }}>Nome Aparecerá Aqui</div>
-          </div>
-          <div className="absolute border-2 border-dashed border-primary bg-background/50" style={{ left: `${signatureBox.x * 100}%`, top: `${signatureBox.y * 100}%`, width: `${signatureBox.width * 100}%`, height: `${signatureBox.height * 100}%` }}>
-            <div className="grid size-full place-items-center text-xs font-medium text-primary">Assinatura</div>
-          </div>
+          <ResizableBox which="name" box={nameBox} color="hsl(var(--primary))" label="Nome" />
+          <ResizableBox which="signature" box={signatureBox} color="#16a34a" label="Assinatura" />
         </div>
       </div>
     </div>

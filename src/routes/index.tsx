@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { sendAnonymousMessage, bookCamedSlot } from "@/lib/camed.functions";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { GraduationCap, Users, Calendar, Shield, LogIn, LogOut, UserCircle, Plus, ArrowRight, Sparkles, Activity, Building2, MessageCircle, Send, Clock, Video, MapPin, ShieldCheck, CheckCircle2, Lock } from "lucide-react";
+import { GraduationCap, Users, Calendar, Shield, LogIn, LogOut, UserCircle, Plus, ArrowRight, Sparkles, Activity, Building2, MessageCircle, Send, Clock, Video, MapPin, ShieldCheck, CheckCircle2, Lock, Newspaper, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/")({ component: HomePage });
 
@@ -222,8 +222,9 @@ function HomePage() {
             </Card>
 
             <Tabs defaultValue="membros" className="w-full">
-              <TabsList className="grid grid-cols-3 w-full h-auto">
+              <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto">
                 <TabsTrigger value="membros" className="py-2"><Users className="size-4 mr-1.5" />Membros</TabsTrigger>
+                <TabsTrigger value="noticias" className="py-2"><Newspaper className="size-4 mr-1.5" />Notícias</TabsTrigger>
                 <TabsTrigger value="contato" className="py-2"><MessageCircle className="size-4 mr-1.5" />Fale Conosco</TabsTrigger>
                 <TabsTrigger value="horarios" className="py-2"><Clock className="size-4 mr-1.5" />Horários Semanais</TabsTrigger>
               </TabsList>
@@ -255,6 +256,7 @@ function HomePage() {
                 )}
               </TabsContent>
 
+              <TabsContent value="noticias" className="mt-6"><CamedNewsList /></TabsContent>
               <TabsContent value="contato" className="mt-6"><FaleConoscoCard /></TabsContent>
               <TabsContent value="horarios" className="mt-6"><HorariosCard user={user} /></TabsContent>
             </Tabs>
@@ -544,5 +546,38 @@ function SlotCard({ slot, status, onBook }: { slot: any; status: "open" | "taken
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function CamedNewsList() {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false })
+      .then(({ data }) => setItems((data as any[]) ?? []));
+  }, []);
+  if (items.length === 0) {
+    return <EmptyState icon={<Newspaper className="size-12" />} title="Nenhuma notícia publicada ainda" desc="As notícias publicadas pelo CAMED aparecerão aqui." />;
+  }
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {items.map((n) => (
+        <Card key={n.id} className="overflow-hidden hover:-translate-y-1 transition-all">
+          {n.image_url && <div className="aspect-video bg-muted"><img src={n.image_url} alt={n.title} className="w-full h-full object-cover" /></div>}
+          <CardContent className="p-5">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="secondary" className="text-[10px] uppercase">{n.category ?? "Geral"}</Badge>
+              <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
+            </div>
+            <h3 className="font-black text-lg mt-2">{n.title}</h3>
+            {n.excerpt && <p className="text-sm text-muted-foreground mt-1.5 line-clamp-4 whitespace-pre-line">{n.excerpt}</p>}
+            {n.link && (
+              <Button asChild size="sm" variant="outline" className="mt-3">
+                <a href={n.link} target="_blank" rel="noreferrer">Saiba mais <ExternalLink className="size-3.5" /></a>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
