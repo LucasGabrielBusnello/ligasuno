@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { sendAnonymousMessage, bookCamedSlot } from "@/lib/camed.functions";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { GraduationCap, Users, Calendar, Shield, LogIn, LogOut, UserCircle, Plus, ArrowRight, Sparkles, Activity, Building2, MessageCircle, Send, Clock, Video, MapPin, ShieldCheck, CheckCircle2, Lock, Newspaper, ExternalLink } from "lucide-react";
+import { ProfileEditDialog } from "@/components/profile-edit-dialog";
 
 export const Route = createFileRoute("/")({ component: HomePage });
 
@@ -31,6 +32,8 @@ function HomePage() {
   const [camedInfo, setCamedInfo] = useState<any>(null);
   const [camedMembers, setCamedMembers] = useState<CamedMember[]>([]);
   const [isCamedPresident, setIsCamedPresident] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
 
   useEffect(() => {
     if (!profile?.email) { setIsCamedPresident(false); return; }
@@ -102,9 +105,24 @@ function HomePage() {
           <div className="flex items-center gap-2">
             {loading ? null : user ? (
               <>
-                <span className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen(true)}
+                  className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-full px-3 py-1.5 transition-colors"
+                  title="Editar meus dados"
+                >
                   <UserCircle className="size-4" /> {profile?.username ?? user.email}
-                </span>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="sm:hidden"
+                  onClick={() => setProfileOpen(true)}
+                  title="Meus dados"
+                >
+                  <UserCircle className="size-5" />
+                </Button>
+
                 {isCamedPresident && (
                   <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
                     <Link to="/camed"><Building2 className="size-4" /> CAMED</Link>
@@ -298,6 +316,10 @@ function HomePage() {
       <footer className="border-t border-border/50 mt-16 py-8 text-center text-sm text-muted-foreground">
         © {new Date().getFullYear()} Ligas Acadêmicas · Unochapecó
       </footer>
+
+      {user && (
+        <ProfileEditDialog open={profileOpen} onOpenChange={setProfileOpen} userId={user.id} />
+      )}
     </div>
   );
 }
