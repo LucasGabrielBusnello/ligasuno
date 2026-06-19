@@ -2128,8 +2128,40 @@ export type Database = {
       }
       is_admin_master: { Args: { _user_id: string }; Returns: boolean }
       is_camed_president: { Args: { _user_id: string }; Returns: boolean }
+      manager_get_quizzes: {
+        Args: { _set_id: string }
+        Returns: {
+          correct_answer: number
+          created_at: string
+          display_order: number
+          explanation: string
+          id: string
+          options: Json
+          question: string
+          quiz_set_id: string
+        }[]
+      }
       mark_overdue_semester_payments: { Args: never; Returns: number }
+      my_quiz_answers: {
+        Args: { _set_id: string }
+        Returns: {
+          correct_answer: number
+          explanation: string
+          is_correct: boolean
+          quiz_id: string
+          selected: number
+        }[]
+      }
+      submit_quiz_answer: {
+        Args: { _answer: number; _quiz_id: string }
+        Returns: {
+          correct_answer: number
+          explanation: string
+          is_correct: boolean
+        }[]
+      }
       username_available: { Args: { _username: string }; Returns: boolean }
+      users_share_league: { Args: { _a: string; _b: string }; Returns: boolean }
     }
     Enums: {
       app_role:

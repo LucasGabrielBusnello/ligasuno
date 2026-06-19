@@ -100,7 +100,7 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
   const [sets, setSets] = useState<any[]>([]);
   const [activeSet, setActiveSet] = useState<string | null>(initialSet ?? null);
   const [quizzes, setQuizzes] = useState<any[]>([]);
-  const [answers, setAnswers] = useState<Record<string, { is_correct: boolean; selected: number }>>({});
+  const [answers, setAnswers] = useState<Record<string, { is_correct: boolean; selected: number; correct_answer?: number; explanation?: string }>>({});
   const [curr, setCurr] = useState(0);
   const [ans, setAns] = useState<number | null>(null);
   const [showReport, setShowReport] = useState(false);
@@ -109,16 +109,16 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
     (async () => {
       const { data } = await supabase.from("league_quiz_sets").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
       setSets(data ?? []);
-      const { data: a } = await supabase.from("league_quiz_answers").select("*").eq("user_id", userId);
+      const { data: a } = await (supabase as any).rpc("my_quiz_answers", { _set_id: null });
       const m: any = {};
-      (a ?? []).forEach((r: any) => { m[r.quiz_id] = { is_correct: r.is_correct, selected: r.selected }; });
+      (a ?? []).forEach((r: any) => { m[r.quiz_id] = { is_correct: r.is_correct, selected: r.selected, correct_answer: r.correct_answer, explanation: r.explanation }; });
       setAnswers(m);
     })();
   }, [league.id, userId]);
 
   useEffect(() => {
     if (!activeSet) return;
-    supabase.from("league_quizzes").select("*").eq("quiz_set_id", activeSet).order("display_order").then(({ data }) => {
+    supabase.from("league_quizzes").select("id, quiz_set_id, question, options, display_order").eq("quiz_set_id", activeSet).order("display_order").then(({ data }) => {
       setQuizzes(data ?? []);
       const first = (data ?? []).findIndex((q: any) => answers[q.id] === undefined);
       setCurr(first === -1 ? 0 : first);
@@ -242,13 +242,11 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
 
   async function verify() {
     if (ans === null) return;
-    const ok = ans === q.correct_answer;
-    const { error } = await supabase.from("league_quiz_answers").upsert(
-      { user_id: userId, quiz_id: q.id, is_correct: ok, selected: ans },
-      { onConflict: "user_id,quiz_id" }
-    );
+    const { data, error } = await (supabase as any).rpc("submit_quiz_answer", { _quiz_id: q.id, _answer: ans });
     if (error) return toast.error(error.message);
-    setAnswers({ ...answers, [q.id]: { is_correct: ok, selected: ans } });
+    const row = Array.isArray(data) ? data[0] : data;
+    const ok = !!row?.is_correct;
+    setAnswers({ ...answers, [q.id]: { is_correct: ok, selected: ans, correct_answer: row?.correct_answer, explanation: row?.explanation } });
   }
 
   return (
@@ -295,8 +293,9 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
             {(q.options as string[]).map((opt, i) => {
               let cls = "border-2 border-border bg-card hover:border-primary/40 hover:bg-accent/30 hover:scale-[1.01]";
               let circleCls = "bg-background border-2";
+              const correctIdx = existing?.correct_answer;
               if (isAnswered) {
-                if (i === q.correct_answer) { cls = "border-2 border-emerald-500 bg-emerald-500/10"; circleCls = "bg-emerald-500 border-emerald-500 text-white"; }
+                if (i === correctIdx) { cls = "border-2 border-emerald-500 bg-emerald-500/10"; circleCls = "bg-emerald-500 border-emerald-500 text-white"; }
                 else if (i === existing.selected) { cls = "border-2 border-rose-500 bg-rose-500/10"; circleCls = "bg-rose-500 border-rose-500 text-white"; }
                 else { cls = "border-2 border bg-muted/40 opacity-50"; }
               } else if (ans === i) { cls = "border-2 border-primary bg-primary/10 scale-[1.01]"; circleCls = "bg-primary border-primary text-primary-foreground"; }
@@ -308,7 +307,7 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
                   className={`w-full text-left p-4 rounded-xl transition-all flex items-center gap-4 ${cls}`}
                 >
                   <span className={`size-10 rounded-full flex items-center justify-center font-black text-sm shrink-0 transition-all ${circleCls}`}>
-                    {isAnswered && i === q.correct_answer ? <CheckCircle className="size-5" />
+                    {isAnswered && i === correctIdx ? <CheckCircle className="size-5" />
                       : isAnswered && i === existing.selected ? <XCircle className="size-5" />
                       : String.fromCharCode(65 + i)}
                   </span>
@@ -327,7 +326,7 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
               <p className={`font-black mb-2 flex items-center gap-2 text-lg ${existing.is_correct ? "text-emerald-600" : "text-rose-600"}`}>
                 {existing.is_correct ? <><CheckCircle className="size-6" /> Correto!</> : <><XCircle className="size-6" /> Incorreto</>}
               </p>
-              {q.explanation && <p className="text-sm text-muted-foreground leading-relaxed">{q.explanation}</p>}
+              {existing?.explanation && <p className="text-sm text-muted-foreground leading-relaxed">{existing.explanation}</p>}
               <Button className="mt-4 w-full" size="lg" onClick={() => {
                 setAns(null);
                 if (curr === quizzes.length - 1) setShowReport(true);

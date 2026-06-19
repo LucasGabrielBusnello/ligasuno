@@ -74,7 +74,7 @@ export function LeagueQuizManager({ league }: { league: any }) {
     setSets(data ?? []);
   };
   const reloadQuizzes = async (sid: string) => {
-    const { data } = await supabase.from("league_quizzes").select("*").eq("quiz_set_id", sid).order("display_order");
+    const { data } = await (supabase as any).rpc("manager_get_quizzes", { _set_id: sid });
     setQuizzes(data ?? []);
   };
 
