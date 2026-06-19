@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { sendAnonymousMessage, bookCamedSlot } from "@/lib/camed.functions";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { GraduationCap, Users, Calendar, Shield, LogIn, LogOut, UserCircle, Plus, ArrowRight, Sparkles, Activity, Building2, MessageCircle, Send, Clock, Video, MapPin, ShieldCheck, CheckCircle2, Lock, Newspaper, ExternalLink } from "lucide-react";
+import { ProfileEditDialog } from "@/components/profile-edit-dialog";
 
 export const Route = createFileRoute("/")({ component: HomePage });
 
