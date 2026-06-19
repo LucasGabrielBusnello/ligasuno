@@ -942,7 +942,7 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
 
 function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; league: League; userId: string | null; onClose: () => void }) {
   const [quizzes, setQuizzes] = useState<any[]>([]);
-  const [answers, setAnswers] = useState<Record<string, { is_correct: boolean; selected: number }>>({});
+  const [answers, setAnswers] = useState<Record<string, { is_correct: boolean; selected: number; correct_answer?: number; explanation?: string }>>({});
   const [curr, setCurr] = useState(0);
   const [ans, setAns] = useState<number | null>(null);
   const [showReport, setShowReport] = useState(false);
@@ -951,11 +951,11 @@ function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; 
     if (!quizSet || !userId) return;
     (async () => {
       const [{ data: qs }, { data: a }] = await Promise.all([
-        supabase.from("league_quizzes").select("*").eq("quiz_set_id", quizSet.id).order("display_order"),
-        supabase.from("league_quiz_answers").select("*").eq("user_id", userId),
+        supabase.from("league_quizzes").select("id, quiz_set_id, question, options, display_order").eq("quiz_set_id", quizSet.id).order("display_order"),
+        (supabase as any).rpc("my_quiz_answers", { _set_id: quizSet.id }),
       ]);
-      const answerMap: Record<string, { is_correct: boolean; selected: number }> = {};
-      (a ?? []).forEach((row: any) => { answerMap[row.quiz_id] = { is_correct: row.is_correct, selected: row.selected }; });
+      const answerMap: Record<string, { is_correct: boolean; selected: number; correct_answer?: number; explanation?: string }> = {};
+      (a ?? []).forEach((row: any) => { answerMap[row.quiz_id] = { is_correct: row.is_correct, selected: row.selected, correct_answer: row.correct_answer, explanation: row.explanation }; });
       setQuizzes(qs ?? []);
       setAnswers(answerMap);
       const first = (qs ?? []).findIndex((q: any) => answerMap[q.id] === undefined);
@@ -973,13 +973,11 @@ function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; 
 
   async function verify() {
     if (!q || ans === null) return;
-    const ok = ans === q.correct_answer;
-    const { error } = await supabase.from("league_quiz_answers").upsert(
-      { user_id: currentUserId, quiz_id: q.id, is_correct: ok, selected: ans },
-      { onConflict: "user_id,quiz_id" },
-    );
+    const { data, error } = await (supabase as any).rpc("submit_quiz_answer", { _quiz_id: q.id, _answer: ans });
     if (error) return toast.error(error.message);
-    setAnswers((prev) => ({ ...prev, [q.id]: { is_correct: ok, selected: ans } }));
+    const row = Array.isArray(data) ? data[0] : data;
+    const ok = !!row?.is_correct;
+    setAnswers((prev) => ({ ...prev, [q.id]: { is_correct: ok, selected: ans, correct_answer: row?.correct_answer, explanation: row?.explanation } }));
   }
 
   return (
@@ -1003,8 +1001,9 @@ function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; 
             <div className="space-y-2">
               {(q.options as string[]).map((opt, i) => {
                 let cls = "border bg-card";
+                const correctIdx = existing?.correct_answer;
                 if (isAnswered) {
-                  if (i === q.correct_answer) cls = "border-emerald-500 bg-emerald-500/10";
+                  if (i === correctIdx) cls = "border-emerald-500 bg-emerald-500/10";
                   else if (i === existing?.selected) cls = "border-rose-500 bg-rose-500/10";
                   else cls = "border bg-muted/40 opacity-60";
                 } else if (ans === i) cls = "border-primary bg-primary/5";
@@ -1021,7 +1020,7 @@ function PublicQuizDialog({ quizSet, league, userId, onClose }: { quizSet: any; 
                 <p className={`mb-2 flex items-center gap-2 font-black ${existing?.is_correct ? "text-emerald-600" : "text-rose-600"}`}>
                   {existing?.is_correct ? <><CheckCircle className="size-5" /> Correto!</> : <><XCircle className="size-5" /> Incorreto</>}
                 </p>
-                {q.explanation && <p className="text-sm text-muted-foreground">{q.explanation}</p>}
+                {existing?.explanation && <p className="text-sm text-muted-foreground">{existing.explanation}</p>}
                 <Button className="mt-4 w-full" onClick={() => {
                   setAns(null);
                   if (curr === quizzes.length - 1) setShowReport(true);
