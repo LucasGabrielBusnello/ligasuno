@@ -32,6 +32,8 @@ function HomePage() {
   const [camedInfo, setCamedInfo] = useState<any>(null);
   const [camedMembers, setCamedMembers] = useState<CamedMember[]>([]);
   const [isCamedPresident, setIsCamedPresident] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
 
   useEffect(() => {
     if (!profile?.email) { setIsCamedPresident(false); return; }
@@ -103,9 +105,24 @@ function HomePage() {
           <div className="flex items-center gap-2">
             {loading ? null : user ? (
               <>
-                <span className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen(true)}
+                  className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-full px-3 py-1.5 transition-colors"
+                  title="Editar meus dados"
+                >
                   <UserCircle className="size-4" /> {profile?.username ?? user.email}
-                </span>
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="sm:hidden"
+                  onClick={() => setProfileOpen(true)}
+                  title="Meus dados"
+                >
+                  <UserCircle className="size-5" />
+                </Button>
+
                 {isCamedPresident && (
                   <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
                     <Link to="/camed"><Building2 className="size-4" /> CAMED</Link>
