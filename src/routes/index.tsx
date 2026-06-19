@@ -316,6 +316,10 @@ function HomePage() {
       <footer className="border-t border-border/50 mt-16 py-8 text-center text-sm text-muted-foreground">
         © {new Date().getFullYear()} Ligas Acadêmicas · Unochapecó
       </footer>
+
+      {user && (
+        <ProfileEditDialog open={profileOpen} onOpenChange={setProfileOpen} userId={user.id} />
+      )}
     </div>
   );
 }
