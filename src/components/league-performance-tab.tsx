@@ -30,7 +30,7 @@ export function LeaguePerformanceTab({ league }: { league: any }) {
 
   async function openQuizSet(s: any) {
     setOpenSet(s); setLoading(true);
-    const { data: qs } = await supabase.from("league_quizzes").select("*").eq("quiz_set_id", s.id).order("display_order");
+    const { data: qs } = await (supabase as any).rpc("manager_get_quizzes", { _set_id: s.id });
     setQuizzes(qs ?? []);
     const ids = (qs ?? []).map((q: any) => q.id);
     if (ids.length) {
