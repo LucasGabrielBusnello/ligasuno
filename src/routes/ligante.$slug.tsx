@@ -326,7 +326,7 @@ function QuizView({ league, userId, isStaff, initialSet }: { league: League; use
               <p className={`font-black mb-2 flex items-center gap-2 text-lg ${existing.is_correct ? "text-emerald-600" : "text-rose-600"}`}>
                 {existing.is_correct ? <><CheckCircle className="size-6" /> Correto!</> : <><XCircle className="size-6" /> Incorreto</>}
               </p>
-              {q.explanation && <p className="text-sm text-muted-foreground leading-relaxed">{q.explanation}</p>}
+              {existing?.explanation && <p className="text-sm text-muted-foreground leading-relaxed">{existing.explanation}</p>}
               <Button className="mt-4 w-full" size="lg" onClick={() => {
                 setAns(null);
                 if (curr === quizzes.length - 1) setShowReport(true);
