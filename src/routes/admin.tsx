@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { deleteLeagueWithCancel } from "@/lib/subscription.functions";
+import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscription.functions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -183,6 +183,8 @@ function LeagueDialog({ open, setOpen, league, onSaved }: any) {
 
 function PayDialog({ league, setLeague, onSaved }: any) {
   const [date, setDate] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const cancelFn = useServerFn(cancelLeagueSubscription);
   useEffect(() => { setDate(league?.paid_until ?? ""); }, [league]);
   if (!league) return null;
   async function save() {
@@ -190,13 +192,29 @@ function PayDialog({ league, setLeague, onSaved }: any) {
     if (error) return toast.error(error.message);
     toast.success("Anuidade atualizada"); setLeague(null); onSaved();
   }
+  async function cancelSub() {
+    if (!confirm("Cancelar a assinatura mensal no Mercado Pago e marcar a liga como sem pagamento? Esta ação remove paid_until e despublica a liga.")) return;
+    try {
+      setCancelling(true);
+      const r: any = await cancelFn({ data: { league_id: league.id } } as any);
+      toast.success(`Assinatura cancelada${r?.mp_cancelled ? ` (${r.mp_cancelled} no MP)` : ""}.`);
+      setLeague(null); onSaved();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao cancelar");
+    } finally { setCancelling(false); }
+  }
   return (
     <Dialog open={!!league} onOpenChange={(o) => !o && setLeague(null)}>
       <DialogContent>
         <DialogHeader><DialogTitle>Anuidade — {league.name}</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">Define até qual data a anuidade está paga. Após essa data, a liga sai automaticamente da página inicial.</p>
         <div><Label>Paga até</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-        <DialogFooter><Button onClick={save}><Calendar className="size-4" /> Salvar</Button></DialogFooter>
+        <DialogFooter className="gap-2 flex-wrap">
+          <Button variant="destructive" onClick={cancelSub} disabled={cancelling}>
+            <Trash2 className="size-4" /> {cancelling ? "Cancelando..." : "Cancelar assinatura"}
+          </Button>
+          <Button onClick={save}><Calendar className="size-4" /> Salvar</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
