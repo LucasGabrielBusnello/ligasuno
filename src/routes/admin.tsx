@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { deleteLeagueWithCancel } from "@/lib/subscription.functions";
+import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscription.functions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
