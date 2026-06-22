@@ -64,12 +64,30 @@ function HomePage() {
   useEffect(() => {
     if (!user) { setMyMemberships([]); return; }
     (async () => {
-      const { data } = await supabase
-        .from("league_memberships")
-        .select("role, leagues(*)")
-        .eq("user_id", user.id);
-      const mapped = (data ?? []).map((m: any) => ({ league: m.leagues as League, role: m.role }));
-      setMyMemberships(mapped.filter((m) => m.league));
+      const [{ data: mem }, { data: presLeagues }] = await Promise.all([
+        supabase
+          .from("league_memberships")
+          .select("role, leagues(*)")
+          .eq("user_id", user.id),
+        supabase
+          .from("leagues")
+          .select("*")
+          .eq("president_id", user.id),
+      ]);
+      const mapped = (mem ?? [])
+        .map((m: any) => ({ league: m.leagues as League, role: m.role }))
+        .filter((m) => m.league);
+      const seen = new Set(mapped.map((m) => m.league.id));
+      (presLeagues ?? []).forEach((l: any) => {
+        if (!seen.has(l.id)) {
+          mapped.push({ league: l as League, role: "presidente" });
+          seen.add(l.id);
+        } else {
+          const item = mapped.find((m) => m.league.id === l.id);
+          if (item) item.role = "presidente";
+        }
+      });
+      setMyMemberships(mapped);
     })();
   }, [user]);
 
