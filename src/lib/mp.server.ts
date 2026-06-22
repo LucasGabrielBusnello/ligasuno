@@ -4,10 +4,12 @@
 const MP_BASE = "https://api.mercadopago.com";
 
 export function getPlatformAccessToken(): string {
-  const t = process.env.MP_ACCESS_TOKEN;
-  if (!t) throw new Error("MP_ACCESS_TOKEN não configurado");
+  const t = (process.env.MP_ACCESS_TOKEN ?? "").trim();
+  if (!t) throw new Error("MP_ACCESS_TOKEN não configurado (segredo vazio). Cadastre um access token válido do Mercado Pago (começa com APP_USR- ou TEST-).");
+  if (!/^(APP_USR-|TEST-)/.test(t)) throw new Error("MP_ACCESS_TOKEN inválido: deve começar com APP_USR- (produção) ou TEST- (sandbox).");
   return t;
 }
+
 
 export function getOAuthCredentials() {
   const client_id = process.env.MP_CLIENT_ID;
