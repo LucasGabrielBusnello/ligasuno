@@ -188,34 +188,53 @@ export const createLeagueSemesterPixCheckout = createServerFn({ method: "POST" }
 
 /**
  * Cancela a assinatura mensal (preapproval) ativa de uma liga.
+ * - Tenta cancelar quaisquer preapprovals ativos no Mercado Pago (best-effort).
+ * - Sempre marca a liga como sem assinatura ativa localmente (paid_until=null,
+ *   published=false), garantindo que a UI reflita o cancelamento mesmo quando
+ *   o MP devolve 401/unauthorized ou não encontra assinatura.
+ * - Permitido para a presidência da liga OU admin master.
  */
 export const cancelLeagueSubscription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ league_id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
-    const { data: league } = await supabase
+    const { userId } = context;
+    const { data: league } = await supabaseAdmin
       .from("leagues").select("id, president_id").eq("id", data.league_id).maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
-    if ((league as any).president_id !== userId) {
-      throw new Error("Apenas a presidência pode cancelar");
+
+    const { data: isAdmin } = await supabaseAdmin.rpc("is_admin_master", { _user_id: userId });
+    if ((league as any).president_id !== userId && !isAdmin) {
+      throw new Error("Apenas a presidência ou admin master pode cancelar");
     }
 
-    // Busca preapproval ativo deste league via MP search por external_reference
-    const search = await mpFetch<any>(
-      `/preapproval/search?external_reference=anuidade:${data.league_id}&status=authorized`,
-    );
-    const results = search?.results ?? [];
-    if (!results.length) throw new Error("Nenhuma assinatura ativa encontrada");
-
-    for (const sub of results) {
-      await mpFetch(`/preapproval/${sub.id}`, {
-        method: "PUT",
-        body: { status: "cancelled" },
-      });
+    let mpCancelled = 0;
+    try {
+      const search = await mpFetch<any>(
+        `/preapproval/search?external_reference=anuidade:${data.league_id}`,
+      );
+      const results = search?.results ?? [];
+      for (const sub of results) {
+        if (sub?.status === "authorized" || sub?.status === "paused" || sub?.status === "pending") {
+          try {
+            await mpFetch(`/preapproval/${sub.id}`, { method: "PUT", body: { status: "cancelled" } });
+            mpCancelled++;
+          } catch (e) {
+            console.error("Falha ao cancelar preapproval", sub?.id, e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Busca de preapproval no MP falhou (seguindo com cancelamento local)", e);
     }
 
-    return { ok: true };
+    const { error: upErr } = await supabaseAdmin
+      .from("leagues")
+      .update({ paid_until: null, published: false })
+      .eq("id", data.league_id);
+    if (upErr) throw new Error(upErr.message);
+
+    return { ok: true, mp_cancelled: mpCancelled };
   });
 
 /**
