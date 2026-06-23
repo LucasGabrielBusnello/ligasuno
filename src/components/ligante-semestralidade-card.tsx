@@ -23,7 +23,8 @@ function fmtDate(iso?: string | null) {
 
 export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
   const getMine = useServerFn(getMySemesterPayment);
-  const pay = useServerFn(createSemesterCheckout);
+  const startPix = useServerFn(createSemesterPix);
+  const checkStatus = useServerFn(getSemesterPaymentStatus);
   const leave = useServerFn(createLeaveRequest);
   const pending = useServerFn(getMyPendingLeaveRequest);
   const [data, setData] = useState<{ cycle: any; payment: any } | null>(null);
