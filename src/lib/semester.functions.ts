@@ -4,10 +4,13 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   computeFee,
+  createPixPayment,
   createSplitPreference,
+  getPayment,
   loadFeeForCategory,
   loadLeagueMpAccount,
 } from "@/lib/mp.server";
+import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { sendGmail, sendGmailBulk, emailLayout, emailInfoCard } from "@/lib/gmail.server";
 
 /** Lê o valor padrão de semestralidade definido pelo CAMED (em centavos). */
