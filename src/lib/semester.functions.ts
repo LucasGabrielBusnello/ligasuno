@@ -493,3 +493,177 @@ export const getMySemesterPayment = createServerFn({ method: "POST" })
       .maybeSingle();
     return { cycle, payment };
   });
+
+// ------------------ ligante: pay semester via Pix nativo (com QR + polling) ------------------
+
+function splitName(full: string) {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  const first = parts[0] ?? "Ligante";
+  const last = parts.length > 1 ? parts.slice(1).join(" ") : "Ligasuno";
+  return { first: first.slice(0, 50), last: last.slice(0, 50) };
+}
+
+export const createSemesterPix = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    league_id: z.string().uuid(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+
+    const { data: cycle } = await supabaseAdmin
+      .from("semester_cycles")
+      .select("*, leagues!inner(id, name, slug)")
+      .eq("league_id", data.league_id)
+      .eq("is_current", true)
+      .maybeSingle();
+    if (!cycle) throw new Error("Não há semestralidade aberta para esta liga");
+
+    const { data: mem } = await supabaseAdmin
+      .from("league_memberships")
+      .select("role")
+      .eq("league_id", data.league_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    const role = (mem as any)?.role;
+    const { data: leagueRow } = await supabaseAdmin
+      .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
+    const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId;
+    if (!role && !isLeader) {
+      throw new Error("Apenas membros da liga podem pagar a semestralidade");
+    }
+
+    const baseAmountCents = isLeader
+      ? ((cycle as any).director_amount_cents ?? 0) || (cycle as any).amount_cents
+      : (cycle as any).amount_cents;
+
+    await supabaseAdmin
+      .from("semester_payments")
+      .upsert({
+        cycle_id: (cycle as any).id,
+        league_id: data.league_id,
+        user_id: userId,
+        amount_due_cents: baseAmountCents,
+        status: "pending",
+      }, { onConflict: "cycle_id,user_id", ignoreDuplicates: true });
+
+    const { data: payment } = await supabaseAdmin
+      .from("semester_payments")
+      .select("*")
+      .eq("cycle_id", (cycle as any).id)
+      .eq("user_id", userId)
+      .single();
+    if (!payment) throw new Error("Falha ao registrar pagamento");
+    if ((payment as any).status === "paid") {
+      return { already_paid: true, registration_id: (payment as any).id };
+    }
+
+    // Cálculo proporcional (mesma lógica de createSemesterCheckout)
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth();
+    const todayYear = today.getFullYear();
+    const [sy, sm] = ((cycle as any).start_date as string).split("-").map(Number);
+    const [ey, em] = ((cycle as any).end_date as string).split("-").map(Number);
+    const totalMonths = Math.max(1, (ey - sy) * 12 + (em - sm) + 1);
+    const baseDueCents = (payment as any).amount_due_cents ?? baseAmountCents;
+    const monthlyCents = baseDueCents / totalMonths;
+    let monthsLeft = (ey - todayYear) * 12 + ((em - 1) - todayMonth) + 1;
+    const daysInThisMonth = new Date(todayYear, todayMonth + 1, 0).getDate();
+    const fractionUsed = Math.max(0, Math.min(1, (todayDay - 1) / daysInThisMonth));
+    monthsLeft = Math.max(0, monthsLeft - fractionUsed);
+    const effectiveMonths = Math.min(totalMonths, monthsLeft);
+    const proratedCents = Math.max(100, Math.round(monthlyCents * effectiveMonths));
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const isOverdue = (cycle as any).due_date < todayISO;
+    const totalCents = proratedCents + (isOverdue ? (cycle as any).late_fee_cents : 0);
+    const totalReais = totalCents / 100;
+    if (totalReais <= 0) throw new Error("Valor inválido");
+
+    const mpAccount = await loadLeagueMpAccount(supabaseAdmin, data.league_id);
+    const feeCfg = await loadFeeForCategory(supabaseAdmin, "semester");
+    const fee = computeFee(totalReais, feeCfg.pct, feeCfg.fixed);
+
+    const { data: prof } = await supabaseAdmin
+      .from("profiles").select("email, full_name, cpf").eq("id", userId).maybeSingle();
+    const email = (prof as any)?.email || `${userId}@noemail.local`;
+    const cpf = normalizeCpf((prof as any)?.cpf ?? "");
+    if (!cpf || !isValidCPF(cpf)) {
+      throw new Error("Cadastre um CPF válido em seu perfil antes de pagar via Pix.");
+    }
+    const { first, last } = splitName((prof as any)?.full_name ?? "");
+    const cycleLabel = `${(cycle as any).semester}º/${(cycle as any).year}`;
+
+    const pay = await createPixPayment({
+      sellerAccessToken: (mpAccount as any).access_token,
+      amount: totalReais,
+      description: `Semestralidade ${cycleLabel} — ${(cycle as any).leagues.name}`,
+      payerEmail: email,
+      payerFirstName: first,
+      payerLastName: last,
+      payerCpf: cpf,
+      externalReference: `semester:${(payment as any).id}`,
+      notificationUrl: "https://ligasuno.lovable.app/api/public/payments/mp-webhook",
+      applicationFee: fee,
+      metadata: {
+        payment_id: (payment as any).id,
+        cycle_id: (cycle as any).id,
+        user_id: userId,
+        league_id: data.league_id,
+      },
+      expiresInMinutes: 30,
+    });
+
+    await supabaseAdmin
+      .from("semester_payments")
+      .update({ mp_payment_id: String(pay.id) })
+      .eq("id", (payment as any).id);
+
+    const tx = pay?.point_of_interaction?.transaction_data ?? {};
+    return {
+      registration_id: (payment as any).id,
+      payment_id: String(pay.id),
+      status: pay.status,
+      amount: totalReais,
+      qr_code: tx.qr_code as string | undefined,
+      qr_code_base64: tx.qr_code_base64 as string | undefined,
+      ticket_url: tx.ticket_url as string | undefined,
+      expires_at: pay.date_of_expiration as string | undefined,
+    };
+  });
+
+export const getSemesterPaymentStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ registration_id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { data: payment } = await supabaseAdmin
+      .from("semester_payments")
+      .select("id, user_id, status, mp_payment_id, league_id, amount_due_cents")
+      .eq("id", data.registration_id)
+      .maybeSingle();
+    if (!payment || (payment as any).user_id !== userId) throw new Error("Pagamento não encontrado");
+    if ((payment as any).status === "paid") return { status: "paid" };
+    const paymentId = (payment as any).mp_payment_id;
+    if (!paymentId) return { status: (payment as any).status };
+    try {
+      const mp = await loadLeagueMpAccount(supabaseAdmin, (payment as any).league_id).catch(() => null);
+      const pay = await getPayment(String(paymentId), (mp as any)?.access_token);
+      if (pay?.status === "approved") {
+        const gross = Number(pay?.transaction_amount ?? 0);
+        await supabaseAdmin.from("semester_payments")
+          .update({
+            status: "paid",
+            paid_at: new Date().toISOString(),
+            amount_paid_cents: Math.round(gross * 100),
+            mp_payment_id: String(paymentId),
+          })
+          .eq("id", (payment as any).id);
+        return { status: "paid" };
+      }
+      return { status: pay?.status ?? (payment as any).status };
+    } catch {
+      return { status: (payment as any).status };
+    }
+  });
