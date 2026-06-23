@@ -33,6 +33,15 @@ export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveReason, setLeaveReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pixOpen, setPixOpen] = useState(false);
+  const [pixData, setPixData] = useState<PixPaymentData | null>(null);
+
+  async function refresh() {
+    try {
+      const r: any = await getMine({ data: { league_id: leagueId } });
+      setData(r);
+    } catch {}
+  }
 
   useEffect(() => {
     getMine({ data: { league_id: leagueId } }).then((r) => setData(r as any)).catch(() => setData({ cycle: null, payment: null }));
