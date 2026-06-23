@@ -84,13 +84,31 @@ export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
       {cycle && <SemesterBlock cycle={cycle} payment={payment} paying={paying} onPay={async () => {
         setPaying(true);
         try {
-          const r: any = await pay({ data: { league_id: leagueId, origin_url: window.location.origin } });
-          if (r.already_paid) return toast.success("Você já está em dia");
-          if (r.url) window.location.href = r.url;
+          const r: any = await startPix({ data: { league_id: leagueId } });
+          if (r.already_paid) { toast.success("Você já está em dia"); await refresh(); return; }
+          setPixData({
+            registration_id: r.registration_id,
+            payment_id: r.payment_id,
+            amount: r.amount,
+            qr_code: r.qr_code,
+            qr_code_base64: r.qr_code_base64,
+            ticket_url: r.ticket_url,
+            expires_at: r.expires_at,
+          });
+          setPixOpen(true);
         } catch (e: any) {
           toast.error(e?.message ?? "Erro ao iniciar pagamento");
         } finally { setPaying(false); }
       }} />}
+
+      <PixPaymentDialog
+        open={pixOpen}
+        data={pixData}
+        onClose={() => setPixOpen(false)}
+        onPaid={async () => { setPixOpen(false); await refresh(); }}
+        checkStatus={async (rid) => checkStatus({ data: { registration_id: rid } } as any) as any}
+      />
+
 
       <div className="mb-4 flex justify-end">
         <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => setLeaveOpen(true)}>
