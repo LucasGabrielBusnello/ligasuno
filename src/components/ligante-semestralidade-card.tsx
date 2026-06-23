@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Wallet, CheckCircle2, LogOut, Clock } from "lucide-react";
-import { getMySemesterPayment, createSemesterCheckout } from "@/lib/semester.functions";
+import { getMySemesterPayment, createSemesterPix, getSemesterPaymentStatus } from "@/lib/semester.functions";
 import { StatusBadge } from "@/components/semester-dialog";
 import { createLeaveRequest, getMyPendingLeaveRequest } from "@/lib/leave-request.functions";
+import { PixPaymentDialog, type PixPaymentData } from "@/components/pix-payment-dialog";
 
 function brl(cents: number) {
   return ((cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
