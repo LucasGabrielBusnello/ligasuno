@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Wallet, CheckCircle2, LogOut, Clock } from "lucide-react";
-import { getMySemesterPayment, createSemesterCheckout } from "@/lib/semester.functions";
+import { getMySemesterPayment, createSemesterPix, getSemesterPaymentStatus } from "@/lib/semester.functions";
 import { StatusBadge } from "@/components/semester-dialog";
 import { createLeaveRequest, getMyPendingLeaveRequest } from "@/lib/leave-request.functions";
+import { PixPaymentDialog, type PixPaymentData } from "@/components/pix-payment-dialog";
 
 function brl(cents: number) {
   return ((cents ?? 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -22,7 +23,8 @@ function fmtDate(iso?: string | null) {
 
 export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
   const getMine = useServerFn(getMySemesterPayment);
-  const pay = useServerFn(createSemesterCheckout);
+  const startPix = useServerFn(createSemesterPix);
+  const checkStatus = useServerFn(getSemesterPaymentStatus);
   const leave = useServerFn(createLeaveRequest);
   const pending = useServerFn(getMyPendingLeaveRequest);
   const [data, setData] = useState<{ cycle: any; payment: any } | null>(null);
@@ -31,6 +33,15 @@ export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [leaveReason, setLeaveReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [pixOpen, setPixOpen] = useState(false);
+  const [pixData, setPixData] = useState<PixPaymentData | null>(null);
+
+  async function refresh() {
+    try {
+      const r: any = await getMine({ data: { league_id: leagueId } });
+      setData(r);
+    } catch {}
+  }
 
   useEffect(() => {
     getMine({ data: { league_id: leagueId } }).then((r) => setData(r as any)).catch(() => setData({ cycle: null, payment: null }));
@@ -73,13 +84,31 @@ export function LiganteSemestralidadeCard({ leagueId }: { leagueId: string }) {
       {cycle && <SemesterBlock cycle={cycle} payment={payment} paying={paying} onPay={async () => {
         setPaying(true);
         try {
-          const r: any = await pay({ data: { league_id: leagueId, origin_url: window.location.origin } });
-          if (r.already_paid) return toast.success("Você já está em dia");
-          if (r.url) window.location.href = r.url;
+          const r: any = await startPix({ data: { league_id: leagueId } });
+          if (r.already_paid) { toast.success("Você já está em dia"); await refresh(); return; }
+          setPixData({
+            registration_id: r.registration_id,
+            payment_id: r.payment_id,
+            amount: r.amount,
+            qr_code: r.qr_code,
+            qr_code_base64: r.qr_code_base64,
+            ticket_url: r.ticket_url,
+            expires_at: r.expires_at,
+          });
+          setPixOpen(true);
         } catch (e: any) {
           toast.error(e?.message ?? "Erro ao iniciar pagamento");
         } finally { setPaying(false); }
       }} />}
+
+      <PixPaymentDialog
+        open={pixOpen}
+        data={pixData}
+        onClose={() => setPixOpen(false)}
+        onPaid={async () => { setPixOpen(false); await refresh(); }}
+        checkStatus={async (rid) => checkStatus({ data: { registration_id: rid } } as any) as any}
+      />
+
 
       <div className="mb-4 flex justify-end">
         <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-destructive" onClick={() => setLeaveOpen(true)}>
