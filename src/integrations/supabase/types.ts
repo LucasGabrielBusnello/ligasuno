@@ -2128,6 +2128,10 @@ export type Database = {
       }
       is_admin_master: { Args: { _user_id: string }; Returns: boolean }
       is_camed_president: { Args: { _user_id: string }; Returns: boolean }
+      is_league_member: {
+        Args: { _league_id: string; _user_id: string }
+        Returns: boolean
+      }
       manager_get_quizzes: {
         Args: { _set_id: string }
         Returns: {

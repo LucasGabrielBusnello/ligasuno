@@ -269,10 +269,10 @@ function HomePage() {
                 {camedMembers.length === 0 ? (
                   <EmptyState icon={<Users className="size-12" />} title="Nenhum membro cadastrado ainda" />
                 ) : (
-                  <Carousel className="w-full">
-                    <CarouselContent>
+                  <Carousel className="w-full" opts={{ align: "start", containScroll: "trimSnaps" }}>
+                    <CarouselContent className="-ml-3">
                       {camedMembers.map((m) => (
-                        <CarouselItem key={m.id} className="basis-full sm:basis-1/2 lg:basis-1/3">
+                        <CarouselItem key={m.id} className="pl-3 basis-[85%] sm:basis-1/2 lg:basis-1/3">
                           <Card className="h-full overflow-hidden">
                             <div className="aspect-square bg-muted relative">
                               {m.image_url ? <img src={m.image_url} alt={m.name} className="absolute inset-0 w-full h-full object-cover" />
@@ -287,7 +287,7 @@ function HomePage() {
                         </CarouselItem>
                       ))}
                     </CarouselContent>
-                    <CarouselPrevious /><CarouselNext />
+                    <CarouselPrevious className="hidden sm:flex" /><CarouselNext className="hidden sm:flex" />
                   </Carousel>
                 )}
               </TabsContent>

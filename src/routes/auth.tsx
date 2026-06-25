@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 import { sendWelcomeEmailForUser } from "@/lib/registration.functions";
+import { formatBRPhone, isValidBRPhone, normalizePhone } from "@/lib/phone";
 
 function PasswordInput({ id, value, onChange, autoComplete, required }: { id: string; value: string; onChange: (v: string) => void; autoComplete?: string; required?: boolean }) {
   const [show, setShow] = useState(false);
@@ -47,7 +48,7 @@ const signupSchema = z.object({
     .string()
     .regex(usernameRegex, "Usuário deve ter de 2 a 30 caracteres (letras, números, ponto, hífen ou underline)"),
   email: z.string().email("Email inválido").max(255),
-  phone: z.string().min(8, "Telefone inválido (mínimo 8 dígitos)").max(20),
+  phone: z.string().refine((v) => isValidBRPhone(v), "Telefone inválido. Use o formato (DDD) 9XXXX-XXXX para celular ou (DDD) XXXX-XXXX para fixo."),
   password: z.string().min(8, "A senha deve ter no mínimo 8 caracteres").max(72),
 });
 
@@ -109,7 +110,7 @@ function AuthPage() {
     const cleaned = {
       username: su.username.trim(),
       email: su.email.trim(),
-      phone: su.phone.trim(),
+      phone: normalizePhone(su.phone),
       password: su.password,
     };
     const parsed = signupSchema.safeParse(cleaned);
@@ -272,7 +273,9 @@ function AuthPage() {
                       autoComplete="tel"
                       required
                       value={su.phone}
-                      onChange={(e) => setSu({ ...su, phone: e.target.value })}
+                      onChange={(e) => setSu({ ...su, phone: formatBRPhone(e.target.value) })}
+                      inputMode="tel"
+                      maxLength={16}
                       placeholder="(49) 99999-9999"
                     />
                   </div>

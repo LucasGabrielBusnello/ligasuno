@@ -233,8 +233,8 @@ function LeaguePage() {
       <header className="sticky top-0 z-30 backdrop-blur bg-background/85 border-b" style={{ borderColor: `${tc}22` }}>
         <div className="max-w-7xl mx-auto p-4 flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"><ArrowLeft className="size-4" /> Hub</Link>
-          <div className="flex items-center gap-2 min-w-0">
-            {league.icon_url && <img src={league.icon_url} className="size-9 rounded-lg ring-2 ring-offset-1" style={{ ["--tw-ring-color" as any]: `${tc}55` }} alt="" />}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {league.icon_url && <img src={league.icon_url} className="size-9 shrink-0 rounded-lg object-cover ring-2 ring-offset-1" style={{ ["--tw-ring-color" as any]: `${tc}55` }} alt="" />}
             <span className="font-black truncate">{league.name}</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -554,7 +554,25 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
   const [form, setForm] = useState({ full_name: "", social_name: "", cpf: "", course: "medicina" as const });
   const [pix, setPix] = useState<PixPaymentData | null>(null);
 
-  useEffect(() => { if (event) { setStep(1); setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" }); setPix(null); } }, [event]);
+  useEffect(() => {
+    if (event) {
+      setStep(1);
+      setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" });
+      setPix(null);
+      // Prefill com dados do perfil
+      supabase.auth.getUser().then(({ data: u }) => {
+        if (!u.user) return;
+        supabase.from("profiles").select("full_name, cpf").eq("id", u.user.id).maybeSingle().then(({ data: p }) => {
+          if (!p) return;
+          setForm((f) => ({
+            ...f,
+            full_name: f.full_name || (p as any).full_name || "",
+            cpf: f.cpf || (p as any).cpf || "",
+          }));
+        });
+      });
+    }
+  }, [event]);
 
   const { price, label, discount } = useMemo(() => {
     if (!event) return { price: 0, label: "", discount: null as string | null };
