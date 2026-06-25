@@ -107,20 +107,20 @@ function HomePage() {
   const myActiveMemberships = myMemberships.filter((m) => m.role !== "visitante");
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       {/* HEADER */}
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="size-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2 sm:gap-3">
+          <Link to="/" className="flex items-center gap-2 group min-w-0">
+            <div className="size-10 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
               <GraduationCap className="size-5 text-primary-foreground" />
             </div>
-            <div>
-              <div className="font-black text-lg leading-none tracking-tight">Ligas Acadêmicas</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Unochapecó</div>
+            <div className="min-w-0">
+              <div className="font-black text-base sm:text-lg leading-none tracking-tight truncate">Ligas Acadêmicas</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">Unochapecó</div>
             </div>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {loading ? null : user ? (
               <>
                 <button
@@ -142,16 +142,16 @@ function HomePage() {
                 </Button>
 
                 {isCamedPresident && (
-                  <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
-                    <Link to="/camed"><Building2 className="size-4" /> CAMED</Link>
+                  <Button asChild variant="default" size="icon" className="sm:size-auto sm:px-3 bg-gradient-to-r from-primary to-accent" title="CAMED">
+                    <Link to="/camed"><Building2 className="size-4" /> <span className="hidden sm:inline">CAMED</span></Link>
                   </Button>
                 )}
                 {isAdminMaster && (
-                  <Button asChild variant="default" size="sm" className="bg-gradient-to-r from-primary to-accent">
-                    <Link to="/admin"><Shield className="size-4" /> ADMIN</Link>
+                  <Button asChild variant="default" size="icon" className="sm:size-auto sm:px-3 bg-gradient-to-r from-primary to-accent" title="Admin">
+                    <Link to="/admin"><Shield className="size-4" /> <span className="hidden sm:inline">ADMIN</span></Link>
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => signOut()}>
+                <Button variant="ghost" size="icon" onClick={() => signOut()} title="Sair">
                   <LogOut className="size-4" />
                 </Button>
               </>
