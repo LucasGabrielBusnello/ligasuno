@@ -30,6 +30,21 @@ export function SelectionRegisterDialog({ league, open, onClose, defaultEmail, o
       setStep(1);
       setForm({ full_name: "", cpf: "", email: defaultEmail ?? "", phone: "", semester: 1, registration_number: "" });
       supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => setFee(Number((data as any)?.league_registration_fee) || 0));
+      // Prefill com dados do perfil
+      supabase.auth.getUser().then(({ data: u }) => {
+        if (!u.user) return;
+        supabase.from("profiles").select("full_name, cpf, phone, registration_number, email").eq("id", u.user.id).maybeSingle().then(({ data: p }) => {
+          if (!p) return;
+          setForm((f) => ({
+            ...f,
+            full_name: f.full_name || (p as any).full_name || "",
+            cpf: f.cpf || (p as any).cpf || "",
+            email: f.email || (p as any).email || defaultEmail || "",
+            phone: f.phone || (p as any).phone || "",
+            registration_number: f.registration_number || (p as any).registration_number || "",
+          }));
+        });
+      });
     }
   }, [open, defaultEmail]);
 
