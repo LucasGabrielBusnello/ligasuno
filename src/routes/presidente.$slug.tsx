@@ -1051,6 +1051,48 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
               <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
               <p className="text-[11px] text-muted-foreground mt-1">Minicursos têm 1 credenciamento — esta é a carga horária total no certificado.</p>
             </div>
+            <div className="rounded border p-3 bg-muted/30 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <Label className="text-xs">Vagas exclusivas</Label>
+                  <p className="text-[11px] text-muted-foreground leading-snug">Reserve parte das vagas totais para ligantes desta liga ou de ligas parceiras. As vagas exclusivas <strong>saem das vagas totais</strong> (não somam).</p>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={() => setExclusiveDraft((d) => [...d, { league_id: event.league_id, seats: 1 }])}>
+                  <Plus className="size-3.5" /> Reservar
+                </Button>
+              </div>
+              {exclusiveDraft.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic">Nenhuma reserva. Todas as vagas ficam abertas.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {exclusiveDraft.map((s, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <select
+                        className="flex-1 h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                        value={s.league_id}
+                        onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, league_id: e.target.value } : x))}
+                      >
+                        <option value="">— liga —</option>
+                        {leaguesList.map((l) => (
+                          <option key={l.id} value={l.id}>{l.name}{l.id === event.league_id ? " (organizadora)" : ""}</option>
+                        ))}
+                      </select>
+                      <Input
+                        type="number" min="1" className="w-20" value={s.seats}
+                        onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, seats: Math.max(1, +e.target.value || 1) } : x))}
+                      />
+                      <Button type="button" size="sm" variant="destructive" onClick={() => setExclusiveDraft((d) => d.filter((_, i) => i !== idx))}>
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-muted-foreground">
+                    Total reservado: {exclusiveDraft.reduce((a, s) => a + (Number(s.seats) || 0), 0)} / {f.max_registrations} vagas · Restam {Math.max(0, (Number(f.max_registrations) || 0) - exclusiveDraft.reduce((a, s) => a + (Number(s.seats) || 0), 0))} vagas abertas.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <label className="flex items-center justify-between gap-2 p-3 rounded border">
               <div>
                 <span className="text-sm font-medium">Publicar imediatamente</span>
