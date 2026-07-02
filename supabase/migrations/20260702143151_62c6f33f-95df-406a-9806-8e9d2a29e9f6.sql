@@ -1,0 +1,1 @@
+ALTER TABLE public.league_cash_entries ADD COLUMN IF NOT EXISTS receipt_url text;

@@ -608,6 +608,7 @@ export type Database = {
           league_id: string
           notes: string | null
           occurred_at: string
+          receipt_url: string | null
           updated_at: string
         }
         Insert: {
@@ -621,6 +622,7 @@ export type Database = {
           league_id: string
           notes?: string | null
           occurred_at?: string
+          receipt_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -634,6 +636,7 @@ export type Database = {
           league_id?: string
           notes?: string | null
           occurred_at?: string
+          receipt_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2238,6 +2241,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_manage_league_cash: {
+        Args: { _league_id: string; _user_id: string }
+        Returns: boolean
+      }
       gen_checkin_code: { Args: never; Returns: string }
       has_role: {
         Args: {
