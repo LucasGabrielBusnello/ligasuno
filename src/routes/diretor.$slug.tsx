@@ -740,6 +740,20 @@ function CaixaTab({ league }: { league: League }) {
                       <>
                         <div><span className="text-muted-foreground">Origem:</span> Registro manual</div>
                         {t.notes && <div><span className="text-muted-foreground">Observações:</span> {t.notes}</div>}
+                        {t.detail?.receipt_url && (
+                          <div>
+                            <span className="text-muted-foreground">Comprovante:</span>{" "}
+                            <button
+                              type="button"
+                              className="text-primary underline"
+                              onClick={async () => {
+                                const { data, error } = await supabase.storage.from("cash-receipts").createSignedUrl(t.detail.receipt_url, 300);
+                                if (error || !data?.signedUrl) return toast.error("Não foi possível abrir o comprovante");
+                                window.open(data.signedUrl, "_blank", "noopener");
+                              }}
+                            >Abrir comprovante</button>
+                          </div>
+                        )}
                         <div className="pt-2">
                           <Button size="sm" variant="destructive" onClick={() => delManual(t.detail.id)}><Trash2 className="size-3" /> Excluir registro</Button>
                         </div>
