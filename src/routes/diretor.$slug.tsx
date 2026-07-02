@@ -587,12 +587,24 @@ function CaixaTab({ league }: { league: League }) {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0 pb-3 gap-3">
           <CardTitle className="text-base">Histórico de transações</CardTitle>
-          <div className="flex gap-1">
-            <Button size="sm" variant={filter === "todos" ? "default" : "outline"} onClick={() => setFilter("todos")}>Todas</Button>
-            <Button size="sm" variant={filter === "entrada" ? "default" : "outline"} onClick={() => setFilter("entrada")}>Entradas</Button>
-            <Button size="sm" variant={filter === "saida" ? "default" : "outline"} onClick={() => setFilter("saida")}>Saídas</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-[180px] h-8 text-xs">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-1">
+              <Button size="sm" variant={filter === "todos" ? "default" : "outline"} onClick={() => setFilter("todos")}>Todas</Button>
+              <Button size="sm" variant={filter === "entrada" ? "default" : "outline"} onClick={() => setFilter("entrada")}>Entradas</Button>
+              <Button size="sm" variant={filter === "saida" ? "default" : "outline"} onClick={() => setFilter("saida")}>Saídas</Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
