@@ -553,6 +553,81 @@ function CaixaTab({ league }: { league: League }) {
     reload();
   }
 
+  async function generateReport() {
+    try {
+      const yearPrefix = `${currentYear}-`;
+      const yearTxns = txns.filter((t) => t.occurred_at.startsWith(yearPrefix));
+      if (yearTxns.length === 0) {
+        toast.error("Nenhuma transação neste ano para gerar relatório");
+        return;
+      }
+      const report: ReportTxn[] = yearTxns.map((t) => {
+        let groupKey = `${t.kind}:${t.description}`;
+        let groupLabel = t.description;
+        if (t.source === "site") {
+          const d = t.detail || {};
+          if (d.category === "event") {
+            const ev = eventsById.get(d.reference_id);
+            groupKey = `event:${d.reference_id}`;
+            groupLabel = ev ? `Inscrições no Evento: ${ev.title}` : "Inscrições em evento";
+          } else if (d.category === "minicourse") {
+            const mc = mcById.get(d.reference_id);
+            groupKey = `mc:${d.reference_id}`;
+            groupLabel = mc ? `Inscrições no Minicurso: ${mc.title}` : "Inscrições em minicurso";
+          } else if (d.category === "semester" || d.category === "anuidade_semestral") {
+            groupKey = "semester";
+            groupLabel = "Mensalidades / Semestralidades de ligantes";
+          } else if (d.category === "selection") {
+            groupKey = `selection:${d.reference_id || "geral"}`;
+            groupLabel = "Taxas de inscrição em processos seletivos";
+          } else if (d.category === "anuidade") {
+            groupKey = "anuidade";
+            groupLabel = "Anuidade da liga";
+          }
+        }
+        return {
+          id: t.id,
+          kind: t.kind,
+          amount_cents: t.amount_cents,
+          category: t.category,
+          description: t.description,
+          occurred_at: t.occurred_at,
+          source: t.source,
+          detail: t.detail,
+          groupKey,
+          groupLabel,
+        };
+      });
+      let presidentName = "";
+      if (league.president_id) {
+        const p = profById.get(league.president_id);
+        if (p) presidentName = p.full_name || p.username || "";
+        else {
+          const { data } = await supabase.from("profiles").select("full_name, username").eq("id", league.president_id).maybeSingle();
+          presidentName = (data as any)?.full_name || (data as any)?.username || "";
+        }
+      }
+      const blob = await generateCashReportPdf({
+        leagueName: league.name,
+        presidentName,
+        themeColor: league.theme_color || undefined,
+        year: currentYear,
+        txns: report,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `relatorio-caixa-${league.slug}-${currentYear}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("Relatório gerado");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao gerar relatório");
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card className="overflow-hidden">
