@@ -806,10 +806,22 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
 
     let receipt_url: string | null = null;
     if (receipt) {
-      if (receipt.size > 10 * 1024 * 1024) { setSaving(false); return toast.error("Comprovante deve ter até 10MB"); }
-      const ext = receipt.name.split(".").pop()?.toLowerCase() || "bin";
+      const isImage = receipt.type.startsWith("image/");
+      const isPdf = receipt.type === "application/pdf";
+      if (!isImage && !isPdf) { setSaving(false); return toast.error("Envie apenas imagem ou PDF"); }
+      let toUpload: Blob = receipt;
+      let ext = receipt.name.split(".").pop()?.toLowerCase() || "bin";
+      let contentType = receipt.type || undefined;
+      if (isImage) {
+        try {
+          toUpload = await compressImage(receipt, 1600, 0.8);
+          ext = "jpg";
+          contentType = "image/jpeg";
+        } catch { /* fallback to original */ }
+      }
+      if (toUpload.size > 5 * 1024 * 1024) { setSaving(false); return toast.error("Comprovante deve ter até 5MB após compressão"); }
       const path = `${leagueId}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("cash-receipts").upload(path, receipt, { contentType: receipt.type || undefined, upsert: false });
+      const { error: upErr } = await supabase.storage.from("cash-receipts").upload(path, toUpload, { contentType, upsert: false });
       if (upErr) { setSaving(false); return toast.error("Falha ao enviar comprovante: " + upErr.message); }
       receipt_url = path;
     }
