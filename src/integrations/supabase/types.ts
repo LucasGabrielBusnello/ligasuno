@@ -596,6 +596,63 @@ export type Database = {
           },
         ]
       }
+      league_cash_entries: {
+        Row: {
+          amount_cents: number
+          category: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          kind: string
+          league_id: string
+          notes: string | null
+          occurred_at: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          kind: string
+          league_id: string
+          notes?: string | null
+          occurred_at?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          kind?: string
+          league_id?: string
+          notes?: string | null
+          occurred_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_cash_entries_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_cash_entries_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_certificate_templates: {
         Row: {
           created_at: string
