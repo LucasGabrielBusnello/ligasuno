@@ -1042,7 +1042,10 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
                 </div>
               ))}
             </div>
-          )}
+              )}
+            </div>
+
+
         </DialogContent>
       </Dialog>
 

@@ -1758,12 +1758,59 @@ export type Database = {
           },
         ]
       }
+      minicourse_exclusive_slots: {
+        Row: {
+          created_at: string
+          id: string
+          league_id: string
+          minicourse_id: string
+          seats: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          league_id: string
+          minicourse_id: string
+          seats: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          league_id?: string
+          minicourse_id?: string
+          seats?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minicourse_exclusive_slots_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minicourse_exclusive_slots_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minicourse_exclusive_slots_minicourse_id_fkey"
+            columns: ["minicourse_id"]
+            isOneToOne: false
+            referencedRelation: "league_minicourses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       minicourse_registrations: {
         Row: {
           checkin_code: string | null
           cpf: string | null
           created_at: string
           event_registration_id: string
+          exclusive_league_id: string | null
           full_name: string | null
           id: string
           minicourse_id: string
@@ -1778,6 +1825,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           event_registration_id: string
+          exclusive_league_id?: string | null
           full_name?: string | null
           id?: string
           minicourse_id: string
@@ -1792,6 +1840,7 @@ export type Database = {
           cpf?: string | null
           created_at?: string
           event_registration_id?: string
+          exclusive_league_id?: string | null
           full_name?: string | null
           id?: string
           minicourse_id?: string
@@ -1807,6 +1856,20 @@ export type Database = {
             columns: ["event_registration_id"]
             isOneToOne: false
             referencedRelation: "event_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minicourse_registrations_exclusive_league_id_fkey"
+            columns: ["exclusive_league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minicourse_registrations_exclusive_league_id_fkey"
+            columns: ["exclusive_league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
             referencedColumns: ["id"]
           },
           {
