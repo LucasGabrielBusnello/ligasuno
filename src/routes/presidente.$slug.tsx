@@ -851,11 +851,14 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
 function MinicoursesManager({ event, open, onClose }: { event: any; open: boolean; onClose: () => void }) {
   const [list, setList] = useState<any[]>([]);
   const [regsByMc, setRegsByMc] = useState<Record<string, any[]>>({});
+  const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ id: string; league_id: string; seats: number }>>>({});
+  const [leaguesList, setLeaguesList] = useState<Array<{ id: string; name: string }>>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
   const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
+  const [exclusiveDraft, setExclusiveDraft] = useState<Array<{ id?: string; league_id: string; seats: number }>>([]);
   const [checkinMc, setCheckinMc] = useState<any | null>(null);
   const [certMc, setCertMc] = useState<any | null>(null);
 
@@ -863,8 +866,11 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
     const { data } = await supabase.from("league_minicourses").select("*").eq("event_id", event.id).order("starts_at", { ascending: true });
     setList(data ?? []);
     const ids = (data ?? []).map((m: any) => m.id);
-    if (ids.length === 0) { setRegsByMc({}); return; }
-    const { data: regs } = await supabase.from("minicourse_registrations").select("*").in("minicourse_id", ids);
+    if (ids.length === 0) { setRegsByMc({}); setSlotsByMc({}); return; }
+    const [{ data: regs }, slotsRes] = await Promise.all([
+      supabase.from("minicourse_registrations").select("*").in("minicourse_id", ids),
+      (supabase as any).from("minicourse_exclusive_slots").select("*").in("minicourse_id", ids),
+    ]);
     const uids = Array.from(new Set((regs ?? []).map((r: any) => r.user_id)));
     let profMap: Record<string, any> = {};
     if (uids.length > 0) {
@@ -876,10 +882,17 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       (grouped[r.minicourse_id] ||= []).push({ ...r, profile: profMap[r.user_id] ?? null });
     });
     setRegsByMc(grouped);
+    const slotsMap: Record<string, any[]> = {};
+    ((slotsRes?.data ?? []) as any[]).forEach((s: any) => { (slotsMap[s.minicourse_id] ||= []).push(s); });
+    setSlotsByMc(slotsMap);
   }
-  useEffect(() => { if (open) reload(); }, [open, event.id]);
+  useEffect(() => {
+    if (!open) return;
+    reload();
+    supabase.from("leagues").select("id, name").order("name").then(({ data }) => setLeaguesList((data ?? []) as any));
+  }, [open, event.id]);
 
-  function openNew() { setEditing(null); setF(blank); setFormOpen(true); }
+  function openNew() { setEditing(null); setF(blank); setExclusiveDraft([]); setFormOpen(true); }
   function openEdit(mc: any) {
     setEditing(mc);
     setF({
@@ -891,27 +904,54 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       published: !!mc.published,
       total_hours: Number(mc.total_hours) || 0,
     });
+    setExclusiveDraft((slotsByMc[mc.id] ?? []).map((s: any) => ({ id: s.id, league_id: s.league_id, seats: Number(s.seats) })));
     setFormOpen(true);
   }
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!f.starts_at) return toast.error("Informe data e hora");
+    const maxReg = Math.max(1, Number(f.max_registrations) || 1);
+    const totalExcl = exclusiveDraft.reduce((a, s) => a + (Number(s.seats) || 0), 0);
+    if (totalExcl > maxReg) return toast.error(`Vagas exclusivas (${totalExcl}) excedem o total de vagas (${maxReg}).`);
+    if (exclusiveDraft.some((s) => !s.league_id || !s.seats || s.seats < 1)) return toast.error("Cada reserva exclusiva precisa ter liga e no mínimo 1 vaga.");
+    const seen = new Set<string>();
+    for (const s of exclusiveDraft) {
+      if (seen.has(s.league_id)) return toast.error("Não repita a mesma liga nas reservas.");
+      seen.add(s.league_id);
+    }
     const payload: any = {
       event_id: event.id,
       title: f.title, instructor: f.instructor,
       starts_at: new Date(f.starts_at).toISOString(),
       location: f.location || null, description: f.description || null,
       is_free: !!f.is_free, price: f.is_free ? 0 : Number(f.price) || 0,
-      max_registrations: Math.max(1, Number(f.max_registrations) || 1),
+      max_registrations: maxReg,
       published: !!f.published,
       total_hours: Number(f.total_hours) || 0,
     };
-    const { error } = editing
-      ? await supabase.from("league_minicourses").update(payload).eq("id", editing.id)
-      : await supabase.from("league_minicourses").insert(payload);
-    if (error) return toast.error(error.message);
+    const res: any = editing
+      ? await supabase.from("league_minicourses").update(payload).eq("id", editing.id).select("id").single()
+      : await supabase.from("league_minicourses").insert(payload).select("id").single();
+    if (res.error) return toast.error(res.error.message);
+    const mcId = res.data?.id ?? editing?.id;
+    if (mcId) {
+      const existing = slotsByMc[mcId] ?? [];
+      const keepIds = new Set(exclusiveDraft.filter((s) => s.id).map((s) => s.id!));
+      const toDelete = existing.filter((e: any) => !keepIds.has(e.id));
+      if (toDelete.length) {
+        await (supabase as any).from("minicourse_exclusive_slots").delete().in("id", toDelete.map((e: any) => e.id));
+      }
+      for (const s of exclusiveDraft) {
+        if (s.id) {
+          await (supabase as any).from("minicourse_exclusive_slots").update({ league_id: s.league_id, seats: s.seats }).eq("id", s.id);
+        } else {
+          await (supabase as any).from("minicourse_exclusive_slots").insert({ minicourse_id: mcId, league_id: s.league_id, seats: s.seats });
+        }
+      }
+    }
     toast.success(editing ? "Atualizado" : "Criado"); setFormOpen(false); reload();
   }
+
   async function del(id: string) {
     if (!confirm("Excluir este minicurso? As inscrições serão removidas.")) return;
     await supabase.from("minicourse_registrations").delete().eq("minicourse_id", id);
@@ -1011,6 +1051,48 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
               <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
               <p className="text-[11px] text-muted-foreground mt-1">Minicursos têm 1 credenciamento — esta é a carga horária total no certificado.</p>
             </div>
+            <div className="rounded border p-3 bg-muted/30 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <Label className="text-xs">Vagas exclusivas</Label>
+                  <p className="text-[11px] text-muted-foreground leading-snug">Reserve parte das vagas totais para ligantes desta liga ou de ligas parceiras. As vagas exclusivas <strong>saem das vagas totais</strong> (não somam).</p>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={() => setExclusiveDraft((d) => [...d, { league_id: event.league_id, seats: 1 }])}>
+                  <Plus className="size-3.5" /> Reservar
+                </Button>
+              </div>
+              {exclusiveDraft.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic">Nenhuma reserva. Todas as vagas ficam abertas.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {exclusiveDraft.map((s, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <select
+                        className="flex-1 h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                        value={s.league_id}
+                        onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, league_id: e.target.value } : x))}
+                      >
+                        <option value="">— liga —</option>
+                        {leaguesList.map((l) => (
+                          <option key={l.id} value={l.id}>{l.name}{l.id === event.league_id ? " (organizadora)" : ""}</option>
+                        ))}
+                      </select>
+                      <Input
+                        type="number" min="1" className="w-20" value={s.seats}
+                        onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, seats: Math.max(1, +e.target.value || 1) } : x))}
+                      />
+                      <Button type="button" size="sm" variant="destructive" onClick={() => setExclusiveDraft((d) => d.filter((_, i) => i !== idx))}>
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-muted-foreground">
+                    Total reservado: {exclusiveDraft.reduce((a, s) => a + (Number(s.seats) || 0), 0)} / {f.max_registrations} vagas · Restam {Math.max(0, (Number(f.max_registrations) || 0) - exclusiveDraft.reduce((a, s) => a + (Number(s.seats) || 0), 0))} vagas abertas.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <label className="flex items-center justify-between gap-2 p-3 rounded border">
               <div>
                 <span className="text-sm font-medium">Publicar imediatamente</span>
@@ -1044,6 +1126,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
             </div>
           )}
         </DialogContent>
+
       </Dialog>
 
       <CheckinDialog mode={checkinMc ? { kind: "minicourse", minicourse: checkinMc } : null} open={!!checkinMc} onClose={() => setCheckinMc(null)} />

@@ -837,7 +837,9 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const { user } = useAuth();
   const [list, setList] = useState<any[] | null>(null);
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
-  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [counts, setCounts] = useState<Record<string, { total: number; general: number; byLeague: Record<string, number> }>>({});
+  const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ league_id: string; seats: number }>>>({});
+  const [leaguesById, setLeaguesById] = useState<Record<string, { name: string }>>({});
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixPaymentData | null>(null);
 
@@ -850,17 +852,34 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
       .order("starts_at", { ascending: true });
     setList(mcs ?? []);
     const ids = (mcs ?? []).map((m: any) => m.id);
-    if (ids.length === 0) { setMyRegs({}); setCounts({}); return; }
-    const [{ data: mine }, { data: all }] = await Promise.all([
+    if (ids.length === 0) { setMyRegs({}); setCounts({}); setSlotsByMc({}); return; }
+    const [{ data: mine }, { data: all }, slotsRes] = await Promise.all([
       user ? supabase.from("minicourse_registrations").select("*").eq("user_id", user.id).in("minicourse_id", ids) : Promise.resolve({ data: [] as any[] }) as any,
-      supabase.from("minicourse_registrations").select("minicourse_id,status").in("minicourse_id", ids),
+      (supabase as any).from("minicourse_registrations").select("minicourse_id,status,exclusive_league_id").in("minicourse_id", ids),
+      (supabase as any).from("minicourse_exclusive_slots").select("*").in("minicourse_id", ids),
     ]);
     const m: Record<string, any> = {};
     (mine ?? []).forEach((r: any) => { m[r.minicourse_id] = r; });
     setMyRegs(m);
-    const c: Record<string, number> = {};
-    (all ?? []).forEach((r: any) => { if (r.status === "paid" || r.status === "pending") c[r.minicourse_id] = (c[r.minicourse_id] ?? 0) + 1; });
+    const c: Record<string, { total: number; general: number; byLeague: Record<string, number> }> = {};
+    (all ?? []).forEach((r: any) => {
+      if (r.status !== "paid" && r.status !== "pending") return;
+      const cur = c[r.minicourse_id] ||= { total: 0, general: 0, byLeague: {} };
+      cur.total++;
+      if (r.exclusive_league_id) cur.byLeague[r.exclusive_league_id] = (cur.byLeague[r.exclusive_league_id] ?? 0) + 1;
+      else cur.general++;
+    });
     setCounts(c);
+    const slotsMap: Record<string, any[]> = {};
+    ((slotsRes?.data ?? []) as any[]).forEach((s: any) => { (slotsMap[s.minicourse_id] ||= []).push(s); });
+    setSlotsByMc(slotsMap);
+    const lgIds = Array.from(new Set(((slotsRes?.data ?? []) as any[]).map((s: any) => s.league_id)));
+    if (lgIds.length) {
+      const { data: lgs } = await supabase.from("leagues").select("id, name").in("id", lgIds);
+      const map: Record<string, any> = {};
+      (lgs ?? []).forEach((l: any) => { map[l.id] = l; });
+      setLeaguesById(map);
+    }
   }
   useEffect(() => { reload(); }, [event.id, user?.id]);
 
@@ -906,9 +925,12 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
     <div className="space-y-2">
       {list.map((mc) => {
         const mine = myRegs[mc.id];
-        const used = counts[mc.id] ?? 0;
+        const cnt = counts[mc.id] ?? { total: 0, general: 0, byLeague: {} };
         const cap = Number(mc.max_registrations) || 0;
-        const full = cap > 0 && used >= cap && !mine;
+        const slots = slotsByMc[mc.id] ?? [];
+        const totalExcl = slots.reduce((a, s) => a + Number(s.seats || 0), 0);
+        const generalCap = Math.max(0, cap - totalExcl);
+        const full = cap > 0 && cnt.total >= cap && !mine;
         return (
           <Card key={mc.id}>
             <CardContent className="p-3 space-y-2">
@@ -924,9 +946,26 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
                   <p className="text-xs text-muted-foreground">🗓️ {new Date(mc.starts_at).toLocaleString("pt-BR")}</p>
                   {mc.location && <p className="text-xs text-muted-foreground">📍 {mc.location}</p>}
                   {mc.description && <p className="text-xs mt-1 whitespace-pre-line">{mc.description}</p>}
+                  {slots.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {slots.map((s) => {
+                        const used = cnt.byLeague[s.league_id] ?? 0;
+                        const remaining = Math.max(0, Number(s.seats) - used);
+                        const name = leaguesById[s.league_id]?.name ?? "liga";
+                        return (
+                          <Badge key={s.league_id} variant="outline" className="text-[10px]">
+                            {remaining} de {s.seats} vagas exclusivas para {name}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="shrink-0 text-right space-y-1">
-                  <div className="text-[10px] text-muted-foreground">{used}/{cap || "∞"} vagas</div>
+                  <div className="text-[10px] text-muted-foreground">{cnt.total}/{cap || "∞"} vagas</div>
+                  {totalExcl > 0 && cap > 0 && (
+                    <div className="text-[10px] text-muted-foreground">{Math.max(0, generalCap - cnt.general)} abertas</div>
+                  )}
                   {mine?.status === "paid" ? (
                     <Badge className="bg-emerald-600">Inscrito</Badge>
                   ) : mine?.status === "pending" ? (
@@ -944,6 +983,7 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
           </Card>
         );
       })}
+
 
       <PixPaymentDialog
         open={!!pix}
