@@ -878,7 +878,7 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
           <div>
             <Label>Comprovante (opcional)</Label>
             <Input type="file" accept="image/*,application/pdf" onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} />
-            <p className="text-xs text-muted-foreground mt-1">Anexe nota fiscal, cupom ou comprovante (imagem ou PDF, até 10MB).</p>
+            <p className="text-xs text-muted-foreground mt-1">Imagem ou PDF (até 5MB). Imagens são comprimidas automaticamente.</p>
             {receipt && <p className="text-xs mt-1 truncate">{receipt.name}</p>}
           </div>
           <DialogFooter>
