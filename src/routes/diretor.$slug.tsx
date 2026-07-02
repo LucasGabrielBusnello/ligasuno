@@ -582,9 +582,10 @@ function CaixaTab({ league }: { league: League }) {
         </CardContent>
       </Card>
 
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid sm:grid-cols-3 gap-2">
         <Button onClick={() => setDlgOpen("entrada")} className="bg-green-600 hover:bg-green-700"><ArrowUpCircle className="size-4" /> Registrar Entrada</Button>
         <Button onClick={() => setDlgOpen("saida")} variant="destructive"><ArrowDownCircle className="size-4" /> Registrar Saída</Button>
+        <Button onClick={generateReport} variant="outline"><FileDown className="size-4" /> Gerar Relatório</Button>
       </div>
 
       <Card>
