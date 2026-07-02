@@ -778,6 +778,21 @@ function CaixaTab({ league }: { league: League }) {
   );
 }
 
+async function compressImage(file: File, maxSide = 1600, quality = 0.8): Promise<Blob> {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale);
+  const h = Math.round(bmp.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("no ctx");
+  ctx.drawImage(bmp, 0, 0, w, h);
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("blob failed"))), "image/jpeg", quality);
+  });
+}
+
 function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boolean; kind: "entrada" | "saida"; leagueId: string; onClose: () => void; onSaved: () => void }) {
   const cats = kind === "entrada" ? ENTRADA_CATS : SAIDA_CATS;
   const [amount, setAmount] = useState("");
@@ -806,10 +821,22 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
 
     let receipt_url: string | null = null;
     if (receipt) {
-      if (receipt.size > 10 * 1024 * 1024) { setSaving(false); return toast.error("Comprovante deve ter até 10MB"); }
-      const ext = receipt.name.split(".").pop()?.toLowerCase() || "bin";
+      const isImage = receipt.type.startsWith("image/");
+      const isPdf = receipt.type === "application/pdf";
+      if (!isImage && !isPdf) { setSaving(false); return toast.error("Envie apenas imagem ou PDF"); }
+      let toUpload: Blob = receipt;
+      let ext = receipt.name.split(".").pop()?.toLowerCase() || "bin";
+      let contentType = receipt.type || undefined;
+      if (isImage) {
+        try {
+          toUpload = await compressImage(receipt, 1600, 0.8);
+          ext = "jpg";
+          contentType = "image/jpeg";
+        } catch { /* fallback to original */ }
+      }
+      if (toUpload.size > 5 * 1024 * 1024) { setSaving(false); return toast.error("Comprovante deve ter até 5MB após compressão"); }
       const path = `${leagueId}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("cash-receipts").upload(path, receipt, { contentType: receipt.type || undefined, upsert: false });
+      const { error: upErr } = await supabase.storage.from("cash-receipts").upload(path, toUpload, { contentType, upsert: false });
       if (upErr) { setSaving(false); return toast.error("Falha ao enviar comprovante: " + upErr.message); }
       receipt_url = path;
     }
@@ -866,7 +893,7 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
           <div>
             <Label>Comprovante (opcional)</Label>
             <Input type="file" accept="image/*,application/pdf" onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} />
-            <p className="text-xs text-muted-foreground mt-1">Anexe nota fiscal, cupom ou comprovante (imagem ou PDF, até 10MB).</p>
+            <p className="text-xs text-muted-foreground mt-1">Imagem ou PDF (até 5MB). Imagens são comprimidas automaticamente.</p>
             {receipt && <p className="text-xs mt-1 truncate">{receipt.name}</p>}
           </div>
           <DialogFooter>
