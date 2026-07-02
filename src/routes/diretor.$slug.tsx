@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3, Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from "lucide-react";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
 import { LeaguePerformanceTab } from "@/components/league-performance-tab";
 
@@ -60,13 +60,14 @@ function DiretorPage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Diretor</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
         <Tabs defaultValue="freq">
-          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full h-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
             <TabsTrigger value="freq"><CheckSquare className="size-4 mr-1" />Frequência</TabsTrigger>
             <TabsTrigger value="agenda"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
             <TabsTrigger value="news"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
             <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
             <TabsTrigger value="perf"><BarChart3 className="size-4 mr-1" />Desempenho</TabsTrigger>
             <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1" />Agenda</TabsTrigger>
+            <TabsTrigger value="caixa"><Wallet className="size-4 mr-1" />Caixa</TabsTrigger>
           </TabsList>
           <TabsContent value="freq" className="mt-6"><FreqTab league={league} /></TabsContent>
           <TabsContent value="agenda" className="mt-6"><EventsListTab league={league} /></TabsContent>
@@ -74,6 +75,7 @@ function DiretorPage() {
           <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
           <TabsContent value="perf" className="mt-6"><LeaguePerformanceTab league={league} /></TabsContent>
           <TabsContent value="schedule" className="mt-6"><ScheduleTab league={league} /></TabsContent>
+          <TabsContent value="caixa" className="mt-6"><CaixaTab league={league} /></TabsContent>
         </Tabs>
       </main>
     </div>
@@ -376,3 +378,366 @@ function ScheduleTab({ league }: { league: League }) {
     </div>
   );
 }
+
+type CashTxn = {
+  id: string;
+  kind: "entrada" | "saida";
+  amount_cents: number;
+  category: string;
+  description: string;
+  notes: string | null;
+  occurred_at: string;
+  created_at: string;
+  source: "manual" | "site";
+  color: "green" | "red" | "blue";
+  detail?: any;
+};
+
+const BRL = (cents: number) =>
+  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const ENTRADA_CATS = [
+  { v: "saldo_remanescente", l: "Saldo remanescente" },
+  { v: "doacao", l: "Doação" },
+  { v: "patrocinio", l: "Patrocínio" },
+  { v: "venda", l: "Venda / arrecadação" },
+  { v: "reembolso", l: "Reembolso" },
+  { v: "outro", l: "Outro" },
+];
+const SAIDA_CATS = [
+  { v: "material", l: "Material / insumos" },
+  { v: "evento", l: "Despesas de evento" },
+  { v: "transporte", l: "Transporte" },
+  { v: "premio", l: "Premiação" },
+  { v: "taxa", l: "Taxa / imposto" },
+  { v: "outro", l: "Outro" },
+];
+
+function CaixaTab({ league }: { league: League }) {
+  const [manual, setManual] = useState<any[]>([]);
+  const [siteTxns, setSiteTxns] = useState<any[]>([]);
+  const [profById, setProfById] = useState<Map<string, any>>(new Map());
+  const [eventsById, setEventsById] = useState<Map<string, any>>(new Map());
+  const [mcById, setMcById] = useState<Map<string, any>>(new Map());
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [dlgOpen, setDlgOpen] = useState<null | "entrada" | "saida">(null);
+  const [filter, setFilter] = useState<"todos" | "entrada" | "saida">("todos");
+
+  async function reload() {
+    const [{ data: m }, { data: t }] = await Promise.all([
+      supabase
+        .from("league_cash_entries")
+        .select("*")
+        .eq("league_id", league.id)
+        .order("occurred_at", { ascending: false })
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("payment_transactions")
+        .select("*")
+        .eq("league_id", league.id)
+        .eq("status", "approved")
+        .order("created_at", { ascending: false }),
+    ]);
+    setManual(m ?? []);
+    setSiteTxns(t ?? []);
+
+    const userIds = new Set<string>();
+    const eventIds = new Set<string>();
+    const mcIds = new Set<string>();
+    (m ?? []).forEach((x: any) => x.created_by && userIds.add(x.created_by));
+    (t ?? []).forEach((x: any) => {
+      if (x.user_id) userIds.add(x.user_id);
+      if (x.category === "event" && x.reference_id) eventIds.add(x.reference_id);
+      if (x.category === "minicourse" && x.reference_id) mcIds.add(x.reference_id);
+    });
+    const [{ data: profs }, { data: evs }, { data: mcs }] = await Promise.all([
+      userIds.size
+        ? supabase.from("profiles").select("id, username, full_name, email").in("id", Array.from(userIds))
+        : Promise.resolve({ data: [] as any[] }),
+      eventIds.size
+        ? supabase.from("league_events").select("id, title, price_cents, member_discount_cents").in("id", Array.from(eventIds))
+        : Promise.resolve({ data: [] as any[] }),
+      mcIds.size
+        ? supabase.from("league_minicourses").select("id, title, price_cents").in("id", Array.from(mcIds))
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+    setProfById(new Map((profs ?? []).map((p: any) => [p.id, p])));
+    setEventsById(new Map((evs ?? []).map((e: any) => [e.id, e])));
+    setMcById(new Map((mcs ?? []).map((e: any) => [e.id, e])));
+  }
+  useEffect(() => {
+    reload();
+  }, [league.id]);
+
+  const txns: CashTxn[] = [
+    ...manual.map((m: any) => ({
+      id: `m:${m.id}`,
+      kind: m.kind as "entrada" | "saida",
+      amount_cents: m.amount_cents,
+      category: m.category,
+      description: m.description,
+      notes: m.notes,
+      occurred_at: m.occurred_at,
+      created_at: m.created_at,
+      source: "manual" as const,
+      color: (m.kind === "entrada" ? "green" : "red") as "green" | "red",
+      detail: m,
+    })),
+    ...siteTxns.map((t: any) => {
+      let desc = "Pagamento";
+      let cat = t.category;
+      if (t.category === "semester" || t.category === "anuidade_semestral") {
+        desc = "Mensalidade / Semestralidade";
+        cat = "mensalidade";
+      } else if (t.category === "event") {
+        const ev = eventsById.get(t.reference_id);
+        desc = ev ? `Inscrição no Evento: ${ev.title}` : "Inscrição em evento";
+      } else if (t.category === "minicourse") {
+        const mc = mcById.get(t.reference_id);
+        desc = mc ? `Minicurso: ${mc.title}` : "Minicurso";
+      } else if (t.category === "selection") {
+        desc = "Taxa de inscrição - Prova de seleção";
+      } else if (t.category === "anuidade") {
+        desc = "Anuidade da liga";
+      }
+      return {
+        id: `s:${t.id}`,
+        kind: "entrada" as const,
+        amount_cents: Math.round((Number(t.gross_amount) - Number(t.fee_amount || 0)) * 100),
+        category: cat,
+        description: desc,
+        notes: null,
+        occurred_at: (t.created_at as string).slice(0, 10),
+        created_at: t.created_at,
+        source: "site" as const,
+        color: "green" as const,
+        detail: t,
+      };
+    }),
+  ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+
+  const totalIn = txns.filter((t) => t.kind === "entrada").reduce((s, t) => s + t.amount_cents, 0);
+  const totalOut = txns.filter((t) => t.kind === "saida").reduce((s, t) => s + t.amount_cents, 0);
+  const balance = totalIn - totalOut;
+
+  const monthKey = new Date().toISOString().slice(0, 7);
+  const monthIn = txns.filter((t) => t.kind === "entrada" && t.occurred_at.startsWith(monthKey)).reduce((s, t) => s + t.amount_cents, 0);
+  const monthOut = txns.filter((t) => t.kind === "saida" && t.occurred_at.startsWith(monthKey)).reduce((s, t) => s + t.amount_cents, 0);
+
+  const filtered = txns.filter((t) => filter === "todos" || t.kind === filter);
+
+  async function delManual(id: string) {
+    if (!confirm("Excluir este registro? Esta ação não pode ser desfeita.")) return;
+    const { error } = await supabase.from("league_cash_entries").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Registro excluído");
+    reload();
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="overflow-hidden">
+        <div className="p-6" style={{ background: `linear-gradient(135deg, ${league.theme_color || "#1f5132"}, ${league.theme_color || "#1f5132"}dd)` }}>
+          <div className="flex items-center gap-2 text-white/80 text-sm"><Wallet className="size-4" /> Saldo atual</div>
+          <div className={`text-4xl md:text-5xl font-black mt-2 ${balance < 0 ? "text-red-300" : "text-white"}`}>{BRL(balance)}</div>
+          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/20">
+            <div>
+              <div className="text-xs text-white/70 flex items-center gap-1"><TrendingUp className="size-3" /> Entradas (total)</div>
+              <div className="text-lg font-bold text-white">{BRL(totalIn)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-white/70 flex items-center gap-1"><TrendingDown className="size-3" /> Saídas (total)</div>
+              <div className="text-lg font-bold text-white">{BRL(totalOut)}</div>
+            </div>
+          </div>
+        </div>
+        <CardContent className="p-4 grid grid-cols-2 gap-3 bg-muted/30">
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Entradas do mês</div>
+            <div className="font-bold text-green-600">{BRL(monthIn)}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-muted-foreground">Saídas do mês</div>
+            <div className="font-bold text-red-600">{BRL(monthOut)}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid sm:grid-cols-2 gap-2">
+        <Button onClick={() => setDlgOpen("entrada")} className="bg-green-600 hover:bg-green-700"><ArrowUpCircle className="size-4" /> Registrar Entrada</Button>
+        <Button onClick={() => setDlgOpen("saida")} variant="destructive"><ArrowDownCircle className="size-4" /> Registrar Saída</Button>
+      </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <CardTitle className="text-base">Histórico de transações</CardTitle>
+          <div className="flex gap-1">
+            <Button size="sm" variant={filter === "todos" ? "default" : "outline"} onClick={() => setFilter("todos")}>Todas</Button>
+            <Button size="sm" variant={filter === "entrada" ? "default" : "outline"} onClick={() => setFilter("entrada")}>Entradas</Button>
+            <Button size="sm" variant={filter === "saida" ? "default" : "outline"} onClick={() => setFilter("saida")}>Saídas</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {filtered.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhuma transação ainda. Registre a entrada inicial (saldo remanescente) para começar.</p>}
+          {filtered.map((t) => {
+            const isOpen = openId === t.id;
+            const catLabel = [...ENTRADA_CATS, ...SAIDA_CATS].find((c) => c.v === t.category)?.l ?? t.category;
+            const prof = t.source === "site" ? profById.get(t.detail?.user_id) : profById.get(t.detail?.created_by);
+            // Discount info for events
+            let discountLine: string | null = null;
+            if (t.source === "site" && t.detail?.category === "event") {
+              const ev = eventsById.get(t.detail.reference_id);
+              if (ev && Number(ev.price_cents) > 0) {
+                const paidCents = Math.round(Number(t.detail.gross_amount) * 100);
+                const diff = Number(ev.price_cents) - paidCents;
+                if (diff > 0) discountLine = `Desconto aplicado: ${BRL(diff)} (Ligante)`;
+              }
+            }
+            return (
+              <div key={t.id} className={`rounded border-l-4 ${t.kind === "entrada" ? "border-green-500 bg-green-50/40 dark:bg-green-950/20" : "border-red-500 bg-red-50/40 dark:bg-red-950/20"}`}>
+                <button onClick={() => setOpenId(isOpen ? null : t.id)} className="w-full text-left p-3 flex items-center gap-3">
+                  <div className={`size-9 rounded-full flex items-center justify-center shrink-0 ${t.kind === "entrada" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>
+                    {t.kind === "entrada" ? <ArrowUpCircle className="size-5" /> : <ArrowDownCircle className="size-5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold truncate">{t.description}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                      <span>{new Date(t.occurred_at + "T12:00").toLocaleDateString("pt-BR")}</span>
+                      <Badge variant="secondary" className="text-[10px]">{catLabel}</Badge>
+                      {t.source === "site" && <Badge variant="outline" className="text-[10px]">via site</Badge>}
+                    </div>
+                    {discountLine && <div className="text-xs text-amber-600 dark:text-amber-400 italic mt-0.5">{discountLine}</div>}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={`font-black ${t.kind === "entrada" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                      {t.kind === "entrada" ? "+" : "−"} {BRL(t.amount_cents)}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center justify-end gap-1">{isOpen ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}</div>
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="px-3 pb-3 pt-1 border-t bg-background/40 text-sm space-y-1">
+                    {prof && (
+                      <div><span className="text-muted-foreground">{t.source === "site" ? "Pago por:" : "Registrado por:"}</span> <span className="font-medium">{prof.full_name || prof.username}</span> <span className="text-xs text-muted-foreground">({prof.email})</span></div>
+                    )}
+                    {t.source === "site" && (
+                      <>
+                        <div><span className="text-muted-foreground">Origem:</span> Pagamento via Mercado Pago</div>
+                        {t.detail?.payment_method && <div><span className="text-muted-foreground">Método:</span> {t.detail.payment_method}</div>}
+                        <div><span className="text-muted-foreground">Valor bruto:</span> {BRL(Math.round(Number(t.detail.gross_amount) * 100))}</div>
+                        {Number(t.detail.fee_amount) > 0 && <div><span className="text-muted-foreground">Taxa MP:</span> −{BRL(Math.round(Number(t.detail.fee_amount) * 100))}</div>}
+                        {t.detail?.mp_payment_id && <div className="text-xs text-muted-foreground">ID MP: {t.detail.mp_payment_id}</div>}
+                      </>
+                    )}
+                    {t.source === "manual" && (
+                      <>
+                        <div><span className="text-muted-foreground">Origem:</span> Registro manual</div>
+                        {t.notes && <div><span className="text-muted-foreground">Observações:</span> {t.notes}</div>}
+                        <div className="pt-2">
+                          <Button size="sm" variant="destructive" onClick={() => delManual(t.detail.id)}><Trash2 className="size-3" /> Excluir registro</Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <CashEntryDialog
+        open={dlgOpen !== null}
+        kind={dlgOpen ?? "entrada"}
+        leagueId={league.id}
+        onClose={() => setDlgOpen(null)}
+        onSaved={() => { setDlgOpen(null); reload(); }}
+      />
+    </div>
+  );
+}
+
+function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boolean; kind: "entrada" | "saida"; leagueId: string; onClose: () => void; onSaved: () => void }) {
+  const cats = kind === "entrada" ? ENTRADA_CATS : SAIDA_CATS;
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState(cats[0].v);
+  const [description, setDescription] = useState("");
+  const [notes, setNotes] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setAmount(""); setDescription(""); setNotes("");
+      setCategory((kind === "entrada" ? ENTRADA_CATS : SAIDA_CATS)[0].v);
+      setDate(new Date().toISOString().slice(0, 10));
+    }
+  }, [open, kind]);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const value = Number(String(amount).replace(",", "."));
+    if (!value || value <= 0) return toast.error("Valor inválido");
+    if (!description.trim()) return toast.error("Descreva a transação");
+    setSaving(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from("league_cash_entries").insert({
+      league_id: leagueId,
+      kind,
+      amount_cents: Math.round(value * 100),
+      category,
+      description: description.trim(),
+      notes: notes.trim() || null,
+      occurred_at: date,
+      created_by: userData.user?.id ?? null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(kind === "entrada" ? "Entrada registrada" : "Saída registrada");
+    onSaved();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {kind === "entrada" ? <ArrowUpCircle className="size-5 text-green-600" /> : <ArrowDownCircle className="size-5 text-red-600" />}
+            {kind === "entrada" ? "Registrar Entrada" : "Registrar Saída"}
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={save} className="space-y-3">
+          <div>
+            <Label>Valor (R$)</Label>
+            <Input inputMode="decimal" required placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </div>
+          <div>
+            <Label>Categoria</Label>
+            <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={category} onChange={(e) => setCategory(e.target.value)}>
+              {cats.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label>Descrição</Label>
+            <Input required value={description} onChange={(e) => setDescription(e.target.value)} placeholder={kind === "entrada" ? "Ex: Saldo remanescente da gestão anterior" : "Ex: Compra de material para aula prática"} />
+          </div>
+          <div>
+            <Label>Data</Label>
+            <Input type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <div>
+            <Label>Observações (opcional)</Label>
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalhes adicionais, número da nota, etc." />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" disabled={saving} className={kind === "entrada" ? "bg-green-600 hover:bg-green-700" : ""} variant={kind === "saida" ? "destructive" : "default"}>
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
