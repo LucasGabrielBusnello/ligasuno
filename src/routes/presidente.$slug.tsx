@@ -1042,11 +1042,9 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
                 </div>
               ))}
             </div>
-              )}
-            </div>
-
-
+          )}
         </DialogContent>
+
       </Dialog>
 
       <CheckinDialog mode={checkinMc ? { kind: "minicourse", minicourse: checkinMc } : null} open={!!checkinMc} onClose={() => setCheckinMc(null)} />
