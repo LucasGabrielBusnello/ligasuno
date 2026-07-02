@@ -771,11 +771,12 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [receipt, setReceipt] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setAmount(""); setDescription(""); setNotes("");
+      setAmount(""); setDescription(""); setNotes(""); setReceipt(null);
       setCategory((kind === "entrada" ? ENTRADA_CATS : SAIDA_CATS)[0].v);
       setDate(new Date().toISOString().slice(0, 10));
     }
@@ -788,6 +789,17 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
     if (!description.trim()) return toast.error("Descreva a transação");
     setSaving(true);
     const { data: userData } = await supabase.auth.getUser();
+
+    let receipt_url: string | null = null;
+    if (receipt) {
+      if (receipt.size > 10 * 1024 * 1024) { setSaving(false); return toast.error("Comprovante deve ter até 10MB"); }
+      const ext = receipt.name.split(".").pop()?.toLowerCase() || "bin";
+      const path = `${leagueId}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("cash-receipts").upload(path, receipt, { contentType: receipt.type || undefined, upsert: false });
+      if (upErr) { setSaving(false); return toast.error("Falha ao enviar comprovante: " + upErr.message); }
+      receipt_url = path;
+    }
+
     const { error } = await supabase.from("league_cash_entries").insert({
       league_id: leagueId,
       kind,
@@ -797,7 +809,8 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
       notes: notes.trim() || null,
       occurred_at: date,
       created_by: userData.user?.id ?? null,
-    });
+      receipt_url,
+    } as any);
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success(kind === "entrada" ? "Entrada registrada" : "Saída registrada");
@@ -835,6 +848,12 @@ function CashEntryDialog({ open, kind, leagueId, onClose, onSaved }: { open: boo
           <div>
             <Label>Observações (opcional)</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalhes adicionais, número da nota, etc." />
+          </div>
+          <div>
+            <Label>Comprovante (opcional)</Label>
+            <Input type="file" accept="image/*,application/pdf" onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} />
+            <p className="text-xs text-muted-foreground mt-1">Anexe nota fiscal, cupom ou comprovante (imagem ou PDF, até 10MB).</p>
+            {receipt && <p className="text-xs mt-1 truncate">{receipt.name}</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
