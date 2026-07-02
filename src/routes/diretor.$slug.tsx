@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3, Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from "lucide-react";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
@@ -422,6 +423,19 @@ function CaixaTab({ league }: { league: League }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [dlgOpen, setDlgOpen] = useState<null | "entrada" | "saida">(null);
   const [filter, setFilter] = useState<"todos" | "entrada" | "saida">("todos");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+  const monthOptions = [
+    { value: "all", label: "Todos os meses" },
+    ...Array.from({ length: 12 }, (_, i) => {
+      const month = String(i + 1).padStart(2, "0");
+      const label = new Date(currentYear, i, 1).toLocaleDateString("pt-BR", { month: "long" });
+      return { value: `${currentYear}-${month}`, label: `${label.charAt(0).toUpperCase() + label.slice(1)} de ${currentYear}` };
+    }).filter((opt) => opt.value <= `${currentYear}-${currentMonth}`),
+  ];
 
   async function reload() {
     const [{ data: m }, { data: t }] = await Promise.all([
@@ -520,11 +534,15 @@ function CaixaTab({ league }: { league: League }) {
   const totalOut = txns.filter((t) => t.kind === "saida").reduce((s, t) => s + t.amount_cents, 0);
   const balance = totalIn - totalOut;
 
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const monthIn = txns.filter((t) => t.kind === "entrada" && t.occurred_at.startsWith(monthKey)).reduce((s, t) => s + t.amount_cents, 0);
-  const monthOut = txns.filter((t) => t.kind === "saida" && t.occurred_at.startsWith(monthKey)).reduce((s, t) => s + t.amount_cents, 0);
+  const monthPrefix = monthFilter === "all" ? `${currentYear}-` : monthFilter;
+  const monthIn = txns.filter((t) => t.kind === "entrada" && t.occurred_at.startsWith(monthPrefix)).reduce((s, t) => s + t.amount_cents, 0);
+  const monthOut = txns.filter((t) => t.kind === "saida" && t.occurred_at.startsWith(monthPrefix)).reduce((s, t) => s + t.amount_cents, 0);
 
-  const filtered = txns.filter((t) => filter === "todos" || t.kind === filter);
+  const filtered = txns.filter((t) => {
+    const matchesKind = filter === "todos" || t.kind === filter;
+    const matchesMonth = monthFilter === "all" ? t.occurred_at.startsWith(`${currentYear}-`) : t.occurred_at.startsWith(monthFilter);
+    return matchesKind && matchesMonth;
+  });
 
   async function delManual(id: string) {
     if (!confirm("Excluir este registro? Esta ação não pode ser desfeita.")) return;
@@ -569,12 +587,24 @@ function CaixaTab({ league }: { league: League }) {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0 pb-3 gap-3">
           <CardTitle className="text-base">Histórico de transações</CardTitle>
-          <div className="flex gap-1">
-            <Button size="sm" variant={filter === "todos" ? "default" : "outline"} onClick={() => setFilter("todos")}>Todas</Button>
-            <Button size="sm" variant={filter === "entrada" ? "default" : "outline"} onClick={() => setFilter("entrada")}>Entradas</Button>
-            <Button size="sm" variant={filter === "saida" ? "default" : "outline"} onClick={() => setFilter("saida")}>Saídas</Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-[180px] h-8 text-xs">
+                <SelectValue placeholder="Mês" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex gap-1">
+              <Button size="sm" variant={filter === "todos" ? "default" : "outline"} onClick={() => setFilter("todos")}>Todas</Button>
+              <Button size="sm" variant={filter === "entrada" ? "default" : "outline"} onClick={() => setFilter("entrada")}>Entradas</Button>
+              <Button size="sm" variant={filter === "saida" ? "default" : "outline"} onClick={() => setFilter("saida")}>Saídas</Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
