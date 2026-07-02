@@ -423,6 +423,19 @@ function CaixaTab({ league }: { league: League }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [dlgOpen, setDlgOpen] = useState<null | "entrada" | "saida">(null);
   const [filter, setFilter] = useState<"todos" | "entrada" | "saida">("todos");
+  const [monthFilter, setMonthFilter] = useState<string>("all");
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
+  const monthOptions = [
+    { value: "all", label: "Todos os meses" },
+    ...Array.from({ length: 12 }, (_, i) => {
+      const month = String(i + 1).padStart(2, "0");
+      const label = new Date(currentYear, i, 1).toLocaleDateString("pt-BR", { month: "long" });
+      return { value: `${currentYear}-${month}`, label: `${label.charAt(0).toUpperCase() + label.slice(1)} de ${currentYear}` };
+    }).filter((opt) => opt.value <= `${currentYear}-${currentMonth}`),
+  ];
 
   async function reload() {
     const [{ data: m }, { data: t }] = await Promise.all([
