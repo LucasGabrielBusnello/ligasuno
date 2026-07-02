@@ -21,6 +21,7 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicPaymentsMpWebhookRouteImport } from './routes/api/public/payments/mp-webhook'
 import { Route as ApiPublicPaymentsMpOauthStartRouteImport } from './routes/api/public/payments/mp-oauth-start'
 import { Route as ApiPublicPaymentsMpOauthCallbackRouteImport } from './routes/api/public/payments/mp-oauth-callback'
+import { Route as ApiPublicHooksStorageCleanupRouteImport } from './routes/api/public/hooks/storage-cleanup'
 import { Route as ApiPublicCronMarkOverdueRouteImport } from './routes/api/public/cron/mark-overdue'
 import { Route as ApiPublicCronEventSnapshotRouteImport } from './routes/api/public/cron/event-snapshot'
 import { Route as ApiPublicCronEventRemindersRouteImport } from './routes/api/public/cron/event-reminders'
@@ -89,6 +90,12 @@ const ApiPublicPaymentsMpOauthCallbackRoute =
     path: '/api/public/payments/mp-oauth-callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksStorageCleanupRoute =
+  ApiPublicHooksStorageCleanupRouteImport.update({
+    id: '/api/public/hooks/storage-cleanup',
+    path: '/api/public/hooks/storage-cleanup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronMarkOverdueRoute =
   ApiPublicCronMarkOverdueRouteImport.update({
     id: '/api/public/cron/mark-overdue',
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/event-reminders': typeof ApiPublicCronEventRemindersRoute
   '/api/public/cron/event-snapshot': typeof ApiPublicCronEventSnapshotRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
+  '/api/public/hooks/storage-cleanup': typeof ApiPublicHooksStorageCleanupRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
@@ -137,6 +145,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/event-reminders': typeof ApiPublicCronEventRemindersRoute
   '/api/public/cron/event-snapshot': typeof ApiPublicCronEventSnapshotRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
+  '/api/public/hooks/storage-cleanup': typeof ApiPublicHooksStorageCleanupRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
@@ -155,6 +164,7 @@ export interface FileRoutesById {
   '/api/public/cron/event-reminders': typeof ApiPublicCronEventRemindersRoute
   '/api/public/cron/event-snapshot': typeof ApiPublicCronEventSnapshotRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
+  '/api/public/hooks/storage-cleanup': typeof ApiPublicHooksStorageCleanupRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-reminders'
     | '/api/public/cron/event-snapshot'
     | '/api/public/cron/mark-overdue'
+    | '/api/public/hooks/storage-cleanup'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-reminders'
     | '/api/public/cron/event-snapshot'
     | '/api/public/cron/mark-overdue'
+    | '/api/public/hooks/storage-cleanup'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
@@ -208,6 +220,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-reminders'
     | '/api/public/cron/event-snapshot'
     | '/api/public/cron/mark-overdue'
+    | '/api/public/hooks/storage-cleanup'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
@@ -226,6 +239,7 @@ export interface RootRouteChildren {
   ApiPublicCronEventRemindersRoute: typeof ApiPublicCronEventRemindersRoute
   ApiPublicCronEventSnapshotRoute: typeof ApiPublicCronEventSnapshotRoute
   ApiPublicCronMarkOverdueRoute: typeof ApiPublicCronMarkOverdueRoute
+  ApiPublicHooksStorageCleanupRoute: typeof ApiPublicHooksStorageCleanupRoute
   ApiPublicPaymentsMpOauthCallbackRoute: typeof ApiPublicPaymentsMpOauthCallbackRoute
   ApiPublicPaymentsMpOauthStartRoute: typeof ApiPublicPaymentsMpOauthStartRoute
   ApiPublicPaymentsMpWebhookRoute: typeof ApiPublicPaymentsMpWebhookRoute
@@ -318,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsMpOauthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/storage-cleanup': {
+      id: '/api/public/hooks/storage-cleanup'
+      path: '/api/public/hooks/storage-cleanup'
+      fullPath: '/api/public/hooks/storage-cleanup'
+      preLoaderRoute: typeof ApiPublicHooksStorageCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/mark-overdue': {
       id: '/api/public/cron/mark-overdue'
       path: '/api/public/cron/mark-overdue'
@@ -354,6 +375,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronEventRemindersRoute: ApiPublicCronEventRemindersRoute,
   ApiPublicCronEventSnapshotRoute: ApiPublicCronEventSnapshotRoute,
   ApiPublicCronMarkOverdueRoute: ApiPublicCronMarkOverdueRoute,
+  ApiPublicHooksStorageCleanupRoute: ApiPublicHooksStorageCleanupRoute,
   ApiPublicPaymentsMpOauthCallbackRoute: ApiPublicPaymentsMpOauthCallbackRoute,
   ApiPublicPaymentsMpOauthStartRoute: ApiPublicPaymentsMpOauthStartRoute,
   ApiPublicPaymentsMpWebhookRoute: ApiPublicPaymentsMpWebhookRoute,
