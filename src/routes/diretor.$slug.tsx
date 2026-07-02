@@ -534,11 +534,15 @@ function CaixaTab({ league }: { league: League }) {
   const totalOut = txns.filter((t) => t.kind === "saida").reduce((s, t) => s + t.amount_cents, 0);
   const balance = totalIn - totalOut;
 
-  const monthKey = new Date().toISOString().slice(0, 7);
-  const monthIn = txns.filter((t) => t.kind === "entrada" && t.occurred_at.startsWith(monthKey)).reduce((s, t) => s + t.amount_cents, 0);
-  const monthOut = txns.filter((t) => t.kind === "saida" && t.occurred_at.startsWith(monthKey)).reduce((s, t) => s + t.amount_cents, 0);
+  const monthPrefix = monthFilter === "all" ? `${currentYear}-` : monthFilter;
+  const monthIn = txns.filter((t) => t.kind === "entrada" && t.occurred_at.startsWith(monthPrefix)).reduce((s, t) => s + t.amount_cents, 0);
+  const monthOut = txns.filter((t) => t.kind === "saida" && t.occurred_at.startsWith(monthPrefix)).reduce((s, t) => s + t.amount_cents, 0);
 
-  const filtered = txns.filter((t) => filter === "todos" || t.kind === filter);
+  const filtered = txns.filter((t) => {
+    const matchesKind = filter === "todos" || t.kind === filter;
+    const matchesMonth = monthFilter === "all" ? t.occurred_at.startsWith(`${currentYear}-`) : t.occurred_at.startsWith(monthFilter);
+    return matchesKind && matchesMonth;
+  });
 
   async function delManual(id: string) {
     if (!confirm("Excluir este registro? Esta ação não pode ser desfeita.")) return;
