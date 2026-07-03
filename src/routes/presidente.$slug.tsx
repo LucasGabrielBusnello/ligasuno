@@ -17,6 +17,8 @@ import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, B
 import { CertificatesDialog } from "@/components/certificates-dialog";
 import { CheckinDialog } from "@/components/event-checkin-dialog";
 import { EventCertificatesDialog } from "@/components/event-certificates-dialog";
+import { ImageUpload } from "@/components/image-upload";
+import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 import { generateBadgesPdf } from "@/lib/badge-pdf";
 import { getCollectorFees } from "@/lib/mp-fees";
 import { syncEventToSheet, getSheetConfig, saveSheetConfig } from "@/lib/sheets-sync.functions";
