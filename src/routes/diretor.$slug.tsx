@@ -73,7 +73,7 @@ function DiretorPage() {
             <TabsTrigger value="caixa"><Wallet className="size-4 mr-1" />Caixa</TabsTrigger>
           </TabsList>
           <TabsContent value="freq" className="mt-6"><FreqTab league={league} /></TabsContent>
-          <TabsContent value="agenda" className="mt-6"><EventsListTab league={league} /></TabsContent>
+          <TabsContent value="agenda" className="mt-6"><EventsTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
           <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
           <TabsContent value="perf" className="mt-6"><LeaguePerformanceTab league={league} /></TabsContent>
