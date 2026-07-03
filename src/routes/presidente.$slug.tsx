@@ -18,6 +18,7 @@ import { CertificatesDialog } from "@/components/certificates-dialog";
 import { CheckinDialog } from "@/components/event-checkin-dialog";
 import { EventCertificatesDialog } from "@/components/event-certificates-dialog";
 import { generateBadgesPdf } from "@/lib/badge-pdf";
+import { getCollectorFees } from "@/lib/mp-fees";
 import { syncEventToSheet, getSheetConfig, saveSheetConfig } from "@/lib/sheets-sync.functions";
 import { listEventCheckinRoster } from "@/lib/event-checkin.functions";
 
@@ -645,6 +646,7 @@ export function EventsTab({ league }: any) {
 
 function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete }: any) {
   const [regs, setRegs] = useState<any[] | null>(null);
+  const [txnByReg, setTxnByReg] = useState<Record<string, { gross: number; fee: number }>>({});
   const [selected, setSelected] = useState<any | null>(null);
   const [mcOpen, setMcOpen] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
@@ -723,14 +725,39 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
         (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
       }
       setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+
+      // Carrega transações MP aprovadas para calcular valor LÍQUIDO (bruto - taxas)
+      const regIds = list.map((r: any) => r.id);
+      if (regIds.length > 0) {
+        const { data: txns } = await supabase
+          .from("payment_transactions")
+          .select("reference_id, gross_amount, fee_amount, raw")
+          .eq("category", "event")
+          .eq("status", "approved")
+          .in("reference_id", regIds);
+        const map: Record<string, { gross: number; fee: number }> = {};
+        (txns ?? []).forEach((t: any) => {
+          const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
+          map[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
+        });
+        setTxnByReg(map);
+      }
     })();
   }, [expanded]);
 
   const paidRegs = (regs ?? []).filter(r => r.status === "paid");
   const hasPaidRegs = paidRegs.length > 0;
   const counts = { ligante: 0, partner: 0, visitor: 0 };
-  let total = 0;
-  paidRegs.forEach(r => { counts[r.category as keyof typeof counts] = (counts[r.category as keyof typeof counts] ?? 0) + 1; total += Number(r.paid_price) || 0; });
+  let totalGross = 0;
+  let totalNet = 0;
+  paidRegs.forEach(r => {
+    counts[r.category as keyof typeof counts] = (counts[r.category as keyof typeof counts] ?? 0) + 1;
+    const t = txnByReg[r.id];
+    const gross = t ? t.gross : (Number(r.paid_price) || 0);
+    const net = t ? Math.max(0, t.gross - t.fee) : gross;
+    totalGross += gross;
+    totalNet += net;
+  });
 
   async function copyPaidRegistrations() {
     const names = paidRegs.map((r: any) => r.full_name).filter(Boolean).join("\n");
@@ -792,7 +819,13 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Ligantes</div><div className="font-black">{counts.ligante}</div></div>
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Parceiros</div><div className="font-black">{counts.partner}</div></div>
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Visitantes</div><div className="font-black">{counts.visitor}</div></div>
-              <div className="p-2 rounded bg-primary/10"><div className="text-xs text-muted-foreground">Arrecadado</div><div className="font-black">R$ {total.toFixed(2)}</div></div>
+              <div className="p-2 rounded bg-primary/10">
+                <div className="text-xs text-muted-foreground">Arrecadado (líquido)</div>
+                <div className="font-black">R$ {totalNet.toFixed(2)}</div>
+                {totalGross > totalNet && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Bruto R$ {totalGross.toFixed(2)} · Taxas −R$ {(totalGross - totalNet).toFixed(2)}</div>
+                )}
+              </div>
             </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
             {regs !== null && !hasPaidRegs && (
