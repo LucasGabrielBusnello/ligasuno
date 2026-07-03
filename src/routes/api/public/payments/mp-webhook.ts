@@ -90,7 +90,16 @@ async function handlePayment(paymentId: string) {
   if (!category || !refId) return;
 
   const grossAmount = Number(payment?.transaction_amount ?? 0);
-  const feeAmount = Number(payment?.fee_details?.find((f: any) => f.type === "marketplace_fee")?.amount ?? payment?.application_fee ?? 0);
+  // Soma TODAS as taxas debitadas do vendedor (liga): taxa do MP + marketplace_fee.
+  // Isso reflete o que efetivamente entra na conta da liga (net_received_amount).
+  const feeDetails: any[] = Array.isArray(payment?.fee_details) ? payment.fee_details : [];
+  let feeAmount = feeDetails.reduce((sum, f) => {
+    const payer = String(f?.fee_payer ?? "collector").toLowerCase();
+    return (payer === "collector" || payer === "seller") ? sum + (Number(f?.amount) || 0) : sum;
+  }, 0);
+  if (feeAmount === 0 && Number(payment?.application_fee) > 0) {
+    feeAmount = Number(payment.application_fee);
+  }
 
   // Log
   await supabaseAdmin.from("payment_transactions").upsert({
