@@ -465,6 +465,7 @@ export function EventsTab({ league }: any) {
     freeze_on_event_day: true,
   };
   const [f, setF] = useState<any>(blank);
+  const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("league_events").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
     setEvents(data ?? []);
