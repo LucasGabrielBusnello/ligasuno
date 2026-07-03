@@ -500,7 +500,7 @@ function CaixaTab({ league }: { league: League }) {
       return {
         id: `s:${t.id}`,
         kind: "entrada" as const,
-        amount_cents: Math.round((Number(t.gross_amount) - Number(t.fee_amount || 0)) * 100),
+        amount_cents: netCentsFromTxn(t),
         category: cat,
         description: desc,
         notes: null,
