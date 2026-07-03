@@ -443,7 +443,7 @@ function AboutTab({ league }: any) {
   );
 }
 
-function EventsTab({ league }: any) {
+export function EventsTab({ league }: any) {
   const [events, setEvents] = useState<any[]>([]);
   const [allLeagues, setAllLeagues] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
