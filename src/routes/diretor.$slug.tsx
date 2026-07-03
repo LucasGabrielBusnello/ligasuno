@@ -17,6 +17,7 @@ import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCi
 import { generateCashReportPdf, type ReportTxn } from "@/lib/cash-report";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
 import { LeaguePerformanceTab } from "@/components/league-performance-tab";
+import { EventsTab } from "@/routes/presidente.$slug";
 
 export const Route = createFileRoute("/diretor/$slug")({ component: DiretorPage });
 
