@@ -1,18 +1,50 @@
-## Controles de armazenamento
+## Objetivo
+Conectar um domínio `.com.br` customizado ao projeto publicado, priorizando o caminho mais barato.
 
-### 1. Limites no upload (aba Caixa)
-- Reduzir o limite de tamanho por arquivo de 10 MB para **5 MB**.
-- Comprimir imagens no navegador antes do upload (máx. 1600px no lado maior, qualidade 0.8 em JPEG). PDFs sobem sem alteração.
-- Aceitar apenas `image/*` e `application/pdf`.
+## Contexto atual
+- Projeto já publicado em: `https://ligasuno.lovable.app`
+- Plano pago ativo (permite domínio customizado).
+- Nenhum domínio customizado conectado no momento.
 
-### 2. Retenção automática
-Criar um job diário (pg_cron + rota `/api/public/hooks/storage-cleanup`) que apaga:
-- **Comprovantes de caixa** (`cash-receipts`) com mais de **1 ano** (baseado em `created_at` do arquivo). Também limpa a referência `receipt_path` da transação correspondente.
-- **PDFs/assets de certificados e eventos** com mais de **3 anos**, quando aplicável.
+## Plano de ação
 
-O job registra no console quantos arquivos apagou por execução.
+### 1. Comprar o domínio `.com.br` no registrador mais barato
+Sugestões para comparar preços de registro e renovação:
+- **Registro.br** (oficial para .com.br)
+- **Hostinger**
+- **GoDaddy**
+- **Namecheap**
 
-### Detalhes técnicos
-- `src/routes/diretor.$slug.tsx`: nova função `compressImage()` antes do `supabase.storage.upload`; ajustar validação de tamanho para 5MB.
-- Nova rota `src/routes/api/public/hooks/storage-cleanup.ts` protegida por `apikey` header (anon key), usando `supabaseAdmin` para listar `storage.objects` por bucket e remover os antigos, além de limpar `receipt_path` em `league_cash_entries`.
-- Agendar via pg_cron diariamente às 03:00 chamando essa rota.
+Escolha o que tiver o menor custo total de primeiro ano + renovação.
+
+### 2. Publicar/verificar o projeto
+Certificar-se de que o projeto está publicado para que o domínio customizado possa apontar para ele.
+
+### 3. Iniciar a conexão do domínio no Lovable
+- Acessar **Project Settings → Project section → Domains**
+- Ou clicar em **Publish → Add custom domain**
+- Inserir o domínio `.com.br` desejado (ex: `seudominio.com.br`)
+
+### 4. Configurar os registros DNS no registrador
+O Lovable fornecerá os registros necessários. Normalmente serão:
+- **A Record** para `@` apontando para o IP do Lovable
+- **A Record** para `www` apontando para o IP do Lovable
+- **TXT Record** para `_lovable` com o valor de verificação
+
+Adicionar esses registros no painel DNS do registrador onde o domínio foi comprado.
+
+### 5. Aguardar propagação e verificar
+- Propagação DNS pode levar até 72 horas.
+- O Lovable fará a verificação automaticamente.
+- Após ativo, escolher o domínio `.com.br` como primário para redirecionar o `.lovable.app`.
+
+### 6. Testar o domínio
+Acessar `https://seudominio.com.br` e confirmar que o site carrega corretamente.
+
+## Observações importantes
+- Não é possível comprar/conectar `.com.br` em plano gratuito, mas você já está em plano pago.
+- Comprar dentro do Lovable é mais conveniente, mas registradores externos costumam ser mais baratos para domínios `.com.br`.
+- Não posso executar a compra nem inserir dados de pagamento — isso precisa ser feito por você na sua conta.
+
+## Próximo passo
+Me confirme quando tiver comprado o domínio e eu guio você na conexão/configuração dentro do Lovable.
