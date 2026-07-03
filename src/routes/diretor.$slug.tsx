@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3, Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown, ChevronDown, ChevronUp, FileDown } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3, Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown, ChevronDown, ChevronUp, FileDown, Image as ImageIcon } from "lucide-react";
 import { generateCashReportPdf, type ReportTxn } from "@/lib/cash-report";
 import { getCollectorFees, netCentsFromTxn } from "@/lib/mp-fees";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
