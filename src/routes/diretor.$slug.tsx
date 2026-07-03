@@ -714,7 +714,12 @@ function CaixaTab({ league }: { league: League }) {
                         <div><span className="text-muted-foreground">Origem:</span> Pagamento via Mercado Pago</div>
                         {t.detail?.payment_method && <div><span className="text-muted-foreground">Método:</span> {t.detail.payment_method}</div>}
                         <div><span className="text-muted-foreground">Valor bruto:</span> {BRL(Math.round(Number(t.detail.gross_amount) * 100))}</div>
-                        {Number(t.detail.fee_amount) > 0 && <div><span className="text-muted-foreground">Taxa MP:</span> −{BRL(Math.round(Number(t.detail.fee_amount) * 100))}</div>}
+                        {(() => {
+                          const feeReais = getCollectorFees(t.detail?.raw) || Number(t.detail?.fee_amount || 0);
+                          return feeReais > 0 ? (
+                            <div><span className="text-muted-foreground">Taxas (MP + plataforma):</span> −{BRL(Math.round(feeReais * 100))}</div>
+                          ) : null;
+                        })()}
                         {t.detail?.mp_payment_id && <div className="text-xs text-muted-foreground">ID MP: {t.detail.mp_payment_id}</div>}
                       </>
                     )}
