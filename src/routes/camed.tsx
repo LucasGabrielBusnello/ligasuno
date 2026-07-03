@@ -573,6 +573,7 @@ function NewsTab() {
   const [editing, setEditing] = useState<any | null>(null);
   const blank = { title: "", excerpt: "", image_url: "", category: "Geral", link: "" };
   const [f, setF] = useState<any>(blank);
+  const deleteFiles = useServerFn(deleteStorageFiles);
   async function reload() {
     const { data } = await supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false });
     setList((data as any[]) ?? []);
