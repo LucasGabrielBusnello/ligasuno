@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscription.functions";
+import { ImageUpload } from "@/components/image-upload";
+import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -171,7 +173,7 @@ function LeagueDialog({ open, setOpen, league, onSaved }: any) {
           <div><Label>Nome</Label><Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div><Label>Slug (URL: /slug)</Label><Input required value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="lapcit" /></div>
           <div><Label>Descrição</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-          <div><Label>Ícone (URL)</Label><Input value={form.icon_url} onChange={(e) => setForm({ ...form, icon_url: e.target.value })} /></div>
+          <div><ImageUpload label="Ícone" folder="leagues" value={form.icon_url} onChange={(url) => setForm({ ...form, icon_url: url })} /></div>
           <div><Label>Cor tema</Label><Input type="color" value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} /></div>
           <div><Label>Presidente (email ou usuário)</Label><Input value={form.president_query} onChange={(e) => setForm({ ...form, president_query: e.target.value })} placeholder={league?.president_id ? "(manter atual)" : "lucas@email.com"} /></div>
           <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
@@ -240,10 +242,13 @@ function CamedAdmin() {
     if (error) return toast.error(error.message);
     toast.success("Informações atualizadas");
   }
+  const deleteFiles = useServerFn(deleteStorageFiles);
   async function delMember(id: string) {
     if (!confirm("Excluir membro?")) return;
+    const m = members.find((x: any) => x.id === id);
     const { error } = await supabase.from("camed_members").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    if (m?.image_url) { try { await deleteFiles({ data: { paths: [m.image_url] } }); } catch {} }
     toast.success("Excluído"); reload();
   }
 
@@ -360,7 +365,7 @@ function CamedMemberDialog({ open, setOpen, member, onSaved }: any) {
           <div><Label>Nome</Label><Input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
           <div><Label>Cargo</Label><Input required value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} /></div>
           <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-          <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
+          <div><ImageUpload label="Imagem" folder="camed-members" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
           <div><Label>Ordem</Label><Input type="number" value={f.display_order} onChange={(e) => setF({ ...f, display_order: +e.target.value })} /></div>
           <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
         </form>

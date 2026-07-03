@@ -13,6 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle, Mail, MessageSquare, Calendar as CalIcon, Clock, Eye, Phone, Video, MapPin, History, Trophy, Medal, Crown, ChevronDown, ChevronUp, Newspaper } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ImageUpload } from "@/components/image-upload";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 
 export const Route = createFileRoute("/camed")({ component: CamedPage });
 
@@ -286,10 +289,13 @@ function MembersTab() {
     if (error) return toast.error(error.message);
     toast.success("Salvo"); setOpen(false); reload();
   }
+  const deleteFiles = useServerFn(deleteStorageFiles);
   async function del(id: string) {
     if (!confirm("Excluir membro?")) return;
+    const m = members.find((x: any) => x.id === id);
     const { error } = await supabase.from("camed_members").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    if (m?.image_url) { try { await deleteFiles({ data: { paths: [m.image_url] } }); } catch {} }
     reload();
   }
   return (
@@ -324,7 +330,7 @@ function MembersTab() {
             <div><Label>Nome</Label><Input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
             <div><Label>Cargo</Label><Input required value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-            <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
+            <div><ImageUpload label="Imagem" folder="camed-members" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
             <div><Label>Ordem</Label><Input type="number" value={f.display_order} onChange={(e) => setF({ ...f, display_order: +e.target.value })} /></div>
             <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
           </form>
@@ -567,6 +573,7 @@ function NewsTab() {
   const [editing, setEditing] = useState<any | null>(null);
   const blank = { title: "", excerpt: "", image_url: "", category: "Geral", link: "" };
   const [f, setF] = useState<any>(blank);
+  const deleteFiles = useServerFn(deleteStorageFiles);
   async function reload() {
     const { data } = await supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false });
     setList((data as any[]) ?? []);
@@ -586,8 +593,10 @@ function NewsTab() {
   }
   async function del(id: string) {
     if (!confirm("Excluir notícia?")) return;
+    const n = list.find((x: any) => x.id === id);
     const { error } = await supabase.from("camed_news" as any).delete().eq("id", id);
     if (error) return toast.error(error.message);
+    if (n?.image_url) { try { await deleteFiles({ data: { paths: [n.image_url] } }); } catch {} }
     reload();
   }
   return (
@@ -625,7 +634,7 @@ function NewsTab() {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
             <div><Label>Resumo</Label><Textarea rows={4} value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} /></div>
-            <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
+            <div><ImageUpload label="Imagem" folder="camed-news" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
             <div><Label>Link externo (opcional)</Label><Input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></div>
             <DialogFooter><Button type="submit">{editing ? "Salvar" : "Publicar"}</Button></DialogFooter>
           </form>

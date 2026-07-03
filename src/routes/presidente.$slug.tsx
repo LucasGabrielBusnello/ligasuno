@@ -542,7 +542,13 @@ export function EventsTab({ league }: any) {
   function updateScheduleItem(i: number, patch: any) {
     setF((p: any) => ({ ...p, checkin_schedule: p.checkin_schedule.map((s: any, k: number) => k === i ? { ...s, ...patch } : s) }));
   }
-  async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_events").delete().eq("id", id); reload(); }
+  async function del(id: string) {
+    if (!confirm("Excluir?")) return;
+    const ev = events.find((e: any) => e.id === id);
+    await supabase.from("league_events").delete().eq("id", id);
+    if (ev?.image_url) { try { await deleteFiles({ data: { paths: [ev.image_url] } }); } catch {} }
+    reload();
+  }
   async function toggleField(id: string, field: "published" | "accepting_registrations", v: boolean) {
     const { error } = await supabase.from("league_events").update({ [field]: v } as any).eq("id", id);
     if (error) return toast.error(error.message);
@@ -1182,6 +1188,7 @@ function NewsTab({ league }: any) {
   const [list, setList] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ title: "", excerpt: "", image_url: "", category: "Geral", link: "" });
+  const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("league_news").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
     setList(data ?? []);
@@ -1193,7 +1200,13 @@ function NewsTab({ league }: any) {
     if (error) return toast.error(error.message);
     toast.success("Publicado"); setOpen(false); setF({ title: "", excerpt: "", image_url: "", category: "Geral", link: "" }); reload();
   }
-  async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_news").delete().eq("id", id); reload(); }
+  async function del(id: string) {
+    if (!confirm("Excluir?")) return;
+    const n = list.find((x: any) => x.id === id);
+    await supabase.from("league_news").delete().eq("id", id);
+    if (n?.image_url) { try { await deleteFiles({ data: { paths: [n.image_url] } }); } catch {} }
+    reload();
+  }
   return (
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={() => setOpen(true)}><Plus className="size-4" /> Nova notícia</Button></div>
@@ -1226,6 +1239,7 @@ function NewsTab({ league }: any) {
 function ActivitiesTab({ league }: any) {
   const [list, setList] = useState<any[]>([]);
   const [f, setF] = useState({ image_url: "", caption: "" });
+  const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("league_activities").select("*").eq("league_id", league.id).order("display_order");
     setList(data ?? []);
@@ -1238,7 +1252,12 @@ function ActivitiesTab({ league }: any) {
     if (error) return toast.error(error.message);
     setF({ image_url: "", caption: "" }); reload();
   }
-  async function del(id: string) { await supabase.from("league_activities").delete().eq("id", id); reload(); }
+  async function del(id: string) {
+    const a = list.find((x: any) => x.id === id);
+    await supabase.from("league_activities").delete().eq("id", id);
+    if (a?.image_url) { try { await deleteFiles({ data: { paths: [a.image_url] } }); } catch {} }
+    reload();
+  }
   return (
     <Card><CardContent className="p-6 space-y-4">
       <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-2 items-end">
