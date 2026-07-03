@@ -372,7 +372,7 @@ function ConfigTab({ league, setLeague, paid }: any) {
           <Switch checked={pub} onCheckedChange={togglePub} />
         </div>
         <div><Label>Nome</Label><Input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-        <div><Label>Ícone (URL)</Label><Input value={f.icon_url} onChange={(e) => setF({ ...f, icon_url: e.target.value })} /></div>
+        <div><ImageUpload label="Ícone" folder="leagues" value={f.icon_url} onChange={(url) => setF({ ...f, icon_url: url })} /></div>
         <div><Label>Cor tema</Label><Input type="color" value={f.theme_color} onChange={(e) => setF({ ...f, theme_color: e.target.value })} /></div>
         <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
         <Button onClick={save}>Salvar</Button>
@@ -577,7 +577,7 @@ export function EventsTab({ league }: any) {
             <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
             <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
             <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
-            <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
+            <div><ImageUpload label="Imagem" folder="events" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
             <div className="grid grid-cols-3 gap-2">
               <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
               <div><Label className="text-xs">Valor Liga Parceira (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_partner} onChange={(e) => setF({ ...f, price_partner: +e.target.value })} /></div>
@@ -1212,7 +1212,7 @@ function NewsTab({ league }: any) {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
             <div><Label>Resumo</Label><Textarea value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} /></div>
-            <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
+            <div><ImageUpload label="Imagem" folder="news" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
             <div><Label>Link externo</Label><Input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></div>
             <DialogFooter><Button type="submit">Publicar</Button></DialogFooter>
           </form>
@@ -1240,8 +1240,8 @@ function ActivitiesTab({ league }: any) {
   async function del(id: string) { await supabase.from("league_activities").delete().eq("id", id); reload(); }
   return (
     <Card><CardContent className="p-6 space-y-4">
-      <form onSubmit={add} className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">
-        <Input placeholder="URL da imagem" value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} />
+      <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-2 items-end">
+        <ImageUpload label="Imagem" folder="activities" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} />
         <Input placeholder="Legenda (opcional)" value={f.caption} onChange={(e) => setF({ ...f, caption: e.target.value })} />
         <Button type="submit"><Plus className="size-4" /> Adicionar</Button>
       </form>
