@@ -89,10 +89,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ltcTiKetBFV5AhiYSaV8TJSBNs82/social-images/social-1779893153554-images_(2).webp" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "canonical", href: "https://ligasuno.com.br/" },
     ],
   }),
   shellComponent: RootShell,
