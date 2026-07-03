@@ -18,6 +18,7 @@ import { CertificatesDialog } from "@/components/certificates-dialog";
 import { CheckinDialog } from "@/components/event-checkin-dialog";
 import { EventCertificatesDialog } from "@/components/event-certificates-dialog";
 import { generateBadgesPdf } from "@/lib/badge-pdf";
+import { getCollectorFees } from "@/lib/mp-fees";
 import { syncEventToSheet, getSheetConfig, saveSheetConfig } from "@/lib/sheets-sync.functions";
 import { listEventCheckinRoster } from "@/lib/event-checkin.functions";
 
