@@ -818,7 +818,13 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Ligantes</div><div className="font-black">{counts.ligante}</div></div>
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Parceiros</div><div className="font-black">{counts.partner}</div></div>
               <div className="p-2 rounded bg-muted"><div className="text-xs text-muted-foreground">Visitantes</div><div className="font-black">{counts.visitor}</div></div>
-              <div className="p-2 rounded bg-primary/10"><div className="text-xs text-muted-foreground">Arrecadado</div><div className="font-black">R$ {total.toFixed(2)}</div></div>
+              <div className="p-2 rounded bg-primary/10">
+                <div className="text-xs text-muted-foreground">Arrecadado (líquido)</div>
+                <div className="font-black">R$ {totalNet.toFixed(2)}</div>
+                {totalGross > totalNet && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Bruto R$ {totalGross.toFixed(2)} · Taxas −R$ {(totalGross - totalNet).toFixed(2)}</div>
+                )}
+              </div>
             </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
             {regs !== null && !hasPaidRegs && (
