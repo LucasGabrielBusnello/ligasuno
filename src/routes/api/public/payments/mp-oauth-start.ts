@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 
 function callbackUrl() {
   return `${PUBLISHED_URL}/api/public/payments/mp-oauth-callback`;

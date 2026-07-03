@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/public/cron/mark-overdue")({
                 ${cycle?.late_fee_cents > 0 ? `<p>Foi aplicado um acréscimo de <strong>${(cycle.late_fee_cents/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</strong> sobre o valor original.</p>` : ""}
                 <p>Para evitar bloqueio nas atividades da liga, regularize agora pelo painel do ligante — o pagamento é por Pix e a confirmação é automática.</p>`,
               ctaLabel: "Regularizar agora",
-              ctaUrl: `https://ligasuno.lovable.app/ligante/${league?.slug}?semestralidade=1`,
+              ctaUrl: `https://ligasuno.com.br/ligante/${league?.slug}?semestralidade=1`,
               signature: `— Presidência da ${league?.name ?? "liga"}`,
             }),
           };

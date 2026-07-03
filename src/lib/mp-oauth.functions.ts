@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 
 function callbackUrl() {
   // Sempre publicado para evitar problemas de redirect dinâmico nas configs do MP.

@@ -6,7 +6,7 @@ import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { computeFee, createSplitPreference, getPlatformAccessToken, loadFeeForCategory, loadLeagueMpAccount, searchPaymentsByExternalRef } from "@/lib/mp.server";
 import { sendClassifiedAsLiganteEmail } from "@/lib/gmail.server";
 
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
 
 const schema = z.object({

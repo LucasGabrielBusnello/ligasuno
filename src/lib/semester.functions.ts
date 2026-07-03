@@ -37,7 +37,7 @@ async function isLeaderOf(leagueId: string, userId: string, leaguePresidentId?: 
   return role === "presidente" || role === "diretor";
 }
 
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
 
 // ------------------ helpers ------------------
@@ -603,7 +603,7 @@ export const createSemesterPix = createServerFn({ method: "POST" })
       payerLastName: last,
       payerCpf: cpf,
       externalReference: `semester:${(payment as any).id}`,
-      notificationUrl: "https://ligasuno.lovable.app/api/public/payments/mp-webhook",
+      notificationUrl: "https://ligasuno.com.br/api/public/payments/mp-webhook",
       applicationFee: fee,
       metadata: {
         payment_id: (payment as any).id,
