@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ArrowLeft, ShieldCheck, Calendar, Users, CheckSquare, Newspaper, HelpCircle, Plus, Trash2, CalendarDays, BarChart3, Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp, TrendingDown, ChevronDown, ChevronUp, FileDown } from "lucide-react";
 import { generateCashReportPdf, type ReportTxn } from "@/lib/cash-report";
+import { getCollectorFees, netCentsFromTxn } from "@/lib/mp-fees";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
 import { LeaguePerformanceTab } from "@/components/league-performance-tab";
 import { EventsTab } from "@/routes/presidente.$slug";
