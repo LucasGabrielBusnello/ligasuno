@@ -3,13 +3,24 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
+async function isLeagueManager(userId: string, leagueId: string) {
+  const { data: lg } = await supabaseAdmin
+    .from("leagues").select("president_id").eq("id", leagueId).maybeSingle();
+  if (lg && (lg as any).president_id === userId) return true;
+  const { data: m } = await supabaseAdmin
+    .from("league_memberships").select("role")
+    .eq("league_id", leagueId).eq("user_id", userId).eq("role", "diretor").maybeSingle();
+  if (m) return true;
+  const { data: r } = await supabaseAdmin
+    .from("user_roles").select("role").eq("user_id", userId).eq("role", "admin_master").maybeSingle();
+  return !!r;
+}
+
 async function assertEventOwner(event_id: string, userId: string) {
   const { data: ev } = await supabaseAdmin
     .from("league_events").select("id, league_id, checkin_count").eq("id", event_id).maybeSingle();
   if (!ev) throw new Error("Evento não encontrado");
-  const { data: lg } = await supabaseAdmin
-    .from("leagues").select("president_id").eq("id", (ev as any).league_id).maybeSingle();
-  if (!lg || (lg as any).president_id !== userId) throw new Error("Sem permissão");
+  if (!(await isLeagueManager(userId, (ev as any).league_id))) throw new Error("Sem permissão");
   return ev as any;
 }
 
@@ -19,11 +30,10 @@ async function assertMinicourseOwner(mc_id: string, userId: string) {
   if (!mc) throw new Error("Minicurso não encontrado");
   const { data: ev } = await supabaseAdmin
     .from("league_events").select("league_id").eq("id", (mc as any).event_id).maybeSingle();
-  const { data: lg } = await supabaseAdmin
-    .from("leagues").select("president_id").eq("id", (ev as any).league_id).maybeSingle();
-  if (!lg || (lg as any).president_id !== userId) throw new Error("Sem permissão");
+  if (!ev || !(await isLeagueManager(userId, (ev as any).league_id))) throw new Error("Sem permissão");
   return mc as any;
 }
+
 
 // ---- EVENT ----
 export const listEventCheckinRoster = createServerFn({ method: "POST" })
