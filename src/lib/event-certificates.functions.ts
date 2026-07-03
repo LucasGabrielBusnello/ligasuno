@@ -215,7 +215,7 @@ async function buildEventCertPdf(opts: {
   page.drawText(presSub, { x: sigRight - sigLineW / 2 - sans.widthOfTextAtSize(presSub, 8.5) / 2, y: sigLineY - 26, size: 8.5, font: sans, color: muted });
 
   page.drawText(`Emitido em ${new Date().toLocaleDateString("pt-BR")}`, { x: 56, y: 46, size: 8, font: sans, color: muted });
-  const foot = "Documento gerado por LIGASUNO · ligasuno.lovable.app";
+  const foot = "Documento gerado por LIGASUNO · ligasuno.com.br";
   page.drawText(foot, { x: W - 56 - sans.widthOfTextAtSize(foot, 8), y: 46, size: 8, font: sans, color: muted });
   return pdf.save();
 }

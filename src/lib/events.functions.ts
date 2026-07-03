@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import { computeFee, createSplitPreference, loadFeeForCategory, loadLeagueMpAccount } from "@/lib/mp.server";
 
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
 
 const schema = z.object({

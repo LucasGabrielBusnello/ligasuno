@@ -346,7 +346,7 @@ async function buildCertificatePdf(opts: {
   // Rodapé
   const issued = `Emitido em ${new Date().toLocaleDateString("pt-BR")}`;
   page.drawText(issued, { x: 56, y: 46, size: 8, font: sans, color: muted });
-  const foot = "Documento gerado por LIGASUNO · ligasuno.lovable.app";
+  const foot = "Documento gerado por LIGASUNO · ligasuno.com.br";
   const footW = sans.widthOfTextAtSize(foot, 8);
   page.drawText(foot, { x: W - 56 - footW, y: 46, size: 8, font: sans, color: muted });
 

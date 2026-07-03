@@ -11,7 +11,7 @@ import {
   loadLeagueMpAccount,
 } from "@/lib/mp.server";
 
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 const WEBHOOK_URL = `${PUBLISHED_URL}/api/public/payments/mp-webhook`;
 
 const eventSchema = z.object({

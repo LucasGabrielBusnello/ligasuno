@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getOAuthCredentials } from "@/lib/mp.server";
 
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 
 export const Route = createFileRoute("/api/public/payments/mp-oauth-callback")({
   server: {

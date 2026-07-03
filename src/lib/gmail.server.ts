@@ -146,7 +146,7 @@ export function emailInfoCard(opts: { title: string; rows: Array<{ label: string
 }
 
 // ============== Helpers compartilhados ==============
-const PUBLISHED_URL = "https://ligasuno.lovable.app";
+const PUBLISHED_URL = "https://ligasuno.com.br";
 const HUB_GREEN = "#1f5132";
 
 function fmtDateBR(iso?: string | null) {
