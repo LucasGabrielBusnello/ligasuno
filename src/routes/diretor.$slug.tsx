@@ -19,6 +19,9 @@ import { getCollectorFees, netCentsFromTxn } from "@/lib/mp-fees";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
 import { LeaguePerformanceTab } from "@/components/league-performance-tab";
 import { EventsTab } from "@/routes/presidente.$slug";
+import { ImageUpload } from "@/components/image-upload";
+import { useServerFn } from "@tanstack/react-start";
+import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 
 export const Route = createFileRoute("/diretor/$slug")({ component: DiretorPage });
 
@@ -248,6 +251,7 @@ function NewsTab({ league }: { league: League }) {
   const blank = { title: "", excerpt: "", image_url: "", category: "Geral", link: "" };
   const [f, setF] = useState(blank);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("league_news").select("*").eq("league_id", league.id).order("created_at", { ascending: false });
     setList(data ?? []);
@@ -268,7 +272,13 @@ function NewsTab({ league }: { league: League }) {
     if (error) return toast.error(error.message);
     toast.success(editingId ? "Notícia atualizada" : "Publicado"); setOpen(false); setF(blank); setEditingId(null); reload();
   }
-  async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_news").delete().eq("id", id); reload(); }
+  async function del(id: string) {
+    if (!confirm("Excluir?")) return;
+    const n = list.find((x: any) => x.id === id);
+    await supabase.from("league_news").delete().eq("id", id);
+    if (n?.image_url) { try { await deleteFiles({ data: { paths: [n.image_url] } }); } catch {} }
+    reload();
+  }
   return (
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={openNew}><Plus className="size-4" /> Nova notícia</Button></div>
@@ -292,7 +302,7 @@ function NewsTab({ league }: { league: League }) {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Categoria</Label><Input value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} /></div>
             <div><Label>Resumo</Label><Textarea value={f.excerpt} onChange={(e) => setF({ ...f, excerpt: e.target.value })} /></div>
-            <div><Label>Imagem (URL)</Label><Input value={f.image_url} onChange={(e) => setF({ ...f, image_url: e.target.value })} /></div>
+            <div><ImageUpload label="Imagem" folder="news" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
             <div><Label>Link externo</Label><Input value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} /></div>
             <DialogFooter><Button type="submit">{editingId ? "Salvar" : "Publicar"}</Button></DialogFooter>
           </form>
