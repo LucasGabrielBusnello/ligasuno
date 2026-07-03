@@ -542,7 +542,13 @@ export function EventsTab({ league }: any) {
   function updateScheduleItem(i: number, patch: any) {
     setF((p: any) => ({ ...p, checkin_schedule: p.checkin_schedule.map((s: any, k: number) => k === i ? { ...s, ...patch } : s) }));
   }
-  async function del(id: string) { if (!confirm("Excluir?")) return; await supabase.from("league_events").delete().eq("id", id); reload(); }
+  async function del(id: string) {
+    if (!confirm("Excluir?")) return;
+    const ev = events.find((e: any) => e.id === id);
+    await supabase.from("league_events").delete().eq("id", id);
+    if (ev?.image_url) { try { await deleteFiles({ data: { paths: [ev.image_url] } }); } catch {} }
+    reload();
+  }
   async function toggleField(id: string, field: "published" | "accepting_registrations", v: boolean) {
     const { error } = await supabase.from("league_events").update({ [field]: v } as any).eq("id", id);
     if (error) return toast.error(error.message);
