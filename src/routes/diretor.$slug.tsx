@@ -240,26 +240,6 @@ function FreqTab({ league }: { league: League }) {
 }
 
 
-function EventsListTab({ league }: { league: League }) {
-  const [events, setEvents] = useState<any[]>([]);
-  useEffect(() => {
-    supabase.from("league_events").select("*").eq("league_id", league.id).order("created_at", { ascending: false })
-      .then(({ data }) => setEvents(data ?? []));
-  }, [league.id]);
-  return (
-    <Card><CardHeader><CardTitle>Eventos da liga (somente leitura)</CardTitle></CardHeader>
-      <CardContent className="space-y-2">
-        {events.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum evento. Apenas o presidente pode criar eventos.</p> : events.map((e) => (
-          <div key={e.id} className="p-3 rounded border">
-            <div className="font-bold">{e.title}</div>
-            {e.event_date && <div className="text-xs text-muted-foreground">{new Date(e.event_date).toLocaleDateString("pt-BR")}</div>}
-            {e.description && <div className="text-xs text-muted-foreground">{e.description}</div>}
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
 
 function NewsTab({ league }: { league: League }) {
   const [list, setList] = useState<any[]>([]);
