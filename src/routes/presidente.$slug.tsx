@@ -1236,7 +1236,7 @@ function NewsTab({ league }: any) {
   );
 }
 
-function ActivitiesTab({ league }: any) {
+export function ActivitiesTab({ league }: any) {
   const [list, setList] = useState<any[]>([]);
   const [f, setF] = useState({ image_url: "", caption: "" });
   const deleteFiles = useServerFn(deleteStorageFiles);
