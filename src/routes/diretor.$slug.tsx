@@ -18,7 +18,7 @@ import { generateCashReportPdf, type ReportTxn } from "@/lib/cash-report";
 import { getCollectorFees, netCentsFromTxn } from "@/lib/mp-fees";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
 import { LeaguePerformanceTab } from "@/components/league-performance-tab";
-import { EventsTab } from "@/routes/presidente.$slug";
+import { EventsTab, ActivitiesTab } from "@/routes/presidente.$slug";
 import { ImageUpload } from "@/components/image-upload";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
