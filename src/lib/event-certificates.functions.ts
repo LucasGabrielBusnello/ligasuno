@@ -8,12 +8,20 @@ async function adminClient() {
   return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 }
 
+async function hasManagerAccess(adminCli: any, userId: string, leagueId: string) {
+  const { data: m } = await adminCli.from("league_memberships").select("role")
+    .eq("league_id", leagueId).eq("user_id", userId).eq("role", "diretor").maybeSingle();
+  if (m) return true;
+  const { data: r } = await adminCli.from("user_roles").select("role")
+    .eq("user_id", userId).eq("role", "admin_master").maybeSingle();
+  return !!r;
+}
+
 async function ensureEventOwner(adminCli: any, eventId: string, userId: string) {
   const { data: ev } = await adminCli.from("league_events").select("*, leagues!inner(id,name,slug,theme_color,president_id)").eq("id", eventId).maybeSingle();
   if (!ev) throw new Error("Evento não encontrado");
   if ((ev as any).leagues.president_id !== userId) {
-    const { data: r } = await adminCli.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin_master").maybeSingle();
-    if (!r) throw new Error("Sem permissão");
+    if (!(await hasManagerAccess(adminCli, userId, (ev as any).leagues.id))) throw new Error("Sem permissão");
   }
   return ev;
 }
@@ -21,11 +29,11 @@ async function ensureMcOwner(adminCli: any, mcId: string, userId: string) {
   const { data: mc } = await adminCli.from("league_minicourses").select("*, league_events!inner(id, title, event_date, leagues!inner(id,name,slug,theme_color,president_id))").eq("id", mcId).maybeSingle();
   if (!mc) throw new Error("Minicurso não encontrado");
   if ((mc as any).league_events.leagues.president_id !== userId) {
-    const { data: r } = await adminCli.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin_master").maybeSingle();
-    if (!r) throw new Error("Sem permissão");
+    if (!(await hasManagerAccess(adminCli, userId, (mc as any).league_events.leagues.id))) throw new Error("Sem permissão");
   }
   return mc;
 }
+
 
 // ===== Preview: event =====
 export const previewEventCertificates = createServerFn({ method: "POST" })
