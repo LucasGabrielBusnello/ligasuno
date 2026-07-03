@@ -297,7 +297,7 @@ export const deleteLeagueWithCancel = createServerFn({ method: "POST" })
     // Eventos e tabelas que dependem deles (minicursos, inscrições)
     const { data: events } = await supabaseAdmin
       .from("league_events")
-      .select("id")
+      .select("id, image_url")
       .eq("league_id", data.league_id);
     const eventIds = (events ?? []).map((e: any) => e.id);
     if (eventIds.length) {
@@ -313,6 +313,26 @@ export const deleteLeagueWithCancel = createServerFn({ method: "POST" })
       await supabaseAdmin.from("event_registrations").delete().in("event_id", eventIds);
       await supabaseAdmin.from("league_events").delete().in("id", eventIds);
     }
+
+    // Limpeza de imagens do bucket 'images' (liga, eventos, notícias, atividades)
+    try {
+      const { data: league } = await supabaseAdmin.from("leagues").select("icon_url").eq("id", data.league_id).maybeSingle();
+      const { data: news } = await supabaseAdmin.from("league_news").select("image_url").eq("league_id", data.league_id);
+      const { data: acts } = await supabaseAdmin.from("league_activities").select("image_url").eq("league_id", data.league_id);
+      const urls: string[] = [];
+      if ((league as any)?.icon_url) urls.push((league as any).icon_url);
+      for (const e of events ?? []) if ((e as any).image_url) urls.push((e as any).image_url);
+      for (const n of news ?? []) if ((n as any).image_url) urls.push((n as any).image_url);
+      for (const a of acts ?? []) if ((a as any).image_url) urls.push((a as any).image_url);
+      const paths = urls.map((u) => {
+        const idx = u.indexOf("/images/");
+        return idx !== -1 ? decodeURIComponent(u.slice(idx + "/images/".length)) : "";
+      }).filter(Boolean);
+      if (paths.length) await supabaseAdmin.storage.from("images").remove(paths);
+    } catch (e) {
+      console.error("Falha ao limpar imagens do storage", e);
+    }
+
 
     // Quiz sets e perguntas
     const { data: qsets } = await supabaseAdmin
