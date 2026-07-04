@@ -18,6 +18,12 @@ export type Database = {
         Row: {
           annual_fee_credit_monthly: number
           annual_fee_pix_monthly: number
+          fee_atletica_event_fixed: number | null
+          fee_atletica_event_pct: number | null
+          fee_atletica_membership_fixed: number | null
+          fee_atletica_membership_pct: number | null
+          fee_atletica_product_fixed: number | null
+          fee_atletica_product_pct: number | null
           fee_event_fixed: number
           fee_event_pct: number
           fee_minicourse_fixed: number
@@ -32,6 +38,12 @@ export type Database = {
         Insert: {
           annual_fee_credit_monthly?: number
           annual_fee_pix_monthly?: number
+          fee_atletica_event_fixed?: number | null
+          fee_atletica_event_pct?: number | null
+          fee_atletica_membership_fixed?: number | null
+          fee_atletica_membership_pct?: number | null
+          fee_atletica_product_fixed?: number | null
+          fee_atletica_product_pct?: number | null
           fee_event_fixed?: number
           fee_event_pct?: number
           fee_minicourse_fixed?: number
@@ -46,6 +58,12 @@ export type Database = {
         Update: {
           annual_fee_credit_monthly?: number
           annual_fee_pix_monthly?: number
+          fee_atletica_event_fixed?: number | null
+          fee_atletica_event_pct?: number | null
+          fee_atletica_membership_fixed?: number | null
+          fee_atletica_membership_pct?: number | null
+          fee_atletica_product_fixed?: number | null
+          fee_atletica_product_pct?: number | null
           fee_event_fixed?: number
           fee_event_pct?: number
           fee_minicourse_fixed?: number
@@ -55,6 +73,701 @@ export type Database = {
           fee_semester_fixed?: number
           fee_semester_pct?: number
           id?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      athletic_cash_entries: {
+        Row: {
+          athletic_id: string
+          category: Database["public"]["Enums"]["athletic_cash_category"]
+          created_at: string
+          created_by: string | null
+          description: string
+          gross_amount: number
+          id: string
+          is_income: boolean
+          mp_fee: number
+          net_amount: number
+          occurred_at: string
+          platform_fee: number
+          receipt_url: string | null
+          related_membership_payment_id: string | null
+          related_order_id: string | null
+          related_ticket_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          athletic_id: string
+          category: Database["public"]["Enums"]["athletic_cash_category"]
+          created_at?: string
+          created_by?: string | null
+          description: string
+          gross_amount?: number
+          id?: string
+          is_income?: boolean
+          mp_fee?: number
+          net_amount?: number
+          occurred_at?: string
+          platform_fee?: number
+          receipt_url?: string | null
+          related_membership_payment_id?: string | null
+          related_order_id?: string | null
+          related_ticket_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          athletic_id?: string
+          category?: Database["public"]["Enums"]["athletic_cash_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          gross_amount?: number
+          id?: string
+          is_income?: boolean
+          mp_fee?: number
+          net_amount?: number
+          occurred_at?: string
+          platform_fee?: number
+          receipt_url?: string | null
+          related_membership_payment_id?: string | null
+          related_order_id?: string | null
+          related_ticket_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_cash_entries_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_collections: {
+        Row: {
+          active: boolean
+          athletic_id: string
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          athletic_id: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          athletic_id?: string
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_collections_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_event_tickets: {
+        Row: {
+          batch_id: string | null
+          buyer_cpf: string | null
+          buyer_email: string | null
+          buyer_name: string | null
+          buyer_phone: string | null
+          buyer_user_id: string | null
+          code: string
+          created_at: string
+          event_id: string
+          id: string
+          mp_payment_id: string | null
+          payment_methods: Json | null
+          price_paid: number | null
+          sold_at: string | null
+          sold_by: string | null
+          sold_channel: string | null
+          status: Database["public"]["Enums"]["athletic_ticket_status"]
+          updated_at: string
+          used_at: string | null
+        }
+        Insert: {
+          batch_id?: string | null
+          buyer_cpf?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          buyer_user_id?: string | null
+          code: string
+          created_at?: string
+          event_id: string
+          id?: string
+          mp_payment_id?: string | null
+          payment_methods?: Json | null
+          price_paid?: number | null
+          sold_at?: string | null
+          sold_by?: string | null
+          sold_channel?: string | null
+          status?: Database["public"]["Enums"]["athletic_ticket_status"]
+          updated_at?: string
+          used_at?: string | null
+        }
+        Update: {
+          batch_id?: string | null
+          buyer_cpf?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          buyer_user_id?: string | null
+          code?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          mp_payment_id?: string | null
+          payment_methods?: Json | null
+          price_paid?: number | null
+          sold_at?: string | null
+          sold_by?: string | null
+          sold_channel?: string | null
+          status?: Database["public"]["Enums"]["athletic_ticket_status"]
+          updated_at?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_event_tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_events: {
+        Row: {
+          athletic_id: string
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          gallery: Json
+          id: string
+          image_url: string | null
+          location: string | null
+          online_sales_open: boolean
+          price_member: number
+          price_visitor: number
+          published: boolean
+          starts_at: string | null
+          theme_color: string | null
+          tickets_sold: number
+          title: string
+          total_tickets: number
+          updated_at: string
+        }
+        Insert: {
+          athletic_id: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          gallery?: Json
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          online_sales_open?: boolean
+          price_member?: number
+          price_visitor?: number
+          published?: boolean
+          starts_at?: string | null
+          theme_color?: string | null
+          tickets_sold?: number
+          title: string
+          total_tickets?: number
+          updated_at?: string
+        }
+        Update: {
+          athletic_id?: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          gallery?: Json
+          id?: string
+          image_url?: string | null
+          location?: string | null
+          online_sales_open?: boolean
+          price_member?: number
+          price_visitor?: number
+          published?: boolean
+          starts_at?: string | null
+          theme_color?: string | null
+          tickets_sold?: number
+          title?: string
+          total_tickets?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_events_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_membership_payments: {
+        Row: {
+          amount: number
+          athletic_id: string
+          buyer_cpf: string | null
+          buyer_email: string | null
+          buyer_name: string | null
+          created_at: string
+          id: string
+          matricula: string | null
+          member_until: string | null
+          membership_id: string | null
+          mp_payment_id: string | null
+          mp_preference_id: string | null
+          period_days: number
+          semestre: string | null
+          status: Database["public"]["Enums"]["athletic_order_status"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          athletic_id: string
+          buyer_cpf?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          id?: string
+          matricula?: string | null
+          member_until?: string | null
+          membership_id?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          period_days?: number
+          semestre?: string | null
+          status?: Database["public"]["Enums"]["athletic_order_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          athletic_id?: string
+          buyer_cpf?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          created_at?: string
+          id?: string
+          matricula?: string | null
+          member_until?: string | null
+          membership_id?: string | null
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          period_days?: number
+          semestre?: string | null
+          status?: Database["public"]["Enums"]["athletic_order_status"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_membership_payments_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletic_membership_payments_membership_id_fkey"
+            columns: ["membership_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_memberships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_memberships: {
+        Row: {
+          active: boolean
+          added_manually: boolean
+          athletic_id: string
+          cpf: string | null
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          matricula: string | null
+          member_until: string | null
+          phone: string | null
+          role: Database["public"]["Enums"]["athletic_role"]
+          semestre: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          active?: boolean
+          added_manually?: boolean
+          athletic_id: string
+          cpf?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          matricula?: string | null
+          member_until?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["athletic_role"]
+          semestre?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          active?: boolean
+          added_manually?: boolean
+          athletic_id?: string
+          cpf?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          matricula?: string | null
+          member_until?: string | null
+          phone?: string | null
+          role?: Database["public"]["Enums"]["athletic_role"]
+          semestre?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_memberships_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_mp_accounts: {
+        Row: {
+          access_token: string
+          athletic_id: string
+          connected_by: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          live_mode: boolean
+          public_key: string | null
+          refresh_token: string | null
+          scope: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          access_token: string
+          athletic_id: string
+          connected_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          live_mode?: boolean
+          public_key?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string
+          athletic_id?: string
+          connected_by?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          live_mode?: boolean
+          public_key?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_mp_accounts_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: true
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_product_order_items: {
+        Row: {
+          id: string
+          line_total: number
+          order_id: string
+          product_id: string | null
+          quantity: number
+          title: string
+          unit_price: number
+          variant: Json | null
+        }
+        Insert: {
+          id?: string
+          line_total: number
+          order_id: string
+          product_id?: string | null
+          quantity?: number
+          title: string
+          unit_price: number
+          variant?: Json | null
+        }
+        Update: {
+          id?: string
+          line_total?: number
+          order_id?: string
+          product_id?: string | null
+          quantity?: number
+          title?: string
+          unit_price?: number
+          variant?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_product_order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_product_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletic_product_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_product_orders: {
+        Row: {
+          athletic_id: string
+          buyer_cpf: string | null
+          buyer_email: string
+          buyer_name: string
+          buyer_phone: string | null
+          created_at: string
+          discount_total: number
+          id: string
+          mp_payment_id: string | null
+          mp_preference_id: string | null
+          notes: string | null
+          status: Database["public"]["Enums"]["athletic_order_status"]
+          subtotal: number
+          total: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          athletic_id: string
+          buyer_cpf?: string | null
+          buyer_email: string
+          buyer_name: string
+          buyer_phone?: string | null
+          created_at?: string
+          discount_total?: number
+          id?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["athletic_order_status"]
+          subtotal: number
+          total: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          athletic_id?: string
+          buyer_cpf?: string | null
+          buyer_email?: string
+          buyer_name?: string
+          buyer_phone?: string | null
+          created_at?: string
+          discount_total?: number
+          id?: string
+          mp_payment_id?: string | null
+          mp_preference_id?: string | null
+          notes?: string | null
+          status?: Database["public"]["Enums"]["athletic_order_status"]
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_product_orders_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_products: {
+        Row: {
+          active: boolean
+          athletic_id: string
+          badge_text: string | null
+          collection_id: string | null
+          created_at: string
+          description: string | null
+          discount_pct: number
+          id: string
+          images: Json
+          is_highlight: boolean
+          is_new: boolean
+          member_price: number | null
+          price: number
+          second_item_discount_pct: number
+          stock: number | null
+          title: string
+          updated_at: string
+          variants: Json
+        }
+        Insert: {
+          active?: boolean
+          athletic_id: string
+          badge_text?: string | null
+          collection_id?: string | null
+          created_at?: string
+          description?: string | null
+          discount_pct?: number
+          id?: string
+          images?: Json
+          is_highlight?: boolean
+          is_new?: boolean
+          member_price?: number | null
+          price?: number
+          second_item_discount_pct?: number
+          stock?: number | null
+          title: string
+          updated_at?: string
+          variants?: Json
+        }
+        Update: {
+          active?: boolean
+          athletic_id?: string
+          badge_text?: string | null
+          collection_id?: string | null
+          created_at?: string
+          description?: string | null
+          discount_pct?: number
+          id?: string
+          images?: Json
+          is_highlight?: boolean
+          is_new?: boolean
+          member_price?: number | null
+          price?: number
+          second_item_discount_pct?: number
+          stock?: number | null
+          title?: string
+          updated_at?: string
+          variants?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_products_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletic_products_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletics: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          id: string
+          logo_url: string | null
+          membership_period_days: number
+          membership_price: number
+          name: string
+          president_id: string | null
+          primary_color: string
+          published: boolean
+          secondary_color: string
+          short_name: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          membership_period_days?: number
+          membership_price?: number
+          name: string
+          president_id?: string | null
+          primary_color?: string
+          published?: boolean
+          secondary_color?: string
+          short_name?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          membership_period_days?: number
+          membership_price?: number
+          name?: string
+          president_id?: string | null
+          primary_color?: string
+          published?: boolean
+          secondary_color?: string
+          short_name?: string | null
+          slug?: string
           updated_at?: string
         }
         Relationships: []
@@ -2254,6 +2967,14 @@ export type Database = {
         Returns: boolean
       }
       is_admin_master: { Args: { _user_id: string }; Returns: boolean }
+      is_athletic_director: {
+        Args: { _athletic_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_athletic_member: {
+        Args: { _athletic_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_camed_president: { Args: { _user_id: string }; Returns: boolean }
       is_league_member: {
         Args: { _league_id: string; _user_id: string }
@@ -2301,6 +3022,16 @@ export type Database = {
         | "diretor"
         | "ligante"
         | "visitante"
+      athletic_cash_category:
+        | "product"
+        | "event_online"
+        | "event_manual"
+        | "membership"
+        | "manual"
+        | "withdraw"
+      athletic_order_status: "pending" | "paid" | "cancelled" | "refunded"
+      athletic_role: "socio" | "diretor" | "presidente"
+      athletic_ticket_status: "available" | "sold" | "used" | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2435,6 +3166,17 @@ export const Constants = {
         "ligante",
         "visitante",
       ],
+      athletic_cash_category: [
+        "product",
+        "event_online",
+        "event_manual",
+        "membership",
+        "manual",
+        "withdraw",
+      ],
+      athletic_order_status: ["pending", "paid", "cancelled", "refunded"],
+      athletic_role: ["socio", "diretor", "presidente"],
+      athletic_ticket_status: ["available", "sold", "used", "cancelled"],
     },
   },
 } as const
