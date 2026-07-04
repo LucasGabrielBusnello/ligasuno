@@ -1258,3 +1258,162 @@ function EmptyDark({ icon, title, desc, action }: { icon: React.ReactNode; title
     </div>
   );
 }
+
+/* ============ COLEÇÕES — MARQUEE (auto-scroll) ============ */
+function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
+  const [cols, setCols] = useState<Collection[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("athletic_collections")
+        .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
+      setCols((data as any) ?? []);
+    })();
+  }, [athletic.id]);
+  if (cols.length === 0) return null;
+  const loop = [...cols, ...cols];
+  return (
+    <section className="relative py-10 border-y border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 mb-4 flex items-center justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-widest opacity-60 font-bold">Explore</div>
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">Coleções</h2>
+        </div>
+        <div className="text-xs opacity-60">{cols.length} coleção{cols.length > 1 ? "es" : ""}</div>
+      </div>
+      <div className="marquee-mask">
+        <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused]">
+          {loop.map((c, i) => (
+            <div key={`${c.id}-${i}`} className="w-72 shrink-0 group cursor-pointer">
+              <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.02] transition-transform">
+                {c.cover_url ? (
+                  <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                ) : (
+                  <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.primary_color }}>Coleção</div>
+                  <div className="text-2xl font-black uppercase tracking-tight leading-tight">{c.name}</div>
+                  {c.description && <div className="text-xs opacity-80 mt-1 line-clamp-2">{c.description}</div>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============ ESPORTES — Grid ============ */
+type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean };
+
+function SportsShowcase({ athletic }: { athletic: Athletic }) {
+  const [sports, setSports] = useState<Sport[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase.from("athletic_sports" as any)
+        .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order"));
+      setSports((data as any) ?? []);
+    })();
+  }, [athletic.id]);
+  if (sports.length === 0) return null;
+  return (
+    <section className="relative py-14 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <div className="text-xs uppercase tracking-widest opacity-60 font-bold">Modalidades</div>
+            <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight">Esportes</h2>
+          </div>
+          <div className="text-xs opacity-60">{sports.length} modalidade{sports.length > 1 ? "s" : ""}</div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {sports.map((s) => (
+            <div key={s.id} className="group relative aspect-square rounded-2xl overflow-hidden border border-white/10 bg-black shadow-xl">
+              {s.image_url ? (
+                <img src={s.image_url} alt={s.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              ) : (
+                <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <div className="font-black text-lg uppercase leading-tight drop-shadow-lg">{s.name}</div>
+                {s.coach && <div className="text-[11px] opacity-80 mt-0.5">Treinador: {s.coach}</div>}
+                {s.schedule && <div className="text-[11px] opacity-70">{s.schedule}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============ DIRETORIA — Esportes ============ */
+function DirectorSports({ athletic }: { athletic: Athletic }) {
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [editing, setEditing] = useState<Partial<Sport> | null>(null);
+  const upsert = useServerFn(upsertSport);
+  const del = useServerFn(deleteSport);
+  async function reload() {
+    const { data } = await (supabase.from("athletic_sports" as any)
+      .select("*").eq("athletic_id", athletic.id).order("display_order"));
+    setSports((data as any) ?? []);
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-black text-lg">Esportes ({sports.length})</h3>
+        <Button size="sm" onClick={() => setEditing({ athletic_id: athletic.id, active: true, display_order: sports.length })}>
+          <Plus className="size-4" /> Novo esporte
+        </Button>
+      </div>
+      <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {sports.map((s) => (
+          <Card key={s.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
+            <div className="aspect-square bg-black/40">
+              {s.image_url ? <img src={s.image_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center opacity-30"><Trophy className="size-12" /></div>}
+            </div>
+            <CardContent className="p-3">
+              <div className="font-bold">{s.name}</div>
+              {s.coach && <div className="text-xs opacity-70">Treinador: {s.coach}</div>}
+              <div className="flex gap-1 mt-2">
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditing(s)}>Editar</Button>
+                <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => { if (!confirm2("Remover?")) return; await del({ data: { athletic_id: athletic.id, id: s.id } }); reload(); }}><Trash2 className="size-3.5" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing?.id ? "Editar esporte" : "Novo esporte"}</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>Descrição</Label><Textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
+              <div><Label>Imagem</Label><ImageUpload value={editing.image_url ?? ""} onChange={(url) => setEditing({ ...editing, image_url: url })} folder="atletica/sports" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Treinador</Label><Input value={editing.coach ?? ""} onChange={(e) => setEditing({ ...editing, coach: e.target.value })} /></div>
+                <div><Label>Horário</Label><Input placeholder="Ex: Ter/Qui 20h" value={editing.schedule ?? ""} onChange={(e) => setEditing({ ...editing, schedule: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Ordem</Label><Input type="number" value={editing.display_order ?? 0} onChange={(e) => setEditing({ ...editing, display_order: +e.target.value })} /></div>
+                <label className="flex items-center gap-2 text-sm pt-6"><input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Ativo</label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={async () => {
+              try { await upsert({ data: editing as any }); toast.success("Salvo"); setEditing(null); reload(); }
+              catch (e: any) { toast.error(e?.message); }
+            }}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
