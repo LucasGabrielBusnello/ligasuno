@@ -1023,7 +1023,7 @@ function DirectorConfig({ athletic }: { athletic: Athletic }) {
             <div><Label>Período (dias)</Label><Input type="number" value={s.membership_period_days} onChange={(e) => setS({ ...s, membership_period_days: +e.target.value })} /></div>
           </div>
           <Button onClick={async () => {
-            try { await upd({ data: { id: athletic.id, ...s } as any }); toast.success("Salvo"); }
+            try { await upd({ data: { ...s, id: athletic.id } as any }); toast.success("Salvo"); }
             catch (e: any) { toast.error(e?.message); }
           }}>Salvar</Button>
         </CardContent>
