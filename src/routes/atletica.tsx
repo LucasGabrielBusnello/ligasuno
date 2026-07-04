@@ -267,10 +267,20 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   const createPix = useServerFn(createMembershipPixPayment);
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
+  const { user } = useAuth();
+  if (!user) {
+    return (
+      <Button asChild size="lg"
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:scale-105 transition-transform"
+        style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+        <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}</Link>
+      </Button>
+    );
+  }
   return (
     <>
       <Button size="lg" onClick={() => setOpen(true)}
-        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform"
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform text-white border-0"
         style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
         <Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}
       </Button>
