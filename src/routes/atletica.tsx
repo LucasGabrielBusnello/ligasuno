@@ -438,46 +438,101 @@ function PublicEvents({ athletic, isMember }: { athletic: Athletic; isMember: bo
   }
   return (
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {events.map((e) => {
-        const price = isMember ? e.price_member : e.price_visitor;
-        const remaining = e.total_tickets - e.tickets_sold;
-        return (
-          <Card key={e.id} className="overflow-hidden bg-white/5 border-white/10 text-white group">
-            <div className="aspect-video bg-black/40 relative">
-              {e.image_url
-                ? <img src={e.image_url} alt={e.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-              <div className="absolute bottom-3 left-3 right-3">
-                <h3 className="font-black text-xl uppercase tracking-tight">{e.title}</h3>
-                {e.starts_at && <p className="text-xs opacity-80">{new Date(e.starts_at).toLocaleString("pt-BR")}</p>}
-              </div>
-            </div>
-            <CardContent className="p-4 space-y-3">
-              {e.location && <p className="text-xs opacity-70">📍 {e.location}</p>}
-              {e.description && <p className="text-sm opacity-80 line-clamp-3">{e.description}</p>}
-              <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                <div>
-                  <div className="text-xs opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
-                  <div className="font-black text-2xl" style={{ color: athletic.primary_color }}>
-                    {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs opacity-60">Disponíveis</div>
-                  <div className="font-bold">{remaining} / {e.total_tickets}</div>
-                </div>
-              </div>
-              <Button className="w-full" disabled title="Vendas online em breve">
-                <Ticket className="size-4" /> Em breve
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      })}
+      {events.map((e) => (
+        <EventCard key={e.id} event={e} athletic={athletic} isMember={isMember} />
+      ))}
     </div>
   );
 }
+
+function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic: Athletic; isMember: boolean }) {
+  const { user, profile } = useAuth();
+  const price = isMember ? e.price_member : e.price_visitor;
+  const remaining = e.total_tickets - e.tickets_sold;
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
+    buyer_phone: profile?.phone ?? "", buyer_cpf: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [pixData, setPixData] = useState<any>(null);
+  const [pixOpen, setPixOpen] = useState(false);
+  const createPix = useServerFn(createEventTicketPixPayment);
+  const canBuy = e.online_sales_open && remaining > 0 && price > 0;
+  return (
+    <Card className="overflow-hidden bg-white/5 border-white/10 text-white group">
+      <div className="aspect-video bg-black/40 relative">
+        {e.image_url
+          ? <img src={e.image_url} alt={e.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
+          : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+        <div className="absolute bottom-3 left-3 right-3">
+          <h3 className="font-black text-xl uppercase tracking-tight">{e.title}</h3>
+          {e.starts_at && <p className="text-xs opacity-80">{new Date(e.starts_at).toLocaleString("pt-BR")}</p>}
+        </div>
+      </div>
+      <CardContent className="p-4 space-y-3">
+        {e.location && <p className="text-xs opacity-70">📍 {e.location}</p>}
+        {e.description && <p className="text-sm opacity-80 line-clamp-3">{e.description}</p>}
+        <div className="flex justify-between items-center pt-2 border-t border-white/10">
+          <div>
+            <div className="text-xs opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
+            <div className="font-black text-2xl" style={{ color: athletic.primary_color }}>
+              {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs opacity-60">Disponíveis</div>
+            <div className="font-bold">{remaining} / {e.total_tickets}</div>
+          </div>
+        </div>
+        {!user ? (
+          <Button className="w-full" asChild><Link to="/auth"><Ticket className="size-4" /> Entrar para comprar</Link></Button>
+        ) : !canBuy ? (
+          <Button className="w-full" disabled>
+            <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
+          </Button>
+        ) : (
+          <Button className="w-full" onClick={() => setOpen(true)}>
+            <Ticket className="size-4" /> Comprar via Pix
+          </Button>
+        )}
+      </CardContent>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ingresso — {e.title}</DialogTitle>
+            <DialogDescription>
+              Valor {isMember ? "sócio" : "visitante"}: <strong>R$ {price.toFixed(2)}</strong>. Confirmação automática após o Pix.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(ev) => setForm({ ...form, buyer_name: ev.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(ev) => setForm({ ...form, buyer_email: ev.target.value })} /></div>
+              <div><Label>Telefone</Label><Input value={form.buyer_phone ?? ""} onChange={(ev) => setForm({ ...form, buyer_phone: ev.target.value })} /></div>
+            </div>
+            <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(ev) => setForm({ ...form, buyer_cpf: ev.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button disabled={saving} onClick={async () => {
+              setSaving(true);
+              try {
+                const pix = await createPix({ data: { event_id: e.id, ...form } });
+                setPixData(pix); setOpen(false); setPixOpen(true);
+              } catch (err: any) { toast.error(err?.message ?? "Erro"); } finally { setSaving(false); }
+            }}>{saving ? "Gerando Pix..." : "Gerar Pix"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title={`Pix — ${e.title}`} />
+    </Card>
+  );
+}
+
 
 /* ============ SÓCIOS ============ */
 function SociosArea({ athletic, isMember, user }: { athletic: Athletic; isMember: boolean; user: any }) {
