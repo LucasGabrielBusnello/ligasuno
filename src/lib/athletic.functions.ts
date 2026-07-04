@@ -500,7 +500,7 @@ export const registerManualTicketSale = createServerFn({ method: "POST" })
       const { sendGmail, emailLayout } = await import("@/lib/gmail.server");
       const html = emailLayout({
         title: `Ingresso confirmado`,
-        preheader: `${(evNow as any).title}`,
+        leagueName: `AAAMD Desbravadores`,
         brandColor: "#F97316",
         bodyHtml: `
           <p>Olá <strong>${data.buyer_name}</strong>, sua compra foi confirmada.</p>
