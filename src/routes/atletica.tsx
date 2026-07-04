@@ -26,6 +26,10 @@ import {
   upsertEvent, deleteEvent, generateTicketBatch, registerManualTicketSale,
   addAthleticCashEntry, updateAthletic,
 } from "@/lib/athletic.functions";
+import {
+  createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
+} from "@/lib/athletic-payments.functions";
+
 
 export const Route = createFileRoute("/atletica")({
   component: AtleticaPage,
