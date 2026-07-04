@@ -365,11 +365,68 @@ function PublicProducts({ athletic }: { athletic: Athletic }) {
 }
 
 function ProductCard({ product, athletic }: { product: Product; athletic: Athletic }) {
-  const { user, profile } = useAuth();
+  const [detailOpen, setDetailOpen] = useState(false);
   const finalPrice = product.discount_pct > 0
     ? product.price * (1 - product.discount_pct / 100) : product.price;
-  const img = product.images?.[0];
-  const [open, setOpen] = useState(false);
+  const cover = product.images?.[0];
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setDetailOpen(true)}
+        className="group text-left w-full overflow-hidden rounded-xl bg-white/5 border border-white/10 text-white hover:border-white/40 hover:-translate-y-0.5 hover:shadow-2xl transition-all focus:outline-none focus:ring-2 focus:ring-white/40"
+      >
+        <div className="aspect-square bg-black/40 relative overflow-hidden">
+          {cover
+            ? <img src={cover} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            : <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-16" /></div>}
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {product.is_new && <Badge style={{ background: athletic.secondary_color }}>NOVO</Badge>}
+            {product.discount_pct > 0 && <Badge className="bg-red-500">-{Math.round(product.discount_pct)}%</Badge>}
+            {product.badge_text && <Badge style={{ background: athletic.primary_color }}>{product.badge_text}</Badge>}
+          </div>
+          {product.images && product.images.length > 1 && (
+            <Badge className="absolute top-2 right-2 bg-black/70 border-white/20 text-[10px]">+{product.images.length - 1}</Badge>
+          )}
+          {product.second_item_discount_pct > 0 && (
+            <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-xs font-black uppercase tracking-wider"
+              style={{ background: `linear-gradient(90deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+              🔥 -{Math.round(product.second_item_discount_pct)}% na 2ª peça!
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+            <span className="px-3 py-1.5 rounded-full bg-white text-black text-xs font-black uppercase tracking-wider">Ver produto</span>
+          </div>
+        </div>
+        <div className="p-3 space-y-1">
+          <div className="font-bold text-sm leading-tight line-clamp-2 h-10">{product.title}</div>
+          <div className="flex items-baseline gap-2">
+            {product.discount_pct > 0 && <span className="text-xs line-through opacity-50">R$ {product.price.toFixed(2)}</span>}
+            <span className="font-black text-lg" style={{ color: athletic.primary_color }}>R$ {finalPrice.toFixed(2)}</span>
+          </div>
+        </div>
+      </button>
+
+      <ProductDetailDialog
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        product={product}
+        athletic={athletic}
+        finalPrice={finalPrice}
+      />
+    </>
+  );
+}
+
+/* ============ PÚBLICO: DETALHE DO PRODUTO ============ */
+function ProductDetailDialog({ open, onClose, product, athletic, finalPrice }: {
+  open: boolean; onClose: () => void; product: Product; athletic: Athletic; finalPrice: number;
+}) {
+  const { user, profile } = useAuth();
+  const images = product.images && product.images.length > 0 ? product.images : [];
+  const [idx, setIdx] = useState(0);
+  useEffect(() => { if (open) setIdx(0); }, [open, product.id]);
+  const [buyOpen, setBuyOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [form, setForm] = useState({
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
@@ -379,42 +436,96 @@ function ProductCard({ product, athletic }: { product: Product; athletic: Athlet
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
   const createPix = useServerFn(createProductPixPayment);
-  return (
-    <Card className="overflow-hidden bg-white/5 border-white/10 text-white group hover:border-white/30 transition">
-      <div className="aspect-square bg-black/40 relative overflow-hidden">
-        {img
-          ? <img src={img} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-          : <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-16" /></div>}
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {product.is_new && <Badge style={{ background: athletic.secondary_color }}>NOVO</Badge>}
-          {product.discount_pct > 0 && <Badge className="bg-red-500">-{Math.round(product.discount_pct)}%</Badge>}
-          {product.badge_text && <Badge style={{ background: athletic.primary_color }}>{product.badge_text}</Badge>}
-        </div>
-        {product.second_item_discount_pct > 0 && (
-          <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-xs font-black uppercase tracking-wider"
-            style={{ background: `linear-gradient(90deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
-            🔥 -{Math.round(product.second_item_discount_pct)}% na 2ª peça!
-          </div>
-        )}
-      </div>
-      <CardContent className="p-3 space-y-1">
-        <div className="font-bold text-sm leading-tight line-clamp-2 h-10">{product.title}</div>
-        <div className="flex items-baseline gap-2">
-          {product.discount_pct > 0 && <span className="text-xs line-through opacity-50">R$ {product.price.toFixed(2)}</span>}
-          <span className="font-black text-lg" style={{ color: athletic.primary_color }}>R$ {finalPrice.toFixed(2)}</span>
-        </div>
-        {user ? (
-          <Button size="sm" className="w-full mt-2" onClick={() => setOpen(true)}>
-            <ShoppingBag className="size-3.5" /> Comprar via Pix
-          </Button>
-        ) : (
-          <Button size="sm" className="w-full mt-2" asChild>
-            <Link to="/auth"><ShoppingBag className="size-3.5" /> Entrar para comprar</Link>
-          </Button>
-        )}
-      </CardContent>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+  const prev = () => setIdx((i) => (images.length ? (i - 1 + images.length) % images.length : 0));
+  const next = () => setIdx((i) => (images.length ? (i + 1) % images.length : 0));
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden max-h-[92vh] overflow-y-auto">
+          <div className="grid md:grid-cols-2 gap-0 bg-black text-white">
+            {/* Galeria */}
+            <div className="relative aspect-square bg-black/60 group">
+              {images.length > 0 ? (
+                <img src={images[idx]} alt={product.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-24" /></div>
+              )}
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button" onClick={prev} aria-label="Imagem anterior"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 size-10 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 flex items-center justify-center backdrop-blur">
+                    <ArrowLeft className="size-5" />
+                  </button>
+                  <button
+                    type="button" onClick={next} aria-label="Próxima imagem"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 size-10 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 flex items-center justify-center backdrop-blur">
+                    <ArrowLeft className="size-5 rotate-180" />
+                  </button>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {images.map((_, i) => (
+                      <button key={i} type="button" onClick={() => setIdx(i)} aria-label={`Imagem ${i + 1}`}
+                        className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-white" : "w-1.5 bg-white/40"}`} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Info */}
+            <div className="p-6 space-y-4 flex flex-col">
+              <DialogHeader className="text-left">
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {product.is_new && <Badge style={{ background: athletic.secondary_color }}>NOVO</Badge>}
+                  {product.discount_pct > 0 && <Badge className="bg-red-500">-{Math.round(product.discount_pct)}%</Badge>}
+                  {product.badge_text && <Badge style={{ background: athletic.primary_color }}>{product.badge_text}</Badge>}
+                </div>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tight">{product.title}</DialogTitle>
+                {product.description && (
+                  <DialogDescription className="text-white/70 whitespace-pre-line">{product.description}</DialogDescription>
+                )}
+              </DialogHeader>
+
+              <div className="flex items-baseline gap-3">
+                {product.discount_pct > 0 && <span className="text-sm line-through opacity-50">R$ {product.price.toFixed(2)}</span>}
+                <span className="font-black text-3xl" style={{ color: athletic.primary_color }}>R$ {finalPrice.toFixed(2)}</span>
+              </div>
+
+              {product.second_item_discount_pct > 0 && (
+                <div className="rounded-lg py-2 px-3 text-center text-xs font-black uppercase tracking-wider"
+                  style={{ background: `linear-gradient(90deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+                  🔥 Leve 2 e ganhe -{Math.round(product.second_item_discount_pct)}% na 2ª peça
+                </div>
+              )}
+
+              <div className="text-xs opacity-70">
+                {product.stock == null ? "Disponível" : product.stock > 0 ? `${product.stock} em estoque` : "Esgotado"}
+                {images.length > 0 && <> • {images.length} foto{images.length > 1 ? "s" : ""}</>}
+              </div>
+
+              <div className="mt-auto pt-4">
+                {user ? (
+                  <Button size="lg" className="w-full font-black uppercase tracking-wider text-white border-0"
+                    style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}
+                    disabled={product.stock != null && product.stock <= 0}
+                    onClick={() => setBuyOpen(true)}>
+                    <ShoppingBag className="size-4" /> Comprar via Pix
+                  </Button>
+                ) : (
+                  <Button size="lg" className="w-full" asChild>
+                    <Link to="/auth"><ShoppingBag className="size-4" /> Entrar para comprar</Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Compra */}
+      <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Comprar — {product.title}</DialogTitle>
@@ -431,12 +542,12 @@ function ProductCard({ product, athletic }: { product: Product; athletic: Athlet
             <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setBuyOpen(false)}>Cancelar</Button>
             <Button disabled={saving} onClick={async () => {
               setSaving(true);
               try {
                 const pix = await createPix({ data: { product_id: product.id, quantity: qty, ...form } });
-                setPixData(pix); setOpen(false); setPixOpen(true);
+                setPixData(pix); setBuyOpen(false); setPixOpen(true);
               } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
             }}>{saving ? "Gerando Pix..." : "Gerar Pix"}</Button>
           </DialogFooter>
@@ -444,7 +555,7 @@ function ProductCard({ product, athletic }: { product: Product; athletic: Athlet
       </Dialog>
 
       <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title={`Pix — ${product.title}`} />
-    </Card>
+    </>
   );
 }
 
