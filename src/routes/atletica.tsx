@@ -1533,3 +1533,58 @@ function DirectorSports({ athletic }: { athletic: Athletic }) {
     </div>
   );
 }
+
+/* ============ EDITOR DE IMAGENS DO PRODUTO (múltiplas, com capa) ============ */
+function ProductImagesEditor({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
+  const [staging, setStaging] = useState("");
+  function move(from: number, to: number) {
+    if (to < 0 || to >= images.length) return;
+    const next = [...images];
+    const [it] = next.splice(from, 1);
+    next.splice(to, 0, it);
+    onChange(next);
+  }
+  return (
+    <div className="space-y-2">
+      <Label>Imagens do produto ({images.length}) — a 1ª é a capa</Label>
+      {images.length > 0 && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {images.map((url, i) => (
+            <div key={url + i} className={`relative aspect-square rounded-lg overflow-hidden border ${i === 0 ? "border-primary ring-2 ring-primary/40" : "border-white/10"}`}>
+              <img src={url} alt="" className="w-full h-full object-cover" />
+              {i === 0 && (
+                <div className="absolute top-1 left-1 text-[10px] font-black uppercase tracking-wider bg-primary text-primary-foreground px-1.5 py-0.5 rounded">Capa</div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 flex justify-between p-1 bg-gradient-to-t from-black/80 to-transparent">
+                <button type="button" onClick={() => move(i, i - 1)} disabled={i === 0} className="text-white/90 disabled:opacity-30 text-xs px-1" aria-label="Mover para trás">◀</button>
+                {i !== 0 && (
+                  <button type="button" onClick={() => move(i, 0)} className="text-white/90 text-[10px] uppercase font-bold px-1" title="Definir como capa">Capa</button>
+                )}
+                <button type="button" onClick={() => move(i, i + 1)} disabled={i === images.length - 1} className="text-white/90 disabled:opacity-30 text-xs px-1" aria-label="Mover para frente">▶</button>
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange(images.filter((_, j) => j !== i))}
+                className="absolute top-1 right-1 size-6 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center"
+                aria-label="Remover imagem"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="rounded-lg border border-dashed border-white/20 p-3">
+        <div className="text-xs opacity-70 mb-2">Adicionar imagem</div>
+        <ImageUpload
+          value={staging}
+          onChange={(url) => {
+            if (url) { onChange([...images, url]); setStaging(""); }
+            else setStaging("");
+          }}
+          folder="atletica/products"
+        />
+      </div>
+    </div>
+  );
+}
