@@ -482,6 +482,18 @@ function SettingsAdmin() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Taxas da Atlética</CardTitle>
+          <p className="text-sm text-muted-foreground">Taxas retidas pela plataforma sobre vendas online da Atlética (ingressos, produtos e associações).</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {feeRow("Eventos da Atlética", "fee_atletica_event_pct", "fee_atletica_event_fixed", "Cobrada em cada ingresso de evento/festa vendido online")}
+          {feeRow("Produtos da Atlética", "fee_atletica_product_pct", "fee_atletica_product_fixed", "Cobrada em cada pedido de produto vendido online")}
+          {feeRow("Associações da Atlética", "fee_atletica_membership_pct", "fee_atletica_membership_fixed", "Cobrada quando um novo sócio paga a associação online")}
+        </CardContent>
+      </Card>
+
       <Button onClick={save} size="lg">Salvar todas as configurações</Button>
     </div>
   );
