@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as CamedRouteImport } from './routes/camed'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AtleticaRouteImport } from './routes/atletica'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugIndexRouteImport } from './routes/$slug/index'
@@ -34,6 +35,11 @@ const CamedRoute = CamedRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtleticaRoute = AtleticaRouteImport.update({
+  id: '/atletica',
+  path: '/atletica',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -118,6 +124,7 @@ const ApiPublicCronEventRemindersRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
   '/diretor/$slug': typeof DiretorSlugRoute
@@ -136,6 +143,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
   '/diretor/$slug': typeof DiretorSlugRoute
@@ -155,6 +163,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
   '/diretor/$slug': typeof DiretorSlugRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/atletica'
     | '/auth'
     | '/camed'
     | '/diretor/$slug'
@@ -193,6 +203,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/atletica'
     | '/auth'
     | '/camed'
     | '/diretor/$slug'
@@ -211,6 +222,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/atletica'
     | '/auth'
     | '/camed'
     | '/diretor/$slug'
@@ -230,6 +242,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AtleticaRoute: typeof AtleticaRoute
   AuthRoute: typeof AuthRoute
   CamedRoute: typeof CamedRoute
   DiretorSlugRoute: typeof DiretorSlugRoute
@@ -260,6 +273,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atletica': {
+      id: '/atletica'
+      path: '/atletica'
+      fullPath: '/atletica'
+      preLoaderRoute: typeof AtleticaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -366,6 +386,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AtleticaRoute: AtleticaRoute,
   AuthRoute: AuthRoute,
   CamedRoute: CamedRoute,
   DiretorSlugRoute: DiretorSlugRoute,
