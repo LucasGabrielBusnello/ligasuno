@@ -218,7 +218,14 @@ async function handlePayment(paymentId: string) {
         }
       }
     }
+  } else if (category === "ath_memb") {
+    await handleAthleticMembership(refId, approved, String(paymentId), grossAmount);
+  } else if (category === "ath_event") {
+    await handleAthleticEventTicket(refId, approved, String(paymentId), grossAmount);
+  } else if (category === "ath_prod") {
+    await handleAthleticProductOrder(refId, approved, String(paymentId), grossAmount);
   } else if (category === "anuidade_semestral") {
+
     if (approved) {
       // Estende paid_until até o fim do semestre vigente (fev–jul = 31/jul; ago–jan = 31/jan)
       const { data: lg } = await supabaseAdmin
