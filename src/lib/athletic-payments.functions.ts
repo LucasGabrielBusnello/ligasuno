@@ -211,8 +211,9 @@ export const createProductPixPayment = createServerFn({ method: "POST" })
       title: (prod as any).title,
       unit_price: unit,
       quantity: data.quantity,
-      subtotal: total,
+      line_total: total,
     });
+
 
     const fee = await loadFeeForCategory(supabaseAdmin, "atletica_product");
     const marketplaceFee = computeFee(total, fee.pct, fee.fixed);
