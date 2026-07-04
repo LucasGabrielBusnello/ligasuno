@@ -300,6 +300,11 @@ function HomePage() {
           </TabsContent>
 
 
+          {/* ATLÉTICA */}
+          <TabsContent value="atletica" className="mt-8">
+            <AtleticaTeaser />
+          </TabsContent>
+
           {/* EVENTOS */}
           <TabsContent value="eventos" className="mt-8">
             {events.length === 0 ? (
