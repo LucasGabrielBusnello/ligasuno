@@ -58,7 +58,7 @@ export function computeFee(value: number, pct: number, fixed: number): number {
   return Math.max(0, Math.round(fee * 100) / 100);
 }
 
-export type FeeCategory = "selection" | "semester" | "event" | "minicourse";
+export type FeeCategory = "selection" | "semester" | "event" | "minicourse" | "atletica_event" | "atletica_product" | "atletica_membership";
 
 export async function loadFeeForCategory(supabaseAdmin: any, category: FeeCategory) {
   const { data } = await supabaseAdmin.from("app_settings").select("*").eq("id", 1).maybeSingle();
@@ -68,8 +68,12 @@ export async function loadFeeForCategory(supabaseAdmin: any, category: FeeCatego
     case "semester":  return { pct: Number(s.fee_semester_pct ?? 0),  fixed: Number(s.fee_semester_fixed ?? 0) };
     case "event":     return { pct: Number(s.fee_event_pct ?? 0),     fixed: Number(s.fee_event_fixed ?? 0) };
     case "minicourse":return { pct: Number(s.fee_minicourse_pct ?? 0),fixed: Number(s.fee_minicourse_fixed ?? 0) };
+    case "atletica_event":      return { pct: Number(s.fee_atletica_event_pct ?? 0),      fixed: Number(s.fee_atletica_event_fixed ?? 0) };
+    case "atletica_product":    return { pct: Number(s.fee_atletica_product_pct ?? 0),    fixed: Number(s.fee_atletica_product_fixed ?? 0) };
+    case "atletica_membership": return { pct: Number(s.fee_atletica_membership_pct ?? 0), fixed: Number(s.fee_atletica_membership_fixed ?? 0) };
   }
 }
+
 
 /**
  * Carrega o access_token do presidente para uma liga (precisa estar conectada).
