@@ -280,3 +280,173 @@ async function handlePreapproval(preapprovalId: string) {
     league_id: leagueId,
   }, { onConflict: "mp_payment_id" });
 }
+
+/* ============ ATLÉTICA ============ */
+
+async function handleAthleticMembership(paymentId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
+  const { data: pay } = await supabaseAdmin
+    .from("athletic_membership_payments").select("*").eq("id", paymentId).maybeSingle();
+  if (!pay) return;
+  if ((pay as any).status === "paid") return;
+
+  if (!approved) {
+    await supabaseAdmin.from("athletic_membership_payments")
+      .update({ status: "pending" }).eq("id", paymentId);
+    return;
+  }
+
+  const untilDate = new Date();
+  untilDate.setDate(untilDate.getDate() + (Number((pay as any).period_days) || 180));
+  const untilStr = untilDate.toISOString().slice(0, 10);
+
+  await supabaseAdmin.from("athletic_membership_payments").update({
+    status: "paid",
+    member_until: untilStr,
+    mp_payment_id: mpPaymentId,
+  }).eq("id", paymentId);
+
+  if ((pay as any).membership_id) {
+    await supabaseAdmin.from("athletic_memberships").update({
+      active: true, member_until: untilStr,
+    }).eq("id", (pay as any).membership_id);
+  }
+
+  await supabaseAdmin.from("athletic_cash_entries").insert({
+    athletic_id: (pay as any).athletic_id,
+    category: "membership",
+    description: `Associação online — ${(pay as any).buyer_name}`,
+    gross_amount: grossAmount,
+    net_amount: grossAmount,
+    is_income: true,
+    related_membership_payment_id: paymentId,
+  });
+
+  try {
+    const email = (pay as any).buyer_email;
+    if (email) {
+      const html = emailLayout({
+        title: `Bem-vindo(a) à AAAMD Desbravadores`,
+        leagueName: `AAAMD Desbravadores`,
+        brandColor: "#F97316",
+        bodyHtml: `<p>Olá <strong>${(pay as any).buyer_name}</strong>, sua associação foi confirmada!</p>
+          <p>Você é sócio(a) ativo(a) até <strong>${new Date(untilStr).toLocaleDateString("pt-BR")}</strong>.</p>
+          <p>Aproveite descontos exclusivos em eventos e produtos.</p>`,
+      });
+      await sendGmail({ to: email, subject: `Associação confirmada — AAAMD Desbravadores`, html });
+    }
+  } catch (e) { console.warn("[ath_memb] e-mail falhou", e); }
+}
+
+async function handleAthleticEventTicket(ticketId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
+  const { data: ticket } = await supabaseAdmin
+    .from("athletic_event_tickets").select("*, athletic_events!inner(id, title, athletic_id, tickets_sold)").eq("id", ticketId).maybeSingle();
+  if (!ticket) return;
+  const ev: any = (ticket as any).athletic_events;
+
+  if (!approved) {
+    if ((ticket as any).status === "reserved") {
+      await supabaseAdmin.from("athletic_event_tickets").update({
+        status: "available", buyer_user_id: null, buyer_name: null, buyer_email: null,
+        buyer_phone: null, buyer_cpf: null, price_paid: null, sold_channel: null, mp_payment_id: null,
+      }).eq("id", ticketId);
+    }
+    return;
+  }
+
+  if ((ticket as any).status === "sold") return;
+
+  await supabaseAdmin.from("athletic_event_tickets").update({
+    status: "sold",
+    payment_methods: { pix: grossAmount, dinheiro: 0, cartao: 0 },
+    sold_at: new Date().toISOString(),
+    mp_payment_id: mpPaymentId,
+  }).eq("id", ticketId);
+
+  await supabaseAdmin.from("athletic_events").update({
+    tickets_sold: (Number(ev.tickets_sold) || 0) + 1,
+  }).eq("id", ev.id);
+
+  await supabaseAdmin.from("athletic_cash_entries").insert({
+    athletic_id: ev.athletic_id,
+    category: "event_online",
+    description: `Ingresso online #${(ticket as any).code} — ${ev.title} — ${(ticket as any).buyer_name}`,
+    gross_amount: grossAmount,
+    net_amount: grossAmount,
+    is_income: true,
+    related_ticket_id: ticketId,
+  });
+
+  try {
+    const email = (ticket as any).buyer_email;
+    if (email) {
+      const html = emailLayout({
+        title: `Ingresso confirmado`,
+        leagueName: `AAAMD Desbravadores`,
+        brandColor: "#F97316",
+        bodyHtml: `<p>Olá <strong>${(ticket as any).buyer_name}</strong>, seu ingresso está confirmado.</p>
+          <p><strong>Evento:</strong> ${ev.title}</p>
+          <p><strong>Código do ingresso:</strong><br/>
+            <code style="background:#111;color:#F97316;padding:8px 14px;border-radius:8px;font-size:18px;letter-spacing:2px">${(ticket as any).code}</code>
+          </p>
+          <p>Apresente este e-mail na entrada. Seu QR estará disponível também na área de sócio.</p>`,
+      });
+      await sendGmail({ to: email, subject: `Ingresso — ${ev.title}`, html });
+    }
+  } catch (e) { console.warn("[ath_event] e-mail falhou", e); }
+}
+
+async function handleAthleticProductOrder(orderId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
+  const { data: order } = await supabaseAdmin
+    .from("athletic_product_orders").select("*").eq("id", orderId).maybeSingle();
+  if (!order) return;
+
+  if (!approved) {
+    await supabaseAdmin.from("athletic_product_orders")
+      .update({ status: "pending" }).eq("id", orderId);
+    return;
+  }
+
+  if ((order as any).status === "paid") return;
+
+  await supabaseAdmin.from("athletic_product_orders")
+    .update({ status: "paid", mp_payment_id: mpPaymentId }).eq("id", orderId);
+
+  // decrementa estoque
+  const { data: items } = await supabaseAdmin
+    .from("athletic_product_order_items").select("product_id, quantity").eq("order_id", orderId);
+  for (const it of (items as any[]) ?? []) {
+    if (!it.product_id) continue;
+    const { data: prod } = await supabaseAdmin
+      .from("athletic_products").select("stock").eq("id", it.product_id).maybeSingle();
+    if (prod && (prod as any).stock != null) {
+      await supabaseAdmin.from("athletic_products")
+        .update({ stock: Math.max(0, Number((prod as any).stock) - Number(it.quantity)) })
+        .eq("id", it.product_id);
+    }
+  }
+
+  await supabaseAdmin.from("athletic_cash_entries").insert({
+    athletic_id: (order as any).athletic_id,
+    category: "product",
+    description: `Pedido online — ${(order as any).buyer_name}`,
+    gross_amount: grossAmount,
+    net_amount: grossAmount,
+    is_income: true,
+    related_order_id: orderId,
+  });
+
+  try {
+    const email = (order as any).buyer_email;
+    if (email) {
+      const html = emailLayout({
+        title: `Pedido confirmado`,
+        leagueName: `AAAMD Desbravadores`,
+        brandColor: "#F97316",
+        bodyHtml: `<p>Olá <strong>${(order as any).buyer_name}</strong>, recebemos seu pagamento.</p>
+          <p><strong>Total:</strong> R$ ${Number((order as any).total).toFixed(2)}</p>
+          <p>A diretoria entrará em contato para a entrega. Obrigado!</p>`,
+      });
+      await sendGmail({ to: email, subject: `Pedido confirmado — AAAMD Desbravadores`, html });
+    }
+  } catch (e) { console.warn("[ath_prod] e-mail falhou", e); }
+}
