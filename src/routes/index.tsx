@@ -627,3 +627,57 @@ function CamedNewsList() {
     </div>
   );
 }
+
+function AtleticaTeaser() {
+  const [ath, setAth] = useState<any>(null);
+  const [productsCount, setProductsCount] = useState(0);
+  const [eventsCount, setEventsCount] = useState(0);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("athletics").select("*").eq("slug", "aaamd-desbravadores").maybeSingle();
+      setAth(data);
+      if (data) {
+        const [{ count: pc }, { count: ec }] = await Promise.all([
+          supabase.from("athletic_products").select("id", { count: "exact", head: true }).eq("athletic_id", (data as any).id).eq("active", true),
+          supabase.from("athletic_events").select("id", { count: "exact", head: true }).eq("athletic_id", (data as any).id).eq("published", true),
+        ]);
+        setProductsCount(pc ?? 0);
+        setEventsCount(ec ?? 0);
+      }
+    })();
+  }, []);
+  if (!ath) return null;
+  const primary = ath.primary_color || "#F97316";
+  const secondary = ath.secondary_color || "#16A34A";
+  return (
+    <Card className="overflow-hidden border-0 shadow-2xl">
+      <div className="relative text-white p-8 md:p-12" style={{ background: `linear-gradient(135deg, #000 0%, ${primary}33 50%, ${secondary}33 100%)` }}>
+        {ath.cover_url && <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover opacity-20" alt="" />}
+        <div className="relative flex flex-col md:flex-row items-center gap-6">
+          {ath.logo_url && <img src={ath.logo_url} alt={ath.name} className="size-32 rounded-full border-4 shadow-2xl object-cover shrink-0" style={{ borderColor: primary }} />}
+          <div className="flex-1 text-center md:text-left">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-3"
+              style={{ background: `${primary}33`, color: primary, border: `1px solid ${primary}66` }}>
+              <Trophy className="size-3" /> Campeã Série B Intermed 2026
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase">{ath.name}</h2>
+            <p className="mt-2 opacity-80 max-w-lg">{ath.description}</p>
+            <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
+              <Badge className="bg-white/10 border-white/20"><ShoppingBag className="size-3 mr-1" /> {productsCount} produtos</Badge>
+              <Badge className="bg-white/10 border-white/20"><PartyPopper className="size-3 mr-1" /> {eventsCount} eventos</Badge>
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
+              <Button asChild size="lg" className="font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform"
+                style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})`, color: "white" }}>
+                <Link to="/atletica">Acessar <ArrowRight className="size-4" /></Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
+                <Link to="/atletica"><Crown className="size-4" /> Associar-se</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
