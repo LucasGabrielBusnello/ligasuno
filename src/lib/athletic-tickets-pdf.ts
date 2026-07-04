@@ -137,5 +137,5 @@ export async function generateTicketsPdf(input: TicketPdfInput): Promise<Blob> {
   }
 
   const bytes = await pdf.save();
-  return new Blob([bytes], { type: "application/pdf" });
+  return new Blob([bytes as BlobPart], { type: "application/pdf" });
 }
