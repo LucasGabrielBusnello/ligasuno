@@ -26,6 +26,10 @@ import {
   upsertEvent, deleteEvent, generateTicketBatch, registerManualTicketSale,
   addAthleticCashEntry, updateAthletic,
 } from "@/lib/athletic.functions";
+import {
+  createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
+} from "@/lib/athletic-payments.functions";
+
 
 export const Route = createFileRoute("/atletica")({
   component: AtleticaPage,
@@ -185,6 +189,52 @@ function AtleticaPage() {
 }
 
 /* ============ ASSOCIAR-SE ============ */
+/* ============ Modal Pix genérico ============ */
+function PixDialog({ open, onClose, data, title }: {
+  open: boolean; onClose: () => void;
+  data: { qr_code?: string; qr_code_base64?: string; ticket_url?: string; amount: number } | null;
+  title: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            Pague com Pix escaneando o QR ou copiando o código. A confirmação é automática (leva alguns segundos após o pagamento).
+          </DialogDescription>
+        </DialogHeader>
+        {data ? (
+          <div className="space-y-3 text-center">
+            {data.qr_code_base64 && (
+              <img src={`data:image/png;base64,${data.qr_code_base64}`} alt="QR Pix" className="mx-auto w-64 h-64 rounded-lg border" />
+            )}
+            <div className="text-2xl font-black">R$ {data.amount.toFixed(2)}</div>
+            {data.qr_code && (
+              <div className="space-y-2">
+                <Label className="text-xs">Pix Copia e Cola</Label>
+                <Textarea readOnly value={data.qr_code} className="text-xs font-mono h-20" onClick={(e) => (e.target as HTMLTextAreaElement).select()} />
+                <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(data.qr_code!); toast.success("Código copiado"); }}>
+                  Copiar código
+                </Button>
+              </div>
+            )}
+            {data.ticket_url && (
+              <a href={data.ticket_url} target="_blank" rel="noreferrer" className="text-sm underline opacity-80">Abrir no Mercado Pago</a>
+            )}
+          </div>
+        ) : (
+          <div className="py-8 text-center opacity-70"><Loader2 className="animate-spin mx-auto size-8" /></div>
+        )}
+        <DialogFooter>
+          <Button onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ============ ASSOCIAR-SE ============ */
 function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const { profile } = useAuth();
@@ -200,6 +250,9 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
     }));
   }, [profile]);
   const request = useServerFn(requestSelfMembership);
+  const createPix = useServerFn(createMembershipPixPayment);
+  const [pixData, setPixData] = useState<any>(null);
+  const [pixOpen, setPixOpen] = useState(false);
   return (
     <>
       <Button size="lg" onClick={() => setOpen(true)}
@@ -213,7 +266,7 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
           <DialogHeader>
             <DialogTitle>Associar-se à {athletic.name}</DialogTitle>
             <DialogDescription>
-              Preencha seus dados. Após pagar R$ {Number(athletic.membership_price).toFixed(2)}, a diretoria libera seu acesso de sócio por {athletic.membership_period_days} dias.
+              Preencha seus dados. Após confirmar, você recebe o Pix de R$ {Number(athletic.membership_price).toFixed(2)} — a associação é liberada automaticamente por {athletic.membership_period_days} dias.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -233,17 +286,23 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
             <Button disabled={saving} onClick={async () => {
               setSaving(true);
               try {
-                await request({ data: { athletic_id: athletic.id, ...form } });
-                toast.success("Cadastro enviado. Combine o pagamento com a diretoria (Pix) — ele libera seu acesso.");
-                setOpen(false); onDone();
+                const r = await request({ data: { athletic_id: athletic.id, ...form } });
+                const pix = await createPix({ data: { payment_id: r.payment_id } });
+                setPixData(pix);
+                setOpen(false);
+                setPixOpen(true);
+                onDone();
               } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Enviando..." : "Enviar cadastro"}</Button>
+            }}>{saving ? "Gerando Pix..." : "Continuar → gerar Pix"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title="Pix — Associação AAAMD" />
     </>
   );
 }
+
 
 /* ============ PÚBLICO: PRODUTOS ============ */
 function PublicProducts({ athletic }: { athletic: Athletic }) {
@@ -282,9 +341,20 @@ function PublicProducts({ athletic }: { athletic: Athletic }) {
 }
 
 function ProductCard({ product, athletic }: { product: Product; athletic: Athletic }) {
+  const { user, profile } = useAuth();
   const finalPrice = product.discount_pct > 0
     ? product.price * (1 - product.discount_pct / 100) : product.price;
   const img = product.images?.[0];
+  const [open, setOpen] = useState(false);
+  const [qty, setQty] = useState(1);
+  const [form, setForm] = useState({
+    buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
+    buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [pixData, setPixData] = useState<any>(null);
+  const [pixOpen, setPixOpen] = useState(false);
+  const createPix = useServerFn(createProductPixPayment);
   return (
     <Card className="overflow-hidden bg-white/5 border-white/10 text-white group hover:border-white/30 transition">
       <div className="aspect-square bg-black/40 relative overflow-hidden">
@@ -309,13 +379,51 @@ function ProductCard({ product, athletic }: { product: Product; athletic: Athlet
           {product.discount_pct > 0 && <span className="text-xs line-through opacity-50">R$ {product.price.toFixed(2)}</span>}
           <span className="font-black text-lg" style={{ color: athletic.primary_color }}>R$ {finalPrice.toFixed(2)}</span>
         </div>
-        <Button size="sm" className="w-full mt-2" disabled title="Vendas online em breve">
-          <ShoppingBag className="size-3.5" /> Em breve
-        </Button>
+        {user ? (
+          <Button size="sm" className="w-full mt-2" onClick={() => setOpen(true)}>
+            <ShoppingBag className="size-3.5" /> Comprar via Pix
+          </Button>
+        ) : (
+          <Button size="sm" className="w-full mt-2" asChild>
+            <Link to="/auth"><ShoppingBag className="size-3.5" /> Entrar para comprar</Link>
+          </Button>
+        )}
       </CardContent>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Comprar — {product.title}</DialogTitle>
+            <DialogDescription>Preencha seus dados e finalize com Pix.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Quantidade</Label><Input type="number" min={1} max={product.stock ?? 20} value={qty} onChange={(e) => setQty(Math.max(1, +e.target.value))} /></div>
+            <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
+              <div><Label>Telefone</Label><Input value={form.buyer_phone ?? ""} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
+            </div>
+            <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
+            <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button disabled={saving} onClick={async () => {
+              setSaving(true);
+              try {
+                const pix = await createPix({ data: { product_id: product.id, quantity: qty, ...form } });
+                setPixData(pix); setOpen(false); setPixOpen(true);
+              } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
+            }}>{saving ? "Gerando Pix..." : "Gerar Pix"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title={`Pix — ${product.title}`} />
     </Card>
   );
 }
+
 
 /* ============ PÚBLICO: EVENTOS ============ */
 function PublicEvents({ athletic, isMember }: { athletic: Athletic; isMember: boolean }) {
@@ -330,46 +438,101 @@ function PublicEvents({ athletic, isMember }: { athletic: Athletic; isMember: bo
   }
   return (
     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {events.map((e) => {
-        const price = isMember ? e.price_member : e.price_visitor;
-        const remaining = e.total_tickets - e.tickets_sold;
-        return (
-          <Card key={e.id} className="overflow-hidden bg-white/5 border-white/10 text-white group">
-            <div className="aspect-video bg-black/40 relative">
-              {e.image_url
-                ? <img src={e.image_url} alt={e.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-              <div className="absolute bottom-3 left-3 right-3">
-                <h3 className="font-black text-xl uppercase tracking-tight">{e.title}</h3>
-                {e.starts_at && <p className="text-xs opacity-80">{new Date(e.starts_at).toLocaleString("pt-BR")}</p>}
-              </div>
-            </div>
-            <CardContent className="p-4 space-y-3">
-              {e.location && <p className="text-xs opacity-70">📍 {e.location}</p>}
-              {e.description && <p className="text-sm opacity-80 line-clamp-3">{e.description}</p>}
-              <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                <div>
-                  <div className="text-xs opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
-                  <div className="font-black text-2xl" style={{ color: athletic.primary_color }}>
-                    {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs opacity-60">Disponíveis</div>
-                  <div className="font-bold">{remaining} / {e.total_tickets}</div>
-                </div>
-              </div>
-              <Button className="w-full" disabled title="Vendas online em breve">
-                <Ticket className="size-4" /> Em breve
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      })}
+      {events.map((e) => (
+        <EventCard key={e.id} event={e} athletic={athletic} isMember={isMember} />
+      ))}
     </div>
   );
 }
+
+function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic: Athletic; isMember: boolean }) {
+  const { user, profile } = useAuth();
+  const price = isMember ? e.price_member : e.price_visitor;
+  const remaining = e.total_tickets - e.tickets_sold;
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
+    buyer_phone: profile?.phone ?? "", buyer_cpf: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [pixData, setPixData] = useState<any>(null);
+  const [pixOpen, setPixOpen] = useState(false);
+  const createPix = useServerFn(createEventTicketPixPayment);
+  const canBuy = e.online_sales_open && remaining > 0 && price > 0;
+  return (
+    <Card className="overflow-hidden bg-white/5 border-white/10 text-white group">
+      <div className="aspect-video bg-black/40 relative">
+        {e.image_url
+          ? <img src={e.image_url} alt={e.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
+          : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+        <div className="absolute bottom-3 left-3 right-3">
+          <h3 className="font-black text-xl uppercase tracking-tight">{e.title}</h3>
+          {e.starts_at && <p className="text-xs opacity-80">{new Date(e.starts_at).toLocaleString("pt-BR")}</p>}
+        </div>
+      </div>
+      <CardContent className="p-4 space-y-3">
+        {e.location && <p className="text-xs opacity-70">📍 {e.location}</p>}
+        {e.description && <p className="text-sm opacity-80 line-clamp-3">{e.description}</p>}
+        <div className="flex justify-between items-center pt-2 border-t border-white/10">
+          <div>
+            <div className="text-xs opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
+            <div className="font-black text-2xl" style={{ color: athletic.primary_color }}>
+              {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-xs opacity-60">Disponíveis</div>
+            <div className="font-bold">{remaining} / {e.total_tickets}</div>
+          </div>
+        </div>
+        {!user ? (
+          <Button className="w-full" asChild><Link to="/auth"><Ticket className="size-4" /> Entrar para comprar</Link></Button>
+        ) : !canBuy ? (
+          <Button className="w-full" disabled>
+            <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
+          </Button>
+        ) : (
+          <Button className="w-full" onClick={() => setOpen(true)}>
+            <Ticket className="size-4" /> Comprar via Pix
+          </Button>
+        )}
+      </CardContent>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ingresso — {e.title}</DialogTitle>
+            <DialogDescription>
+              Valor {isMember ? "sócio" : "visitante"}: <strong>R$ {price.toFixed(2)}</strong>. Confirmação automática após o Pix.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(ev) => setForm({ ...form, buyer_name: ev.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(ev) => setForm({ ...form, buyer_email: ev.target.value })} /></div>
+              <div><Label>Telefone</Label><Input value={form.buyer_phone ?? ""} onChange={(ev) => setForm({ ...form, buyer_phone: ev.target.value })} /></div>
+            </div>
+            <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(ev) => setForm({ ...form, buyer_cpf: ev.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button disabled={saving} onClick={async () => {
+              setSaving(true);
+              try {
+                const pix = await createPix({ data: { event_id: e.id, ...form } });
+                setPixData(pix); setOpen(false); setPixOpen(true);
+              } catch (err: any) { toast.error(err?.message ?? "Erro"); } finally { setSaving(false); }
+            }}>{saving ? "Gerando Pix..." : "Gerar Pix"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title={`Pix — ${e.title}`} />
+    </Card>
+  );
+}
+
 
 /* ============ SÓCIOS ============ */
 function SociosArea({ athletic, isMember, user }: { athletic: Athletic; isMember: boolean; user: any }) {
@@ -1029,11 +1192,12 @@ function DirectorConfig({ athletic }: { athletic: Athletic }) {
         </CardContent>
       </Card>
 
-      <Card className="bg-yellow-500/5 border-yellow-500/30 text-white">
+      <Card className="bg-emerald-500/5 border-emerald-500/30 text-white">
         <CardContent className="p-6">
-          <h4 className="font-bold flex items-center gap-2"><Sparkles className="size-4" /> Mercado Pago (vendas online)</h4>
-          <p className="text-sm opacity-80 mt-2">Integração de vendas online (produtos e ingressos via Pix) será liberada em breve. Por enquanto, associações e vendas de ingressos físicos funcionam manualmente pelo caixa.</p>
+          <h4 className="font-bold flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-400" /> Vendas online via Pix (ativo)</h4>
+          <p className="text-sm opacity-80 mt-2">Associações, ingressos e produtos aceitam Pix na conta da plataforma. Cada pagamento aprovado entra automaticamente no caixa da atlética. Taxas da plataforma configuráveis no painel admin.</p>
         </CardContent>
+
       </Card>
     </div>
   );

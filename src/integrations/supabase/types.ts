@@ -3031,7 +3031,12 @@ export type Database = {
         | "withdraw"
       athletic_order_status: "pending" | "paid" | "cancelled" | "refunded"
       athletic_role: "socio" | "diretor" | "presidente"
-      athletic_ticket_status: "available" | "sold" | "used" | "cancelled"
+      athletic_ticket_status:
+        | "available"
+        | "sold"
+        | "used"
+        | "cancelled"
+        | "reserved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3176,7 +3181,13 @@ export const Constants = {
       ],
       athletic_order_status: ["pending", "paid", "cancelled", "refunded"],
       athletic_role: ["socio", "diretor", "presidente"],
-      athletic_ticket_status: ["available", "sold", "used", "cancelled"],
+      athletic_ticket_status: [
+        "available",
+        "sold",
+        "used",
+        "cancelled",
+        "reserved",
+      ],
     },
   },
 } as const

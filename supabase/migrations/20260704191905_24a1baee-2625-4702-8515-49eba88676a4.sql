@@ -1,0 +1,1 @@
+ALTER TYPE public.athletic_ticket_status ADD VALUE IF NOT EXISTS 'reserved';
