@@ -497,16 +497,21 @@ export const registerManualTicketSale = createServerFn({ method: "POST" })
 
     // Envia e-mail (best-effort; não falha a venda se o envio quebrar)
     try {
-      const { sendEmail } = await import("@/lib/gmail.server");
-      const html = `
-        <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto">
-          <h2 style="color:#F97316">Ingresso confirmado — ${(evNow as any).title}</h2>
+      const { sendGmail, emailLayout } = await import("@/lib/gmail.server");
+      const html = emailLayout({
+        title: `Ingresso confirmado`,
+        preheader: `${(evNow as any).title}`,
+        brandColor: "#F97316",
+        bodyHtml: `
           <p>Olá <strong>${data.buyer_name}</strong>, sua compra foi confirmada.</p>
-          <p><strong>Código do ingresso:</strong> <code style="background:#111;color:#fff;padding:6px 10px;border-radius:6px">${(ticket as any).code}</code></p>
+          <p><strong>Evento:</strong> ${(evNow as any).title}</p>
+          <p><strong>Código do ingresso:</strong><br/>
+            <code style="background:#111;color:#F97316;padding:8px 14px;border-radius:8px;font-size:18px;letter-spacing:2px">${(ticket as any).code}</code>
+          </p>
           <p>Apresente este e-mail ou o ingresso físico na entrada do evento.</p>
-          <hr /><p style="font-size:12px;color:#888">AAAMD Desbravadores • ligasuno.com.br</p>
-        </div>`;
-      await sendEmail({
+        `,
+      });
+      await sendGmail({
         to: data.buyer_email,
         subject: `Ingresso — ${(evNow as any).title}`,
         html,
