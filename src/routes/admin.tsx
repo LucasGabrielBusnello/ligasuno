@@ -407,6 +407,9 @@ function SettingsAdmin() {
     fee_semester_pct: 5, fee_semester_fixed: 0,
     fee_event_pct: 5, fee_event_fixed: 0,
     fee_minicourse_pct: 5, fee_minicourse_fixed: 0,
+    fee_atletica_event_pct: 5, fee_atletica_event_fixed: 0,
+    fee_atletica_product_pct: 5, fee_atletica_product_fixed: 0,
+    fee_atletica_membership_pct: 5, fee_atletica_membership_fixed: 0,
   });
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
@@ -420,6 +423,12 @@ function SettingsAdmin() {
         fee_event_fixed: Number((data as any).fee_event_fixed ?? 0),
         fee_minicourse_pct: Number((data as any).fee_minicourse_pct ?? 5),
         fee_minicourse_fixed: Number((data as any).fee_minicourse_fixed ?? 0),
+        fee_atletica_event_pct: Number((data as any).fee_atletica_event_pct ?? 5),
+        fee_atletica_event_fixed: Number((data as any).fee_atletica_event_fixed ?? 0),
+        fee_atletica_product_pct: Number((data as any).fee_atletica_product_pct ?? 5),
+        fee_atletica_product_fixed: Number((data as any).fee_atletica_product_fixed ?? 0),
+        fee_atletica_membership_pct: Number((data as any).fee_atletica_membership_pct ?? 5),
+        fee_atletica_membership_fixed: Number((data as any).fee_atletica_membership_fixed ?? 0),
       });
     });
   }, []);
@@ -431,6 +440,9 @@ function SettingsAdmin() {
       fee_semester_pct: s.fee_semester_pct, fee_semester_fixed: s.fee_semester_fixed,
       fee_event_pct: s.fee_event_pct, fee_event_fixed: s.fee_event_fixed,
       fee_minicourse_pct: s.fee_minicourse_pct, fee_minicourse_fixed: s.fee_minicourse_fixed,
+      fee_atletica_event_pct: s.fee_atletica_event_pct, fee_atletica_event_fixed: s.fee_atletica_event_fixed,
+      fee_atletica_product_pct: s.fee_atletica_product_pct, fee_atletica_product_fixed: s.fee_atletica_product_fixed,
+      fee_atletica_membership_pct: s.fee_atletica_membership_pct, fee_atletica_membership_fixed: s.fee_atletica_membership_fixed,
     }).eq("id", 1);
     if (error) return toast.error(error.message);
     toast.success("Configurações salvas");
@@ -467,6 +479,18 @@ function SettingsAdmin() {
           {feeRow("Semestralidade", "fee_semester_pct", "fee_semester_fixed", "Mensalidades/semestralidades cobradas dos ligantes (quando aplicável)")}
           {feeRow("Eventos", "fee_event_pct", "fee_event_fixed", "Cobrada em cada inscrição paga em eventos")}
           {feeRow("Minicursos", "fee_minicourse_pct", "fee_minicourse_fixed", "Cobrada em cada inscrição paga em minicursos")}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Taxas da Atlética</CardTitle>
+          <p className="text-sm text-muted-foreground">Taxas retidas pela plataforma sobre vendas online da Atlética (ingressos, produtos e associações).</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {feeRow("Eventos da Atlética", "fee_atletica_event_pct", "fee_atletica_event_fixed", "Cobrada em cada ingresso de evento/festa vendido online")}
+          {feeRow("Produtos da Atlética", "fee_atletica_product_pct", "fee_atletica_product_fixed", "Cobrada em cada pedido de produto vendido online")}
+          {feeRow("Associações da Atlética", "fee_atletica_membership_pct", "fee_atletica_membership_fixed", "Cobrada quando um novo sócio paga a associação online")}
         </CardContent>
       </Card>
 
