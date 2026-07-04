@@ -1192,11 +1192,12 @@ function DirectorConfig({ athletic }: { athletic: Athletic }) {
         </CardContent>
       </Card>
 
-      <Card className="bg-yellow-500/5 border-yellow-500/30 text-white">
+      <Card className="bg-emerald-500/5 border-emerald-500/30 text-white">
         <CardContent className="p-6">
-          <h4 className="font-bold flex items-center gap-2"><Sparkles className="size-4" /> Mercado Pago (vendas online)</h4>
-          <p className="text-sm opacity-80 mt-2">Integração de vendas online (produtos e ingressos via Pix) será liberada em breve. Por enquanto, associações e vendas de ingressos físicos funcionam manualmente pelo caixa.</p>
+          <h4 className="font-bold flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-400" /> Vendas online via Pix (ativo)</h4>
+          <p className="text-sm opacity-80 mt-2">Associações, ingressos e produtos aceitam Pix na conta da plataforma. Cada pagamento aprovado entra automaticamente no caixa da atlética. Taxas da plataforma configuráveis no painel admin.</p>
         </CardContent>
+
       </Card>
     </div>
   );
