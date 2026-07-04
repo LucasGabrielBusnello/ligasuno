@@ -94,7 +94,7 @@ export const createEventTicketPixPayment = createServerFn({ method: "POST" })
 
     // reserva
     const { error: reserveErr } = await supabaseAdmin.from("athletic_event_tickets").update({
-      status: "reserved",
+      status: "reserved" as any,
       buyer_user_id: userId,
       buyer_name: data.buyer_name,
       buyer_email: data.buyer_email.toLowerCase(),
@@ -103,6 +103,7 @@ export const createEventTicketPixPayment = createServerFn({ method: "POST" })
       price_paid: amount,
       sold_channel: "online",
     }).eq("id", (ticket as any).id).eq("status", "available");
+
     if (reserveErr) throw new Error(reserveErr.message);
 
     const fee = await loadFeeForCategory(supabaseAdmin, "atletica_event");
