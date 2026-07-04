@@ -189,9 +189,10 @@ function HomePage() {
       {/* TABS */}
       <main className="max-w-7xl mx-auto px-4 py-12">
         <Tabs defaultValue="ligas" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 md:grid-cols-4 h-auto p-1">
+          <TabsList className="w-full grid grid-cols-2 md:grid-cols-5 h-auto p-1">
             <TabsTrigger value="ligas" className="py-2.5"><Users className="size-4 mr-1.5" />Ligas</TabsTrigger>
             <TabsTrigger value="minhas" className="py-2.5"><GraduationCap className="size-4 mr-1.5" />Minhas Ligas</TabsTrigger>
+            <TabsTrigger value="atletica" className="py-2.5"><Trophy className="size-4 mr-1.5" />Atlética</TabsTrigger>
             <TabsTrigger value="camed" className="py-2.5"><Building2 className="size-4 mr-1.5" />CAMED</TabsTrigger>
             <TabsTrigger value="eventos" className="py-2.5"><Calendar className="size-4 mr-1.5" />Eventos</TabsTrigger>
           </TabsList>
