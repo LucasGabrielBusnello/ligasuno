@@ -189,6 +189,52 @@ function AtleticaPage() {
 }
 
 /* ============ ASSOCIAR-SE ============ */
+/* ============ Modal Pix genérico ============ */
+function PixDialog({ open, onClose, data, title }: {
+  open: boolean; onClose: () => void;
+  data: { qr_code?: string; qr_code_base64?: string; ticket_url?: string; amount: number } | null;
+  title: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            Pague com Pix escaneando o QR ou copiando o código. A confirmação é automática (leva alguns segundos após o pagamento).
+          </DialogDescription>
+        </DialogHeader>
+        {data ? (
+          <div className="space-y-3 text-center">
+            {data.qr_code_base64 && (
+              <img src={`data:image/png;base64,${data.qr_code_base64}`} alt="QR Pix" className="mx-auto w-64 h-64 rounded-lg border" />
+            )}
+            <div className="text-2xl font-black">R$ {data.amount.toFixed(2)}</div>
+            {data.qr_code && (
+              <div className="space-y-2">
+                <Label className="text-xs">Pix Copia e Cola</Label>
+                <Textarea readOnly value={data.qr_code} className="text-xs font-mono h-20" onClick={(e) => (e.target as HTMLTextAreaElement).select()} />
+                <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(data.qr_code!); toast.success("Código copiado"); }}>
+                  Copiar código
+                </Button>
+              </div>
+            )}
+            {data.ticket_url && (
+              <a href={data.ticket_url} target="_blank" rel="noreferrer" className="text-sm underline opacity-80">Abrir no Mercado Pago</a>
+            )}
+          </div>
+        ) : (
+          <div className="py-8 text-center opacity-70"><Loader2 className="animate-spin mx-auto size-8" /></div>
+        )}
+        <DialogFooter>
+          <Button onClick={onClose}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ============ ASSOCIAR-SE ============ */
 function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const { profile } = useAuth();
@@ -204,6 +250,9 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
     }));
   }, [profile]);
   const request = useServerFn(requestSelfMembership);
+  const createPix = useServerFn(createMembershipPixPayment);
+  const [pixData, setPixData] = useState<any>(null);
+  const [pixOpen, setPixOpen] = useState(false);
   return (
     <>
       <Button size="lg" onClick={() => setOpen(true)}
@@ -217,7 +266,7 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
           <DialogHeader>
             <DialogTitle>Associar-se à {athletic.name}</DialogTitle>
             <DialogDescription>
-              Preencha seus dados. Após pagar R$ {Number(athletic.membership_price).toFixed(2)}, a diretoria libera seu acesso de sócio por {athletic.membership_period_days} dias.
+              Preencha seus dados. Após confirmar, você recebe o Pix de R$ {Number(athletic.membership_price).toFixed(2)} — a associação é liberada automaticamente por {athletic.membership_period_days} dias.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -237,17 +286,23 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
             <Button disabled={saving} onClick={async () => {
               setSaving(true);
               try {
-                await request({ data: { athletic_id: athletic.id, ...form } });
-                toast.success("Cadastro enviado. Combine o pagamento com a diretoria (Pix) — ele libera seu acesso.");
-                setOpen(false); onDone();
+                const r = await request({ data: { athletic_id: athletic.id, ...form } });
+                const pix = await createPix({ data: { payment_id: r.payment_id } });
+                setPixData(pix);
+                setOpen(false);
+                setPixOpen(true);
+                onDone();
               } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Enviando..." : "Enviar cadastro"}</Button>
+            }}>{saving ? "Gerando Pix..." : "Continuar → gerar Pix"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title="Pix — Associação AAAMD" />
     </>
   );
 }
+
 
 /* ============ PÚBLICO: PRODUTOS ============ */
 function PublicProducts({ athletic }: { athletic: Athletic }) {
