@@ -24,7 +24,7 @@ import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
   upsertCollection, deleteCollection, upsertProduct, deleteProduct,
   upsertEvent, deleteEvent, generateTicketBatch, registerManualTicketSale,
-  addAthleticCashEntry, updateAthletic,
+  addAthleticCashEntry, updateAthletic, upsertSport, deleteSport,
 } from "@/lib/athletic.functions";
 import {
   createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
@@ -129,27 +129,36 @@ function AtleticaPage() {
       </header>
 
       {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{
-          background: `radial-gradient(ellipse at top left, ${ath.primary_color}44, transparent 60%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}44, transparent 60%)`,
-        }} />
-        {ath.cover_url && <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover opacity-20" alt="" />}
-        <div className="relative max-w-7xl mx-auto px-4 py-16 md:py-24 text-center">
+      <section className="relative overflow-hidden min-h-[520px] flex items-center">
+        {ath.cover_url ? (
+          <>
+            <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover" alt={ath.name} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
+            <div className="absolute inset-0" style={{
+              background: `radial-gradient(ellipse at top left, ${ath.primary_color}55, transparent 55%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}55, transparent 55%)`,
+            }} />
+          </>
+        ) : (
+          <div className="absolute inset-0" style={{
+            background: `radial-gradient(ellipse at top left, ${ath.primary_color}44, transparent 60%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}44, transparent 60%), #000`,
+          }} />
+        )}
+        <div className="relative max-w-7xl mx-auto px-4 py-16 md:py-24 text-center w-full">
           {ath.logo_url && (
             <img src={ath.logo_url} alt={ath.name} className="mx-auto size-32 md:size-40 rounded-full border-4 shadow-2xl object-cover mb-6"
               style={{ borderColor: ath.primary_color }} />
           )}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 text-xs uppercase tracking-widest font-bold"
-            style={{ background: `${ath.primary_color}22`, color: ath.primary_color, border: `1px solid ${ath.primary_color}55` }}>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 text-xs uppercase tracking-widest font-bold backdrop-blur"
+            style={{ background: `${ath.primary_color}33`, color: "#fff", border: `1px solid ${ath.primary_color}88` }}>
             <Trophy className="size-3.5" /> Campeã Geral Série B Intermed 2026
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 uppercase">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 uppercase drop-shadow-2xl">
             {ath.name}
           </h1>
-          <p className="max-w-2xl mx-auto text-lg opacity-80">
+          <p className="max-w-2xl mx-auto text-lg opacity-95 drop-shadow-lg">
             {ath.description ?? "Há 19 anos a maior do Oeste."}
           </p>
-          {user && !isActiveMember && (
+          {!isActiveMember && (
             <div className="mt-8">
               <AssociarButton athletic={ath} onDone={() => window.location.reload()} />
             </div>
@@ -161,6 +170,11 @@ function AtleticaPage() {
           )}
         </div>
       </section>
+
+      {/* MARQUEE COLEÇÕES + ESPORTES */}
+      <CollectionsMarquee athletic={ath} />
+      <SportsShowcase athletic={ath} />
+
 
       {/* TABS */}
       <main className="max-w-7xl mx-auto px-3 md:px-4 py-8">
@@ -253,10 +267,20 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   const createPix = useServerFn(createMembershipPixPayment);
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
+  const { user } = useAuth();
+  if (!user) {
+    return (
+      <Button asChild size="lg"
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:scale-105 transition-transform"
+        style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+        <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}</Link>
+      </Button>
+    );
+  }
   return (
     <>
       <Button size="lg" onClick={() => setOpen(true)}
-        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform"
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform text-white border-0"
         style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
         <Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}
       </Button>
@@ -587,16 +611,18 @@ function SobrePanel({ athletic }: { athletic: Athletic }) {
 function DirectorPanel({ athletic }: { athletic: Athletic }) {
   return (
     <Tabs defaultValue="socios">
-      <TabsList className="w-full grid grid-cols-2 md:grid-cols-5 h-auto bg-white/5 border border-white/10">
+      <TabsList className="w-full grid grid-cols-3 md:grid-cols-6 h-auto bg-white/5 border border-white/10">
         <TabsTrigger value="socios" className="data-[state=active]:bg-white data-[state=active]:text-black"><Users className="size-4 mr-1.5" />Sócios</TabsTrigger>
         <TabsTrigger value="produtos" className="data-[state=active]:bg-white data-[state=active]:text-black"><ShoppingBag className="size-4 mr-1.5" />Produtos</TabsTrigger>
         <TabsTrigger value="eventos" className="data-[state=active]:bg-white data-[state=active]:text-black"><PartyPopper className="size-4 mr-1.5" />Eventos</TabsTrigger>
+        <TabsTrigger value="esportes" className="data-[state=active]:bg-white data-[state=active]:text-black"><Trophy className="size-4 mr-1.5" />Esportes</TabsTrigger>
         <TabsTrigger value="caixa" className="data-[state=active]:bg-white data-[state=active]:text-black"><Wallet className="size-4 mr-1.5" />Caixa</TabsTrigger>
         <TabsTrigger value="config" className="data-[state=active]:bg-white data-[state=active]:text-black"><Settings className="size-4 mr-1.5" />Config</TabsTrigger>
       </TabsList>
       <TabsContent value="socios" className="mt-4"><DirectorMembers athletic={athletic} /></TabsContent>
       <TabsContent value="produtos" className="mt-4"><DirectorProducts athletic={athletic} /></TabsContent>
       <TabsContent value="eventos" className="mt-4"><DirectorEvents athletic={athletic} /></TabsContent>
+      <TabsContent value="esportes" className="mt-4"><DirectorSports athletic={athletic} /></TabsContent>
       <TabsContent value="caixa" className="mt-4"><DirectorCash athletic={athletic} /></TabsContent>
       <TabsContent value="config" className="mt-4"><DirectorConfig athletic={athletic} /></TabsContent>
     </Tabs>
@@ -1231,6 +1257,165 @@ function EmptyDark({ icon, title, desc, action }: { icon: React.ReactNode; title
         {desc && <p className="opacity-70 mt-1">{desc}</p>}
       </div>
       {action}
+    </div>
+  );
+}
+
+/* ============ COLEÇÕES — MARQUEE (auto-scroll) ============ */
+function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
+  const [cols, setCols] = useState<Collection[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("athletic_collections")
+        .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
+      setCols((data as any) ?? []);
+    })();
+  }, [athletic.id]);
+  if (cols.length === 0) return null;
+  const loop = [...cols, ...cols];
+  return (
+    <section className="relative py-10 border-y border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 mb-4 flex items-center justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-widest opacity-60 font-bold">Explore</div>
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight">Coleções</h2>
+        </div>
+        <div className="text-xs opacity-60">{cols.length} coleção{cols.length > 1 ? "es" : ""}</div>
+      </div>
+      <div className="marquee-mask">
+        <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused]">
+          {loop.map((c, i) => (
+            <div key={`${c.id}-${i}`} className="w-72 shrink-0 group cursor-pointer">
+              <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.02] transition-transform">
+                {c.cover_url ? (
+                  <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                ) : (
+                  <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.primary_color }}>Coleção</div>
+                  <div className="text-2xl font-black uppercase tracking-tight leading-tight">{c.name}</div>
+                  {c.description && <div className="text-xs opacity-80 mt-1 line-clamp-2">{c.description}</div>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============ ESPORTES — Grid ============ */
+type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean };
+
+function SportsShowcase({ athletic }: { athletic: Athletic }) {
+  const [sports, setSports] = useState<Sport[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase.from("athletic_sports" as any)
+        .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order"));
+      setSports((data as any) ?? []);
+    })();
+  }, [athletic.id]);
+  if (sports.length === 0) return null;
+  return (
+    <section className="relative py-14 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <div className="text-xs uppercase tracking-widest opacity-60 font-bold">Modalidades</div>
+            <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight">Esportes</h2>
+          </div>
+          <div className="text-xs opacity-60">{sports.length} modalidade{sports.length > 1 ? "s" : ""}</div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {sports.map((s) => (
+            <div key={s.id} className="group relative aspect-square rounded-2xl overflow-hidden border border-white/10 bg-black shadow-xl">
+              {s.image_url ? (
+                <img src={s.image_url} alt={s.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              ) : (
+                <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <div className="font-black text-lg uppercase leading-tight drop-shadow-lg">{s.name}</div>
+                {s.coach && <div className="text-[11px] opacity-80 mt-0.5">Treinador: {s.coach}</div>}
+                {s.schedule && <div className="text-[11px] opacity-70">{s.schedule}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============ DIRETORIA — Esportes ============ */
+function DirectorSports({ athletic }: { athletic: Athletic }) {
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [editing, setEditing] = useState<Partial<Sport> | null>(null);
+  const upsert = useServerFn(upsertSport);
+  const del = useServerFn(deleteSport);
+  async function reload() {
+    const { data } = await (supabase.from("athletic_sports" as any)
+      .select("*").eq("athletic_id", athletic.id).order("display_order"));
+    setSports((data as any) ?? []);
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-black text-lg">Esportes ({sports.length})</h3>
+        <Button size="sm" onClick={() => setEditing({ athletic_id: athletic.id, active: true, display_order: sports.length })}>
+          <Plus className="size-4" /> Novo esporte
+        </Button>
+      </div>
+      <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {sports.map((s) => (
+          <Card key={s.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
+            <div className="aspect-square bg-black/40">
+              {s.image_url ? <img src={s.image_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center opacity-30"><Trophy className="size-12" /></div>}
+            </div>
+            <CardContent className="p-3">
+              <div className="font-bold">{s.name}</div>
+              {s.coach && <div className="text-xs opacity-70">Treinador: {s.coach}</div>}
+              <div className="flex gap-1 mt-2">
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditing(s)}>Editar</Button>
+                <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => { if (!confirm2("Remover?")) return; await del({ data: { athletic_id: athletic.id, id: s.id } }); reload(); }}><Trash2 className="size-3.5" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing?.id ? "Editar esporte" : "Novo esporte"}</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div><Label>Nome</Label><Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>Descrição</Label><Textarea value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
+              <div><Label>Imagem</Label><ImageUpload value={editing.image_url ?? ""} onChange={(url) => setEditing({ ...editing, image_url: url })} folder="atletica/sports" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Treinador</Label><Input value={editing.coach ?? ""} onChange={(e) => setEditing({ ...editing, coach: e.target.value })} /></div>
+                <div><Label>Horário</Label><Input placeholder="Ex: Ter/Qui 20h" value={editing.schedule ?? ""} onChange={(e) => setEditing({ ...editing, schedule: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Ordem</Label><Input type="number" value={editing.display_order ?? 0} onChange={(e) => setEditing({ ...editing, display_order: +e.target.value })} /></div>
+                <label className="flex items-center gap-2 text-sm pt-6"><input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Ativo</label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={async () => {
+              try { await upsert({ data: editing as any }); toast.success("Salvo"); setEditing(null); reload(); }
+              catch (e: any) { toast.error(e?.message); }
+            }}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

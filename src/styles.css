@@ -158,10 +158,19 @@
 }
 .animate-ping-once { animation: pingOnce 700ms ease-out; }
 
+@keyframes marqueeX {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marqueeX 30s linear infinite; }
+.animate-marquee-slow { animation: marqueeX 55s linear infinite; }
+.marquee-mask { mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
   .animate-blob-1, .animate-blob-2, .animate-blob-3,
-  .animate-ping-once { animation: none !important; }
+  .animate-ping-once,
+  .animate-marquee, .animate-marquee-slow { animation: none !important; }
   * { transition-duration: 0.01ms !important; }
 }
 

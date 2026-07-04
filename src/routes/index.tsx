@@ -651,8 +651,15 @@ function AtleticaTeaser() {
   const secondary = ath.secondary_color || "#16A34A";
   return (
     <Card className="overflow-hidden border-0 shadow-2xl">
-      <div className="relative text-white p-8 md:p-12" style={{ background: `linear-gradient(135deg, #000 0%, ${primary}33 50%, ${secondary}33 100%)` }}>
-        {ath.cover_url && <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover opacity-20" alt="" />}
+      <div className="relative text-white p-8 md:p-12 min-h-[360px] bg-black">
+        {ath.cover_url ? (
+          <>
+            <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover" alt={ath.name} />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/30" />
+          </>
+        ) : (
+          <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, #000 0%, ${primary}55 50%, ${secondary}55 100%)` }} />
+        )}
         <div className="relative flex flex-col md:flex-row items-center gap-6">
           {ath.logo_url && <img src={ath.logo_url} alt={ath.name} className="size-32 rounded-full border-4 shadow-2xl object-cover shrink-0" style={{ borderColor: primary }} />}
           <div className="flex-1 text-center md:text-left">
@@ -660,18 +667,18 @@ function AtleticaTeaser() {
               style={{ background: `${primary}33`, color: primary, border: `1px solid ${primary}66` }}>
               <Trophy className="size-3" /> Campeã Série B Intermed 2026
             </div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase">{ath.name}</h2>
-            <p className="mt-2 opacity-80 max-w-lg">{ath.description}</p>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tighter uppercase drop-shadow-lg">{ath.name}</h2>
+            <p className="mt-2 opacity-90 max-w-lg drop-shadow">{ath.description}</p>
             <div className="flex flex-wrap gap-3 mt-4 justify-center md:justify-start">
-              <Badge className="bg-white/10 border-white/20"><ShoppingBag className="size-3 mr-1" /> {productsCount} produtos</Badge>
-              <Badge className="bg-white/10 border-white/20"><PartyPopper className="size-3 mr-1" /> {eventsCount} eventos</Badge>
+              <Badge className="bg-black/50 border-white/20 backdrop-blur"><ShoppingBag className="size-3 mr-1" /> {productsCount} produtos</Badge>
+              <Badge className="bg-black/50 border-white/20 backdrop-blur"><PartyPopper className="size-3 mr-1" /> {eventsCount} eventos</Badge>
             </div>
             <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
-              <Button asChild size="lg" className="font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform"
-                style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})`, color: "white" }}>
+              <Button asChild size="lg" className="font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform text-white border-0"
+                style={{ background: `linear-gradient(135deg, ${primary}, ${secondary})` }}>
                 <Link to="/atletica">Acessar <ArrowRight className="size-4" /></Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10">
+              <Button asChild size="lg" className="font-black uppercase tracking-wider shadow-2xl text-white border-2 border-white/70 bg-black/60 hover:bg-black/80 backdrop-blur">
                 <Link to="/atletica"><Crown className="size-4" /> Associar-se</Link>
               </Button>
             </div>
