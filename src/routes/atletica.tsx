@@ -24,7 +24,7 @@ import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
   upsertCollection, deleteCollection, upsertProduct, deleteProduct,
   upsertEvent, deleteEvent, generateTicketBatch, registerManualTicketSale,
-  addAthleticCashEntry, updateAthletic,
+  addAthleticCashEntry, updateAthletic, upsertSport, deleteSport,
 } from "@/lib/athletic.functions";
 import {
   createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
