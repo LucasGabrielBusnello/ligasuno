@@ -18,7 +18,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, Ticket, Users, Shield, Sparkles, Plus, Trash2, QrCode, FileDown,
-  Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2,
+  Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
