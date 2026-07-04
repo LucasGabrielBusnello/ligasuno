@@ -580,3 +580,49 @@ export const updateAthletic = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ============ ESPORTES ============ */
+export const upsertSport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      id: z.string().uuid().optional(),
+      athletic_id: z.string().uuid(),
+      name: z.string().min(1).max(120),
+      description: z.string().max(2000).optional().nullable(),
+      image_url: z.string().url().optional().nullable(),
+      coach: z.string().max(150).optional().nullable(),
+      schedule: z.string().max(300).optional().nullable(),
+      display_order: z.number().int().default(0),
+      active: z.boolean().default(true),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.athletic_id });
+    if (!ok) throw new Error("Sem permissão");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { id, ...rest } = data;
+    if (id) {
+      const { error } = await supabaseAdmin.from("athletic_sports").update(rest).eq("id", id);
+      if (error) throw new Error(error.message);
+      return { id };
+    } else {
+      const { data: ins, error } = await supabaseAdmin.from("athletic_sports").insert(rest).select("id").single();
+      if (error) throw new Error(error.message);
+      return { id: (ins as any).id };
+    }
+  });
+
+export const deleteSport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ athletic_id: z.string().uuid(), id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.athletic_id });
+    if (!ok) throw new Error("Sem permissão");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("athletic_sports").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
