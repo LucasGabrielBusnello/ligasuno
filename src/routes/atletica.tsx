@@ -972,7 +972,10 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Imagem principal</Label><ImageUpload value={editProd.images?.[0] ?? ""} onChange={(url) => setEditProd({ ...editProd, images: url ? [url] : [] })} folder="atletica/products" /></div>
+              <ProductImagesEditor
+                images={editProd.images ?? []}
+                onChange={(imgs) => setEditProd({ ...editProd, images: imgs })}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Preço (R$)</Label><Input type="number" step="0.01" value={editProd.price ?? 0} onChange={(e) => setEditProd({ ...editProd, price: +e.target.value })} /></div>
                 <div><Label>Preço sócio (opcional)</Label><Input type="number" step="0.01" value={editProd.member_price ?? ""} onChange={(e) => setEditProd({ ...editProd, member_price: e.target.value ? +e.target.value : null })} /></div>
