@@ -129,27 +129,36 @@ function AtleticaPage() {
       </header>
 
       {/* HERO */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{
-          background: `radial-gradient(ellipse at top left, ${ath.primary_color}44, transparent 60%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}44, transparent 60%)`,
-        }} />
-        {ath.cover_url && <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover opacity-20" alt="" />}
-        <div className="relative max-w-7xl mx-auto px-4 py-16 md:py-24 text-center">
+      <section className="relative overflow-hidden min-h-[520px] flex items-center">
+        {ath.cover_url ? (
+          <>
+            <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover" alt={ath.name} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
+            <div className="absolute inset-0" style={{
+              background: `radial-gradient(ellipse at top left, ${ath.primary_color}55, transparent 55%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}55, transparent 55%)`,
+            }} />
+          </>
+        ) : (
+          <div className="absolute inset-0" style={{
+            background: `radial-gradient(ellipse at top left, ${ath.primary_color}44, transparent 60%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}44, transparent 60%), #000`,
+          }} />
+        )}
+        <div className="relative max-w-7xl mx-auto px-4 py-16 md:py-24 text-center w-full">
           {ath.logo_url && (
             <img src={ath.logo_url} alt={ath.name} className="mx-auto size-32 md:size-40 rounded-full border-4 shadow-2xl object-cover mb-6"
               style={{ borderColor: ath.primary_color }} />
           )}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 text-xs uppercase tracking-widest font-bold"
-            style={{ background: `${ath.primary_color}22`, color: ath.primary_color, border: `1px solid ${ath.primary_color}55` }}>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 text-xs uppercase tracking-widest font-bold backdrop-blur"
+            style={{ background: `${ath.primary_color}33`, color: "#fff", border: `1px solid ${ath.primary_color}88` }}>
             <Trophy className="size-3.5" /> Campeã Geral Série B Intermed 2026
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 uppercase">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 uppercase drop-shadow-2xl">
             {ath.name}
           </h1>
-          <p className="max-w-2xl mx-auto text-lg opacity-80">
+          <p className="max-w-2xl mx-auto text-lg opacity-95 drop-shadow-lg">
             {ath.description ?? "Há 19 anos a maior do Oeste."}
           </p>
-          {user && !isActiveMember && (
+          {!isActiveMember && (
             <div className="mt-8">
               <AssociarButton athletic={ath} onDone={() => window.location.reload()} />
             </div>
@@ -161,6 +170,11 @@ function AtleticaPage() {
           )}
         </div>
       </section>
+
+      {/* MARQUEE COLEÇÕES + ESPORTES */}
+      <CollectionsMarquee athletic={ath} />
+      <SportsShowcase athletic={ath} />
+
 
       {/* TABS */}
       <main className="max-w-7xl mx-auto px-3 md:px-4 py-8">
