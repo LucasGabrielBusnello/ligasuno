@@ -331,7 +331,7 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
 
 
 /* ============ PÚBLICO: PRODUTOS ============ */
-function PublicProducts({ athletic }: { athletic: Athletic }) {
+function PublicProducts({ athletic, isMember }: { athletic: Athletic; isMember: boolean }) {
   const [cols, setCols] = useState<Collection[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
   const [filter, setFilter] = useState<string>("all");
@@ -360,17 +360,27 @@ function PublicProducts({ athletic }: { athletic: Athletic }) {
         </div>
       )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filtered.map((p) => <ProductCard key={p.id} product={p} athletic={athletic} />)}
+        {filtered.map((p) => <ProductCard key={p.id} product={p} athletic={athletic} isMember={isMember} />)}
       </div>
     </div>
   );
 }
 
-function ProductCard({ product, athletic }: { product: Product; athletic: Athletic }) {
+function computeProductPricing(product: Product, isMember: boolean) {
+  const listPrice = Number(product.price);
+  const memberActive = isMember && product.member_price != null && Number(product.member_price) < listPrice;
+  const basePrice = memberActive ? Number(product.member_price) : listPrice;
+  const finalPrice = product.discount_pct > 0 ? basePrice * (1 - product.discount_pct / 100) : basePrice;
+  const showListPrice = memberActive || product.discount_pct > 0;
+  return { listPrice, basePrice, finalPrice, memberActive, showListPrice };
+}
+
+function ProductCard({ product, athletic, isMember }: { product: Product; athletic: Athletic; isMember: boolean }) {
   const [detailOpen, setDetailOpen] = useState(false);
-  const finalPrice = product.discount_pct > 0
-    ? product.price * (1 - product.discount_pct / 100) : product.price;
+  const { listPrice, finalPrice, memberActive, showListPrice } = computeProductPricing(product, isMember);
   const cover = product.images?.[0];
+  const stockLow = product.show_stock_warning && product.stock != null && product.stock > 0 &&
+    (product.stock_warning_threshold == null || product.stock <= product.stock_warning_threshold);
   return (
     <>
       <button
@@ -385,15 +395,21 @@ function ProductCard({ product, athletic }: { product: Product; athletic: Athlet
           <div className="absolute top-2 left-2 flex flex-col gap-1">
             {product.is_new && <Badge style={{ background: athletic.secondary_color }}>NOVO</Badge>}
             {product.discount_pct > 0 && <Badge className="bg-red-500">-{Math.round(product.discount_pct)}%</Badge>}
+            {memberActive && <Badge className="bg-amber-500 text-black"><Crown className="size-3 mr-0.5" />SÓCIO</Badge>}
             {product.badge_text && <Badge style={{ background: athletic.primary_color }}>{product.badge_text}</Badge>}
           </div>
           {product.images && product.images.length > 1 && (
             <Badge className="absolute top-2 right-2 bg-black/70 border-white/20 text-[10px]">+{product.images.length - 1}</Badge>
           )}
+          {stockLow && (
+            <Badge className="absolute bottom-10 right-2 bg-orange-500 text-white text-[10px] shadow-lg">
+              Últimas {product.stock}!
+            </Badge>
+          )}
           {product.second_item_discount_pct > 0 && (
-            <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-xs font-black uppercase tracking-wider"
-              style={{ background: `linear-gradient(90deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
-              🔥 -{Math.round(product.second_item_discount_pct)}% na 2ª peça!
+            <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-[11px] font-black uppercase tracking-wider text-white"
+              style={{ background: "linear-gradient(90deg, #f59e0b, #ef4444)" }}>
+              🔥 -{Math.round(product.second_item_discount_pct)}% na 2ª peça
             </div>
           )}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
@@ -403,7 +419,7 @@ function ProductCard({ product, athletic }: { product: Product; athletic: Athlet
         <div className="p-3 space-y-1">
           <div className="font-bold text-sm leading-tight line-clamp-2 h-10">{product.title}</div>
           <div className="flex items-baseline gap-2">
-            {product.discount_pct > 0 && <span className="text-xs line-through opacity-50">R$ {product.price.toFixed(2)}</span>}
+            {showListPrice && <span className="text-xs line-through opacity-50">R$ {listPrice.toFixed(2)}</span>}
             <span className="font-black text-lg" style={{ color: athletic.primary_color }}>R$ {finalPrice.toFixed(2)}</span>
           </div>
         </div>
@@ -414,11 +430,12 @@ function ProductCard({ product, athletic }: { product: Product; athletic: Athlet
         onClose={() => setDetailOpen(false)}
         product={product}
         athletic={athletic}
-        finalPrice={finalPrice}
+        isMember={isMember}
       />
     </>
   );
 }
+
 
 /* ============ PÚBLICO: DETALHE DO PRODUTO ============ */
 function ProductDetailDialog({ open, onClose, product, athletic, finalPrice }: {
