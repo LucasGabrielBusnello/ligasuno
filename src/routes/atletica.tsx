@@ -1070,6 +1070,21 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                 <div><Label>Desc. 2ª peça (%)</Label><Input type="number" step="0.01" value={editProd.second_item_discount_pct ?? 0} onChange={(e) => setEditProd({ ...editProd, second_item_discount_pct: +e.target.value })} /></div>
                 <div><Label>Estoque</Label><Input type="number" value={editProd.stock ?? ""} onChange={(e) => setEditProd({ ...editProd, stock: e.target.value ? +e.target.value : null })} /></div>
               </div>
+              <div className="rounded-lg border border-white/10 p-3 space-y-2 bg-white/[0.03]">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input type="checkbox" checked={!!editProd.show_stock_warning}
+                    onChange={(e) => setEditProd({ ...editProd, show_stock_warning: e.target.checked })} />
+                  Mostrar aviso de estoque para o comprador
+                </label>
+                {editProd.show_stock_warning && (
+                  <div>
+                    <Label className="text-xs opacity-80">Avisar abaixo de quantas unidades? (deixe vazio para sempre mostrar)</Label>
+                    <Input type="number" min={1} placeholder="Ex.: 10"
+                      value={editProd.stock_warning_threshold ?? ""}
+                      onChange={(e) => setEditProd({ ...editProd, stock_warning_threshold: e.target.value ? +e.target.value : null })} />
+                  </div>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Badge (texto)</Label><Input value={editProd.badge_text ?? ""} onChange={(e) => setEditProd({ ...editProd, badge_text: e.target.value })} /></div>
                 <div className="flex gap-2 items-end">
@@ -1077,6 +1092,7 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                   <label className="flex items-center gap-1 text-sm"><input type="checkbox" checked={!!editProd.is_highlight} onChange={(e) => setEditProd({ ...editProd, is_highlight: e.target.checked })} /> Destaque</label>
                 </div>
               </div>
+
             </div>
           )}
           <DialogFooter>
