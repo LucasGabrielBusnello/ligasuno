@@ -1597,7 +1597,7 @@ function DirectorSports({ athletic }: { athletic: Athletic }) {
               <div className="font-bold">{s.name}</div>
               {s.coach && <div className="text-xs opacity-70">Treinador: {s.coach}</div>}
               <div className="flex gap-1 mt-2">
-                <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditing(s)}>Editar</Button>
+                <Button size="sm" variant="outline" className="flex-1 bg-white text-black hover:bg-neutral-100 hover:text-black border-white" onClick={() => setEditing(s)}>Editar</Button>
                 <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => { if (!confirm2("Remover?")) return; await del({ data: { athletic_id: athletic.id, id: s.id } }); reload(); }}><Trash2 className="size-3.5" /></Button>
               </div>
             </CardContent>
