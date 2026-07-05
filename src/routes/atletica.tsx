@@ -1487,7 +1487,27 @@ function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
     })();
   }, [athletic.id]);
   if (cols.length === 0) return null;
-  const loop = [...cols, ...cols];
+  const useMarquee = cols.length >= 3;
+  const loop = useMarquee ? [...cols, ...cols] : cols;
+
+  const CardBlock = (c: Collection, keySuffix: string | number) => (
+    <div key={`${c.id}-${keySuffix}`} className="w-72 shrink-0 group cursor-pointer">
+      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.02] transition-transform">
+        {c.cover_url ? (
+          <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+        ) : (
+          <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-5">
+          <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.primary_color }}>Coleção</div>
+          <div className="text-2xl font-black uppercase tracking-tight leading-tight">{c.name}</div>
+          {c.description && <div className="text-xs opacity-80 mt-1 line-clamp-2">{c.description}</div>}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <section className="relative py-10 border-y border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 mb-4 flex items-center justify-between">
@@ -1497,30 +1517,21 @@ function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
         </div>
         <div className="text-xs opacity-60">{cols.length} coleção{cols.length > 1 ? "es" : ""}</div>
       </div>
-      <div className="marquee-mask">
-        <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused]">
-          {loop.map((c, i) => (
-            <div key={`${c.id}-${i}`} className="w-72 shrink-0 group cursor-pointer">
-              <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.02] transition-transform">
-                {c.cover_url ? (
-                  <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                ) : (
-                  <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.primary_color }}>Coleção</div>
-                  <div className="text-2xl font-black uppercase tracking-tight leading-tight">{c.name}</div>
-                  {c.description && <div className="text-xs opacity-80 mt-1 line-clamp-2">{c.description}</div>}
-                </div>
-              </div>
-            </div>
-          ))}
+      {useMarquee ? (
+        <div className="marquee-mask">
+          <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused]">
+            {loop.map((c, i) => CardBlock(c, i))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="max-w-7xl mx-auto px-4 flex flex-wrap gap-5 justify-center">
+          {loop.map((c, i) => CardBlock(c, i))}
+        </div>
+      )}
     </section>
   );
 }
+
 
 /* ============ ESPORTES — Grid ============ */
 type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean };
