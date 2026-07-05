@@ -1134,7 +1134,7 @@ function DirectorEvents({ athletic }: { athletic: Athletic }) {
               <div className="text-xs opacity-70">Vendidos: {e.tickets_sold}/{e.total_tickets}</div>
               <div className="flex gap-1">
                 <Button size="sm" className="flex-1" onClick={() => setSelected(e)}>Gerenciar</Button>
-                <Button size="sm" variant="outline" onClick={() => setEditEv(e)}>Editar</Button>
+                <Button size="sm" variant="outline" className="bg-white text-black hover:bg-neutral-100 hover:text-black border-white" onClick={() => setEditEv(e)}>Editar</Button>
                 <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => { if (!confirm2("Remover evento?")) return; await de({ data: { athletic_id: athletic.id, id: e.id } }); reload(); }}><Trash2 className="size-3.5" /></Button>
               </div>
             </CardContent>
