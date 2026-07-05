@@ -272,6 +272,8 @@ export const upsertProduct = createServerFn({ method: "POST" })
       is_new: z.boolean().default(false),
       badge_text: z.string().max(30).optional().nullable(),
       active: z.boolean().default(true),
+      show_stock_warning: z.boolean().default(false),
+      stock_warning_threshold: z.number().int().min(0).optional().nullable(),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
@@ -294,7 +296,10 @@ export const upsertProduct = createServerFn({ method: "POST" })
       is_new: data.is_new,
       badge_text: data.badge_text ?? null,
       active: data.active,
+      show_stock_warning: data.show_stock_warning,
+      stock_warning_threshold: data.stock_warning_threshold ?? null,
     };
+
     if (data.id) {
       const { error } = await supabaseAdmin.from("athletic_products").update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);

@@ -656,7 +656,9 @@ export type Database = {
           member_price: number | null
           price: number
           second_item_discount_pct: number
+          show_stock_warning: boolean
           stock: number | null
+          stock_warning_threshold: number | null
           title: string
           updated_at: string
           variants: Json
@@ -676,7 +678,9 @@ export type Database = {
           member_price?: number | null
           price?: number
           second_item_discount_pct?: number
+          show_stock_warning?: boolean
           stock?: number | null
+          stock_warning_threshold?: number | null
           title: string
           updated_at?: string
           variants?: Json
@@ -696,7 +700,9 @@ export type Database = {
           member_price?: number | null
           price?: number
           second_item_discount_pct?: number
+          show_stock_warning?: boolean
           stock?: number | null
+          stock_warning_threshold?: number | null
           title?: string
           updated_at?: string
           variants?: Json
