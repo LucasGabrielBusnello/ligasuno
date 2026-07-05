@@ -189,7 +189,7 @@ function AtleticaPage() {
             <TabsTrigger value="sobre" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-black"><Sparkles className="size-4 mr-1.5" />Sobre</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="produtos" className="mt-6"><PublicProducts athletic={ath} /></TabsContent>
+          <TabsContent value="produtos" className="mt-6"><PublicProducts athletic={ath} isMember={isActiveMember} /></TabsContent>
           <TabsContent value="eventos" className="mt-6"><PublicEvents athletic={ath} isMember={isActiveMember} /></TabsContent>
           <TabsContent value="socios" className="mt-6"><SociosArea athletic={ath} isMember={isActiveMember} user={user} /></TabsContent>
           {isDirector && <TabsContent value="diretoria" className="mt-6"><DirectorPanel athletic={ath} /></TabsContent>}
