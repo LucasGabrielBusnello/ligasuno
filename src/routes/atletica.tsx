@@ -1011,7 +1011,7 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                 <div className="font-bold text-sm line-clamp-2 h-10">{p.title}</div>
                 <div className="text-xs opacity-70">R$ {Number(p.price).toFixed(2)} • Est: {p.stock ?? "∞"}</div>
                 <div className="flex gap-1 mt-2">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditProd(p)}>Editar</Button>
+                  <Button size="sm" variant="outline" className="flex-1 bg-white text-black hover:bg-neutral-100 hover:text-black border-white" onClick={() => setEditProd(p)}>Editar</Button>
                   <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => { if (!confirm2("Remover?")) return; await dp({ data: { athletic_id: athletic.id, id: p.id } }); reload(); }}><Trash2 className="size-3.5" /></Button>
                 </div>
               </CardContent>
