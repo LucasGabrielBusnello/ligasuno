@@ -59,7 +59,9 @@ type Product = {
   images: string[]; price: number; member_price: number | null; discount_pct: number;
   second_item_discount_pct: number; stock: number | null; is_highlight: boolean; is_new: boolean;
   badge_text: string | null; active: boolean;
+  show_stock_warning?: boolean; stock_warning_threshold?: number | null;
 };
+
 type EventRow = {
   id: string; athletic_id: string; title: string; description: string | null; location: string | null;
   starts_at: string | null; ends_at: string | null; image_url: string | null; theme_color: string | null;
