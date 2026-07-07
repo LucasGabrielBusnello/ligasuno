@@ -17,8 +17,8 @@ import { QrScanner } from "@/components/qr-scanner";
 import { ImageUpload } from "@/components/image-upload";
 import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
-  ArrowLeft, ShoppingBag, Ticket, Users, Shield, Sparkles, Plus, Trash2, QrCode, FileDown,
-  Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X,
+  ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
+  Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
@@ -28,7 +28,10 @@ import {
 } from "@/lib/athletic.functions";
 import {
   createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
+  createMembershipCardPayment, createEventTicketCardPayment, createCartCheckout,
 } from "@/lib/athletic-payments.functions";
+import { AtleticaCartProvider, useAtleticaCart, type CartItem } from "@/hooks/use-atletica-cart";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 
 export const Route = createFileRoute("/atletica")({
