@@ -113,26 +113,30 @@ function AtleticaPage() {
   const isActiveMember = !!myMembership && myMembership.active && (!myMembership.member_until || new Date(myMembership.member_until) >= new Date());
 
   return (
-    <div className="min-h-screen bg-black text-white" style={{
-      // Injeta as cores como CSS vars para os componentes filhos
-      // @ts-expect-error
-      "--ath-primary": ath.primary_color, "--ath-secondary": ath.secondary_color,
-    }}>
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-black/70 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/10">
-            <Link to="/"><ArrowLeft className="size-4" /> Voltar</Link>
-          </Button>
-          <div className="flex items-center gap-2">
-            {ath.logo_url && <img src={ath.logo_url} alt="" className="size-9 rounded-full object-cover border border-white/20" />}
-            <div className="text-right">
-              <div className="text-xs uppercase tracking-widest opacity-70">Atlética</div>
-              <div className="font-black text-sm leading-tight" style={{ color: ath.primary_color }}>{ath.short_name ?? ath.name}</div>
+    <AtleticaCartProvider>
+      <PaidReturnToast />
+      <div className="min-h-screen bg-neutral-950 text-white" style={{
+        // @ts-expect-error
+        "--ath-primary": ath.primary_color, "--ath-secondary": ath.secondary_color,
+      }}>
+        {/* HEADER */}
+        <header className="sticky top-0 z-40 backdrop-blur-xl bg-neutral-950/80 border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+            <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/10">
+              <Link to="/"><ArrowLeft className="size-4" /> Voltar</Link>
+            </Button>
+            <div className="flex items-center gap-3">
+              <CartButton athleticName={ath.short_name ?? ath.name} primaryColor={ath.primary_color} accentColor={ath.secondary_color} />
+              <div className="flex items-center gap-2">
+                {ath.logo_url && <img src={ath.logo_url} alt="" className="size-9 rounded-full object-cover border border-white/20" />}
+                <div className="text-right hidden sm:block">
+                  <div className="text-[10px] uppercase tracking-widest opacity-60">Atlética</div>
+                  <div className="font-black text-sm leading-tight" style={{ color: ath.primary_color }}>{ath.short_name ?? ath.name}</div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* HERO */}
       <section className="relative overflow-hidden min-h-[520px] flex items-center">
