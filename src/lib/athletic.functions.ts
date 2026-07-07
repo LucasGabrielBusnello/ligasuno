@@ -299,6 +299,7 @@ export const upsertProduct = createServerFn({ method: "POST" })
       active: data.active,
       show_stock_warning: data.show_stock_warning,
       stock_warning_threshold: data.stock_warning_threshold ?? null,
+      sales_deadline: data.sales_deadline ? new Date(data.sales_deadline).toISOString() : null,
     };
 
     if (data.id) {
