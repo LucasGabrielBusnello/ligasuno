@@ -464,14 +464,16 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   }, [profile]);
   const request = useServerFn(requestSelfMembership);
   const createPix = useServerFn(createMembershipPixPayment);
+  const createCard = useServerFn(createMembershipCardPayment);
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
+  const [method, setMethod] = useState<"pix" | "card">("pix");
   const { user } = useAuth();
   if (!user) {
     return (
       <Button asChild size="lg"
-        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:scale-105 transition-transform"
-        style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:opacity-95 transition"
+        style={{ background: athletic.primary_color }}>
         <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}</Link>
       </Button>
     );
@@ -479,8 +481,8 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   return (
     <>
       <Button size="lg" onClick={() => setOpen(true)}
-        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform text-white border-0"
-        style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:opacity-95 transition text-white border-0"
+        style={{ background: athletic.primary_color }}>
         <Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}
       </Button>
 
@@ -489,7 +491,7 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
           <DialogHeader>
             <DialogTitle>Associar-se à {athletic.name}</DialogTitle>
             <DialogDescription>
-              Preencha seus dados. Após confirmar, você recebe o Pix de R$ {Number(athletic.membership_price).toFixed(2)} — a associação é liberada automaticamente por {athletic.membership_period_days} dias.
+              Preencha seus dados. Após confirmar, a associação é liberada automaticamente por {athletic.membership_period_days} dias.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -503,20 +505,46 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
               <div><Label>Matrícula *</Label><Input value={form.matricula} onChange={(e) => setForm({ ...form, matricula: e.target.value })} /></div>
               <div><Label>Semestre *</Label><Input value={form.semestre} onChange={(e) => setForm({ ...form, semestre: e.target.value })} /></div>
             </div>
+            <div className="pt-2">
+              <Label>Forma de pagamento</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button type="button" onClick={() => setMethod("pix")}
+                  className={`p-3 rounded-lg border text-left transition ${method === "pix" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
+                  <div className="font-bold text-sm">Pix</div>
+                  <div className="text-xs opacity-70">Aprovação em segundos</div>
+                </button>
+                <button type="button" onClick={() => setMethod("card")}
+                  className={`p-3 rounded-lg border text-left transition ${method === "card" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
+                  <div className="font-bold text-sm">Cartão</div>
+                  <div className="text-xs opacity-70">Crédito ou débito</div>
+                </button>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button disabled={saving} onClick={async () => {
+            <Button
+              disabled={saving}
+              style={{ background: athletic.primary_color, color: "white" }}
+              className="border-0 hover:opacity-95"
+              onClick={async () => {
               setSaving(true);
               try {
                 const r = await request({ data: { athletic_id: athletic.id, ...form } });
-                const pix = await createPix({ data: { payment_id: r.payment_id } });
-                setPixData(pix);
-                setOpen(false);
-                setPixOpen(true);
+                if (method === "pix") {
+                  const pix = await createPix({ data: { payment_id: r.payment_id } });
+                  setPixData(pix);
+                  setOpen(false);
+                  setPixOpen(true);
+                } else {
+                  const c = await createCard({ data: { payment_id: r.payment_id } });
+                  setOpen(false);
+                  window.location.href = c.init_point;
+                  return;
+                }
                 onDone();
               } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Gerando Pix..." : "Continuar → gerar Pix"}</Button>
+            }}>{saving ? "Processando..." : method === "pix" ? "Continuar → gerar Pix" : "Continuar → cartão"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
