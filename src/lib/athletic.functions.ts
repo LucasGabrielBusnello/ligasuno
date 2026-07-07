@@ -274,6 +274,7 @@ export const upsertProduct = createServerFn({ method: "POST" })
       active: z.boolean().default(true),
       show_stock_warning: z.boolean().default(false),
       stock_warning_threshold: z.number().int().min(0).optional().nullable(),
+      sales_deadline: z.string().optional().nullable(),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
