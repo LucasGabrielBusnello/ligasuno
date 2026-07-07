@@ -655,6 +655,7 @@ export type Database = {
           is_new: boolean
           member_price: number | null
           price: number
+          sales_deadline: string | null
           second_item_discount_pct: number
           show_stock_warning: boolean
           stock: number | null
@@ -677,6 +678,7 @@ export type Database = {
           is_new?: boolean
           member_price?: number | null
           price?: number
+          sales_deadline?: string | null
           second_item_discount_pct?: number
           show_stock_warning?: boolean
           stock?: number | null
@@ -699,6 +701,7 @@ export type Database = {
           is_new?: boolean
           member_price?: number | null
           price?: number
+          sales_deadline?: string | null
           second_item_discount_pct?: number
           show_stock_warning?: boolean
           stock?: number | null

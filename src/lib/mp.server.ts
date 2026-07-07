@@ -251,3 +251,61 @@ export async function createPixPayment(args: {
     idempotencyKey: args.idempotencyKey ?? `${args.externalReference}-${Date.now()}`,
   });
 }
+
+/**
+ * Preferência de Checkout Pro na conta da plataforma (aceita Pix + cartão de
+ * crédito/débito + boleto). Sem marketplace_fee (o token já é da plataforma).
+ * Retorna init_point para redirecionar o pagador.
+ */
+export async function createCheckoutPreference(args: {
+  title: string;
+  unitPrice: number;
+  quantity?: number;
+  payerEmail?: string;
+  payerName?: string;
+  payerCpf?: string;
+  successUrl: string;
+  failureUrl: string;
+  pendingUrl?: string;
+  externalReference: string;
+  notificationUrl: string;
+  metadata?: Record<string, any>;
+  maxInstallments?: number;
+}) {
+  const [firstName, ...rest] = String(args.payerName ?? "").split(" ");
+  const body: any = {
+    items: [{
+      title: args.title.slice(0, 250),
+      quantity: args.quantity ?? 1,
+      unit_price: Math.round(args.unitPrice * 100) / 100,
+      currency_id: "BRL",
+    }],
+    payer: args.payerEmail
+      ? {
+          email: args.payerEmail,
+          name: firstName || undefined,
+          surname: rest.join(" ") || undefined,
+          identification: args.payerCpf
+            ? { type: "CPF", number: String(args.payerCpf).replace(/\D/g, "") }
+            : undefined,
+        }
+      : undefined,
+    back_urls: {
+      success: args.successUrl,
+      failure: args.failureUrl,
+      pending: args.pendingUrl ?? args.successUrl,
+    },
+    auto_return: "approved",
+    external_reference: args.externalReference,
+    notification_url: args.notificationUrl,
+    metadata: args.metadata ?? {},
+    statement_descriptor: "LIGASUNO",
+    payment_methods: {
+      installments: args.maxInstallments ?? 3,
+    },
+  };
+  return mpFetch<{ id: string; init_point: string; sandbox_init_point: string }>(
+    "/checkout/preferences",
+    { method: "POST", body },
+  );
+}

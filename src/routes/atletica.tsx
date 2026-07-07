@@ -17,8 +17,8 @@ import { QrScanner } from "@/components/qr-scanner";
 import { ImageUpload } from "@/components/image-upload";
 import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
-  ArrowLeft, ShoppingBag, Ticket, Users, Shield, Sparkles, Plus, Trash2, QrCode, FileDown,
-  Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X,
+  ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
+  Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
@@ -28,7 +28,10 @@ import {
 } from "@/lib/athletic.functions";
 import {
   createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
+  createMembershipCardPayment, createEventTicketCardPayment, createCartCheckout,
 } from "@/lib/athletic-payments.functions";
+import { AtleticaCartProvider, useAtleticaCart, type CartItem } from "@/hooks/use-atletica-cart";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 
 export const Route = createFileRoute("/atletica")({
@@ -60,6 +63,7 @@ type Product = {
   second_item_discount_pct: number; stock: number | null; is_highlight: boolean; is_new: boolean;
   badge_text: string | null; active: boolean;
   show_stock_warning?: boolean; stock_warning_threshold?: number | null;
+  sales_deadline?: string | null;
 };
 
 type EventRow = {
@@ -109,26 +113,30 @@ function AtleticaPage() {
   const isActiveMember = !!myMembership && myMembership.active && (!myMembership.member_until || new Date(myMembership.member_until) >= new Date());
 
   return (
-    <div className="min-h-screen bg-black text-white" style={{
-      // Injeta as cores como CSS vars para os componentes filhos
-      // @ts-expect-error
-      "--ath-primary": ath.primary_color, "--ath-secondary": ath.secondary_color,
-    }}>
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-black/70 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/10">
-            <Link to="/"><ArrowLeft className="size-4" /> Voltar</Link>
-          </Button>
-          <div className="flex items-center gap-2">
-            {ath.logo_url && <img src={ath.logo_url} alt="" className="size-9 rounded-full object-cover border border-white/20" />}
-            <div className="text-right">
-              <div className="text-xs uppercase tracking-widest opacity-70">Atlética</div>
-              <div className="font-black text-sm leading-tight" style={{ color: ath.primary_color }}>{ath.short_name ?? ath.name}</div>
+    <AtleticaCartProvider>
+      <PaidReturnToast />
+      <div className="min-h-screen bg-neutral-950 text-white" style={{
+        // @ts-expect-error
+        "--ath-primary": ath.primary_color, "--ath-secondary": ath.secondary_color,
+      }}>
+        {/* HEADER */}
+        <header className="sticky top-0 z-40 backdrop-blur-xl bg-neutral-950/80 border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+            <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/10">
+              <Link to="/"><ArrowLeft className="size-4" /> Voltar</Link>
+            </Button>
+            <div className="flex items-center gap-3">
+              <CartButton athleticName={ath.short_name ?? ath.name} primaryColor={ath.primary_color} accentColor={ath.secondary_color} />
+              <div className="flex items-center gap-2">
+                {ath.logo_url && <img src={ath.logo_url} alt="" className="size-9 rounded-full object-cover border border-white/20" />}
+                <div className="text-right hidden sm:block">
+                  <div className="text-[10px] uppercase tracking-widest opacity-60">Atlética</div>
+                  <div className="font-black text-sm leading-tight" style={{ color: ath.primary_color }}>{ath.short_name ?? ath.name}</div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
       {/* HERO */}
       <section className="relative overflow-hidden min-h-[520px] flex items-center">
@@ -197,10 +205,199 @@ function AtleticaPage() {
         </Tabs>
       </main>
 
-      <footer className="mt-16 border-t border-white/10 py-8 text-center text-xs opacity-60">
-        <p>{ath.name} • ligasuno.com.br</p>
-      </footer>
-    </div>
+        <footer className="mt-16 border-t border-white/10 py-8 text-center text-xs opacity-60">
+          <p>{ath.name} • ligasuno.com.br</p>
+        </footer>
+      </div>
+    </AtleticaCartProvider>
+  );
+}
+
+/* ============ Toast de retorno do checkout ============ */
+function PaidReturnToast() {
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const paid = url.searchParams.get("paid");
+    if (paid === "1") toast.success("Pagamento aprovado! A confirmação vai chegar em segundos.");
+    else if (paid === "0") toast.error("Pagamento não concluído. Tente novamente.");
+    else if (paid === "pending") toast.info("Pagamento pendente. Aguarde a confirmação.");
+    if (paid) { url.searchParams.delete("paid"); window.history.replaceState({}, "", url.toString()); }
+  }, []);
+  return null;
+}
+
+/* ============ CARRINHO — botão do header + drawer ============ */
+function CartButton({ athleticName, primaryColor, accentColor }: { athleticName: string; primaryColor: string; accentColor: string }) {
+  const { count, items, subtotal, total, savings, updateQty, removeItem, clear } = useAtleticaCart();
+  const { user, profile } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  return (
+    <>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Carrinho com ${count} itens`}
+            className="relative inline-flex items-center justify-center size-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition text-white">
+            <ShoppingCart className="size-4" />
+            {count > 0 && (
+              <span
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center text-white"
+                style={{ background: accentColor }}>
+                {count}
+              </span>
+            )}
+          </button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-full sm:max-w-md bg-neutral-950 text-white border-l border-white/10 flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="text-white flex items-center gap-2">
+              <ShoppingCart className="size-4" /> Carrinho — {athleticName}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-4 space-y-3">
+            {items.length === 0 && (
+              <div className="text-center py-12 opacity-60">
+                <ShoppingCart className="size-12 mx-auto mb-3 opacity-40" />
+                <p className="font-bold">Seu carrinho está vazio</p>
+                <p className="text-xs mt-1">Adicione produtos para continuar.</p>
+              </div>
+            )}
+            {items.map((it) => (
+              <div key={it.product_id} className="flex gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                <div className="size-16 rounded overflow-hidden bg-black/40 shrink-0">
+                  {it.cover ? <img src={it.cover} alt="" className="w-full h-full object-cover" /> : null}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold line-clamp-2">{it.title}</div>
+                  <div className="text-xs opacity-70 mt-0.5">R$ {it.unit_price.toFixed(2)} cada</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button type="button" onClick={() => updateQty(it.product_id, it.quantity - 1)}
+                      className="size-6 rounded border border-white/20 flex items-center justify-center hover:bg-white/10">
+                      <Minus className="size-3" />
+                    </button>
+                    <span className="text-sm font-bold w-6 text-center">{it.quantity}</span>
+                    <button type="button" onClick={() => updateQty(it.product_id, it.quantity + 1)}
+                      className="size-6 rounded border border-white/20 flex items-center justify-center hover:bg-white/10">
+                      <Plus className="size-3" />
+                    </button>
+                    <button type="button" onClick={() => removeItem(it.product_id)}
+                      className="ml-auto text-xs opacity-60 hover:text-red-400 hover:opacity-100">
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {items.length > 0 && (
+            <div className="border-t border-white/10 pt-4 space-y-3">
+              <div className="flex justify-between text-sm opacity-80">
+                <span>Subtotal</span><span>R$ {subtotal.toFixed(2)}</span>
+              </div>
+              {savings > 0 && (
+                <div className="flex justify-between text-sm" style={{ color: accentColor }}>
+                  <span>Descontos</span><span>- R$ {savings.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-black">
+                <span>Total</span><span style={{ color: primaryColor }}>R$ {total.toFixed(2)}</span>
+              </div>
+              {user ? (
+                <Button
+                  size="lg"
+                  className="w-full font-black uppercase tracking-wider text-white border-0 hover:opacity-95"
+                  style={{ background: primaryColor }}
+                  onClick={() => { setOpen(false); setCheckoutOpen(true); }}>
+                  <CreditCard className="size-4" /> Finalizar compra
+                </Button>
+              ) : (
+                <Button size="lg" asChild className="w-full" style={{ background: primaryColor }}>
+                  <Link to="/auth"><ShoppingCart className="size-4" /> Entrar para finalizar</Link>
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="w-full text-xs opacity-60 hover:opacity-100 hover:bg-white/5" onClick={clear}>
+                Esvaziar carrinho
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+      <CartCheckoutDialog
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        primaryColor={primaryColor}
+      />
+    </>
+  );
+}
+
+function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; onClose: () => void; primaryColor: string }) {
+  const { items, total, clear } = useAtleticaCart();
+  const { profile } = useAuth();
+  const [form, setForm] = useState({
+    buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
+    buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const checkout = useServerFn(createCartCheckout);
+  useEffect(() => {
+    if (open && profile) setForm((f) => ({
+      ...f, buyer_name: f.buyer_name || profile.full_name || "",
+      buyer_email: f.buyer_email || profile.email || "",
+      buyer_phone: f.buyer_phone || profile.phone || "",
+    }));
+  }, [open, profile]);
+  if (items.length === 0) return null;
+  const athletic_id = items[0] ? undefined : undefined; // filled below from context
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
+          <DialogDescription>
+            Você será redirecionado para o Mercado Pago para escolher <strong>Pix</strong>, <strong>cartão de crédito</strong> (até 3x sem juros) ou <strong>cartão de débito</strong>. A confirmação é automática.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
+            <div><Label>Telefone</Label><Input value={form.buyer_phone} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
+          </div>
+          <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
+          <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button
+            disabled={saving}
+            style={{ background: primaryColor, color: "white" }}
+            className="hover:opacity-95 border-0"
+            onClick={async () => {
+              setSaving(true);
+              try {
+                // athletic_id do primeiro item — todos são da mesma atlética
+                // (garantido pelo scope da página /atletica)
+                const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
+                if (!prod) throw new Error("Produto não encontrado");
+                const r = await checkout({
+                  data: {
+                    athletic_id: (prod as any).athletic_id,
+                    items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+                    ...form,
+                  },
+                });
+                clear();
+                window.location.href = r.init_point;
+              } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(false); }
+            }}>
+            {saving ? "Redirecionando..." : "Ir para pagamento"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -267,14 +464,16 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   }, [profile]);
   const request = useServerFn(requestSelfMembership);
   const createPix = useServerFn(createMembershipPixPayment);
+  const createCard = useServerFn(createMembershipCardPayment);
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
+  const [method, setMethod] = useState<"pix" | "card">("pix");
   const { user } = useAuth();
   if (!user) {
     return (
       <Button asChild size="lg"
-        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:scale-105 transition-transform"
-        style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:opacity-95 transition"
+        style={{ background: athletic.primary_color }}>
         <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}</Link>
       </Button>
     );
@@ -282,8 +481,8 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   return (
     <>
       <Button size="lg" onClick={() => setOpen(true)}
-        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:scale-105 transition-transform text-white border-0"
-        style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}>
+        className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:opacity-95 transition text-white border-0"
+        style={{ background: athletic.primary_color }}>
         <Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}
       </Button>
 
@@ -292,7 +491,7 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
           <DialogHeader>
             <DialogTitle>Associar-se à {athletic.name}</DialogTitle>
             <DialogDescription>
-              Preencha seus dados. Após confirmar, você recebe o Pix de R$ {Number(athletic.membership_price).toFixed(2)} — a associação é liberada automaticamente por {athletic.membership_period_days} dias.
+              Preencha seus dados. Após confirmar, a associação é liberada automaticamente por {athletic.membership_period_days} dias.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -306,20 +505,46 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
               <div><Label>Matrícula *</Label><Input value={form.matricula} onChange={(e) => setForm({ ...form, matricula: e.target.value })} /></div>
               <div><Label>Semestre *</Label><Input value={form.semestre} onChange={(e) => setForm({ ...form, semestre: e.target.value })} /></div>
             </div>
+            <div className="pt-2">
+              <Label>Forma de pagamento</Label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button type="button" onClick={() => setMethod("pix")}
+                  className={`p-3 rounded-lg border text-left transition ${method === "pix" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
+                  <div className="font-bold text-sm">Pix</div>
+                  <div className="text-xs opacity-70">Aprovação em segundos</div>
+                </button>
+                <button type="button" onClick={() => setMethod("card")}
+                  className={`p-3 rounded-lg border text-left transition ${method === "card" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
+                  <div className="font-bold text-sm">Cartão</div>
+                  <div className="text-xs opacity-70">Crédito ou débito</div>
+                </button>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button disabled={saving} onClick={async () => {
+            <Button
+              disabled={saving}
+              style={{ background: athletic.primary_color, color: "white" }}
+              className="border-0 hover:opacity-95"
+              onClick={async () => {
               setSaving(true);
               try {
                 const r = await request({ data: { athletic_id: athletic.id, ...form } });
-                const pix = await createPix({ data: { payment_id: r.payment_id } });
-                setPixData(pix);
-                setOpen(false);
-                setPixOpen(true);
+                if (method === "pix") {
+                  const pix = await createPix({ data: { payment_id: r.payment_id } });
+                  setPixData(pix);
+                  setOpen(false);
+                  setPixOpen(true);
+                } else {
+                  const c = await createCard({ data: { payment_id: r.payment_id } });
+                  setOpen(false);
+                  window.location.href = c.init_point;
+                  return;
+                }
                 onDone();
               } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Gerando Pix..." : "Continuar → gerar Pix"}</Button>
+            }}>{saving ? "Processando..." : method === "pix" ? "Continuar → gerar Pix" : "Continuar → cartão"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
