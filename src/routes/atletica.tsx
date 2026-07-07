@@ -205,10 +205,199 @@ function AtleticaPage() {
         </Tabs>
       </main>
 
-      <footer className="mt-16 border-t border-white/10 py-8 text-center text-xs opacity-60">
-        <p>{ath.name} • ligasuno.com.br</p>
-      </footer>
-    </div>
+        <footer className="mt-16 border-t border-white/10 py-8 text-center text-xs opacity-60">
+          <p>{ath.name} • ligasuno.com.br</p>
+        </footer>
+      </div>
+    </AtleticaCartProvider>
+  );
+}
+
+/* ============ Toast de retorno do checkout ============ */
+function PaidReturnToast() {
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const paid = url.searchParams.get("paid");
+    if (paid === "1") toast.success("Pagamento aprovado! A confirmação vai chegar em segundos.");
+    else if (paid === "0") toast.error("Pagamento não concluído. Tente novamente.");
+    else if (paid === "pending") toast.info("Pagamento pendente. Aguarde a confirmação.");
+    if (paid) { url.searchParams.delete("paid"); window.history.replaceState({}, "", url.toString()); }
+  }, []);
+  return null;
+}
+
+/* ============ CARRINHO — botão do header + drawer ============ */
+function CartButton({ athleticName, primaryColor, accentColor }: { athleticName: string; primaryColor: string; accentColor: string }) {
+  const { count, items, subtotal, total, savings, updateQty, removeItem, clear } = useAtleticaCart();
+  const { user, profile } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  return (
+    <>
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Carrinho com ${count} itens`}
+            className="relative inline-flex items-center justify-center size-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition text-white">
+            <ShoppingCart className="size-4" />
+            {count > 0 && (
+              <span
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black flex items-center justify-center text-white"
+                style={{ background: accentColor }}>
+                {count}
+              </span>
+            )}
+          </button>
+        </SheetTrigger>
+        <SheetContent side="right" className="w-full sm:max-w-md bg-neutral-950 text-white border-l border-white/10 flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="text-white flex items-center gap-2">
+              <ShoppingCart className="size-4" /> Carrinho — {athleticName}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 py-4 space-y-3">
+            {items.length === 0 && (
+              <div className="text-center py-12 opacity-60">
+                <ShoppingCart className="size-12 mx-auto mb-3 opacity-40" />
+                <p className="font-bold">Seu carrinho está vazio</p>
+                <p className="text-xs mt-1">Adicione produtos para continuar.</p>
+              </div>
+            )}
+            {items.map((it) => (
+              <div key={it.product_id} className="flex gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                <div className="size-16 rounded overflow-hidden bg-black/40 shrink-0">
+                  {it.cover ? <img src={it.cover} alt="" className="w-full h-full object-cover" /> : null}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold line-clamp-2">{it.title}</div>
+                  <div className="text-xs opacity-70 mt-0.5">R$ {it.unit_price.toFixed(2)} cada</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button type="button" onClick={() => updateQty(it.product_id, it.quantity - 1)}
+                      className="size-6 rounded border border-white/20 flex items-center justify-center hover:bg-white/10">
+                      <Minus className="size-3" />
+                    </button>
+                    <span className="text-sm font-bold w-6 text-center">{it.quantity}</span>
+                    <button type="button" onClick={() => updateQty(it.product_id, it.quantity + 1)}
+                      className="size-6 rounded border border-white/20 flex items-center justify-center hover:bg-white/10">
+                      <Plus className="size-3" />
+                    </button>
+                    <button type="button" onClick={() => removeItem(it.product_id)}
+                      className="ml-auto text-xs opacity-60 hover:text-red-400 hover:opacity-100">
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {items.length > 0 && (
+            <div className="border-t border-white/10 pt-4 space-y-3">
+              <div className="flex justify-between text-sm opacity-80">
+                <span>Subtotal</span><span>R$ {subtotal.toFixed(2)}</span>
+              </div>
+              {savings > 0 && (
+                <div className="flex justify-between text-sm" style={{ color: accentColor }}>
+                  <span>Descontos</span><span>- R$ {savings.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-black">
+                <span>Total</span><span style={{ color: primaryColor }}>R$ {total.toFixed(2)}</span>
+              </div>
+              {user ? (
+                <Button
+                  size="lg"
+                  className="w-full font-black uppercase tracking-wider text-white border-0 hover:opacity-95"
+                  style={{ background: primaryColor }}
+                  onClick={() => { setOpen(false); setCheckoutOpen(true); }}>
+                  <CreditCard className="size-4" /> Finalizar compra
+                </Button>
+              ) : (
+                <Button size="lg" asChild className="w-full" style={{ background: primaryColor }}>
+                  <Link to="/auth"><ShoppingCart className="size-4" /> Entrar para finalizar</Link>
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" className="w-full text-xs opacity-60 hover:opacity-100 hover:bg-white/5" onClick={clear}>
+                Esvaziar carrinho
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+      <CartCheckoutDialog
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        primaryColor={primaryColor}
+      />
+    </>
+  );
+}
+
+function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; onClose: () => void; primaryColor: string }) {
+  const { items, total, clear } = useAtleticaCart();
+  const { profile } = useAuth();
+  const [form, setForm] = useState({
+    buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
+    buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const checkout = useServerFn(createCartCheckout);
+  useEffect(() => {
+    if (open && profile) setForm((f) => ({
+      ...f, buyer_name: f.buyer_name || profile.full_name || "",
+      buyer_email: f.buyer_email || profile.email || "",
+      buyer_phone: f.buyer_phone || profile.phone || "",
+    }));
+  }, [open, profile]);
+  if (items.length === 0) return null;
+  const athletic_id = items[0] ? undefined : undefined; // filled below from context
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
+          <DialogDescription>
+            Você será redirecionado para o Mercado Pago para escolher <strong>Pix</strong>, <strong>cartão de crédito</strong> (até 3x sem juros) ou <strong>cartão de débito</strong>. A confirmação é automática.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
+            <div><Label>Telefone</Label><Input value={form.buyer_phone} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
+          </div>
+          <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
+          <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button
+            disabled={saving}
+            style={{ background: primaryColor, color: "white" }}
+            className="hover:opacity-95 border-0"
+            onClick={async () => {
+              setSaving(true);
+              try {
+                // athletic_id do primeiro item — todos são da mesma atlética
+                // (garantido pelo scope da página /atletica)
+                const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
+                if (!prod) throw new Error("Produto não encontrado");
+                const r = await checkout({
+                  data: {
+                    athletic_id: (prod as any).athletic_id,
+                    items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+                    ...form,
+                  },
+                });
+                clear();
+                window.location.href = r.init_point;
+              } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(false); }
+            }}>
+            {saving ? "Redirecionando..." : "Ir para pagamento"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
