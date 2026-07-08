@@ -600,6 +600,24 @@ function computeProductPricing(product: Product, isMember: boolean) {
   return { listPrice, basePrice, finalPrice, memberActive, showListPrice };
 }
 
+function useDeadlineCountdown(deadline?: string | null) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!deadline) return;
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, [deadline]);
+  if (!deadline) return { expired: false, label: null as string | null, active: false };
+  const end = new Date(deadline).getTime();
+  const diff = end - now;
+  if (diff <= 0) return { expired: true, label: "Vendas encerradas", active: true };
+  const d = Math.floor(diff / 86_400_000);
+  const h = Math.floor((diff % 86_400_000) / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  const label = d > 0 ? `Faltam ${d}d ${String(h).padStart(2, "0")}h` : h > 0 ? `Faltam ${h}h ${String(m).padStart(2, "0")}m` : `Faltam ${m}min`;
+  return { expired: false, label, active: true };
+}
+
 function ProductCard({ product, athletic, isMember }: { product: Product; athletic: Athletic; isMember: boolean }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const { listPrice, finalPrice, memberActive, showListPrice } = computeProductPricing(product, isMember);
