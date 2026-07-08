@@ -903,7 +903,7 @@ function PublicEvents({ athletic, isMember }: { athletic: Athletic; isMember: bo
     return <EmptyDark icon={<PartyPopper className="size-12" />} title="Nenhum evento no momento" desc="Fique de olho! Novidades em breve." />;
   }
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-6">
       {events.map((e) => (
         <EventCard key={e.id} event={e} athletic={athletic} isMember={isMember} />
       ))}
@@ -916,6 +916,7 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
   const price = isMember ? e.price_member : e.price_visitor;
   const remaining = e.total_tickets - e.tickets_sold;
   const [open, setOpen] = useState(false);
+  const [method, setMethod] = useState<"pix" | "card">("pix");
   const [form, setForm] = useState({
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "",
@@ -924,53 +925,82 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
   const createPix = useServerFn(createEventTicketPixPayment);
+  const createCard = useServerFn(createEventTicketCardPayment);
   const canBuy = e.online_sales_open && remaining > 0 && price > 0;
+
   return (
-    <Card className="overflow-hidden bg-white/5 border-white/10 text-white group">
-      <div className="aspect-video bg-black/40 relative">
-        {e.image_url
-          ? <img src={e.image_url} alt={e.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-          : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-        <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="font-black text-xl uppercase tracking-tight">{e.title}</h3>
-          {e.starts_at && <p className="text-xs opacity-80">{new Date(e.starts_at).toLocaleString("pt-BR")}</p>}
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl min-h-[420px] md:min-h-[380px]">
+      {/* Background */}
+      {e.image_url ? (
+        <img src={e.image_url} alt={e.title} className="absolute inset-0 w-full h-full object-cover" />
+      ) : (
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/30" />
+
+      {/* Content grid */}
+      <div className="relative grid md:grid-cols-[minmax(0,1fr)_360px] gap-6 p-6 md:p-8 min-h-[420px] md:min-h-[380px]">
+        <div className="flex flex-col justify-end">
+          {e.starts_at && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-200 text-xs font-bold mb-3 w-fit">
+              <Calendar className="size-3.5" /> {new Date(e.starts_at).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </div>
+          )}
+          <h3 className="font-black text-3xl md:text-5xl uppercase tracking-tight text-white drop-shadow-2xl">{e.title}</h3>
+          {e.location && <p className="mt-2 text-sm text-white/80 flex items-center gap-1.5"><MapPin className="size-3.5" /> {e.location}</p>}
         </div>
-      </div>
-      <CardContent className="p-4 space-y-3">
-        {e.location && <p className="text-xs opacity-70">📍 {e.location}</p>}
-        {e.description && <p className="text-sm opacity-80 line-clamp-3">{e.description}</p>}
-        <div className="flex justify-between items-center pt-2 border-t border-white/10">
-          <div>
-            <div className="text-xs opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
-            <div className="font-black text-2xl" style={{ color: athletic.primary_color }}>
-              {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
+
+        {/* Glass painel lateral */}
+        <div className="self-end md:self-center rounded-2xl backdrop-blur-md bg-black/40 border border-white/15 p-5 space-y-3 shadow-2xl">
+          {e.description && <p className="text-sm text-white/85 line-clamp-4">{e.description}</p>}
+          <div className="flex justify-between items-baseline pt-3 border-t border-white/10">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
+              <div className="font-black text-3xl text-white">
+                {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-widest opacity-60">Ingressos</div>
+              <div className="font-bold text-white">{remaining}<span className="opacity-60">/{e.total_tickets}</span></div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs opacity-60">Disponíveis</div>
-            <div className="font-bold">{remaining} / {e.total_tickets}</div>
-          </div>
+          {!user ? (
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider" asChild>
+              <Link to="/auth"><Ticket className="size-4" /> Entrar para comprar</Link>
+            </Button>
+          ) : !canBuy ? (
+            <Button className="w-full bg-neutral-800 text-neutral-400 border-0" disabled>
+              <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
+            </Button>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setMethod("pix")}
+                  className={`p-2.5 rounded-lg border text-left transition ${method === "pix" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
+                  <div className="font-bold text-xs text-white">Pix</div>
+                  <div className="text-[10px] text-white/70">Aprovação em segundos</div>
+                </button>
+                <button type="button" onClick={() => setMethod("card")}
+                  className={`p-2.5 rounded-lg border text-left transition ${method === "card" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
+                  <div className="font-bold text-xs text-white">Cartão</div>
+                  <div className="text-[10px] text-white/70">Crédito ou débito</div>
+                </button>
+              </div>
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider shadow-lg" onClick={() => setOpen(true)}>
+                <Ticket className="size-4" /> Garantir ingresso
+              </Button>
+            </>
+          )}
         </div>
-        {!user ? (
-          <Button className="w-full" asChild><Link to="/auth"><Ticket className="size-4" /> Entrar para comprar</Link></Button>
-        ) : !canBuy ? (
-          <Button className="w-full" disabled>
-            <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
-          </Button>
-        ) : (
-          <Button className="w-full" onClick={() => setOpen(true)}>
-            <Ticket className="size-4" /> Comprar via Pix
-          </Button>
-        )}
-      </CardContent>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-neutral-900 text-white border-white/10">
           <DialogHeader>
-            <DialogTitle>Ingresso — {e.title}</DialogTitle>
-            <DialogDescription>
-              Valor {isMember ? "sócio" : "visitante"}: <strong>R$ {price.toFixed(2)}</strong>. Confirmação automática após o Pix.
+            <DialogTitle className="text-white">Ingresso — {e.title}</DialogTitle>
+            <DialogDescription className="text-neutral-300">
+              Valor {isMember ? "sócio" : "visitante"}: <strong className="text-white">R$ {price.toFixed(2)}</strong>. Pagamento por <strong>{method === "pix" ? "Pix" : "cartão (crédito/débito)"}</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -982,20 +1012,27 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
             <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(ev) => setForm({ ...form, buyer_cpf: ev.target.value })} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button disabled={saving} onClick={async () => {
+            <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-500 border-0" disabled={saving} onClick={async () => {
               setSaving(true);
               try {
-                const pix = await createPix({ data: { event_id: e.id, ...form } });
-                setPixData(pix); setOpen(false); setPixOpen(true);
+                if (method === "pix") {
+                  const pix = await createPix({ data: { event_id: e.id, ...form } });
+                  setPixData(pix); setOpen(false); setPixOpen(true);
+                } else {
+                  const c = await createCard({ data: { event_id: e.id, ...form } });
+                  setOpen(false);
+                  window.location.href = c.init_point;
+                  return;
+                }
               } catch (err: any) { toast.error(err?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Gerando Pix..." : "Gerar Pix"}</Button>
+            }}>{saving ? "Processando..." : method === "pix" ? "Gerar Pix" : "Ir ao cartão"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title={`Pix — ${e.title}`} />
-    </Card>
+    </div>
   );
 }
 
