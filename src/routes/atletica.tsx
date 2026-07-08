@@ -353,11 +353,11 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
   const athletic_id = items[0] ? undefined : undefined; // filled below from context
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg bg-neutral-900 text-white border-white/10">
         <DialogHeader>
-          <DialogTitle>Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
-          <DialogDescription>
-            Você será redirecionado para o Mercado Pago para escolher <strong>Pix</strong>, <strong>cartão de crédito</strong> (até 3x sem juros) ou <strong>cartão de débito</strong>. A confirmação é automática.
+          <DialogTitle className="text-white">Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
+          <DialogDescription className="text-neutral-300">
+            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>. A confirmação é automática.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -370,16 +370,13 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
           <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white" onClick={onClose}>Cancelar</Button>
           <Button
             disabled={saving}
-            style={{ background: primaryColor, color: "white" }}
-            className="hover:opacity-95 border-0"
+            className="bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-bold"
             onClick={async () => {
               setSaving(true);
               try {
-                // athletic_id do primeiro item — todos são da mesma atlética
-                // (garantido pelo scope da página /atletica)
                 const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
                 if (!prod) throw new Error("Produto não encontrado");
                 const r = await checkout({
