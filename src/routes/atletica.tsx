@@ -624,46 +624,79 @@ function ProductCard({ product, athletic, isMember }: { product: Product; athlet
   const cover = product.images?.[0];
   const stockLow = product.show_stock_warning && product.stock != null && product.stock > 0 &&
     (product.stock_warning_threshold == null || product.stock <= product.stock_warning_threshold);
+  const outOfStock = product.stock != null && product.stock <= 0;
+  const dl = useDeadlineCountdown(product.sales_deadline ?? null);
+  const { addItem } = useAtleticaCart();
+  const disabled = outOfStock || dl.expired;
   return (
     <>
       <button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className="group text-left w-full overflow-hidden rounded-xl bg-white/5 border border-white/10 text-white hover:border-white/40 hover:-translate-y-0.5 hover:shadow-2xl transition-all focus:outline-none focus:ring-2 focus:ring-white/40"
+        className="group text-left w-full overflow-hidden rounded-xl bg-neutral-900 border border-white/10 text-white hover:border-orange-500/50 hover:-translate-y-0.5 hover:shadow-2xl transition-all focus:outline-none focus:ring-2 focus:ring-orange-500/60"
       >
-        <div className="aspect-square bg-black/40 relative overflow-hidden">
+        <div className="aspect-square bg-black relative overflow-hidden">
           {cover
             ? <img src={cover} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             : <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-16" /></div>}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {product.is_new && <Badge style={{ background: athletic.secondary_color }}>NOVO</Badge>}
-            {product.discount_pct > 0 && <Badge className="bg-red-500">-{Math.round(product.discount_pct)}%</Badge>}
-            {memberActive && <Badge className="bg-amber-500 text-black"><Crown className="size-3 mr-0.5" />SÓCIO</Badge>}
-            {product.badge_text && <Badge style={{ background: athletic.primary_color }}>{product.badge_text}</Badge>}
+            {product.is_new && <Badge className="bg-orange-500 text-white border-0">NOVO</Badge>}
+            {product.discount_pct > 0 && <Badge className="bg-orange-600 text-white border-0">-{Math.round(product.discount_pct)}%</Badge>}
+            {memberActive && <Badge className="bg-amber-500 text-black border-0"><Crown className="size-3 mr-0.5" />SÓCIO</Badge>}
+            {product.badge_text && <Badge className="bg-emerald-700 text-white border-0">{product.badge_text}</Badge>}
           </div>
           {product.images && product.images.length > 1 && (
-            <Badge className="absolute top-2 right-2 bg-black/70 border-white/20 text-[10px]">+{product.images.length - 1}</Badge>
+            <Badge className="absolute top-2 right-2 bg-black/70 border border-white/20 text-[10px]">+{product.images.length - 1}</Badge>
           )}
-          {stockLow && (
-            <Badge className="absolute bottom-10 right-2 bg-orange-500 text-white text-[10px] shadow-lg">
+          {dl.active && !dl.expired && (
+            <Badge className="absolute top-2 right-2 mt-6 bg-orange-500/95 text-white border-0 text-[10px] flex items-center gap-1 shadow-lg">
+              <Clock className="size-3" /> {dl.label}
+            </Badge>
+          )}
+          {dl.expired && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+              <span className="px-3 py-1.5 rounded-full bg-neutral-900 border border-orange-500/40 text-orange-400 text-xs font-black uppercase tracking-wider">Vendas Encerradas</span>
+            </div>
+          )}
+          {stockLow && !dl.expired && (
+            <Badge className="absolute bottom-10 right-2 bg-orange-500 text-white border-0 text-[10px] shadow-lg">
               Últimas {product.stock}!
             </Badge>
           )}
-          {product.second_item_discount_pct > 0 && (
-            <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-[11px] font-black uppercase tracking-wider text-white"
-              style={{ background: "linear-gradient(90deg, #f59e0b, #ef4444)" }}>
-              🔥 -{Math.round(product.second_item_discount_pct)}% na 2ª peça
+          {product.second_item_discount_pct > 0 && !dl.expired && (
+            <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-[11px] font-black uppercase tracking-wider text-white bg-orange-600/95 border-t border-orange-400/60">
+              -{Math.round(product.second_item_discount_pct)}% na 2ª peça
             </div>
           )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-            <span className="px-3 py-1.5 rounded-full bg-white text-black text-xs font-black uppercase tracking-wider">Ver produto</span>
-          </div>
         </div>
-        <div className="p-3 space-y-1">
+        <div className="p-3 space-y-2">
           <div className="font-bold text-sm leading-tight line-clamp-2 h-10">{product.title}</div>
           <div className="flex items-baseline gap-2">
-            {showListPrice && <span className="text-xs line-through opacity-50">R$ {listPrice.toFixed(2)}</span>}
-            <span className="font-black text-lg" style={{ color: athletic.primary_color }}>R$ {finalPrice.toFixed(2)}</span>
+            {showListPrice && <span className="text-xs line-through opacity-40">R$ {listPrice.toFixed(2)}</span>}
+            <span className="font-black text-lg text-white">R$ {finalPrice.toFixed(2)}</span>
+          </div>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-disabled={disabled}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (disabled) return;
+              addItem({
+                product_id: product.id, title: product.title, cover: cover ?? null,
+                unit_price: Math.round(finalPrice * 100) / 100, list_price: Math.round(listPrice * 100) / 100,
+                second_item_discount_pct: product.second_item_discount_pct ?? 0,
+                max_stock: product.stock ?? null,
+              }, 1);
+              toast.success("Adicionado ao carrinho");
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}
+            className={`w-full mt-1 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-black uppercase tracking-wider transition ${
+              disabled ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
+                       : "bg-emerald-600 hover:bg-emerald-500 text-white"
+            }`}
+          >
+            <ShoppingCart className="size-3.5" /> {dl.expired ? "Vendas Encerradas" : outOfStock ? "Esgotado" : "Adicionar ao Carrinho"}
           </div>
         </div>
       </button>
