@@ -1375,6 +1375,18 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                   <label className="flex items-center gap-1 text-sm"><input type="checkbox" checked={!!editProd.is_highlight} onChange={(e) => setEditProd({ ...editProd, is_highlight: e.target.checked })} /> Destaque</label>
                 </div>
               </div>
+              <div className="rounded-lg border border-white/10 p-3 bg-white/[0.03]">
+                <Label className="text-sm font-medium">Data limite de venda (opcional)</Label>
+                <Input
+                  type="datetime-local"
+                  className="mt-1"
+                  value={editProd.sales_deadline ? String(editProd.sales_deadline).slice(0, 16) : ""}
+                  onChange={(e) => setEditProd({ ...editProd, sales_deadline: e.target.value || null })}
+                />
+                <div className="text-[11px] opacity-60 mt-1">Após esta data as vendas ficam bloqueadas e um contador regressivo aparece no card.</div>
+              </div>
+
+
 
             </div>
           )}
