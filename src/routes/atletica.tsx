@@ -353,11 +353,11 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
   const athletic_id = items[0] ? undefined : undefined; // filled below from context
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg bg-neutral-900 text-white border-white/10">
         <DialogHeader>
-          <DialogTitle>Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
-          <DialogDescription>
-            Você será redirecionado para o Mercado Pago para escolher <strong>Pix</strong>, <strong>cartão de crédito</strong> (até 3x sem juros) ou <strong>cartão de débito</strong>. A confirmação é automática.
+          <DialogTitle className="text-white">Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
+          <DialogDescription className="text-neutral-300">
+            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>. A confirmação é automática.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -370,16 +370,13 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
           <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white" onClick={onClose}>Cancelar</Button>
           <Button
             disabled={saving}
-            style={{ background: primaryColor, color: "white" }}
-            className="hover:opacity-95 border-0"
+            className="bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-bold"
             onClick={async () => {
               setSaving(true);
               try {
-                // athletic_id do primeiro item — todos são da mesma atlética
-                // (garantido pelo scope da página /atletica)
                 const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
                 if (!prod) throw new Error("Produto não encontrado");
                 const r = await checkout({
@@ -600,52 +597,103 @@ function computeProductPricing(product: Product, isMember: boolean) {
   return { listPrice, basePrice, finalPrice, memberActive, showListPrice };
 }
 
+function useDeadlineCountdown(deadline?: string | null) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!deadline) return;
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, [deadline]);
+  if (!deadline) return { expired: false, label: null as string | null, active: false };
+  const end = new Date(deadline).getTime();
+  const diff = end - now;
+  if (diff <= 0) return { expired: true, label: "Vendas encerradas", active: true };
+  const d = Math.floor(diff / 86_400_000);
+  const h = Math.floor((diff % 86_400_000) / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  const label = d > 0 ? `Faltam ${d}d ${String(h).padStart(2, "0")}h` : h > 0 ? `Faltam ${h}h ${String(m).padStart(2, "0")}m` : `Faltam ${m}min`;
+  return { expired: false, label, active: true };
+}
+
 function ProductCard({ product, athletic, isMember }: { product: Product; athletic: Athletic; isMember: boolean }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const { listPrice, finalPrice, memberActive, showListPrice } = computeProductPricing(product, isMember);
   const cover = product.images?.[0];
   const stockLow = product.show_stock_warning && product.stock != null && product.stock > 0 &&
     (product.stock_warning_threshold == null || product.stock <= product.stock_warning_threshold);
+  const outOfStock = product.stock != null && product.stock <= 0;
+  const dl = useDeadlineCountdown(product.sales_deadline ?? null);
+  const { addItem } = useAtleticaCart();
+  const disabled = outOfStock || dl.expired;
   return (
     <>
       <button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className="group text-left w-full overflow-hidden rounded-xl bg-white/5 border border-white/10 text-white hover:border-white/40 hover:-translate-y-0.5 hover:shadow-2xl transition-all focus:outline-none focus:ring-2 focus:ring-white/40"
+        className="group text-left w-full overflow-hidden rounded-xl bg-neutral-900 border border-white/10 text-white hover:border-orange-500/50 hover:-translate-y-0.5 hover:shadow-2xl transition-all focus:outline-none focus:ring-2 focus:ring-orange-500/60"
       >
-        <div className="aspect-square bg-black/40 relative overflow-hidden">
+        <div className="aspect-square bg-black relative overflow-hidden">
           {cover
             ? <img src={cover} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             : <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-16" /></div>}
           <div className="absolute top-2 left-2 flex flex-col gap-1">
-            {product.is_new && <Badge style={{ background: athletic.secondary_color }}>NOVO</Badge>}
-            {product.discount_pct > 0 && <Badge className="bg-red-500">-{Math.round(product.discount_pct)}%</Badge>}
-            {memberActive && <Badge className="bg-amber-500 text-black"><Crown className="size-3 mr-0.5" />SÓCIO</Badge>}
-            {product.badge_text && <Badge style={{ background: athletic.primary_color }}>{product.badge_text}</Badge>}
+            {product.is_new && <Badge className="bg-orange-500 text-white border-0">NOVO</Badge>}
+            {product.discount_pct > 0 && <Badge className="bg-orange-600 text-white border-0">-{Math.round(product.discount_pct)}%</Badge>}
+            {memberActive && <Badge className="bg-amber-500 text-black border-0"><Crown className="size-3 mr-0.5" />SÓCIO</Badge>}
+            {product.badge_text && <Badge className="bg-emerald-700 text-white border-0">{product.badge_text}</Badge>}
           </div>
           {product.images && product.images.length > 1 && (
-            <Badge className="absolute top-2 right-2 bg-black/70 border-white/20 text-[10px]">+{product.images.length - 1}</Badge>
+            <Badge className="absolute top-2 right-2 bg-black/70 border border-white/20 text-[10px]">+{product.images.length - 1}</Badge>
           )}
-          {stockLow && (
-            <Badge className="absolute bottom-10 right-2 bg-orange-500 text-white text-[10px] shadow-lg">
+          {dl.active && !dl.expired && (
+            <Badge className="absolute top-2 right-2 mt-6 bg-orange-500/95 text-white border-0 text-[10px] flex items-center gap-1 shadow-lg">
+              <Clock className="size-3" /> {dl.label}
+            </Badge>
+          )}
+          {dl.expired && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+              <span className="px-3 py-1.5 rounded-full bg-neutral-900 border border-orange-500/40 text-orange-400 text-xs font-black uppercase tracking-wider">Vendas Encerradas</span>
+            </div>
+          )}
+          {stockLow && !dl.expired && (
+            <Badge className="absolute bottom-10 right-2 bg-orange-500 text-white border-0 text-[10px] shadow-lg">
               Últimas {product.stock}!
             </Badge>
           )}
-          {product.second_item_discount_pct > 0 && (
-            <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-[11px] font-black uppercase tracking-wider text-white"
-              style={{ background: "linear-gradient(90deg, #f59e0b, #ef4444)" }}>
-              🔥 -{Math.round(product.second_item_discount_pct)}% na 2ª peça
+          {product.second_item_discount_pct > 0 && !dl.expired && (
+            <div className="absolute bottom-0 inset-x-0 py-1.5 text-center text-[11px] font-black uppercase tracking-wider text-white bg-orange-600/95 border-t border-orange-400/60">
+              -{Math.round(product.second_item_discount_pct)}% na 2ª peça
             </div>
           )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-            <span className="px-3 py-1.5 rounded-full bg-white text-black text-xs font-black uppercase tracking-wider">Ver produto</span>
-          </div>
         </div>
-        <div className="p-3 space-y-1">
+        <div className="p-3 space-y-2">
           <div className="font-bold text-sm leading-tight line-clamp-2 h-10">{product.title}</div>
           <div className="flex items-baseline gap-2">
-            {showListPrice && <span className="text-xs line-through opacity-50">R$ {listPrice.toFixed(2)}</span>}
-            <span className="font-black text-lg" style={{ color: athletic.primary_color }}>R$ {finalPrice.toFixed(2)}</span>
+            {showListPrice && <span className="text-xs line-through opacity-40">R$ {listPrice.toFixed(2)}</span>}
+            <span className="font-black text-lg text-white">R$ {finalPrice.toFixed(2)}</span>
+          </div>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-disabled={disabled}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (disabled) return;
+              addItem({
+                product_id: product.id, title: product.title, cover: cover ?? null,
+                unit_price: Math.round(finalPrice * 100) / 100, list_price: Math.round(listPrice * 100) / 100,
+                second_item_discount_pct: product.second_item_discount_pct ?? 0,
+                max_stock: product.stock ?? null,
+              }, 1);
+              toast.success("Adicionado ao carrinho");
+            }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (e.currentTarget as HTMLDivElement).click(); } }}
+            className={`w-full mt-1 inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-black uppercase tracking-wider transition ${
+              disabled ? "bg-neutral-800 text-neutral-500 cursor-not-allowed"
+                       : "bg-emerald-600 hover:bg-emerald-500 text-white"
+            }`}
+          >
+            <ShoppingCart className="size-3.5" /> {dl.expired ? "Vendas Encerradas" : outOfStock ? "Esgotado" : "Adicionar ao Carrinho"}
           </div>
         </div>
       </button>
@@ -666,20 +714,11 @@ function ProductCard({ product, athletic, isMember }: { product: Product; athlet
 function ProductDetailDialog({ open, onClose, product, athletic, isMember }: {
   open: boolean; onClose: () => void; product: Product; athletic: Athletic; isMember: boolean;
 }) {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const images = product.images && product.images.length > 0 ? product.images : [];
   const [idx, setIdx] = useState(0);
   useEffect(() => { if (open) setIdx(0); }, [open, product.id]);
-  const [buyOpen, setBuyOpen] = useState(false);
-  const [qty, setQty] = useState(1);
-  const [form, setForm] = useState({
-    buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
-    buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
-  });
-  const [saving, setSaving] = useState(false);
-  const [pixData, setPixData] = useState<any>(null);
-  const [pixOpen, setPixOpen] = useState(false);
-  const createPix = useServerFn(createProductPixPayment);
+  const { addItem } = useAtleticaCart();
 
   const prev = () => setIdx((i) => (images.length ? (i - 1 + images.length) % images.length : 0));
   const next = () => setIdx((i) => (images.length ? (i + 1) % images.length : 0));
@@ -691,180 +730,159 @@ function ProductDetailDialog({ open, onClose, product, athletic, isMember }: {
   const stockLow = product.show_stock_warning && product.stock != null && product.stock > 0 &&
     (product.stock_warning_threshold == null || product.stock <= product.stock_warning_threshold);
   const outOfStock = product.stock != null && product.stock <= 0;
+  const dl = useDeadlineCountdown(product.sales_deadline ?? null);
+  const disabled = outOfStock || dl.expired;
+  const cover = product.images?.[0];
+
+  const addToCart = (qty = 1) => {
+    if (disabled) return;
+    addItem({
+      product_id: product.id, title: product.title, cover: cover ?? null,
+      unit_price: Math.round(finalPrice * 100) / 100, list_price: Math.round(listPrice * 100) / 100,
+      second_item_discount_pct: secondDiscPct,
+      max_stock: product.stock ?? null,
+    }, qty);
+    toast.success(qty > 1 ? `${qty} unidades adicionadas ao carrinho` : "Adicionado ao carrinho");
+    onClose();
+  };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[92vh] overflow-y-auto bg-white text-neutral-900 border-neutral-200">
-          <div className="grid md:grid-cols-2 gap-0">
-            {/* Galeria */}
-            <div className="relative aspect-square bg-neutral-100 group">
-              {images.length > 0 ? (
-                <img src={images[idx]} alt={product.title} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-24" /></div>
-              )}
-              {images.length > 1 && (
-                <>
-                  <button
-                    type="button" onClick={prev} aria-label="Imagem anterior"
-                    className="absolute left-3 top-1/2 -translate-y-1/2 size-10 rounded-full bg-white/90 hover:bg-white border border-neutral-200 flex items-center justify-center shadow-md">
-                    <ArrowLeft className="size-5 text-neutral-800" />
-                  </button>
-                  <button
-                    type="button" onClick={next} aria-label="Próxima imagem"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 size-10 rounded-full bg-white/90 hover:bg-white border border-neutral-200 flex items-center justify-center shadow-md">
-                    <ArrowLeft className="size-5 rotate-180 text-neutral-800" />
-                  </button>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                    {images.map((_, i) => (
-                      <button key={i} type="button" onClick={() => setIdx(i)} aria-label={`Imagem ${i + 1}`}
-                        className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-neutral-900" : "w-1.5 bg-neutral-400"}`} />
-                    ))}
-                  </div>
-                </>
-              )}
-              {/* thumbs */}
-              {images.length > 1 && (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden max-h-[92vh] overflow-y-auto bg-neutral-900 text-white border-white/10">
+        <div className="grid md:grid-cols-2 gap-0">
+          {/* Galeria */}
+          <div className="relative aspect-square bg-black group">
+            {images.length > 0 ? (
+              <img src={images[idx]} alt={product.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-24" /></div>
+            )}
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button" onClick={prev} aria-label="Imagem anterior"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 size-10 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 flex items-center justify-center shadow-md">
+                  <ArrowLeft className="size-5 text-white" />
+                </button>
+                <button
+                  type="button" onClick={next} aria-label="Próxima imagem"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 size-10 rounded-full bg-black/60 hover:bg-black/80 border border-white/20 flex items-center justify-center shadow-md">
+                  <ArrowLeft className="size-5 rotate-180 text-white" />
+                </button>
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  {images.map((_, i) => (
+                    <button key={i} type="button" onClick={() => setIdx(i)} aria-label={`Imagem ${i + 1}`}
+                      className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-orange-400" : "w-1.5 bg-white/40"}`} />
+                  ))}
+                </div>
                 <div className="hidden md:flex absolute top-3 left-3 flex-col gap-2">
                   {images.slice(0, 4).map((url, i) => (
                     <button key={url + i} type="button" onClick={() => setIdx(i)}
-                      className={`size-14 rounded-md overflow-hidden border-2 ${i === idx ? "border-neutral-900" : "border-white/80"} shadow`}>
+                      className={`size-14 rounded-md overflow-hidden border-2 ${i === idx ? "border-orange-400" : "border-white/30"} shadow`}>
                       <img src={url} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
+              </>
+            )}
+            {dl.expired && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+                <span className="px-4 py-2 rounded-full bg-neutral-900 border border-orange-500/40 text-orange-400 text-sm font-black uppercase tracking-wider">Vendas Encerradas</span>
+              </div>
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="p-6 md:p-8 space-y-4 flex flex-col bg-neutral-900">
+            <DialogHeader className="text-left">
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {product.is_new && <Badge className="bg-orange-500 text-white border-0">NOVO</Badge>}
+                {product.discount_pct > 0 && <Badge className="bg-orange-600 text-white border-0">-{Math.round(product.discount_pct)}% OFF</Badge>}
+                {memberActive && <Badge className="bg-amber-500 text-black border-0"><Crown className="size-3 mr-0.5" />Preço sócio</Badge>}
+                {product.badge_text && <Badge className="bg-emerald-700 text-white border-0">{product.badge_text}</Badge>}
+                {dl.active && !dl.expired && (
+                  <Badge className="bg-orange-500/20 text-orange-300 border border-orange-500/40"><Clock className="size-3 mr-1" />{dl.label}</Badge>
+                )}
+              </div>
+              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-white">{product.title}</DialogTitle>
+              {product.description && (
+                <DialogDescription className="text-neutral-300 whitespace-pre-line pt-1">{product.description}</DialogDescription>
+              )}
+            </DialogHeader>
+
+            <div className="rounded-xl border border-white/10 bg-neutral-950 p-4">
+              <div className="flex items-baseline gap-3">
+                {showListPrice && <span className="text-sm line-through text-neutral-500">R$ {listPrice.toFixed(2)}</span>}
+                <span className="font-black text-4xl text-white">R$ {finalPrice.toFixed(2)}</span>
+              </div>
+              <div className="text-xs text-neutral-400 mt-1">
+                ou até 3x sem juros no cartão • Pix com aprovação automática
+              </div>
+              {memberActive && (
+                <div className="mt-2 text-xs font-bold text-amber-400 flex items-center gap-1">
+                  <Crown className="size-3.5" /> Você economizou R$ {(listPrice - Number(product.member_price!)).toFixed(2)} como sócio
+                </div>
               )}
             </div>
 
-            {/* Info */}
-            <div className="p-6 md:p-8 space-y-4 flex flex-col">
-              <DialogHeader className="text-left">
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {product.is_new && <Badge style={{ background: athletic.secondary_color }}>NOVO</Badge>}
-                  {product.discount_pct > 0 && <Badge className="bg-red-500">-{Math.round(product.discount_pct)}% OFF</Badge>}
-                  {memberActive && <Badge className="bg-amber-500 text-black"><Crown className="size-3 mr-0.5" />Preço sócio</Badge>}
-                  {product.badge_text && <Badge style={{ background: athletic.primary_color }}>{product.badge_text}</Badge>}
+            {/* Promo 2ª peça — card sutil escuro com borda laranja */}
+            {secondDiscPct > 0 && !dl.expired && (
+              <div className="rounded-xl border border-orange-500/30 bg-neutral-800 p-4">
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-orange-400 mb-1">
+                  <Flame className="size-3.5" /> Oferta combinada
                 </div>
-                <DialogTitle className="text-2xl md:text-3xl font-black tracking-tight text-neutral-900">{product.title}</DialogTitle>
-                {product.description && (
-                  <DialogDescription className="text-neutral-600 whitespace-pre-line pt-1">{product.description}</DialogDescription>
-                )}
-              </DialogHeader>
-
-              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4">
-                <div className="flex items-baseline gap-3">
-                  {showListPrice && <span className="text-sm line-through text-neutral-400">R$ {listPrice.toFixed(2)}</span>}
-                  <span className="font-black text-4xl text-neutral-900">R$ {finalPrice.toFixed(2)}</span>
+                <div className="text-sm font-bold text-white leading-tight">
+                  Leve a 2ª peça com R$ {secondPieceSavings.toFixed(2)} de desconto
                 </div>
-                <div className="text-xs text-neutral-500 mt-1">
-                  ou até 3x sem juros no cartão • Pix com aprovação automática
+                <div className="text-xs text-neutral-300 mt-1">
+                  Duas unidades por <strong className="text-white">R$ {totalForTwo.toFixed(2)}</strong> — economia de {Math.round(secondDiscPct)}% na segunda.
                 </div>
-                {memberActive && (
-                  <div className="mt-2 text-xs font-bold text-amber-700 flex items-center gap-1">
-                    <Crown className="size-3.5" /> Você economizou R$ {(listPrice - Number(product.member_price!)).toFixed(2)} como sócio
-                  </div>
-                )}
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => addToCart(2)}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-orange-300 hover:text-orange-200 disabled:opacity-50">
+                  Adicionar 2 ao carrinho →
+                </button>
               </div>
+            )}
 
-              {/* Promo 2ª peça — visual e-commerce */}
-              {secondDiscPct > 0 && (
-                <div className="rounded-xl overflow-hidden border-2 border-red-500/40 shadow-md">
-                  <div className="py-1.5 px-3 text-[10px] font-black uppercase tracking-widest text-white text-center"
-                    style={{ background: "linear-gradient(90deg, #dc2626, #f59e0b)" }}>
-                    ★ Promoção Relâmpago
-                  </div>
-                  <div className="p-3 bg-gradient-to-br from-red-50 to-amber-50">
-                    <div className="text-sm font-black text-red-700 leading-tight">
-                      Garanta a 2ª peça com R$ {secondPieceSavings.toFixed(2)} de desconto
-                    </div>
-                    <div className="text-xs text-neutral-700 mt-1">
-                      Leve 2 unidades por <strong>R$ {totalForTwo.toFixed(2)}</strong> — economia de {Math.round(secondDiscPct)}% na segunda.
-                    </div>
-                    <button
-                      type="button"
-                      disabled={outOfStock}
-                      onClick={() => { setQty(2); if (user) setBuyOpen(true); }}
-                      className="mt-2 text-xs font-bold uppercase tracking-wider text-red-700 hover:text-red-800 underline underline-offset-2 disabled:opacity-50">
-                      Aproveitar promoção →
-                    </button>
-                  </div>
-                </div>
+            <div className="text-xs text-neutral-400 flex flex-wrap gap-x-3 gap-y-1">
+              {outOfStock ? (
+                <span className="text-orange-400 font-bold">Esgotado</span>
+              ) : product.show_stock_warning && product.stock != null ? (
+                <span className={stockLow ? "text-orange-400 font-bold" : ""}>
+                  {stockLow ? `Apenas ${product.stock} em estoque!` : `${product.stock} em estoque`}
+                </span>
+              ) : (
+                <span>✓ Disponível</span>
               )}
+              {images.length > 0 && <span>• {images.length} foto{images.length > 1 ? "s" : ""}</span>}
+              <span>• Retirada com a diretoria</span>
+            </div>
 
-              <div className="text-xs text-neutral-600 flex flex-wrap gap-x-3 gap-y-1">
-                {outOfStock ? (
-                  <span className="text-red-600 font-bold">Esgotado</span>
-                ) : product.show_stock_warning && product.stock != null ? (
-                  <span className={stockLow ? "text-orange-600 font-bold" : ""}>
-                    {stockLow ? `⚡ Apenas ${product.stock} em estoque!` : `${product.stock} em estoque`}
-                  </span>
-                ) : (
-                  <span>✓ Disponível</span>
-                )}
-                {images.length > 0 && <span>• {images.length} foto{images.length > 1 ? "s" : ""}</span>}
-                <span>• Retirada com a diretoria</span>
-              </div>
-
-              <div className="mt-auto pt-4 space-y-2">
-                {user ? (
-                  <>
-                    <Button size="lg" className="w-full font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95"
-                      style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }}
-                      disabled={outOfStock}
-                      onClick={() => setBuyOpen(true)}>
-                      <ShoppingBag className="size-4" /> {outOfStock ? "Esgotado" : "Comprar Agora"}
-                    </Button>
-                    <Button size="sm" variant="outline" className="w-full text-neutral-800 border-neutral-300 hover:bg-neutral-100" onClick={onClose}>
-                      Continuar comprando
-                    </Button>
-                  </>
-                ) : (
-                  <Button size="lg" className="w-full" asChild>
-                    <Link to="/auth"><ShoppingBag className="size-4" /> Entrar para comprar</Link>
+            <div className="mt-auto pt-4 space-y-2">
+              {user ? (
+                <>
+                  <Button size="lg" className="w-full font-black uppercase tracking-wider text-white border-0 shadow-lg bg-emerald-600 hover:bg-emerald-500"
+                    disabled={disabled}
+                    onClick={() => addToCart(1)}>
+                    <ShoppingCart className="size-4" /> {dl.expired ? "Vendas Encerradas" : outOfStock ? "Esgotado" : "Adicionar ao Carrinho"}
                   </Button>
-                )}
-              </div>
+                  <Button size="sm" variant="ghost" className="w-full text-neutral-300 hover:bg-white/5 hover:text-white" onClick={onClose}>
+                    Continuar comprando
+                  </Button>
+                </>
+              ) : (
+                <Button size="lg" className="w-full bg-emerald-600 hover:bg-emerald-500 border-0" asChild>
+                  <Link to="/auth"><ShoppingCart className="size-4" /> Entrar para comprar</Link>
+                </Button>
+              )}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Compra */}
-      <Dialog open={buyOpen} onOpenChange={setBuyOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Finalizar compra — {product.title}</DialogTitle>
-            <DialogDescription>Preencha seus dados e escolha a forma de pagamento.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div><Label>Quantidade</Label><Input type="number" min={1} max={product.stock ?? 20} value={qty} onChange={(e) => setQty(Math.max(1, +e.target.value))} /></div>
-            <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
-              <div><Label>Telefone</Label><Input value={form.buyer_phone ?? ""} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
-            </div>
-            <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
-            <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-            <div className="rounded-lg bg-neutral-100 p-3 text-xs text-neutral-600">
-              Pagamento via <strong>Pix</strong> com confirmação automática. Após aprovado, a diretoria libera a retirada.
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBuyOpen(false)}>Cancelar</Button>
-            <Button disabled={saving} onClick={async () => {
-              setSaving(true);
-              try {
-                const pix = await createPix({ data: { product_id: product.id, quantity: qty, ...form } });
-                setPixData(pix); setBuyOpen(false); setPixOpen(true);
-              } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Gerando Pix..." : "Comprar Agora"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title={`Pix — ${product.title}`} />
-    </>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -882,7 +900,7 @@ function PublicEvents({ athletic, isMember }: { athletic: Athletic; isMember: bo
     return <EmptyDark icon={<PartyPopper className="size-12" />} title="Nenhum evento no momento" desc="Fique de olho! Novidades em breve." />;
   }
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-6">
       {events.map((e) => (
         <EventCard key={e.id} event={e} athletic={athletic} isMember={isMember} />
       ))}
@@ -895,6 +913,7 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
   const price = isMember ? e.price_member : e.price_visitor;
   const remaining = e.total_tickets - e.tickets_sold;
   const [open, setOpen] = useState(false);
+  const [method, setMethod] = useState<"pix" | "card">("pix");
   const [form, setForm] = useState({
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "",
@@ -903,53 +922,82 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
   const createPix = useServerFn(createEventTicketPixPayment);
+  const createCard = useServerFn(createEventTicketCardPayment);
   const canBuy = e.online_sales_open && remaining > 0 && price > 0;
+
   return (
-    <Card className="overflow-hidden bg-white/5 border-white/10 text-white group">
-      <div className="aspect-video bg-black/40 relative">
-        {e.image_url
-          ? <img src={e.image_url} alt={e.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-          : <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-        <div className="absolute bottom-3 left-3 right-3">
-          <h3 className="font-black text-xl uppercase tracking-tight">{e.title}</h3>
-          {e.starts_at && <p className="text-xs opacity-80">{new Date(e.starts_at).toLocaleString("pt-BR")}</p>}
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 shadow-2xl min-h-[420px] md:min-h-[380px]">
+      {/* Background */}
+      {e.image_url ? (
+        <img src={e.image_url} alt={e.title} className="absolute inset-0 w-full h-full object-cover" />
+      ) : (
+        <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${e.theme_color ?? athletic.primary_color}, ${athletic.secondary_color})` }} />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/30" />
+
+      {/* Content grid */}
+      <div className="relative grid md:grid-cols-[minmax(0,1fr)_360px] gap-6 p-6 md:p-8 min-h-[420px] md:min-h-[380px]">
+        <div className="flex flex-col justify-end">
+          {e.starts_at && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/20 border border-orange-500/40 text-orange-200 text-xs font-bold mb-3 w-fit">
+              <Calendar className="size-3.5" /> {new Date(e.starts_at).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </div>
+          )}
+          <h3 className="font-black text-3xl md:text-5xl uppercase tracking-tight text-white drop-shadow-2xl">{e.title}</h3>
+          {e.location && <p className="mt-2 text-sm text-white/80 flex items-center gap-1.5"><MapPin className="size-3.5" /> {e.location}</p>}
         </div>
-      </div>
-      <CardContent className="p-4 space-y-3">
-        {e.location && <p className="text-xs opacity-70">📍 {e.location}</p>}
-        {e.description && <p className="text-sm opacity-80 line-clamp-3">{e.description}</p>}
-        <div className="flex justify-between items-center pt-2 border-t border-white/10">
-          <div>
-            <div className="text-xs opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
-            <div className="font-black text-2xl" style={{ color: athletic.primary_color }}>
-              {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
+
+        {/* Glass painel lateral */}
+        <div className="self-end md:self-center rounded-2xl backdrop-blur-md bg-black/40 border border-white/15 p-5 space-y-3 shadow-2xl">
+          {e.description && <p className="text-sm text-white/85 line-clamp-4">{e.description}</p>}
+          <div className="flex justify-between items-baseline pt-3 border-t border-white/10">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
+              <div className="font-black text-3xl text-white">
+                {price === 0 ? "Grátis" : `R$ ${price.toFixed(2)}`}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-widest opacity-60">Ingressos</div>
+              <div className="font-bold text-white">{remaining}<span className="opacity-60">/{e.total_tickets}</span></div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-xs opacity-60">Disponíveis</div>
-            <div className="font-bold">{remaining} / {e.total_tickets}</div>
-          </div>
+          {!user ? (
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider" asChild>
+              <Link to="/auth"><Ticket className="size-4" /> Entrar para comprar</Link>
+            </Button>
+          ) : !canBuy ? (
+            <Button className="w-full bg-neutral-800 text-neutral-400 border-0" disabled>
+              <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
+            </Button>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setMethod("pix")}
+                  className={`p-2.5 rounded-lg border text-left transition ${method === "pix" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
+                  <div className="font-bold text-xs text-white">Pix</div>
+                  <div className="text-[10px] text-white/70">Aprovação em segundos</div>
+                </button>
+                <button type="button" onClick={() => setMethod("card")}
+                  className={`p-2.5 rounded-lg border text-left transition ${method === "card" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
+                  <div className="font-bold text-xs text-white">Cartão</div>
+                  <div className="text-[10px] text-white/70">Crédito ou débito</div>
+                </button>
+              </div>
+              <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider shadow-lg" onClick={() => setOpen(true)}>
+                <Ticket className="size-4" /> Garantir ingresso
+              </Button>
+            </>
+          )}
         </div>
-        {!user ? (
-          <Button className="w-full" asChild><Link to="/auth"><Ticket className="size-4" /> Entrar para comprar</Link></Button>
-        ) : !canBuy ? (
-          <Button className="w-full" disabled>
-            <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
-          </Button>
-        ) : (
-          <Button className="w-full" onClick={() => setOpen(true)}>
-            <Ticket className="size-4" /> Comprar via Pix
-          </Button>
-        )}
-      </CardContent>
+      </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-neutral-900 text-white border-white/10">
           <DialogHeader>
-            <DialogTitle>Ingresso — {e.title}</DialogTitle>
-            <DialogDescription>
-              Valor {isMember ? "sócio" : "visitante"}: <strong>R$ {price.toFixed(2)}</strong>. Confirmação automática após o Pix.
+            <DialogTitle className="text-white">Ingresso — {e.title}</DialogTitle>
+            <DialogDescription className="text-neutral-300">
+              Valor {isMember ? "sócio" : "visitante"}: <strong className="text-white">R$ {price.toFixed(2)}</strong>. Pagamento por <strong>{method === "pix" ? "Pix" : "cartão (crédito/débito)"}</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -961,20 +1009,27 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
             <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(ev) => setForm({ ...form, buyer_cpf: ev.target.value })} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button disabled={saving} onClick={async () => {
+            <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-500 border-0" disabled={saving} onClick={async () => {
               setSaving(true);
               try {
-                const pix = await createPix({ data: { event_id: e.id, ...form } });
-                setPixData(pix); setOpen(false); setPixOpen(true);
+                if (method === "pix") {
+                  const pix = await createPix({ data: { event_id: e.id, ...form } });
+                  setPixData(pix); setOpen(false); setPixOpen(true);
+                } else {
+                  const c = await createCard({ data: { event_id: e.id, ...form } });
+                  setOpen(false);
+                  window.location.href = c.init_point;
+                  return;
+                }
               } catch (err: any) { toast.error(err?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Gerando Pix..." : "Gerar Pix"}</Button>
+            }}>{saving ? "Processando..." : method === "pix" ? "Gerar Pix" : "Ir ao cartão"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title={`Pix — ${e.title}`} />
-    </Card>
+    </div>
   );
 }
 
@@ -1317,6 +1372,18 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                   <label className="flex items-center gap-1 text-sm"><input type="checkbox" checked={!!editProd.is_highlight} onChange={(e) => setEditProd({ ...editProd, is_highlight: e.target.checked })} /> Destaque</label>
                 </div>
               </div>
+              <div className="rounded-lg border border-white/10 p-3 bg-white/[0.03]">
+                <Label className="text-sm font-medium">Data limite de venda (opcional)</Label>
+                <Input
+                  type="datetime-local"
+                  className="mt-1"
+                  value={editProd.sales_deadline ? String(editProd.sales_deadline).slice(0, 16) : ""}
+                  onChange={(e) => setEditProd({ ...editProd, sales_deadline: e.target.value || null })}
+                />
+                <div className="text-[11px] opacity-60 mt-1">Após esta data as vendas ficam bloqueadas e um contador regressivo aparece no card.</div>
+              </div>
+
+
 
             </div>
           )}
