@@ -186,6 +186,9 @@ function HomePage() {
         </div>
       </section>
 
+      {/* BANNER DESTAQUE — Coleção vigente AAAMD */}
+      <FeaturedCollectionBanner />
+
       {/* TABS */}
       <main className="max-w-7xl mx-auto px-4 py-12">
         <Tabs defaultValue="ligas" className="w-full">
