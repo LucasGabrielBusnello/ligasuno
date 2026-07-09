@@ -182,7 +182,10 @@ function AtleticaPage() {
       </section>
 
       {/* MARQUEE COLEÇÕES + ESPORTES */}
-      <CollectionsMarquee athletic={ath} />
+      <CollectionsMarquee athletic={ath} onOpenCollection={(colId) => {
+        window.dispatchEvent(new CustomEvent("aaamd:filter-collection", { detail: colId }));
+        document.getElementById("produtos-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }} />
       <SportsShowcase athletic={ath} />
 
 
@@ -328,14 +331,17 @@ function CartButton({ athleticName, primaryColor, accentColor }: { athleticName:
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         primaryColor={primaryColor}
+        accentColor={accentColor}
       />
     </>
   );
 }
 
-function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; onClose: () => void; primaryColor: string }) {
-  const { items, total, clear } = useAtleticaCart();
+function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open: boolean; onClose: () => void; primaryColor: string; accentColor: string }) {
+  const { items, total, subtotal, savings, clear } = useAtleticaCart();
   const { profile } = useAuth();
+  const [athLogo, setAthLogo] = useState<string | null>(null);
+  const [athName, setAthName] = useState<string>("");
   const [form, setForm] = useState({
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
@@ -349,31 +355,70 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
       buyer_phone: f.buyer_phone || profile.phone || "",
     }));
   }, [open, profile]);
+  useEffect(() => {
+    if (!open || items.length === 0) return;
+    (async () => {
+      const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
+      if (!prod) return;
+      const { data: ath } = await supabase.from("athletics").select("logo_url,name,short_name").eq("id", (prod as any).athletic_id).maybeSingle();
+      if (ath) { setAthLogo((ath as any).logo_url); setAthName((ath as any).short_name ?? (ath as any).name); }
+    })();
+  }, [open, items]);
   if (items.length === 0) return null;
-  const athletic_id = items[0] ? undefined : undefined; // filled below from context
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-neutral-900 text-white border-white/10">
-        <DialogHeader>
-          <DialogTitle className="text-white">Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
-          <DialogDescription className="text-neutral-300">
-            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>. A confirmação é automática.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
-            <div><Label>Telefone</Label><Input value={form.buyer_phone} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
+      <DialogContent className="max-w-lg bg-neutral-950 text-white border-white/10 p-0 overflow-hidden">
+        {/* Header temático da atlética */}
+        <div className="relative px-6 py-5 border-b border-white/10" style={{ background: `linear-gradient(135deg, ${primaryColor}22, transparent 60%)` }}>
+          <div className="flex items-center gap-3">
+            {athLogo ? (
+              <div className="size-12 rounded-full overflow-hidden bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                <img src={athLogo} alt={athName} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="size-12 rounded-full flex items-center justify-center shrink-0" style={{ background: primaryColor }}>
+                <Shield className="size-6 text-white" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-widest opacity-70 font-bold">Checkout {athName}</div>
+              <DialogTitle className="text-white text-xl font-black leading-tight truncate">Finalizar pedido</DialogTitle>
+            </div>
+            <div className="ml-auto text-right shrink-0">
+              <div className="text-[10px] uppercase opacity-70 font-bold tracking-widest">Total</div>
+              <div className="text-2xl font-black" style={{ color: accentColor }}>R$ {total.toFixed(2)}</div>
+            </div>
           </div>
-          <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
-          <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white" onClick={onClose}>Cancelar</Button>
+
+        <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+          <DialogDescription className="text-neutral-300 text-sm">
+            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>.
+          </DialogDescription>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1 text-sm">
+            <div className="flex justify-between opacity-80"><span>Subtotal</span><span>R$ {subtotal.toFixed(2)}</span></div>
+            {savings > 0 && <div className="flex justify-between" style={{ color: accentColor }}><span>Descontos</span><span>- R$ {savings.toFixed(2)}</span></div>}
+            <div className="flex justify-between font-black pt-1 border-t border-white/10 mt-1"><span>Total</span><span style={{ color: accentColor }}>R$ {total.toFixed(2)}</span></div>
+          </div>
+
+          <div className="space-y-3">
+            <div><Label>Nome completo *</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>E-mail *</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
+              <div><Label>Telefone</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_phone} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
+            </div>
+            <div><Label>CPF *</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
+            <div><Label>Observações (tamanho, cor…)</Label><Textarea className="bg-white/5 border-white/15 rounded-lg" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+          </div>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2">
+          <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
           <Button
             disabled={saving}
-            className="bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-bold"
+            className="rounded-lg font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95 transition"
+            style={{ background: accentColor, boxShadow: `0 10px 30px -12px ${accentColor}` }}
             onClick={async () => {
               setSaving(true);
               try {
@@ -390,7 +435,7 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
                 window.location.href = r.init_point;
               } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(false); }
             }}>
-            {saving ? "Redirecionando..." : "Ir para pagamento"}
+            <CreditCard className="size-4" /> {saving ? "Redirecionando..." : "Finalizar Compra"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -568,13 +613,22 @@ function PublicProducts({ athletic, isMember }: { athletic: Athletic; isMember: 
     })();
   }, [athletic.id]);
 
+  useEffect(() => {
+    const onFilter = (e: Event) => {
+      const id = (e as CustomEvent).detail as string;
+      if (id) setFilter(id);
+    };
+    window.addEventListener("aaamd:filter-collection", onFilter as EventListener);
+    return () => window.removeEventListener("aaamd:filter-collection", onFilter as EventListener);
+  }, []);
+
   const filtered = filter === "all" ? prods : prods.filter((p) => p.collection_id === filter);
   if (prods.length === 0) {
-    return <EmptyDark icon={<Store className="size-12" />} title="Nenhum produto disponível ainda"
-      desc="A diretoria ainda não publicou produtos. Volte em breve!" />;
+    return <div id="produtos-section"><EmptyDark icon={<Store className="size-12" />} title="Nenhum produto disponível ainda"
+      desc="A diretoria ainda não publicou produtos. Volte em breve!" /></div>;
   }
   return (
-    <div className="space-y-6">
+    <div id="produtos-section" className="space-y-6">
       {cols.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2">
           <Chip active={filter === "all"} onClick={() => setFilter("all")}>Todos</Chip>
@@ -1768,37 +1822,87 @@ function EmptyDark({ icon, title, desc, action }: { icon: React.ReactNode; title
   );
 }
 
-/* ============ COLEÇÕES — MARQUEE (auto-scroll) ============ */
-function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
+/* ============ COLEÇÕES — RESPONSIVO (1 = full, 2 = split, 3+ = carrossel) ============ */
+function CollectionsMarquee({ athletic, onOpenCollection }: { athletic: Athletic; onOpenCollection?: (colId: string) => void }) {
   const [cols, setCols] = useState<Collection[]>([]);
+  const [prodsByCol, setProdsByCol] = useState<Record<string, { id: string; image: string | null; title: string }[]>>({});
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("athletic_collections")
         .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
-      setCols((data as any) ?? []);
+      const list = (data as any as Collection[]) ?? [];
+      setCols(list);
+      if (list.length > 0) {
+        const ids = list.map((c) => c.id);
+        const { data: prods } = await supabase.from("athletic_products")
+          .select("id,title,images,collection_id,active")
+          .eq("athletic_id", athletic.id)
+          .eq("active", true)
+          .in("collection_id", ids);
+        const map: Record<string, { id: string; image: string | null; title: string }[]> = {};
+        (prods ?? []).forEach((p: any) => {
+          const arr = map[p.collection_id] ?? (map[p.collection_id] = []);
+          arr.push({ id: p.id, title: p.title, image: (p.images?.[0] as string) ?? null });
+        });
+        setProdsByCol(map);
+      }
     })();
   }, [athletic.id]);
   if (cols.length === 0) return null;
-  const useMarquee = cols.length >= 3;
-  const loop = useMarquee ? [...cols, ...cols] : cols;
 
-  const CardBlock = (c: Collection, keySuffix: string | number) => (
-    <div key={`${c.id}-${keySuffix}`} className="w-72 shrink-0 group cursor-pointer">
-      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.02] transition-transform">
-        {c.cover_url ? (
-          <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-        ) : (
-          <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.primary_color }}>Coleção</div>
-          <div className="text-2xl font-black uppercase tracking-tight leading-tight">{c.name}</div>
-          {c.description && <div className="text-xs opacity-80 mt-1 line-clamp-2">{c.description}</div>}
+  const layout: "single" | "split" | "carousel" =
+    cols.length === 1 ? "single" : cols.length === 2 ? "split" : "carousel";
+
+  const ProductStrip = ({ items }: { items: { id: string; image: string | null; title: string }[] }) => {
+    if (!items || items.length === 0) return null;
+    const loop = items.length >= 4 ? [...items, ...items] : items;
+    return (
+      <div className="relative overflow-hidden marquee-mask border-t border-white/10 bg-black/40">
+        <div className={`flex gap-2 py-2 px-2 ${items.length >= 4 ? "w-max animate-marquee-slow hover:[animation-play-state:paused]" : "flex-wrap justify-center"}`}>
+          {loop.map((p, i) => (
+            <div key={`${p.id}-${i}`} className="size-14 shrink-0 rounded-md overflow-hidden bg-white/5 border border-white/10">
+              {p.image ? <img src={p.image} alt={p.title} className="w-full h-full object-cover" loading="lazy" /> : null}
+            </div>
+          ))}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const CardBlock = (c: Collection, opts: { size: "sm" | "md" | "lg"; keySuffix?: string | number }) => {
+    const ratio = opts.size === "lg" ? "aspect-[21/9]" : opts.size === "md" ? "aspect-[4/5]" : "aspect-[4/5]";
+    const width = opts.size === "lg" ? "w-full" : opts.size === "md" ? "w-full" : "w-72 shrink-0";
+    const titleSize = opts.size === "lg" ? "text-4xl md:text-5xl" : opts.size === "md" ? "text-2xl md:text-3xl" : "text-2xl";
+    const items = prodsByCol[c.id] ?? [];
+    return (
+      <div
+        key={`${c.id}-${opts.keySuffix ?? "x"}`}
+        className={`${width} group cursor-pointer`}
+        onClick={() => onOpenCollection?.(c.id)}>
+        <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.01] transition-transform">
+          <div className={`relative ${ratio}`}>
+            {c.cover_url ? (
+              <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+            ) : (
+              <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-5">
+              <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.secondary_color }}>Coleção</div>
+              <div className={`${titleSize} font-black uppercase tracking-tight leading-tight`}>{c.name}</div>
+              {c.description && <div className="text-xs md:text-sm opacity-80 mt-1 line-clamp-2 max-w-xl">{c.description}</div>}
+              {items.length > 0 && (
+                <div className="mt-3 text-[11px] uppercase tracking-widest font-bold opacity-80">
+                  {items.length} peça{items.length > 1 ? "s" : ""} • toque para ver
+                </div>
+              )}
+            </div>
+          </div>
+          <ProductStrip items={items} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <section className="relative py-10 border-y border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden">
@@ -1809,15 +1913,21 @@ function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
         </div>
         <div className="text-xs opacity-60">{cols.length} coleção{cols.length > 1 ? "es" : ""}</div>
       </div>
-      {useMarquee ? (
-        <div className="marquee-mask">
-          <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused]">
-            {loop.map((c, i) => CardBlock(c, i))}
-          </div>
+      {layout === "single" && (
+        <div className="max-w-7xl mx-auto px-4">
+          {CardBlock(cols[0], { size: "lg" })}
         </div>
-      ) : (
-        <div className="max-w-7xl mx-auto px-4 flex flex-wrap gap-5 justify-center">
-          {loop.map((c, i) => CardBlock(c, i))}
+      )}
+      {layout === "split" && (
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-5">
+          {cols.map((c) => CardBlock(c, { size: "md" }))}
+        </div>
+      )}
+      {layout === "carousel" && (
+        <div className="marquee-mask">
+          <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused] px-4">
+            {[...cols, ...cols].map((c, i) => CardBlock(c, { size: "sm", keySuffix: i }))}
+          </div>
         </div>
       )}
     </section>
