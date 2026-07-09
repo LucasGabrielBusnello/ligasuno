@@ -331,6 +331,7 @@ function CartButton({ athleticName, primaryColor, accentColor }: { athleticName:
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         primaryColor={primaryColor}
+        accentColor={accentColor}
       />
     </>
   );
