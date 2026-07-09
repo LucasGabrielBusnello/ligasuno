@@ -571,13 +571,22 @@ function PublicProducts({ athletic, isMember }: { athletic: Athletic; isMember: 
     })();
   }, [athletic.id]);
 
+  useEffect(() => {
+    const onFilter = (e: Event) => {
+      const id = (e as CustomEvent).detail as string;
+      if (id) setFilter(id);
+    };
+    window.addEventListener("aaamd:filter-collection", onFilter as EventListener);
+    return () => window.removeEventListener("aaamd:filter-collection", onFilter as EventListener);
+  }, []);
+
   const filtered = filter === "all" ? prods : prods.filter((p) => p.collection_id === filter);
   if (prods.length === 0) {
-    return <EmptyDark icon={<Store className="size-12" />} title="Nenhum produto disponível ainda"
-      desc="A diretoria ainda não publicou produtos. Volte em breve!" />;
+    return <div id="produtos-section"><EmptyDark icon={<Store className="size-12" />} title="Nenhum produto disponível ainda"
+      desc="A diretoria ainda não publicou produtos. Volte em breve!" /></div>;
   }
   return (
-    <div className="space-y-6">
+    <div id="produtos-section" className="space-y-6">
       {cols.length > 0 && (
         <div className="flex gap-2 overflow-x-auto pb-2">
           <Chip active={filter === "all"} onClick={() => setFilter("all")}>Todos</Chip>
