@@ -337,9 +337,11 @@ function CartButton({ athleticName, primaryColor, accentColor }: { athleticName:
   );
 }
 
-function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; onClose: () => void; primaryColor: string }) {
-  const { items, total, clear } = useAtleticaCart();
+function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open: boolean; onClose: () => void; primaryColor: string; accentColor: string }) {
+  const { items, total, subtotal, savings, clear } = useAtleticaCart();
   const { profile } = useAuth();
+  const [athLogo, setAthLogo] = useState<string | null>(null);
+  const [athName, setAthName] = useState<string>("");
   const [form, setForm] = useState({
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
@@ -353,31 +355,70 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
       buyer_phone: f.buyer_phone || profile.phone || "",
     }));
   }, [open, profile]);
+  useEffect(() => {
+    if (!open || items.length === 0) return;
+    (async () => {
+      const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
+      if (!prod) return;
+      const { data: ath } = await supabase.from("athletics").select("logo_url,name,short_name").eq("id", (prod as any).athletic_id).maybeSingle();
+      if (ath) { setAthLogo((ath as any).logo_url); setAthName((ath as any).short_name ?? (ath as any).name); }
+    })();
+  }, [open, items]);
   if (items.length === 0) return null;
-  const athletic_id = items[0] ? undefined : undefined; // filled below from context
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg bg-neutral-900 text-white border-white/10">
-        <DialogHeader>
-          <DialogTitle className="text-white">Finalizar pedido — R$ {total.toFixed(2)}</DialogTitle>
-          <DialogDescription className="text-neutral-300">
-            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>. A confirmação é automática.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div><Label>Nome completo *</Label><Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>E-mail *</Label><Input value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
-            <div><Label>Telefone</Label><Input value={form.buyer_phone} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
+      <DialogContent className="max-w-lg bg-neutral-950 text-white border-white/10 p-0 overflow-hidden">
+        {/* Header temático da atlética */}
+        <div className="relative px-6 py-5 border-b border-white/10" style={{ background: `linear-gradient(135deg, ${primaryColor}22, transparent 60%)` }}>
+          <div className="flex items-center gap-3">
+            {athLogo ? (
+              <div className="size-12 rounded-full overflow-hidden bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
+                <img src={athLogo} alt={athName} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="size-12 rounded-full flex items-center justify-center shrink-0" style={{ background: primaryColor }}>
+                <Shield className="size-6 text-white" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-widest opacity-70 font-bold">Checkout {athName}</div>
+              <DialogTitle className="text-white text-xl font-black leading-tight truncate">Finalizar pedido</DialogTitle>
+            </div>
+            <div className="ml-auto text-right shrink-0">
+              <div className="text-[10px] uppercase opacity-70 font-bold tracking-widest">Total</div>
+              <div className="text-2xl font-black" style={{ color: accentColor }}>R$ {total.toFixed(2)}</div>
+            </div>
           </div>
-          <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
-          <div><Label>Observações (tamanho, cor…)</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white" onClick={onClose}>Cancelar</Button>
+
+        <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
+          <DialogDescription className="text-neutral-300 text-sm">
+            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>.
+          </DialogDescription>
+
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1 text-sm">
+            <div className="flex justify-between opacity-80"><span>Subtotal</span><span>R$ {subtotal.toFixed(2)}</span></div>
+            {savings > 0 && <div className="flex justify-between" style={{ color: accentColor }}><span>Descontos</span><span>- R$ {savings.toFixed(2)}</span></div>}
+            <div className="flex justify-between font-black pt-1 border-t border-white/10 mt-1"><span>Total</span><span style={{ color: accentColor }}>R$ {total.toFixed(2)}</span></div>
+          </div>
+
+          <div className="space-y-3">
+            <div><Label>Nome completo *</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>E-mail *</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
+              <div><Label>Telefone</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_phone} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} /></div>
+            </div>
+            <div><Label>CPF *</Label><Input className="bg-white/5 border-white/15 rounded-lg" value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
+            <div><Label>Observações (tamanho, cor…)</Label><Textarea className="bg-white/5 border-white/15 rounded-lg" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+          </div>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2">
+          <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
           <Button
             disabled={saving}
-            className="bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-bold"
+            className="rounded-lg font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95 transition"
+            style={{ background: accentColor, boxShadow: `0 10px 30px -12px ${accentColor}` }}
             onClick={async () => {
               setSaving(true);
               try {
@@ -394,7 +435,7 @@ function CartCheckoutDialog({ open, onClose, primaryColor }: { open: boolean; on
                 window.location.href = r.init_point;
               } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(false); }
             }}>
-            {saving ? "Redirecionando..." : "Ir para pagamento"}
+            <CreditCard className="size-4" /> {saving ? "Redirecionando..." : "Finalizar Compra"}
           </Button>
         </DialogFooter>
       </DialogContent>
