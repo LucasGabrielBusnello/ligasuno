@@ -1768,37 +1768,87 @@ function EmptyDark({ icon, title, desc, action }: { icon: React.ReactNode; title
   );
 }
 
-/* ============ COLEÇÕES — MARQUEE (auto-scroll) ============ */
-function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
+/* ============ COLEÇÕES — RESPONSIVO (1 = full, 2 = split, 3+ = carrossel) ============ */
+function CollectionsMarquee({ athletic, onOpenCollection }: { athletic: Athletic; onOpenCollection?: (colId: string) => void }) {
   const [cols, setCols] = useState<Collection[]>([]);
+  const [prodsByCol, setProdsByCol] = useState<Record<string, { id: string; image: string | null; title: string }[]>>({});
   useEffect(() => {
     (async () => {
       const { data } = await supabase.from("athletic_collections")
         .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
-      setCols((data as any) ?? []);
+      const list = (data as any as Collection[]) ?? [];
+      setCols(list);
+      if (list.length > 0) {
+        const ids = list.map((c) => c.id);
+        const { data: prods } = await supabase.from("athletic_products")
+          .select("id,title,images,collection_id,active")
+          .eq("athletic_id", athletic.id)
+          .eq("active", true)
+          .in("collection_id", ids);
+        const map: Record<string, { id: string; image: string | null; title: string }[]> = {};
+        (prods ?? []).forEach((p: any) => {
+          const arr = map[p.collection_id] ?? (map[p.collection_id] = []);
+          arr.push({ id: p.id, title: p.title, image: (p.images?.[0] as string) ?? null });
+        });
+        setProdsByCol(map);
+      }
     })();
   }, [athletic.id]);
   if (cols.length === 0) return null;
-  const useMarquee = cols.length >= 3;
-  const loop = useMarquee ? [...cols, ...cols] : cols;
 
-  const CardBlock = (c: Collection, keySuffix: string | number) => (
-    <div key={`${c.id}-${keySuffix}`} className="w-72 shrink-0 group cursor-pointer">
-      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.02] transition-transform">
-        {c.cover_url ? (
-          <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-        ) : (
-          <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.primary_color }}>Coleção</div>
-          <div className="text-2xl font-black uppercase tracking-tight leading-tight">{c.name}</div>
-          {c.description && <div className="text-xs opacity-80 mt-1 line-clamp-2">{c.description}</div>}
+  const layout: "single" | "split" | "carousel" =
+    cols.length === 1 ? "single" : cols.length === 2 ? "split" : "carousel";
+
+  const ProductStrip = ({ items }: { items: { id: string; image: string | null; title: string }[] }) => {
+    if (!items || items.length === 0) return null;
+    const loop = items.length >= 4 ? [...items, ...items] : items;
+    return (
+      <div className="relative overflow-hidden marquee-mask border-t border-white/10 bg-black/40">
+        <div className={`flex gap-2 py-2 px-2 ${items.length >= 4 ? "w-max animate-marquee-slow hover:[animation-play-state:paused]" : "flex-wrap justify-center"}`}>
+          {loop.map((p, i) => (
+            <div key={`${p.id}-${i}`} className="size-14 shrink-0 rounded-md overflow-hidden bg-white/5 border border-white/10">
+              {p.image ? <img src={p.image} alt={p.title} className="w-full h-full object-cover" loading="lazy" /> : null}
+            </div>
+          ))}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const CardBlock = (c: Collection, opts: { size: "sm" | "md" | "lg"; keySuffix?: string | number }) => {
+    const ratio = opts.size === "lg" ? "aspect-[21/9]" : opts.size === "md" ? "aspect-[4/5]" : "aspect-[4/5]";
+    const width = opts.size === "lg" ? "w-full" : opts.size === "md" ? "w-full" : "w-72 shrink-0";
+    const titleSize = opts.size === "lg" ? "text-4xl md:text-5xl" : opts.size === "md" ? "text-2xl md:text-3xl" : "text-2xl";
+    const items = prodsByCol[c.id] ?? [];
+    return (
+      <div
+        key={`${c.id}-${opts.keySuffix ?? "x"}`}
+        className={`${width} group cursor-pointer`}
+        onClick={() => onOpenCollection?.(c.id)}>
+        <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl group-hover:scale-[1.01] transition-transform">
+          <div className={`relative ${ratio}`}>
+            {c.cover_url ? (
+              <img src={c.cover_url} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+            ) : (
+              <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-5">
+              <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: athletic.secondary_color }}>Coleção</div>
+              <div className={`${titleSize} font-black uppercase tracking-tight leading-tight`}>{c.name}</div>
+              {c.description && <div className="text-xs md:text-sm opacity-80 mt-1 line-clamp-2 max-w-xl">{c.description}</div>}
+              {items.length > 0 && (
+                <div className="mt-3 text-[11px] uppercase tracking-widest font-bold opacity-80">
+                  {items.length} peça{items.length > 1 ? "s" : ""} • toque para ver
+                </div>
+              )}
+            </div>
+          </div>
+          <ProductStrip items={items} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <section className="relative py-10 border-y border-white/10 bg-gradient-to-b from-white/[0.02] to-transparent overflow-hidden">
@@ -1809,15 +1859,21 @@ function CollectionsMarquee({ athletic }: { athletic: Athletic }) {
         </div>
         <div className="text-xs opacity-60">{cols.length} coleção{cols.length > 1 ? "es" : ""}</div>
       </div>
-      {useMarquee ? (
-        <div className="marquee-mask">
-          <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused]">
-            {loop.map((c, i) => CardBlock(c, i))}
-          </div>
+      {layout === "single" && (
+        <div className="max-w-7xl mx-auto px-4">
+          {CardBlock(cols[0], { size: "lg" })}
         </div>
-      ) : (
-        <div className="max-w-7xl mx-auto px-4 flex flex-wrap gap-5 justify-center">
-          {loop.map((c, i) => CardBlock(c, i))}
+      )}
+      {layout === "split" && (
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-2 gap-5">
+          {cols.map((c) => CardBlock(c, { size: "md" }))}
+        </div>
+      )}
+      {layout === "carousel" && (
+        <div className="marquee-mask">
+          <div className="flex gap-5 w-max animate-marquee hover:[animation-play-state:paused] px-4">
+            {[...cols, ...cols].map((c, i) => CardBlock(c, { size: "sm", keySuffix: i }))}
+          </div>
         </div>
       )}
     </section>
