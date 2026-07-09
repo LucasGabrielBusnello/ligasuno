@@ -351,6 +351,77 @@ function HomePage() {
   );
 }
 
+function FeaturedCollectionBanner() {
+  const [data, setData] = useState<{ name: string; description: string | null; cover_url: string | null; primary: string; secondary: string; athName: string; products: { image: string | null }[] } | null>(null);
+  useEffect(() => {
+    (async () => {
+      const { data: ath } = await supabase.from("athletics").select("id,name,short_name,primary_color,secondary_color").eq("slug", "aaamd-desbravadores").maybeSingle();
+      if (!ath) return;
+      const { data: col } = await supabase.from("athletic_collections")
+        .select("id,name,description,cover_url")
+        .eq("athletic_id", (ath as any).id).eq("active", true)
+        .order("display_order").limit(1).maybeSingle();
+      if (!col) return;
+      const { data: prods } = await supabase.from("athletic_products")
+        .select("images").eq("collection_id", (col as any).id).eq("active", true).limit(8);
+      setData({
+        name: (col as any).name,
+        description: (col as any).description,
+        cover_url: (col as any).cover_url,
+        primary: (ath as any).primary_color,
+        secondary: (ath as any).secondary_color,
+        athName: (ath as any).short_name ?? (ath as any).name,
+        products: (prods ?? []).map((p: any) => ({ image: p.images?.[0] ?? null })),
+      });
+    })();
+  }, []);
+  if (!data) return null;
+  const loop = data.products.length >= 4 ? [...data.products, ...data.products] : data.products;
+  return (
+    <section className="max-w-7xl mx-auto px-4 mt-10">
+      <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-neutral-950 text-white">
+        <div className="grid md:grid-cols-2">
+          <div className="relative min-h-[240px] md:min-h-[320px]">
+            {data.cover_url ? (
+              <img src={data.cover_url} alt={data.name} className="absolute inset-0 w-full h-full object-cover" />
+            ) : (
+              <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, ${data.primary}, ${data.secondary})` }} />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-r from-neutral-950/80 via-neutral-950/30 to-transparent md:bg-gradient-to-r md:from-transparent md:via-neutral-950/30 md:to-neutral-950" />
+          </div>
+          <div className="relative p-6 md:p-10 flex flex-col justify-center">
+            <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: data.secondary }}>
+              {data.athName} · Coleção vigente
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight leading-none">{data.name}</h2>
+            {data.description && <p className="mt-3 text-sm md:text-base text-white/80 max-w-md">{data.description}</p>}
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button asChild size="lg" className="rounded-xl font-black uppercase tracking-wider border-0 shadow-lg hover:opacity-95"
+                style={{ background: data.secondary, boxShadow: `0 10px 30px -12px ${data.secondary}` }}>
+                <Link to="/atletica"><ShoppingBag className="size-4" /> Comprar agora</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="rounded-xl border-white/20 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                <Link to="/atletica">Ver produtos <ArrowRight className="size-4" /></Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+        {loop.length > 0 && (
+          <div className="relative overflow-hidden marquee-mask border-t border-white/10 bg-black/40">
+            <div className={`flex gap-3 py-3 px-3 ${data.products.length >= 4 ? "w-max animate-marquee-slow" : "flex-wrap justify-center"}`}>
+              {loop.map((p, i) => (
+                <div key={i} className="size-16 shrink-0 rounded-md overflow-hidden bg-white/5 border border-white/10">
+                  {p.image ? <img src={p.image} alt="" className="w-full h-full object-cover" loading="lazy" /> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function Stat({ n, l }: { n: number; l: string }) {
   return (
     <div className="px-3 py-4 rounded-xl bg-white/10 border border-white/20 backdrop-blur">
