@@ -182,7 +182,10 @@ function AtleticaPage() {
       </section>
 
       {/* MARQUEE COLEÇÕES + ESPORTES */}
-      <CollectionsMarquee athletic={ath} />
+      <CollectionsMarquee athletic={ath} onOpenCollection={(colId) => {
+        window.dispatchEvent(new CustomEvent("aaamd:filter-collection", { detail: colId }));
+        document.getElementById("produtos-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }} />
       <SportsShowcase athletic={ath} />
 
 
