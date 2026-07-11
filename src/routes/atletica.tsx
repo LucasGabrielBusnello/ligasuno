@@ -19,13 +19,16 @@ import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
   Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
+  Handshake, Tag, UserPlus, UserMinus,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
   upsertCollection, deleteCollection, upsertProduct, deleteProduct,
   upsertEvent, deleteEvent, generateTicketBatch, registerManualTicketSale,
   addAthleticCashEntry, updateAthletic, upsertSport, deleteSport,
+  upsertPartner, deletePartner, enrollInSport, unenrollFromSport,
 } from "@/lib/athletic.functions";
+
 import {
   createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
   createMembershipCardPayment, createEventTicketCardPayment, createCartCheckout,
