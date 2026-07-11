@@ -2187,6 +2187,92 @@ function DirectorSports({ athletic }: { athletic: Athletic }) {
                 <div><Label>Horário</Label><Input placeholder="Ex: Ter/Qui 20h" value={editing.schedule ?? ""} onChange={(e) => setEditing({ ...editing, schedule: e.target.value })} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Gênero</Label>
+                  <Select value={editing.gender ?? "misto"} onValueChange={(v) => setEditing({ ...editing, gender: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="masculino">Masculino</SelectItem>
+                      <SelectItem value="feminino">Feminino</SelectItem>
+                      <SelectItem value="misto">Misto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Limite de vagas (opcional)</Label>
+                  <Input type="number" min={0} placeholder="Sem limite" value={editing.max_capacity ?? ""}
+                    onChange={(e) => setEditing({ ...editing, max_capacity: e.target.value ? +e.target.value : null })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div><Label>Ordem</Label><Input type="number" value={editing.display_order ?? 0} onChange={(e) => setEditing({ ...editing, display_order: +e.target.value })} /></div>
+                <label className="flex items-center gap-2 text-sm pt-6"><input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Ativo</label>
+                <label className="flex items-center gap-2 text-sm pt-6"><input type="checkbox" checked={editing.enrollment_open ?? true} onChange={(e) => setEditing({ ...editing, enrollment_open: e.target.checked })} /> Inscrições abertas</label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+            <Button onClick={async () => {
+              try { await upsert({ data: editing as any }); toast.success("Salvo"); setEditing(null); reload(); }
+              catch (e: any) { toast.error(e?.message); }
+            }}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/* ============ DIRETORIA — Parceiros ============ */
+function DirectorPartners({ athletic }: { athletic: Athletic }) {
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [editing, setEditing] = useState<Partial<Partner> | null>(null);
+  const upsert = useServerFn(upsertPartner);
+  const del = useServerFn(deletePartner);
+  async function reload() {
+    const { data } = await supabase.from("athletic_partners" as any)
+      .select("*").eq("athletic_id", athletic.id).order("display_order");
+    setPartners((data as any) ?? []);
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-black text-lg">Parceiros ({partners.length})</h3>
+        <Button size="sm" onClick={() => setEditing({ athletic_id: athletic.id, active: true, display_order: partners.length })}>
+          <Plus className="size-4" /> Novo parceiro
+        </Button>
+      </div>
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {partners.map((p) => (
+          <Card key={p.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
+            {p.image_url && <div className="aspect-video bg-black/40"><img src={p.image_url} className="w-full h-full object-cover" alt="" /></div>}
+            <CardContent className="p-3">
+              <div className="font-bold">{p.name}</div>
+              {p.discount_text && <div className="text-xs opacity-70 mt-0.5">🎟 {p.discount_text}</div>}
+              {p.description && <div className="text-xs opacity-60 mt-1 line-clamp-2">{p.description}</div>}
+              <div className="flex gap-1 mt-2">
+                <Button size="sm" variant="outline" className="flex-1 bg-white text-black hover:bg-neutral-100 hover:text-black border-white" onClick={() => setEditing(p)}>Editar</Button>
+                <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => { if (!confirm2("Remover?")) return; await del({ data: { athletic_id: athletic.id, id: p.id } }); reload(); }}><Trash2 className="size-3.5" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editing?.id ? "Editar parceiro" : "Novo parceiro"}</DialogTitle></DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div><Label>Nome do parceiro</Label><Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+              <div><Label>Descrição (explique o desconto e como usar)</Label><Textarea rows={4} value={editing.description ?? ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></div>
+              <div><Label>Imagem/Logo</Label><ImageUpload value={editing.image_url ?? ""} onChange={(url) => setEditing({ ...editing, image_url: url })} folder="atletica/partners" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Selo de desconto (ex: "10% OFF")</Label><Input value={editing.discount_text ?? ""} onChange={(e) => setEditing({ ...editing, discount_text: e.target.value })} /></div>
+                <div><Label>Link (opcional)</Label><Input placeholder="https://..." value={editing.link_url ?? ""} onChange={(e) => setEditing({ ...editing, link_url: e.target.value })} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div><Label>Ordem</Label><Input type="number" value={editing.display_order ?? 0} onChange={(e) => setEditing({ ...editing, display_order: +e.target.value })} /></div>
                 <label className="flex items-center gap-2 text-sm pt-6"><input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Ativo</label>
               </div>
@@ -2204,6 +2290,7 @@ function DirectorSports({ athletic }: { athletic: Athletic }) {
     </div>
   );
 }
+
 
 /* ============ EDITOR DE IMAGENS DO PRODUTO (múltiplas, com capa) ============ */
 function ProductImagesEditor({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
