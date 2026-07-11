@@ -262,21 +262,22 @@ export const upsertProduct = createServerFn({ method: "POST" })
       collection_id: z.string().uuid().optional().nullable(),
       title: z.string().min(1).max(200),
       description: z.string().max(2000).optional().nullable(),
-      images: z.array(z.string().url()).default([]),
-      price: z.number().min(0),
-      member_price: z.number().min(0).optional().nullable(),
-      discount_pct: z.number().min(0).max(100).default(0),
-      second_item_discount_pct: z.number().min(0).max(100).default(0),
-      stock: z.number().int().min(0).optional().nullable(),
+      images: z.array(z.string()).default([]),
+      price: z.coerce.number().min(0),
+      member_price: z.coerce.number().min(0).optional().nullable(),
+      discount_pct: z.coerce.number().min(0).max(100).default(0),
+      second_item_discount_pct: z.coerce.number().min(0).max(100).default(0),
+      stock: z.coerce.number().int().min(0).optional().nullable(),
       is_highlight: z.boolean().default(false),
       is_new: z.boolean().default(false),
       badge_text: z.string().max(30).optional().nullable(),
       active: z.boolean().default(true),
       show_stock_warning: z.boolean().default(false),
-      stock_warning_threshold: z.number().int().min(0).optional().nullable(),
+      stock_warning_threshold: z.coerce.number().int().min(0).optional().nullable(),
       sales_deadline: z.string().optional().nullable(),
     }).parse(i),
   )
+
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.athletic_id });
@@ -597,11 +598,14 @@ export const upsertSport = createServerFn({ method: "POST" })
       athletic_id: z.string().uuid(),
       name: z.string().min(1).max(120),
       description: z.string().max(2000).optional().nullable(),
-      image_url: z.string().url().optional().nullable(),
+      image_url: z.string().optional().nullable(),
       coach: z.string().max(150).optional().nullable(),
       schedule: z.string().max(300).optional().nullable(),
-      display_order: z.number().int().default(0),
+      display_order: z.coerce.number().int().default(0),
       active: z.boolean().default(true),
+      gender: z.enum(["masculino", "feminino", "misto"]).default("misto"),
+      max_capacity: z.coerce.number().int().min(0).optional().nullable(),
+      enrollment_open: z.boolean().default(true),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
@@ -611,11 +615,11 @@ export const upsertSport = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { id, ...rest } = data;
     if (id) {
-      const { error } = await supabaseAdmin.from("athletic_sports").update(rest).eq("id", id);
+      const { error } = await supabaseAdmin.from("athletic_sports").update(rest as any).eq("id", id);
       if (error) throw new Error(error.message);
       return { id };
     } else {
-      const { data: ins, error } = await supabaseAdmin.from("athletic_sports").insert(rest).select("id").single();
+      const { data: ins, error } = await supabaseAdmin.from("athletic_sports").insert(rest as any).select("id").single();
       if (error) throw new Error(error.message);
       return { id: (ins as any).id };
     }
@@ -633,3 +637,87 @@ export const deleteSport = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ============ PARCEIROS ============ */
+export const upsertPartner = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      id: z.string().uuid().optional(),
+      athletic_id: z.string().uuid(),
+      name: z.string().min(1).max(150),
+      description: z.string().max(2000).optional().nullable(),
+      image_url: z.string().optional().nullable(),
+      discount_text: z.string().max(300).optional().nullable(),
+      link_url: z.string().optional().nullable(),
+      display_order: z.coerce.number().int().default(0),
+      active: z.boolean().default(true),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.athletic_id });
+    if (!ok) throw new Error("Sem permissão");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { id, ...rest } = data;
+    if (id) {
+      const { error } = await supabaseAdmin.from("athletic_partners" as any).update(rest as any).eq("id", id);
+      if (error) throw new Error(error.message);
+      return { id };
+    }
+    const { data: ins, error } = await supabaseAdmin.from("athletic_partners" as any).insert(rest as any).select("id").single();
+    if (error) throw new Error(error.message);
+    return { id: (ins as any).id };
+  });
+
+export const deletePartner = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ athletic_id: z.string().uuid(), id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.athletic_id });
+    if (!ok) throw new Error("Sem permissão");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("athletic_partners" as any).delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* ============ INSCRIÇÕES ESPORTES ============ */
+export const enrollInSport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ sport_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    // Verifica esporte + capacidade
+    const { data: sport, error: sErr } = await supabase
+      .from("athletic_sports")
+      .select("id, athletic_id, active, enrollment_open, max_capacity")
+      .eq("id", data.sport_id)
+      .maybeSingle();
+    if (sErr || !sport) throw new Error("Esporte não encontrado");
+    if (!sport.active || !(sport as any).enrollment_open) throw new Error("Inscrições fechadas");
+    const isMember = await supabase.rpc("is_athletic_member", { _user_id: userId, _athletic_id: sport.athletic_id });
+    if (!isMember.data) throw new Error("Apenas sócios ativos podem se inscrever");
+    if ((sport as any).max_capacity) {
+      const { count } = await supabase.from("athletic_sport_enrollments" as any)
+        .select("id", { count: "exact", head: true }).eq("sport_id", data.sport_id);
+      if ((count ?? 0) >= (sport as any).max_capacity) throw new Error("Vagas esgotadas");
+    }
+    const { error } = await supabase.from("athletic_sport_enrollments" as any)
+      .insert({ sport_id: data.sport_id, user_id: userId } as any);
+    if (error && !error.message.includes("duplicate")) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const unenrollFromSport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ sport_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase.from("athletic_sport_enrollments" as any)
+      .delete().eq("sport_id", data.sport_id).eq("user_id", userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+

@@ -527,6 +527,56 @@ export type Database = {
           },
         ]
       }
+      athletic_partners: {
+        Row: {
+          active: boolean
+          athletic_id: string
+          created_at: string
+          description: string | null
+          discount_text: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          link_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          athletic_id: string
+          created_at?: string
+          description?: string | null
+          discount_text?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          athletic_id?: string
+          created_at?: string
+          description?: string | null
+          discount_text?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_partners_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athletic_product_order_items: {
         Row: {
           id: string
@@ -727,6 +777,35 @@ export type Database = {
           },
         ]
       }
+      athletic_sport_enrollments: {
+        Row: {
+          created_at: string
+          id: string
+          sport_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sport_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sport_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_sport_enrollments_sport_id_fkey"
+            columns: ["sport_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_sports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athletic_sports: {
         Row: {
           active: boolean
@@ -735,8 +814,11 @@ export type Database = {
           created_at: string
           description: string | null
           display_order: number
+          enrollment_open: boolean
+          gender: string
           id: string
           image_url: string | null
+          max_capacity: number | null
           name: string
           schedule: string | null
           updated_at: string
@@ -748,8 +830,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number
+          enrollment_open?: boolean
+          gender?: string
           id?: string
           image_url?: string | null
+          max_capacity?: number | null
           name: string
           schedule?: string | null
           updated_at?: string
@@ -761,8 +846,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_order?: number
+          enrollment_open?: boolean
+          gender?: string
           id?: string
           image_url?: string | null
+          max_capacity?: number | null
           name?: string
           schedule?: string | null
           updated_at?: string
