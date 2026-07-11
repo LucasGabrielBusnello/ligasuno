@@ -2090,7 +2090,7 @@ function CollectionsMarquee({ athletic, onOpenCollection }: { athletic: Athletic
 
 
 /* ============ ESPORTES — Grid ============ */
-type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean };
+type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean; gender: "masculino" | "feminino" | "misto"; max_capacity: number | null; enrollment_open: boolean };
 
 function SportsShowcase({ athletic }: { athletic: Athletic }) {
   const [sports, setSports] = useState<Sport[]>([]);
