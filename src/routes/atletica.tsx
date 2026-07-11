@@ -1295,11 +1295,12 @@ function SobrePanel({ athletic }: { athletic: Athletic }) {
 function DirectorPanel({ athletic }: { athletic: Athletic }) {
   return (
     <Tabs defaultValue="socios">
-      <TabsList className="w-full grid grid-cols-3 md:grid-cols-6 h-auto bg-white/5 border border-white/10">
+      <TabsList className="w-full grid grid-cols-4 md:grid-cols-7 h-auto bg-white/5 border border-white/10">
         <TabsTrigger value="socios" className="data-[state=active]:bg-white data-[state=active]:text-black"><Users className="size-4 mr-1.5" />Sócios</TabsTrigger>
         <TabsTrigger value="produtos" className="data-[state=active]:bg-white data-[state=active]:text-black"><ShoppingBag className="size-4 mr-1.5" />Produtos</TabsTrigger>
         <TabsTrigger value="eventos" className="data-[state=active]:bg-white data-[state=active]:text-black"><PartyPopper className="size-4 mr-1.5" />Eventos</TabsTrigger>
         <TabsTrigger value="esportes" className="data-[state=active]:bg-white data-[state=active]:text-black"><Trophy className="size-4 mr-1.5" />Esportes</TabsTrigger>
+        <TabsTrigger value="parceiros" className="data-[state=active]:bg-white data-[state=active]:text-black"><Handshake className="size-4 mr-1.5" />Parceiros</TabsTrigger>
         <TabsTrigger value="caixa" className="data-[state=active]:bg-white data-[state=active]:text-black"><Wallet className="size-4 mr-1.5" />Caixa</TabsTrigger>
         <TabsTrigger value="config" className="data-[state=active]:bg-white data-[state=active]:text-black"><Settings className="size-4 mr-1.5" />Config</TabsTrigger>
       </TabsList>
@@ -1307,11 +1308,13 @@ function DirectorPanel({ athletic }: { athletic: Athletic }) {
       <TabsContent value="produtos" className="mt-4"><DirectorProducts athletic={athletic} /></TabsContent>
       <TabsContent value="eventos" className="mt-4"><DirectorEvents athletic={athletic} /></TabsContent>
       <TabsContent value="esportes" className="mt-4"><DirectorSports athletic={athletic} /></TabsContent>
+      <TabsContent value="parceiros" className="mt-4"><DirectorPartners athletic={athletic} /></TabsContent>
       <TabsContent value="caixa" className="mt-4"><DirectorCash athletic={athletic} /></TabsContent>
       <TabsContent value="config" className="mt-4"><DirectorConfig athletic={athletic} /></TabsContent>
     </Tabs>
   );
 }
+
 
 /* --- Sócios (Diretoria) --- */
 function DirectorMembers({ athletic }: { athletic: Athletic }) {
