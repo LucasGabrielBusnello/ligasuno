@@ -262,21 +262,22 @@ export const upsertProduct = createServerFn({ method: "POST" })
       collection_id: z.string().uuid().optional().nullable(),
       title: z.string().min(1).max(200),
       description: z.string().max(2000).optional().nullable(),
-      images: z.array(z.string().url()).default([]),
-      price: z.number().min(0),
-      member_price: z.number().min(0).optional().nullable(),
-      discount_pct: z.number().min(0).max(100).default(0),
-      second_item_discount_pct: z.number().min(0).max(100).default(0),
-      stock: z.number().int().min(0).optional().nullable(),
+      images: z.array(z.string()).default([]),
+      price: z.coerce.number().min(0),
+      member_price: z.coerce.number().min(0).optional().nullable(),
+      discount_pct: z.coerce.number().min(0).max(100).default(0),
+      second_item_discount_pct: z.coerce.number().min(0).max(100).default(0),
+      stock: z.coerce.number().int().min(0).optional().nullable(),
       is_highlight: z.boolean().default(false),
       is_new: z.boolean().default(false),
       badge_text: z.string().max(30).optional().nullable(),
       active: z.boolean().default(true),
       show_stock_warning: z.boolean().default(false),
-      stock_warning_threshold: z.number().int().min(0).optional().nullable(),
+      stock_warning_threshold: z.coerce.number().int().min(0).optional().nullable(),
       sales_deadline: z.string().optional().nullable(),
     }).parse(i),
   )
+
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.athletic_id });
