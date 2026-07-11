@@ -1106,27 +1106,178 @@ function SociosArea({ athletic, isMember, user }: { athletic: Athletic; isMember
     <div className="space-y-4">
       <Card className="bg-white/5 border-white/10 text-white">
         <CardContent className="p-6">
-          <h3 className="font-black text-2xl uppercase mb-2" style={{ color: athletic.primary_color }}>Bem-vindo, sócio!</h3>
-          <p className="opacity-80">Área exclusiva com benefícios da {athletic.name}.</p>
+          <h3 className="font-black text-2xl uppercase mb-1" style={{ color: athletic.primary_color }}>Bem-vindo, sócio!</h3>
+          <p className="opacity-80 text-sm">Área exclusiva com benefícios da {athletic.name}.</p>
         </CardContent>
       </Card>
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card className="bg-white/5 border-white/10 text-white">
-          <CardContent className="p-6">
-            <h4 className="font-black text-lg mb-2">🏆 Grupo de Esportes</h4>
-            <p className="text-sm opacity-70">Em breve: acesso ao grupo, treinos e competições.</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/5 border-white/10 text-white">
-          <CardContent className="p-6">
-            <h4 className="font-black text-lg mb-2">🎉 Benefícios exclusivos</h4>
-            <p className="text-sm opacity-70">Descontos em produtos e ingressos.</p>
-          </CardContent>
-        </Card>
-      </div>
+
+      <Tabs defaultValue="beneficios">
+        <TabsList className="w-full grid grid-cols-3 h-auto bg-white/5 border border-white/10">
+          <TabsTrigger value="beneficios" className="py-2 data-[state=active]:bg-white data-[state=active]:text-black"><Sparkles className="size-4 mr-1.5" />Benefícios</TabsTrigger>
+          <TabsTrigger value="parceiros" className="py-2 data-[state=active]:bg-white data-[state=active]:text-black"><Handshake className="size-4 mr-1.5" />Parceiros</TabsTrigger>
+          <TabsTrigger value="esportes" className="py-2 data-[state=active]:bg-white data-[state=active]:text-black"><Trophy className="size-4 mr-1.5" />Esportes</TabsTrigger>
+        </TabsList>
+        <TabsContent value="beneficios" className="mt-4">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card className="bg-white/5 border-white/10 text-white">
+              <CardContent className="p-6">
+                <h4 className="font-black text-lg mb-2">🏆 Grupo de Esportes</h4>
+                <p className="text-sm opacity-70">Acesse a aba <b>Esportes</b> para se inscrever nas modalidades.</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-white/5 border-white/10 text-white">
+              <CardContent className="p-6">
+                <h4 className="font-black text-lg mb-2">🤝 Descontos com parceiros</h4>
+                <p className="text-sm opacity-70">Veja a aba <b>Parceiros</b> para conferir todos os descontos exclusivos.</p>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        <TabsContent value="parceiros" className="mt-4"><MemberPartners athletic={athletic} /></TabsContent>
+        <TabsContent value="esportes" className="mt-4"><MemberSports athletic={athletic} userId={user.id} /></TabsContent>
+      </Tabs>
     </div>
   );
 }
+
+/* --- Sócios: Parceiros (visualização) --- */
+type Partner = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; discount_text: string | null; link_url: string | null; display_order: number; active: boolean };
+
+function MemberPartners({ athletic }: { athletic: Athletic }) {
+  const [partners, setPartners] = useState<Partner[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("athletic_partners" as any)
+        .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
+      setPartners((data as any) ?? []);
+    })();
+  }, [athletic.id]);
+  if (partners.length === 0) {
+    return <EmptyDark icon={<Handshake className="size-12" />} title="Nenhum parceiro cadastrado" desc="A diretoria ainda não adicionou parcerias." />;
+  }
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {partners.map((p) => (
+        <Card key={p.id} className="bg-white/5 border-white/10 text-white overflow-hidden flex flex-col">
+          {p.image_url && (
+            <div className="aspect-video bg-black/40">
+              <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+            </div>
+          )}
+          <CardContent className="p-4 flex-1 flex flex-col gap-2">
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-black text-lg leading-tight">{p.name}</h4>
+              {p.discount_text && (
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full whitespace-nowrap"
+                  style={{ background: athletic.secondary_color, color: "#000" }}>
+                  <Tag className="size-3 inline -mt-0.5 mr-1" />{p.discount_text}
+                </span>
+              )}
+            </div>
+            {p.description && <p className="text-sm opacity-80 whitespace-pre-line flex-1">{p.description}</p>}
+            {p.link_url && (
+              <a href={p.link_url} target="_blank" rel="noreferrer" className="text-xs underline opacity-80 hover:opacity-100 mt-1">Saiba mais →</a>
+            )}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/* --- Sócios: Esportes (inscrição) --- */
+function MemberSports({ athletic, userId }: { athletic: Athletic; userId: string }) {
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [mine, setMine] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const enroll = useServerFn(enrollInSport);
+  const unenroll = useServerFn(unenrollFromSport);
+
+  async function reload() {
+    setLoading(true);
+    const { data: s } = await supabase.from("athletic_sports" as any)
+      .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
+    const list: Sport[] = (s as any) ?? [];
+    setSports(list);
+    if (list.length) {
+      const ids = list.map((x) => x.id);
+      const { data: enr } = await supabase.from("athletic_sport_enrollments" as any)
+        .select("sport_id, user_id").in("sport_id", ids);
+      const c: Record<string, number> = {};
+      const m = new Set<string>();
+      ((enr as any) ?? []).forEach((e: any) => {
+        c[e.sport_id] = (c[e.sport_id] ?? 0) + 1;
+        if (e.user_id === userId) m.add(e.sport_id);
+      });
+      setCounts(c); setMine(m);
+    }
+    setLoading(false);
+  }
+  useEffect(() => { reload(); }, [athletic.id, userId]);
+
+  async function toggle(s: Sport) {
+    try {
+      if (mine.has(s.id)) {
+        await unenroll({ data: { sport_id: s.id } });
+        toast.success("Inscrição cancelada");
+      } else {
+        await enroll({ data: { sport_id: s.id } });
+        toast.success("Inscrito!");
+      }
+      reload();
+    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
+  }
+
+  if (loading) return <div className="flex justify-center py-8 opacity-60"><Loader2 className="size-6 animate-spin" /></div>;
+  if (sports.length === 0) return <EmptyDark icon={<Trophy className="size-12" />} title="Nenhum esporte disponível" />;
+
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {sports.map((s) => {
+        const enrolled = mine.has(s.id);
+        const cur = counts[s.id] ?? 0;
+        const full = !!s.max_capacity && cur >= s.max_capacity;
+        const closed = !s.enrollment_open;
+        return (
+          <Card key={s.id} className="bg-white/5 border-white/10 text-white overflow-hidden flex flex-col">
+            <div className="aspect-video bg-black/40 relative">
+              {s.image_url ? <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" /> :
+                <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />}
+              <div className="absolute top-2 right-2 flex gap-1">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-black/70 border border-white/20">
+                  {s.gender === "masculino" ? "♂ Masc." : s.gender === "feminino" ? "♀ Fem." : "⚧ Misto"}
+                </span>
+              </div>
+            </div>
+            <CardContent className="p-4 flex-1 flex flex-col gap-2">
+              <div className="font-black text-lg">{s.name}</div>
+              {s.coach && <div className="text-xs opacity-70">Treinador: {s.coach}</div>}
+              {s.schedule && <div className="text-xs opacity-70">🕒 {s.schedule}</div>}
+              {s.description && <p className="text-sm opacity-80 line-clamp-3">{s.description}</p>}
+              <div className="text-xs opacity-70 mt-auto pt-2">
+                {s.max_capacity ? <span>Vagas: <b>{cur}/{s.max_capacity}</b></span> : <span>{cur} inscritos</span>}
+              </div>
+              <Button
+                size="sm"
+                className={enrolled ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+                variant={enrolled ? "default" : "default"}
+                onClick={() => toggle(s)}
+                disabled={!enrolled && (full || closed)}
+              >
+                {enrolled ? <><UserMinus className="size-4 mr-1.5" />Sair</> :
+                  closed ? "Inscrições fechadas" :
+                    full ? "Vagas esgotadas" :
+                      <><UserPlus className="size-4 mr-1.5" />Quero me inscrever</>}
+              </Button>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 
 /* ============ SOBRE ============ */
 function SobrePanel({ athletic }: { athletic: Athletic }) {
