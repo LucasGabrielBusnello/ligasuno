@@ -1258,18 +1258,26 @@ function MemberSports({ athletic, userId }: { athletic: Athletic; userId: string
               <div className="text-xs opacity-70 mt-auto pt-2">
                 {s.max_capacity ? <span>Vagas: <b>{cur}/{s.max_capacity}</b></span> : <span>{cur} inscritos</span>}
               </div>
-              <Button
-                size="sm"
-                className={enrolled ? "bg-red-600 hover:bg-red-700 text-white" : ""}
-                variant={enrolled ? "default" : "default"}
-                onClick={() => toggle(s)}
-                disabled={!enrolled && (full || closed)}
-              >
-                {enrolled ? <><UserMinus className="size-4 mr-1.5" />Sair</> :
-                  closed ? "Inscrições fechadas" :
-                    full ? "Vagas esgotadas" :
-                      <><UserPlus className="size-4 mr-1.5" />Quero me inscrever</>}
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  size="sm"
+                  className={enrolled ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+                  onClick={() => toggle(s)}
+                  disabled={!enrolled && (full || closed)}
+                >
+                  {enrolled ? <><UserMinus className="size-4 mr-1.5" />Sair</> :
+                    closed ? "Inscrições fechadas" :
+                      full ? "Vagas esgotadas" :
+                        <><UserPlus className="size-4 mr-1.5" />Quero me inscrever</>}
+                </Button>
+                {enrolled && s.whatsapp_url && (
+                  <a href={s.whatsapp_url} target="_blank" rel="noopener noreferrer"
+                     className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md text-sm font-semibold bg-[#25D366] hover:bg-[#1eb958] text-white transition-colors">
+                    <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden><path d="M20.52 3.48A11.86 11.86 0 0 0 12.02 0C5.39 0 .04 5.35.04 11.98c0 2.11.55 4.17 1.6 5.99L0 24l6.2-1.62a11.94 11.94 0 0 0 5.82 1.49h.01c6.63 0 11.98-5.35 11.98-11.98 0-3.2-1.25-6.21-3.49-8.41ZM12.03 21.3h-.01a9.9 9.9 0 0 1-5.04-1.38l-.36-.22-3.68.96.98-3.59-.23-.37a9.9 9.9 0 0 1-1.52-5.3c0-5.48 4.46-9.94 9.95-9.94 2.66 0 5.15 1.04 7.03 2.91a9.87 9.87 0 0 1 2.91 7.04c0 5.48-4.46 9.94-9.94 9.94Zm5.45-7.44c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15s-.77.97-.94 1.17c-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.11 3.22 5.11 4.52.71.31 1.27.49 1.7.63.71.23 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35Z"/></svg>
+                    Entrar no grupo do WhatsApp
+                  </a>
+                )}
+              </div>
             </CardContent>
           </Card>
         );
@@ -2093,7 +2101,7 @@ function CollectionsMarquee({ athletic, onOpenCollection }: { athletic: Athletic
 
 
 /* ============ ESPORTES — Grid ============ */
-type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean; gender: "masculino" | "feminino" | "misto"; max_capacity: number | null; enrollment_open: boolean };
+type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean; gender: "masculino" | "feminino" | "misto"; max_capacity: number | null; enrollment_open: boolean; whatsapp_url: string | null };
 
 function SportsShowcase({ athletic }: { athletic: Athletic }) {
   const [sports, setSports] = useState<Sport[]>([]);
@@ -2203,6 +2211,12 @@ function DirectorSports({ athletic }: { athletic: Athletic }) {
                   <Input type="number" min={0} placeholder="Sem limite" value={editing.max_capacity ?? ""}
                     onChange={(e) => setEditing({ ...editing, max_capacity: e.target.value ? +e.target.value : null })} />
                 </div>
+              </div>
+              <div>
+                <Label>Link do grupo no WhatsApp (opcional)</Label>
+                <Input placeholder="https://chat.whatsapp.com/..." value={editing.whatsapp_url ?? ""}
+                  onChange={(e) => setEditing({ ...editing, whatsapp_url: e.target.value })} />
+                <p className="text-xs opacity-60 mt-1">O botão aparece para atletas já inscritos.</p>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div><Label>Ordem</Label><Input type="number" value={editing.display_order ?? 0} onChange={(e) => setEditing({ ...editing, display_order: +e.target.value })} /></div>
