@@ -606,6 +606,7 @@ export const upsertSport = createServerFn({ method: "POST" })
       gender: z.enum(["masculino", "feminino", "misto"]).default("misto"),
       max_capacity: z.coerce.number().int().min(0).optional().nullable(),
       enrollment_open: z.boolean().default(true),
+      whatsapp_url: z.string().url().max(500).optional().nullable().or(z.literal("")),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
