@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_analytics: {
+        Row: {
+          action: string
+          ad_id: string
+          created_at: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          ad_id: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          ad_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_analytics_ad_id_fkey"
+            columns: ["ad_id"]
+            isOneToOne: false
+            referencedRelation: "ads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ads: {
+        Row: {
+          active: boolean
+          created_at: string
+          end_date: string | null
+          id: string
+          image_url: string
+          redirect_url: string
+          start_date: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url: string
+          redirect_url: string
+          start_date?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          image_url?: string
+          redirect_url?: string
+          start_date?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           annual_fee_credit_monthly: number
@@ -271,6 +339,7 @@ export type Database = {
           athletic_id: string
           created_at: string
           description: string | null
+          end_date: string | null
           ends_at: string | null
           gallery: Json
           id: string
@@ -291,6 +360,7 @@ export type Database = {
           athletic_id: string
           created_at?: string
           description?: string | null
+          end_date?: string | null
           ends_at?: string | null
           gallery?: Json
           id?: string
@@ -311,6 +381,7 @@ export type Database = {
           athletic_id?: string
           created_at?: string
           description?: string | null
+          end_date?: string | null
           ends_at?: string | null
           gallery?: Json
           id?: string
@@ -822,6 +893,7 @@ export type Database = {
           name: string
           schedule: string | null
           updated_at: string
+          whatsapp_url: string | null
         }
         Insert: {
           active?: boolean
@@ -838,6 +910,7 @@ export type Database = {
           name: string
           schedule?: string | null
           updated_at?: string
+          whatsapp_url?: string | null
         }
         Update: {
           active?: boolean
@@ -854,6 +927,7 @@ export type Database = {
           name?: string
           schedule?: string | null
           updated_at?: string
+          whatsapp_url?: string | null
         }
         Relationships: [
           {
@@ -1190,6 +1264,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      coordination_staff: {
+        Row: {
+          bio: string | null
+          created_at: string
+          display_order: number
+          email: string | null
+          id: string
+          image_url: string | null
+          name: string
+          role_key: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          display_order?: number
+          email?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          role_key: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          display_order?: number
+          email?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          role_key?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       event_checkins: {
         Row: {
@@ -1610,6 +1723,7 @@ export type Database = {
           checkin_schedule: Json
           created_at: string
           description: string | null
+          end_date: string | null
           event_date: string | null
           freeze_on_event_day: boolean
           full_name_required: boolean
@@ -1634,6 +1748,7 @@ export type Database = {
           checkin_schedule?: Json
           created_at?: string
           description?: string | null
+          end_date?: string | null
           event_date?: string | null
           freeze_on_event_day?: boolean
           full_name_required?: boolean
@@ -1658,6 +1773,7 @@ export type Database = {
           checkin_schedule?: Json
           created_at?: string
           description?: string | null
+          end_date?: string | null
           event_date?: string | null
           freeze_on_event_day?: boolean
           full_name_required?: boolean
@@ -2157,6 +2273,7 @@ export type Database = {
           display_order: number
           explanation: string | null
           id: string
+          image_url: string | null
           options: Json
           question: string
           quiz_set_id: string
@@ -2167,6 +2284,7 @@ export type Database = {
           display_order?: number
           explanation?: string | null
           id?: string
+          image_url?: string | null
           options: Json
           question: string
           quiz_set_id: string
@@ -2177,6 +2295,7 @@ export type Database = {
           display_order?: number
           explanation?: string | null
           id?: string
+          image_url?: string | null
           options?: Json
           question?: string
           quiz_set_id?: string
@@ -2296,6 +2415,7 @@ export type Database = {
           display_order: number
           exam_id: string
           id: string
+          image_url: string | null
           options: Json
           question: string
         }
@@ -2305,6 +2425,7 @@ export type Database = {
           display_order?: number
           exam_id: string
           id?: string
+          image_url?: string | null
           options: Json
           question: string
         }
@@ -2314,6 +2435,7 @@ export type Database = {
           display_order?: number
           exam_id?: string
           id?: string
+          image_url?: string | null
           options?: Json
           question?: string
         }
@@ -2860,9 +2982,12 @@ export type Database = {
           avatar_url: string | null
           cpf: string | null
           created_at: string
+          current_semester: number | null
           email: string
           full_name: string | null
           id: string
+          is_unochapeco_student: boolean
+          matricula: string | null
           phone: string | null
           registration_number: string | null
           updated_at: string
@@ -2872,9 +2997,12 @@ export type Database = {
           avatar_url?: string | null
           cpf?: string | null
           created_at?: string
+          current_semester?: number | null
           email: string
           full_name?: string | null
           id: string
+          is_unochapeco_student?: boolean
+          matricula?: string | null
           phone?: string | null
           registration_number?: string | null
           updated_at?: string
@@ -2884,9 +3012,12 @@ export type Database = {
           avatar_url?: string | null
           cpf?: string | null
           created_at?: string
+          current_semester?: number | null
           email?: string
           full_name?: string | null
           id?: string
+          is_unochapeco_student?: boolean
+          matricula?: string | null
           phone?: string | null
           registration_number?: string | null
           updated_at?: string
@@ -3034,6 +3165,90 @@ export type Database = {
           },
         ]
       }
+      subject_teachers: {
+        Row: {
+          subject_id: string
+          teacher_id: string
+        }
+        Insert: {
+          subject_id: string
+          teacher_id: string
+        }
+        Update: {
+          subject_id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_teachers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_teachers_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subjects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          semester: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          semester: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          semester?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      teachers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          photo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          photo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          photo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -3101,6 +3316,7 @@ export type Database = {
       }
     }
     Functions: {
+      advance_semester: { Args: never; Returns: number }
       can_manage_league_cash: {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean
