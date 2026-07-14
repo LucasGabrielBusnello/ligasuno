@@ -503,3 +503,191 @@ function SettingsAdmin() {
     </div>
   );
 }
+
+/* ===================== COORDENAÇÃO ===================== */
+function CoordinationAdmin() {
+  const [list, setList] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const deleteFiles = useServerFn(deleteStorageFiles);
+  const reload = async () => {
+    const { data } = await supabase.from("coordination_staff").select("*").order("display_order");
+    setList(data ?? []);
+  };
+  useEffect(() => { reload(); }, []);
+  async function del(row: any) {
+    if (!confirm(`Excluir ${row.name}?`)) return;
+    const { error } = await supabase.from("coordination_staff").delete().eq("id", row.id);
+    if (error) return toast.error(error.message);
+    if (row.image_url) { try { await deleteFiles({ data: { paths: [row.image_url] } }); } catch {} }
+    toast.success("Removido"); reload();
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-muted-foreground">Cadastro do corpo de coordenação do curso de Medicina.</p>
+        <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" /> Novo</Button>
+      </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {list.map((c) => (
+          <Card key={c.id}>
+            <CardContent className="p-4">
+              <div className="aspect-square rounded-lg bg-muted mb-3 overflow-hidden">{c.image_url && <img src={c.image_url} className="w-full h-full object-cover" />}</div>
+              <Badge variant="secondary" className="text-[10px] uppercase">{c.role_key}</Badge>
+              <h4 className="font-black mt-1">{c.name}</h4>
+              <p className="text-xs text-muted-foreground">{c.title}</p>
+              <div className="flex gap-2 mt-3">
+                <Button size="sm" variant="outline" onClick={() => { setEditing(c); setOpen(true); }}><Edit className="size-3" /></Button>
+                <Button size="sm" variant="destructive" onClick={() => del(c)}><Trash2 className="size-3" /></Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <CoordDialog open={open} setOpen={setOpen} row={editing} onSaved={reload} />
+    </div>
+  );
+}
+
+function CoordDialog({ open, setOpen, row, onSaved }: any) {
+  const [f, setF] = useState({ role_key: "coordenador", name: "", title: "", bio: "", email: "", image_url: "", display_order: 0 });
+  useEffect(() => {
+    if (row) setF({ role_key: row.role_key, name: row.name, title: row.title ?? "", bio: row.bio ?? "", email: row.email ?? "", image_url: row.image_url ?? "", display_order: row.display_order ?? 0 });
+    else setF({ role_key: "coordenador", name: "", title: "", bio: "", email: "", image_url: "", display_order: 0 });
+  }, [row, open]);
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const payload = { ...f, image_url: f.image_url || null, email: f.email || null };
+    let err;
+    if (row) ({ error: err } = await supabase.from("coordination_staff").update(payload).eq("id", row.id));
+    else ({ error: err } = await supabase.from("coordination_staff").insert(payload));
+    if (err) return toast.error(err.message);
+    toast.success("Salvo"); setOpen(false); onSaved();
+  }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{row ? "Editar" : "Novo membro"}</DialogTitle></DialogHeader>
+        <form onSubmit={save} className="space-y-3">
+          <div><Label>Papel (único)</Label>
+            <select className="w-full h-10 border rounded-md bg-background px-3" value={f.role_key} onChange={(e) => setF({ ...f, role_key: e.target.value })}>
+              <option value="coordenador">Coordenador(a)</option>
+              <option value="adjunta">Coordenação Adjunta</option>
+              <option value="assistente">Assistente</option>
+            </select>
+          </div>
+          <div><Label>Nome</Label><Input required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+          <div><Label>Cargo/Título</Label><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+          <div><Label>Bio</Label><Textarea rows={4} value={f.bio} onChange={(e) => setF({ ...f, bio: e.target.value })} /></div>
+          <div><Label>E-mail</Label><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div><ImageUpload label="Foto" folder="coordination" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
+          <div><Label>Ordem</Label><Input type="number" value={f.display_order} onChange={(e) => setF({ ...f, display_order: +e.target.value })} /></div>
+          <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ===================== ANÚNCIOS ===================== */
+function AdsAdmin() {
+  const [list, setList] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
+  const deleteFiles = useServerFn(deleteStorageFiles);
+  const reload = async () => {
+    const { data } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
+    setList(data ?? []);
+  };
+  useEffect(() => { reload(); }, []);
+  async function toggle(row: any) {
+    const { error } = await supabase.from("ads").update({ active: !row.active }).eq("id", row.id);
+    if (error) return toast.error(error.message);
+    reload();
+  }
+  async function del(row: any) {
+    if (!confirm(`Excluir "${row.title}"?`)) return;
+    const { error } = await supabase.from("ads").delete().eq("id", row.id);
+    if (error) return toast.error(error.message);
+    if (row.image_url) { try { await deleteFiles({ data: { paths: [row.image_url] } }); } catch {} }
+    toast.success("Removido"); reload();
+  }
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-muted-foreground">Banners exibidos no topo da página inicial. Cliques e visualizações são registrados automaticamente.</p>
+        <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
+      </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        {list.map((a) => {
+          const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
+          return (
+            <Card key={a.id}>
+              <div className="aspect-[3/1] bg-muted overflow-hidden">{a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-full object-cover" />}</div>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black flex-1">{a.title}</h3>
+                  {active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
+                </div>
+                {a.redirect_url && <p className="text-xs text-muted-foreground truncate mt-1">→ {a.redirect_url}</p>}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {new Date(a.start_date).toLocaleDateString("pt-BR")} → {a.end_date ? new Date(a.end_date).toLocaleDateString("pt-BR") : "sem fim"}
+                </p>
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <div className="flex items-center gap-2"><Switch checked={a.active} onCheckedChange={() => toggle(a)} /><span className="text-xs">Ligado</span></div>
+                  <Button size="sm" variant="outline" onClick={() => { setEditing(a); setOpen(true); }}><Edit className="size-3" /></Button>
+                  <Button size="sm" variant="destructive" onClick={() => del(a)}><Trash2 className="size-3" /></Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+      <AdDialog open={open} setOpen={setOpen} row={editing} onSaved={reload} />
+    </div>
+  );
+}
+
+function AdDialog({ open, setOpen, row, onSaved }: any) {
+  const [f, setF] = useState({ title: "", image_url: "", redirect_url: "", active: true, start_date: "", end_date: "" });
+  useEffect(() => {
+    const iso = (v: string | null | undefined) => v ? v.slice(0, 10) : "";
+    if (row) setF({ title: row.title, image_url: row.image_url ?? "", redirect_url: row.redirect_url ?? "", active: !!row.active, start_date: iso(row.start_date), end_date: iso(row.end_date) });
+    else setF({ title: "", image_url: "", redirect_url: "", active: true, start_date: new Date().toISOString().slice(0, 10), end_date: "" });
+  }, [row, open]);
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!f.image_url) return toast.error("Envie uma imagem para o anúncio.");
+    const payload: any = {
+      title: f.title,
+      image_url: f.image_url,
+      redirect_url: f.redirect_url || null,
+      active: f.active,
+      start_date: f.start_date ? new Date(f.start_date).toISOString() : new Date().toISOString(),
+      end_date: f.end_date ? new Date(f.end_date).toISOString() : null,
+    };
+    let err;
+    if (row) ({ error: err } = await supabase.from("ads").update(payload).eq("id", row.id));
+    else ({ error: err } = await supabase.from("ads").insert(payload));
+    if (err) return toast.error(err.message);
+    toast.success("Salvo"); setOpen(false); onSaved();
+  }
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{row ? "Editar anúncio" : "Novo anúncio"}</DialogTitle></DialogHeader>
+        <form onSubmit={save} className="space-y-3">
+          <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+          <div><ImageUpload label="Imagem (proporção 3:1 recomendada)" folder="ads" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
+          <div><Label>URL de redirecionamento (opcional)</Label><Input type="url" value={f.redirect_url} onChange={(e) => setF({ ...f, redirect_url: e.target.value })} placeholder="https://..." /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Início</Label><Input type="date" value={f.start_date} onChange={(e) => setF({ ...f, start_date: e.target.value })} /></div>
+            <div><Label>Término (opcional)</Label><Input type="date" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
+          </div>
+          <div className="flex items-center gap-2"><Switch checked={f.active} onCheckedChange={(v) => setF({ ...f, active: v })} /><Label>Ativo</Label></div>
+          <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
