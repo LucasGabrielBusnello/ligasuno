@@ -11,7 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+
 import { Switch } from "@/components/ui/switch";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscription.functions";
@@ -464,10 +466,28 @@ function SettingsAdmin() {
     </div>
   );
 
+  async function advanceSemester() {
+    if (!confirm("Avançar 1 semestre para TODOS os alunos Unochapecó? (limite 20)")) return;
+    const { data, error } = await (supabase as any).rpc("advance_semester");
+    if (error) return toast.error(error.message);
+    toast.success(`${data ?? 0} alunos avançaram de semestre.`);
+  }
+
   return (
     <div className="space-y-6">
+      <Card className="border-orange-500/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><GraduationCap className="size-5 text-orange-500" /> Virada de Semestre</CardTitle>
+          <p className="text-sm text-muted-foreground">Incrementa em +1 o semestre de todos os alunos Unochapecó cadastrados (limite 20). Ideal executar no início de cada semestre letivo.</p>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={advanceSemester} variant="destructive">Avançar todos em +1 semestre</Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader><CardTitle>Anuidade das Ligas (100% da plataforma)</CardTitle></CardHeader>
+
         <CardContent className="space-y-3">
           <div><Label>Valor mensal no cartão (R$)</Label><Input type="number" step="0.01" value={s.annual_fee_credit_monthly} onChange={(e) => setS({ ...s, annual_fee_credit_monthly: +e.target.value })} /></div>
           <p className="text-xs text-muted-foreground">Cobrança recorrente mensal via Mercado Pago. Valor lido em tempo real no checkout.</p>
@@ -613,11 +633,13 @@ function AdsAdmin() {
     toast.success("Removido"); reload();
   }
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <AdsAnalytics ads={list} />
       <div className="flex justify-between items-center">
         <p className="text-muted-foreground">Banners exibidos no topo da página inicial. Cliques e visualizações são registrados automaticamente.</p>
         <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
       </div>
+
       <div className="grid md:grid-cols-2 gap-4">
         {list.map((a) => {
           const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
@@ -691,3 +713,71 @@ function AdDialog({ open, setOpen, row, onSaved }: any) {
     </Dialog>
   );
 }
+
+function AdsAnalytics({ ads }: { ads: any[] }) {
+  const [range, setRange] = useState<"7" | "30" | "90">("30");
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const since = new Date(Date.now() - Number(range) * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase.from("ad_analytics").select("ad_id, action, user_id, created_at").gte("created_at", since);
+      setRows(data ?? []);
+      setLoading(false);
+    })();
+  }, [range]);
+
+  const byAd = new Map<string, { title: string; views: number; clicks: number; uniqueViews: Set<string>; uniqueClicks: Set<string> }>();
+  ads.forEach((a) => byAd.set(a.id, { title: a.title || "(sem título)", views: 0, clicks: 0, uniqueViews: new Set(), uniqueClicks: new Set() }));
+  rows.forEach((r) => {
+    const b = byAd.get(r.ad_id); if (!b) return;
+    if (r.action === "view") { b.views++; if (r.user_id) b.uniqueViews.add(r.user_id); }
+    else if (r.action === "click") { b.clicks++; if (r.user_id) b.uniqueClicks.add(r.user_id); }
+  });
+  const chartData = Array.from(byAd.entries()).map(([, v]) => ({ name: v.title.slice(0, 20), Views: v.views, Cliques: v.clicks, "Views únicas": v.uniqueViews.size, "Cliques únicos": v.uniqueClicks.size }));
+  const totals = chartData.reduce((acc, r) => ({ v: acc.v + r.Views, c: acc.c + r.Cliques, uv: acc.uv + r["Views únicas"], uc: acc.uc + r["Cliques únicos"] }), { v: 0, c: 0, uv: 0, uc: 0 });
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <CardTitle className="flex items-center gap-2"><BarChart3 className="size-5 text-orange-500" /> Analytics de Anúncios</CardTitle>
+          <div className="flex gap-1">
+            {(["7", "30", "90"] as const).map((r) => (
+              <Button key={r} size="sm" variant={range === r ? "default" : "outline"} onClick={() => setRange(r)}>{r}d</Button>
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Views totais</div><div className="text-2xl font-black">{totals.v}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Views únicas</div><div className="text-2xl font-black">{totals.uv}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Cliques totais</div><div className="text-2xl font-black">{totals.c}</div></div>
+          <div className="rounded-lg border p-3"><div className="text-xs text-muted-foreground">Cliques únicos</div><div className="text-2xl font-black">{totals.uc}</div></div>
+        </div>
+        {loading ? (
+          <p className="text-sm text-muted-foreground text-center py-6">Carregando dados...</p>
+        ) : chartData.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">Nenhum anúncio cadastrado ainda.</p>
+        ) : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                <Bar dataKey="Views" fill="#f97316" />
+                <Bar dataKey="Cliques" fill="#22c55e" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+

@@ -454,7 +454,7 @@ export function EventsTab({ league }: any) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const blank = {
     title: "", description: "", image_url: "",
-    event_date: "", schedule: "",
+    event_date: "", end_date: "", schedule: "",
     registration_deadline: "",
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
@@ -464,6 +464,7 @@ export function EventsTab({ league }: any) {
     checkin_schedule: [{ idx: 1, label: "1° Credenciamento", starts_at: "", interval_min: 30 }] as any[],
     freeze_on_event_day: true,
   };
+
   const [f, setF] = useState<any>(blank);
   const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
@@ -484,7 +485,7 @@ export function EventsTab({ league }: any) {
       : Array.from({ length: cn }, (_, i) => ({ idx: i + 1, label: `${i + 1}° Credenciamento`, starts_at: "", interval_min: 30 }));
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
-      event_date: ev.event_date ?? "", schedule: ev.schedule ?? "",
+      event_date: ev.event_date ?? "", end_date: ev.end_date ? String(ev.end_date).slice(0, 16) : "", schedule: ev.schedule ?? "",
       registration_deadline: ev.registration_deadline ? new Date(ev.registration_deadline).toISOString().slice(0, 16) : "",
       price_ligante: Number(ev.price_ligante) || 0,
       price_partner: Number(ev.price_partner) || 0,
@@ -513,6 +514,8 @@ export function EventsTab({ league }: any) {
       description: f.description,
       image_url: f.image_url || null,
       event_date: f.event_date || null,
+      end_date: f.end_date ? new Date(f.end_date).toISOString() : null,
+
       schedule: f.schedule || null,
       registration_deadline: f.registration_deadline ? new Date(f.registration_deadline).toISOString() : null,
       price_ligante: Number(f.price_ligante) || 0,
@@ -582,7 +585,9 @@ export function EventsTab({ league }: any) {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+            <div><Label>Data e hora de término (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Se preenchida, será exibida como período do evento.</p></div>
             <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
+
             <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
             <div><ImageUpload label="Imagem" folder="events" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
             <div className="grid grid-cols-3 gap-2">

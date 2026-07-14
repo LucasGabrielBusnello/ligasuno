@@ -8,9 +8,11 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Check, X, BookOpen, Lock, Globe2, HelpCircle } from "lucide-react";
+import { ImageUpload } from "@/components/image-upload";
 
-type QForm = { question: string; options: string[]; correct_answer: number; explanation: string };
-const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0, explanation: "" };
+type QForm = { question: string; options: string[]; correct_answer: number; explanation: string; image_url: string };
+const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0, explanation: "", image_url: "" };
+
 
 function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) => void }) {
   return (
@@ -55,9 +57,11 @@ function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) 
         onChange={(e) => onChange({ ...value, explanation: e.target.value })}
         className="min-h-[60px]"
       />
+      <ImageUpload label="Imagem da questão (opcional)" folder="quiz-questions" value={value.image_url} onChange={(url) => onChange({ ...value, image_url: url })} />
     </div>
   );
 }
+
 
 export function LeagueQuizManager({ league }: { league: any }) {
   const [sets, setSets] = useState<any[]>([]);
@@ -115,7 +119,7 @@ export function LeagueQuizManager({ league }: { league: any }) {
   async function addQuiz() {
     const err = validate(nq); if (err) return toast.error(err);
     if (!openSet) return;
-    const { error } = await supabase.from("league_quizzes").insert({ ...nq, quiz_set_id: openSet, display_order: quizzes.length });
+    const { error } = await supabase.from("league_quizzes").insert({ ...nq, image_url: nq.image_url || null, quiz_set_id: openSet, display_order: quizzes.length });
     if (error) return toast.error(error.message);
     setNq(EMPTY_Q);
     toast.success("Questão adicionada");
@@ -123,14 +127,14 @@ export function LeagueQuizManager({ league }: { league: any }) {
   }
   function startEdit(q: any) {
     setEditingId(q.id);
-    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer, explanation: q.explanation ?? "" });
+    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer, explanation: q.explanation ?? "", image_url: q.image_url ?? "" });
   }
   function cancelEdit() { setEditingId(null); setEditForm(EMPTY_Q); }
   async function saveQuizEdit() {
     const err = validate(editForm); if (err) return toast.error(err);
     if (!editingId) return;
     const { error } = await supabase.from("league_quizzes")
-      .update({ question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer, explanation: editForm.explanation })
+      .update({ question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer, explanation: editForm.explanation, image_url: editForm.image_url || null })
       .eq("id", editingId);
     if (error) return toast.error(error.message);
     toast.success("Questão atualizada");
@@ -249,7 +253,9 @@ export function LeagueQuizManager({ league }: { league: any }) {
                         <QuestionForm value={editForm} onChange={setEditForm} />
                       ) : (
                         <div className="space-y-1.5">
+                          {q.image_url && <img src={q.image_url} alt="" className="rounded max-h-48 object-contain" />}
                           <p className="text-sm font-medium">{q.question}</p>
+
                           <ul className="space-y-1">
                             {(q.options as string[]).map((o, idx) => {
                               const ok = idx === q.correct_answer;
