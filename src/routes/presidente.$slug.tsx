@@ -454,7 +454,7 @@ export function EventsTab({ league }: any) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const blank = {
     title: "", description: "", image_url: "",
-    event_date: "", schedule: "",
+    event_date: "", end_date: "", schedule: "",
     registration_deadline: "",
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
@@ -464,6 +464,7 @@ export function EventsTab({ league }: any) {
     checkin_schedule: [{ idx: 1, label: "1° Credenciamento", starts_at: "", interval_min: 30 }] as any[],
     freeze_on_event_day: true,
   };
+
   const [f, setF] = useState<any>(blank);
   const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
