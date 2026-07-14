@@ -192,7 +192,7 @@ function buildSanitizedPayload(exam: any, attempt: any, questions: any[]) {
     .map((q: any) => {
       const order: number[] = optOrders[q.id] ?? q.options.map((_: any, i: number) => i);
       const opts = order.map((i: number) => q.options[i]);
-      return { id: q.id, question: q.question, options: opts };
+      return { id: q.id, question: q.question, options: opts, image_url: q.image_url ?? null };
     });
   return {
     exam_id: exam.id,
