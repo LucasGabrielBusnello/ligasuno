@@ -134,7 +134,7 @@ export function LeagueQuizManager({ league }: { league: any }) {
     const err = validate(editForm); if (err) return toast.error(err);
     if (!editingId) return;
     const { error } = await supabase.from("league_quizzes")
-      .update({ question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer, explanation: editForm.explanation })
+      .update({ question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer, explanation: editForm.explanation, image_url: editForm.image_url || null })
       .eq("id", editingId);
     if (error) return toast.error(error.message);
     toast.success("Questão atualizada");
