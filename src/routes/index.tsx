@@ -354,6 +354,61 @@ function HomePage() {
   );
 }
 
+function AdsBanner() {
+  const [ads, setAds] = useState<any[]>([]);
+  const [idx, setIdx] = useState(0);
+  const trackedViews = React.useRef<Set<string>>(new Set());
+  useEffect(() => {
+    (async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("ads")
+        .select("*")
+        .eq("active", true)
+        .lte("start_date", nowIso)
+        .order("created_at", { ascending: false });
+      const filtered = (data ?? []).filter((a: any) => !a.end_date || a.end_date >= nowIso);
+      setAds(filtered);
+    })();
+  }, []);
+  useEffect(() => {
+    if (ads.length <= 1) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % ads.length), 6000);
+    return () => clearInterval(t);
+  }, [ads.length]);
+  useEffect(() => {
+    const ad = ads[idx];
+    if (!ad || trackedViews.current.has(ad.id)) return;
+    trackedViews.current.add(ad.id);
+    supabase.auth.getUser().then(({ data }) => {
+      supabase.from("ad_analytics").insert({ ad_id: ad.id, action: "view", user_id: data.user?.id ?? null }).then(() => {});
+    });
+  }, [ads, idx]);
+  if (ads.length === 0) return null;
+  const ad = ads[idx];
+  function click() {
+    supabase.auth.getUser().then(({ data }) => {
+      supabase.from("ad_analytics").insert({ ad_id: ad.id, action: "click", user_id: data.user?.id ?? null }).then(() => {
+        if (ad.redirect_url) window.open(ad.redirect_url, "_blank", "noopener");
+      });
+    });
+  }
+  return (
+    <section className="max-w-7xl mx-auto px-4 mt-8">
+      <button type="button" onClick={click} className="group relative w-full block rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-neutral-950">
+        <img src={ad.image_url} alt={ad.title} className="w-full aspect-[3/1] object-cover transition-transform duration-500 group-hover:scale-105" />
+        {ads.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {ads.map((_, i) => (
+              <span key={i} className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-white" : "w-1.5 bg-white/40"}`} />
+            ))}
+          </div>
+        )}
+      </button>
+    </section>
+  );
+}
+
 function FeaturedCollectionBanner() {
   const [data, setData] = useState<{ name: string; description: string | null; cover_url: string | null; primary: string; secondary: string; athName: string; products: { image: string | null }[] } | null>(null);
   useEffect(() => {
