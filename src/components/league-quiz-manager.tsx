@@ -57,9 +57,11 @@ function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) 
         onChange={(e) => onChange({ ...value, explanation: e.target.value })}
         className="min-h-[60px]"
       />
+      <ImageUpload label="Imagem da questão (opcional)" folder="quiz-questions" value={value.image_url} onChange={(url) => onChange({ ...value, image_url: url })} />
     </div>
   );
 }
+
 
 export function LeagueQuizManager({ league }: { league: any }) {
   const [sets, setSets] = useState<any[]>([]);
