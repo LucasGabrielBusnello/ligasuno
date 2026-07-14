@@ -86,6 +86,7 @@ export const addExamQuestion = createServerFn({ method: "POST" })
     question: z.string().min(1).max(2000),
     options: z.array(z.string().min(1).max(500)).min(2).max(8),
     correct_answer: z.number().int().min(0),
+    image_url: z.string().url().max(1024).nullish(),
   }).parse(i))
   .handler(async ({ data, context }) => {
     await assertPresident(data.league_id, context.userId);
@@ -98,6 +99,7 @@ export const addExamQuestion = createServerFn({ method: "POST" })
       question: data.question,
       options: data.options,
       correct_answer: data.correct_answer,
+      image_url: data.image_url || null,
       display_order: count ?? 0,
     });
     if (error) throw new Error(error.message);
@@ -112,16 +114,18 @@ export const updateExamQuestion = createServerFn({ method: "POST" })
     question: z.string().min(1).max(2000),
     options: z.array(z.string().min(1).max(500)).min(2).max(8),
     correct_answer: z.number().int().min(0),
+    image_url: z.string().url().max(1024).nullish(),
   }).parse(i))
   .handler(async ({ data, context }) => {
     await assertPresident(data.league_id, context.userId);
     if (data.correct_answer >= data.options.length) throw new Error("Alternativa correta inválida");
     const { error } = await (supabaseAdmin as any).from("league_selection_exam_questions")
-      .update({ question: data.question, options: data.options, correct_answer: data.correct_answer })
+      .update({ question: data.question, options: data.options, correct_answer: data.correct_answer, image_url: data.image_url || null })
       .eq("id", data.question_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 export const deleteExamQuestion = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
