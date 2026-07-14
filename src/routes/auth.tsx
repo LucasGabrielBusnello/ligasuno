@@ -135,6 +135,15 @@ function AuthPage() {
       toast.error(msg);
       return;
     }
+    if (su.is_unochapeco === "") {
+      const msg = "Informe se você é aluno(a) da Unochapecó.";
+      setError(msg); toast.error(msg); return;
+    }
+    if (su.is_unochapeco === "sim") {
+      if (!/^\d{9}$/.test(su.matricula)) { const m = "Matrícula deve ter 9 dígitos."; setError(m); toast.error(m); return; }
+      const sem = parseInt(su.current_semester, 10);
+      if (Number.isNaN(sem) || sem < 1 || sem > 20) { const m = "Semestre deve ser entre 1 e 20."; setError(m); toast.error(m); return; }
+    }
 
     setLoading(true);
     // Verifica disponibilidade do usuário (via função SECURITY DEFINER — não expõe emails)
