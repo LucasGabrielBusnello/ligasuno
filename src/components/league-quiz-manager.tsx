@@ -8,9 +8,11 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil, Check, X, BookOpen, Lock, Globe2, HelpCircle } from "lucide-react";
+import { ImageUpload } from "@/components/image-upload";
 
-type QForm = { question: string; options: string[]; correct_answer: number; explanation: string };
-const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0, explanation: "" };
+type QForm = { question: string; options: string[]; correct_answer: number; explanation: string; image_url: string };
+const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0, explanation: "", image_url: "" };
+
 
 function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) => void }) {
   return (
