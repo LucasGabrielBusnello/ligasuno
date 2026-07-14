@@ -286,7 +286,8 @@ function MateriasSection() {
   const { profile } = useAuth();
   const [subjects, setSubjects] = useState<any[]>([]);
   const [teachersMap, setTeachersMap] = useState<Record<string, any[]>>({});
-  const sem = profile?.current_semester ?? null;
+  const sem = (profile as any)?.current_semester ?? null;
+
 
   useEffect(() => {
     if (!sem) return;
