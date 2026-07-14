@@ -77,7 +77,16 @@ function AuthPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [li, setLi] = useState({ email: "", password: "" });
-  const [su, setSu] = useState({ username: "", email: "", phone: "", registration_number: "", password: "", confirmPassword: "" });
+  const [su, setSu] = useState({
+    username: "",
+    email: "",
+    phone: "",
+    is_unochapeco: "" as "" | "sim" | "nao",
+    matricula: "",
+    current_semester: "",
+    password: "",
+    confirmPassword: "",
+  });
 
   function reset() {
     setError(null);
