@@ -135,7 +135,7 @@ export function ExamBuilder({ league }: { league: any }) {
     const err = validate(nq);
     if (err) return toast.error(err);
     try {
-      await addQ({ data: { league_id: league.id, question: nq.question.trim(), options: nq.options.map(o => o.trim()), correct_answer: nq.correct_answer } } as any);
+      await addQ({ data: { league_id: league.id, question: nq.question.trim(), options: nq.options.map(o => o.trim()), correct_answer: nq.correct_answer, image_url: nq.image_url || null } } as any);
       setNq(EMPTY_Q);
       toast.success("Questão adicionada");
       await reload();
@@ -144,7 +144,8 @@ export function ExamBuilder({ league }: { league: any }) {
 
   function startEdit(q: any) {
     setEditingId(q.id);
-    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer });
+    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer, image_url: q.image_url ?? "" });
+
   }
   function cancelEdit() { setEditingId(null); setEditForm(EMPTY_Q); }
 
