@@ -119,7 +119,7 @@ export function LeagueQuizManager({ league }: { league: any }) {
   async function addQuiz() {
     const err = validate(nq); if (err) return toast.error(err);
     if (!openSet) return;
-    const { error } = await supabase.from("league_quizzes").insert({ ...nq, quiz_set_id: openSet, display_order: quizzes.length });
+    const { error } = await supabase.from("league_quizzes").insert({ ...nq, image_url: nq.image_url || null, quiz_set_id: openSet, display_order: quizzes.length });
     if (error) return toast.error(error.message);
     setNq(EMPTY_Q);
     toast.success("Questão adicionada");
