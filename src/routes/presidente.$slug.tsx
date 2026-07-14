@@ -585,7 +585,9 @@ export function EventsTab({ league }: any) {
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
             <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+            <div><Label>Data e hora de término (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Se preenchida, será exibida como período do evento.</p></div>
             <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
+
             <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
             <div><ImageUpload label="Imagem" folder="events" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
             <div className="grid grid-cols-3 gap-2">
