@@ -186,6 +186,9 @@ function HomePage() {
         </div>
       </section>
 
+      {/* BANNERS DE ANÚNCIOS */}
+      <AdsBanner />
+
       {/* BANNER DESTAQUE — Coleção vigente AAAMD */}
       <FeaturedCollectionBanner />
 
