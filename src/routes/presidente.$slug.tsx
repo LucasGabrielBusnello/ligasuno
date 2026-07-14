@@ -514,6 +514,8 @@ export function EventsTab({ league }: any) {
       description: f.description,
       image_url: f.image_url || null,
       event_date: f.event_date || null,
+      end_date: f.end_date ? new Date(f.end_date).toISOString() : null,
+
       schedule: f.schedule || null,
       registration_deadline: f.registration_deadline ? new Date(f.registration_deadline).toISOString() : null,
       price_ligante: Number(f.price_ligante) || 0,
