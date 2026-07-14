@@ -77,7 +77,16 @@ function AuthPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const [li, setLi] = useState({ email: "", password: "" });
-  const [su, setSu] = useState({ username: "", email: "", phone: "", registration_number: "", password: "", confirmPassword: "" });
+  const [su, setSu] = useState({
+    username: "",
+    email: "",
+    phone: "",
+    is_unochapeco: "" as "" | "sim" | "nao",
+    matricula: "",
+    current_semester: "",
+    password: "",
+    confirmPassword: "",
+  });
 
   function reset() {
     setError(null);
@@ -126,6 +135,15 @@ function AuthPage() {
       toast.error(msg);
       return;
     }
+    if (su.is_unochapeco === "") {
+      const msg = "Informe se você é aluno(a) da Unochapecó.";
+      setError(msg); toast.error(msg); return;
+    }
+    if (su.is_unochapeco === "sim") {
+      if (!/^\d{9}$/.test(su.matricula)) { const m = "Matrícula deve ter 9 dígitos."; setError(m); toast.error(m); return; }
+      const sem = parseInt(su.current_semester, 10);
+      if (Number.isNaN(sem) || sem < 1 || sem > 20) { const m = "Semestre deve ser entre 1 e 20."; setError(m); toast.error(m); return; }
+    }
 
     setLoading(true);
     // Verifica disponibilidade do usuário (via função SECURITY DEFINER — não expõe emails)
@@ -155,12 +173,19 @@ function AuthPage() {
       return;
     }
 
-    // Atualiza matrícula no perfil (se informada) e envia e-mail de boas-vindas
+    // Atualiza perfil (Unochapecó, matrícula, semestre) e envia e-mail de boas-vindas
     if (data.user) {
-      const reg = su.registration_number.trim();
-      if (reg) {
-        try { await supabase.from("profiles").update({ registration_number: reg } as any).eq("id", data.user.id); } catch {}
+      const patch: any = { is_unochapeco_student: su.is_unochapeco === "sim" };
+      if (su.is_unochapeco === "sim") {
+        const mat = su.matricula.replace(/\D/g, "");
+        if (mat) patch.matricula = mat;
+        const sem = parseInt(su.current_semester, 10);
+        if (!Number.isNaN(sem)) patch.current_semester = sem;
+      } else {
+        patch.matricula = null;
+        patch.current_semester = null;
       }
+      try { await supabase.from("profiles").update(patch).eq("id", data.user.id); } catch {}
       try { await welcome({ data: { user_id: data.user.id } }); } catch (e) { console.warn("welcome email failed", e); }
     }
 
@@ -280,15 +305,41 @@ function AuthPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="su-reg">Matrícula (deixe em branco caso não tenha)</Label>
-                    <Input
-                      id="su-reg"
-                      value={su.registration_number}
-                      onChange={(e) => setSu({ ...su, registration_number: e.target.value })}
-                      placeholder="Ex.: 2024123456"
-                      maxLength={50}
-                    />
+                    <Label>Você é aluno(a) da Unochapecó?</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "sim" })}
+                        className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "sim" ? "border-primary bg-primary/10" : "border-border"}`}>Sim</button>
+                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "nao", matricula: "", current_semester: "" })}
+                        className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "nao" ? "border-primary bg-primary/10" : "border-border"}`}>Não</button>
+                    </div>
                   </div>
+                  {su.is_unochapeco === "sim" && (
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="su-mat">Matrícula (9 dígitos)</Label>
+                        <Input
+                          id="su-mat"
+                          value={su.matricula}
+                          onChange={(e) => setSu({ ...su, matricula: e.target.value.replace(/\D/g, "").slice(0, 9) })}
+                          placeholder="123456789"
+                          inputMode="numeric"
+                          maxLength={9}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="su-sem">Semestre atual (1 a 20)</Label>
+                        <Input
+                          id="su-sem"
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={su.current_semester}
+                          onChange={(e) => setSu({ ...su, current_semester: e.target.value })}
+                          placeholder="Ex.: 3"
+                        />
+                      </div>
+                    </>
+                  )}
                   <div className="space-y-1.5">
                     <Label htmlFor="su-pass">Senha (mín. 8 caracteres)</Label>
                     <PasswordInput
