@@ -154,7 +154,7 @@ export function ExamBuilder({ league }: { league: any }) {
     if (err) return toast.error(err);
     if (!editingId) return;
     try {
-      await updQ({ data: { league_id: league.id, question_id: editingId, question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer } } as any);
+      await updQ({ data: { league_id: league.id, question_id: editingId, question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer, image_url: editForm.image_url || null } } as any);
       toast.success("Questão atualizada");
       cancelEdit();
       await reload();
