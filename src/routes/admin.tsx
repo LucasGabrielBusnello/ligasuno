@@ -466,10 +466,28 @@ function SettingsAdmin() {
     </div>
   );
 
+  async function advanceSemester() {
+    if (!confirm("Avançar 1 semestre para TODOS os alunos Unochapecó? (limite 20)")) return;
+    const { data, error } = await (supabase as any).rpc("advance_semester");
+    if (error) return toast.error(error.message);
+    toast.success(`${data ?? 0} alunos avançaram de semestre.`);
+  }
+
   return (
     <div className="space-y-6">
+      <Card className="border-orange-500/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><GraduationCap className="size-5 text-orange-500" /> Virada de Semestre</CardTitle>
+          <p className="text-sm text-muted-foreground">Incrementa em +1 o semestre de todos os alunos Unochapecó cadastrados (limite 20). Ideal executar no início de cada semestre letivo.</p>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={advanceSemester} variant="destructive">Avançar todos em +1 semestre</Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader><CardTitle>Anuidade das Ligas (100% da plataforma)</CardTitle></CardHeader>
+
         <CardContent className="space-y-3">
           <div><Label>Valor mensal no cartão (R$)</Label><Input type="number" step="0.01" value={s.annual_fee_credit_monthly} onChange={(e) => setS({ ...s, annual_fee_credit_monthly: +e.target.value })} /></div>
           <p className="text-xs text-muted-foreground">Cobrança recorrente mensal via Mercado Pago. Valor lido em tempo real no checkout.</p>
