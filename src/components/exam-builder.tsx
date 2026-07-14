@@ -64,9 +64,11 @@ function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) 
           );
         })}
       </div>
+      <ImageUpload label="Imagem da questão (opcional)" folder="exam-questions" value={value.image_url} onChange={(url) => onChange({ ...value, image_url: url })} />
     </div>
   );
 }
+
 
 export function ExamBuilder({ league }: { league: any }) {
   const cfg = useServerFn(getExamConfig);
