@@ -485,7 +485,7 @@ export function EventsTab({ league }: any) {
       : Array.from({ length: cn }, (_, i) => ({ idx: i + 1, label: `${i + 1}° Credenciamento`, starts_at: "", interval_min: 30 }));
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
-      event_date: ev.event_date ?? "", schedule: ev.schedule ?? "",
+      event_date: ev.event_date ?? "", end_date: ev.end_date ? String(ev.end_date).slice(0, 16) : "", schedule: ev.schedule ?? "",
       registration_deadline: ev.registration_deadline ? new Date(ev.registration_deadline).toISOString().slice(0, 16) : "",
       price_ligante: Number(ev.price_ligante) || 0,
       price_partner: Number(ev.price_partner) || 0,
