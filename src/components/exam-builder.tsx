@@ -8,13 +8,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Plus, Trash2, KeyRound, RefreshCw, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
+import { ImageUpload } from "@/components/image-upload";
 import {
   getExamConfig, upsertExamConfig, addExamQuestion, updateExamQuestion, deleteExamQuestion,
   getReentryCode, regenerateReentryCode,
 } from "@/lib/exam.functions";
 
-type QForm = { question: string; options: string[]; correct_answer: number };
-const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0 };
+type QForm = { question: string; options: string[]; correct_answer: number; image_url: string };
+const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0, image_url: "" };
+
 
 function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) => void }) {
   return (
