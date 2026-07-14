@@ -633,11 +633,13 @@ function AdsAdmin() {
     toast.success("Removido"); reload();
   }
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <AdsAnalytics ads={list} />
       <div className="flex justify-between items-center">
         <p className="text-muted-foreground">Banners exibidos no topo da página inicial. Cliques e visualizações são registrados automaticamente.</p>
         <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
       </div>
+
       <div className="grid md:grid-cols-2 gap-4">
         {list.map((a) => {
           const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
