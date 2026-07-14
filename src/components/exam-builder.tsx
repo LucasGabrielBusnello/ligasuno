@@ -267,7 +267,9 @@ export function ExamBuilder({ league }: { league: any }) {
                   <QuestionForm value={editForm} onChange={setEditForm} />
                 ) : (
                   <div className="space-y-2">
+                    {q.image_url && <img src={q.image_url} alt="" className="rounded max-h-48 object-contain" />}
                     <p className="text-sm font-medium leading-snug">{q.question}</p>
+
                     <ul className="space-y-1">
                       {(q.options as string[]).map((o, idx) => {
                         const correct = idx === q.correct_answer;
