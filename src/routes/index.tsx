@@ -264,6 +264,8 @@ function HomePage() {
               </div>
             </Card>
 
+            <CoordinationSection />
+
             <Tabs defaultValue="membros" className="w-full">
               <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full h-auto">
                 <TabsTrigger value="membros" className="py-2"><Users className="size-4 mr-1.5" />Membros</TabsTrigger>
