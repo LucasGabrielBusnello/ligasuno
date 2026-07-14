@@ -141,6 +141,12 @@ function HomePage() {
                   <UserCircle className="size-5" />
                 </Button>
 
+                <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-3" title="Painel do Aluno">
+                  <Link to="/painel"><GraduationCap className="size-4" /> <span className="hidden sm:inline">Painel</span></Link>
+                </Button>
+
+
+
                 {isCamedPresident && (
                   <Button asChild variant="default" size="icon" className="sm:size-auto sm:px-3 bg-gradient-to-r from-primary to-accent" title="CAMED">
                     <Link to="/camed"><Building2 className="size-4" /> <span className="hidden sm:inline">CAMED</span></Link>

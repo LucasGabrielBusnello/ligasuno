@@ -8,13 +8,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Plus, Trash2, KeyRound, RefreshCw, Eye, EyeOff, Pencil, Check, X } from "lucide-react";
+import { ImageUpload } from "@/components/image-upload";
 import {
   getExamConfig, upsertExamConfig, addExamQuestion, updateExamQuestion, deleteExamQuestion,
   getReentryCode, regenerateReentryCode,
 } from "@/lib/exam.functions";
 
-type QForm = { question: string; options: string[]; correct_answer: number };
-const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0 };
+type QForm = { question: string; options: string[]; correct_answer: number; image_url: string };
+const EMPTY_Q: QForm = { question: "", options: ["", "", "", ""], correct_answer: 0, image_url: "" };
+
 
 function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) => void }) {
   return (
@@ -62,9 +64,11 @@ function QuestionForm({ value, onChange }: { value: QForm; onChange: (v: QForm) 
           );
         })}
       </div>
+      <ImageUpload label="Imagem da questão (opcional)" folder="exam-questions" value={value.image_url} onChange={(url) => onChange({ ...value, image_url: url })} />
     </div>
   );
 }
+
 
 export function ExamBuilder({ league }: { league: any }) {
   const cfg = useServerFn(getExamConfig);
@@ -131,7 +135,7 @@ export function ExamBuilder({ league }: { league: any }) {
     const err = validate(nq);
     if (err) return toast.error(err);
     try {
-      await addQ({ data: { league_id: league.id, question: nq.question.trim(), options: nq.options.map(o => o.trim()), correct_answer: nq.correct_answer } } as any);
+      await addQ({ data: { league_id: league.id, question: nq.question.trim(), options: nq.options.map(o => o.trim()), correct_answer: nq.correct_answer, image_url: nq.image_url || null } } as any);
       setNq(EMPTY_Q);
       toast.success("Questão adicionada");
       await reload();
@@ -140,7 +144,8 @@ export function ExamBuilder({ league }: { league: any }) {
 
   function startEdit(q: any) {
     setEditingId(q.id);
-    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer });
+    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer, image_url: q.image_url ?? "" });
+
   }
   function cancelEdit() { setEditingId(null); setEditForm(EMPTY_Q); }
 
@@ -149,7 +154,7 @@ export function ExamBuilder({ league }: { league: any }) {
     if (err) return toast.error(err);
     if (!editingId) return;
     try {
-      await updQ({ data: { league_id: league.id, question_id: editingId, question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer } } as any);
+      await updQ({ data: { league_id: league.id, question_id: editingId, question: editForm.question.trim(), options: editForm.options.map(o => o.trim()), correct_answer: editForm.correct_answer, image_url: editForm.image_url || null } } as any);
       toast.success("Questão atualizada");
       cancelEdit();
       await reload();
@@ -262,7 +267,9 @@ export function ExamBuilder({ league }: { league: any }) {
                   <QuestionForm value={editForm} onChange={setEditForm} />
                 ) : (
                   <div className="space-y-2">
+                    {q.image_url && <img src={q.image_url} alt="" className="rounded max-h-48 object-contain" />}
                     <p className="text-sm font-medium leading-snug">{q.question}</p>
+
                     <ul className="space-y-1">
                       {(q.options as string[]).map((o, idx) => {
                         const correct = idx === q.correct_answer;

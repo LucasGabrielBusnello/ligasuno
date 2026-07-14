@@ -17,7 +17,7 @@ type Payload = {
   time_remaining_ms: number;
   paused: boolean;
   submitted: boolean;
-  questions: Array<{ id: string; question: string; options: string[] }>;
+  questions: Array<{ id: string; question: string; options: string[]; image_url?: string | null }>;
   answers: Record<string, number>;
 };
 
@@ -173,7 +173,9 @@ export function ExamRunner({ league, open, onClose }: { league: any; open: boole
           <div className="space-y-4" onCopy={(e) => e.preventDefault()}>
             {data.questions.map((q, i) => (
               <Card key={q.id}><CardContent className="p-4 space-y-2">
+                {q.image_url && <img src={q.image_url} alt="" className="rounded max-h-64 object-contain mx-auto" />}
                 <div className="font-bold text-sm">Q{i + 1}. {q.question}</div>
+
                 <div className="space-y-1">
                   {q.options.map((opt, idx) => (
                     <label key={idx} className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-sm ${data.answers[q.id] === idx ? "border-primary bg-primary/5" : "border-border"}`}>
