@@ -125,7 +125,7 @@ export function LeagueQuizManager({ league }: { league: any }) {
   }
   function startEdit(q: any) {
     setEditingId(q.id);
-    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer, explanation: q.explanation ?? "" });
+    setEditForm({ question: q.question, options: [...(q.options as string[])], correct_answer: q.correct_answer, explanation: q.explanation ?? "", image_url: q.image_url ?? "" });
   }
   function cancelEdit() { setEditingId(null); setEditForm(EMPTY_Q); }
   async function saveQuizEdit() {
