@@ -17,7 +17,7 @@ type Payload = {
   time_remaining_ms: number;
   paused: boolean;
   submitted: boolean;
-  questions: Array<{ id: string; question: string; options: string[] }>;
+  questions: Array<{ id: string; question: string; options: string[]; image_url?: string | null }>;
   answers: Record<string, number>;
 };
 
