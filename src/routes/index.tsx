@@ -822,3 +822,35 @@ function AtleticaTeaser() {
     </Card>
   );
 }
+
+function CoordinationSection() {
+  const [list, setList] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from("coordination_staff").select("*").order("display_order").then(({ data }) => setList(data ?? []));
+  }, []);
+  if (list.length === 0) return null;
+  return (
+    <section>
+      <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+        <Crown className="size-4 text-primary" /> Coordenação do curso
+      </h3>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {list.map((c) => (
+          <Card key={c.id} className="overflow-hidden hover:-translate-y-1 transition-all">
+            <div className="aspect-[4/3] bg-muted relative">
+              {c.image_url ? <img src={c.image_url} alt={c.name} className="absolute inset-0 w-full h-full object-cover" />
+                : <div className="absolute inset-0 flex items-center justify-center text-muted-foreground"><UserCircle className="size-20" /></div>}
+            </div>
+            <CardContent className="p-5">
+              <Badge variant="secondary" className="uppercase text-[10px]">{c.role_key === "coordenador" ? "Coordenação" : c.role_key === "adjunta" ? "Coordenação Adjunta" : "Assistente"}</Badge>
+              <h4 className="font-black text-lg mt-2">{c.name}</h4>
+              {c.title && <p className="text-xs text-muted-foreground">{c.title}</p>}
+              {c.bio && <p className="text-sm text-muted-foreground mt-2 line-clamp-3">{c.bio}</p>}
+              {c.email && <p className="text-xs mt-2"><a href={`mailto:${c.email}`} className="text-primary hover:underline">{c.email}</a></p>}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
