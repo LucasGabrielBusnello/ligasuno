@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PainelRouteImport } from './routes/painel'
 import { Route as CamedRouteImport } from './routes/camed'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AtleticaRouteImport } from './routes/atletica'
@@ -27,6 +28,11 @@ import { Route as ApiPublicCronMarkOverdueRouteImport } from './routes/api/publi
 import { Route as ApiPublicCronEventSnapshotRouteImport } from './routes/api/public/cron/event-snapshot'
 import { Route as ApiPublicCronEventRemindersRouteImport } from './routes/api/public/cron/event-reminders'
 
+const PainelRoute = PainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CamedRoute = CamedRouteImport.update({
   id: '/camed',
   path: '/camed',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/painel': typeof PainelRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/painel': typeof PainelRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/painel': typeof PainelRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/painel'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/painel'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/painel'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -245,6 +257,7 @@ export interface RootRouteChildren {
   AtleticaRoute: typeof AtleticaRoute
   AuthRoute: typeof AuthRoute
   CamedRoute: typeof CamedRoute
+  PainelRoute: typeof PainelRoute
   DiretorSlugRoute: typeof DiretorSlugRoute
   LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
@@ -261,6 +274,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/painel': {
+      id: '/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof PainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/camed': {
       id: '/camed'
       path: '/camed'
@@ -389,6 +409,7 @@ const rootRouteChildren: RootRouteChildren = {
   AtleticaRoute: AtleticaRoute,
   AuthRoute: AuthRoute,
   CamedRoute: CamedRoute,
+  PainelRoute: PainelRoute,
   DiretorSlugRoute: DiretorSlugRoute,
   LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,

@@ -114,7 +114,7 @@ function PerfilSection() {
           <Button onClick={() => setOpen(true)}>Editar perfil</Button>
         </CardContent>
       </Card>
-      <ProfileEditDialog open={open} onOpenChange={setOpen} onSaved={() => setReload((n) => n + 1)} />
+      <ProfileEditDialog open={open} onOpenChange={setOpen} userId={user.id} />
     </div>
   );
 }
