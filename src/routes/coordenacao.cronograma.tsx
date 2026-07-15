@@ -9,13 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarPlus, Sparkles, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarPlus, Sparkles, Repeat, Copy, AlertTriangle } from "lucide-react";
 import {
   ScheduleGrid, ScheduleLegend, DEFAULT_SHIFT_TIMES, SHIFT_LABEL, getMonday, toISODate, type Shift,
 } from "@/components/schedule-grid";
 import {
-  listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry, bulkCreateScheduleEntries,
+  listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
+  bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
 } from "@/lib/schedule.functions";
 import { listSubjects } from "@/lib/curriculum.functions";
 
@@ -40,7 +43,7 @@ function CoordCronograma() {
   const listSubj = useServerFn(listSubjects);
   const delEntry = useServerFn(deleteScheduleEntry);
   const saveEntry = useServerFn(upsertScheduleEntry);
-
+  const copyWeek = useServerFn(copyScheduleWeek);
 
   const [classCode, setClassCode] = useState<string>("ATM31");
   const [monday, setMonday] = useState<Date>(() => getMonday(new Date()));
@@ -52,6 +55,9 @@ function CoordCronograma() {
   const [entryDialog, setEntryDialog] = useState<{ open: boolean; editing?: any; date?: string; shift?: Shift }>({ open: false });
   const [bulkOpen, setBulkOpen] = useState(false);
   const [reschedTarget, setReschedTarget] = useState<any | null>(null);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [copyTarget, setCopyTarget] = useState<Date>(() => { const m = getMonday(new Date()); m.setDate(m.getDate() + 7); return m; });
+  const [copyOverwrite, setCopyOverwrite] = useState(false);
 
   const reload = async () => {
     const weekStart = toISODate(monday);
@@ -98,6 +104,18 @@ function CoordCronograma() {
     } catch (er: any) { toast.error(er.message); }
   };
 
+  const doCopyWeek = async () => {
+    try {
+      const r = await copyWeek({ data: {
+        class_code: classCode as any,
+        fromMonday: toISODate(monday),
+        toMonday: toISODate(getMonday(copyTarget)),
+        overwrite: copyOverwrite,
+      }});
+      toast.success(`${(r as any).count} entradas copiadas`);
+      setCopyOpen(false);
+    } catch (e: any) { toast.error(e.message); }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/30 via-background to-background dark:from-emerald-950/10">
@@ -110,6 +128,28 @@ function CoordCronograma() {
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/curriculo">Currículo</Link></Button>
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/feriados">Feriados</Link></Button>
+            <Popover open={copyOpen} onOpenChange={setCopyOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm"><Copy className="size-4" /> Copiar semana</Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80" align="end">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-bold">Copiar esta semana para…</p>
+                    <p className="text-xs text-muted-foreground">Escolha qualquer dia da semana destino.</p>
+                  </div>
+                  <Calendar mode="single" selected={copyTarget} onSelect={(d) => d && setCopyTarget(d)} className="pointer-events-auto rounded-md border" />
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={copyOverwrite} onChange={(e) => setCopyOverwrite(e.target.checked)} />
+                    Sobrescrever entradas existentes na semana destino
+                  </label>
+                  <div className="text-xs text-muted-foreground">
+                    Destino: {getMonday(copyTarget).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                  </div>
+                  <Button className="w-full" size="sm" onClick={doCopyWeek}>Copiar</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <Button size="sm" onClick={() => setBulkOpen(true)}><CalendarPlus className="size-4" /> Marcar em lote</Button>
           </div>
         </div>
@@ -205,19 +245,18 @@ function CoordCronograma() {
         onClose={() => setBulkOpen(false)}
         subjects={subjects}
         classCode={classCode}
+        holidays={holidays}
         onSaved={() => { setBulkOpen(false); reload(); }}
       />
       <RescheduleDialog
         entry={reschedTarget}
+        classCode={classCode}
         onClose={() => setReschedTarget(null)}
         onSaved={() => { setReschedTarget(null); reload(); }}
       />
     </div>
   );
 }
-
-
-
 
 /* ---------- ENTRY DIALOG ---------- */
 function EntryDialog({
@@ -343,32 +382,35 @@ function EntryDialog({
   );
 }
 
-/* ---------- BULK DIALOG ---------- */
+/* ---------- BULK DIALOG (multi-seleção com calendário) ---------- */
 function BulkDialog({
-  open, onClose, subjects, classCode, onSaved,
-}: { open: boolean; onClose: () => void; subjects: Subject[]; classCode: string; onSaved: () => void }) {
+  open, onClose, subjects, classCode, holidays, onSaved,
+}: { open: boolean; onClose: () => void; subjects: Subject[]; classCode: string; holidays: any[]; onSaved: () => void }) {
   const bulk = useServerFn(bulkCreateScheduleEntries);
   const [subjectId, setSubjectId] = useState("");
   const [subdivision, setSubdivision] = useState("A");
   const [shift, setShift] = useState<Shift>("morning");
   const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
   const [isAbex, setIsAbex] = useState(false);
-  const [datesText, setDatesText] = useState("");
+  const [dates, setDates] = useState<Date[]>([]);
 
   useEffect(() => {
     if (open) {
-      setSubjectId(""); setSubdivision("A"); setShift("morning"); setKind("class"); setIsAbex(false); setDatesText("");
+      setSubjectId(""); setSubdivision("A"); setShift("morning"); setKind("class"); setIsAbex(false); setDates([]);
     }
   }, [open]);
 
+  const holidaySet = useMemo(() => new Set((holidays ?? []).map((h: any) => h.date)), [holidays]);
+  const currentSubj = subjects.find((s) => s.id === subjectId);
+
   const submit = async () => {
-    const dates = datesText.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
-    if (dates.length === 0) { toast.error("Informe as datas"); return; }
+    if (dates.length === 0) { toast.error("Selecione ao menos uma data"); return; }
     const [s, e] = DEFAULT_SHIFT_TIMES[shift];
     try {
       const r = await bulk({ data: {
         class_code: classCode as any, subject_id: subjectId || null, subdivision, shift,
-        start_time: s, end_time: e, kind, is_abex: kind === "practice" ? isAbex : false, dates,
+        start_time: s, end_time: e, kind, is_abex: kind === "practice" ? isAbex : false,
+        dates: dates.map((d) => toISODate(d)),
       }});
       toast.success(`${(r as any).count} entradas criadas`); onSaved();
     } catch (er: any) { toast.error(er.message); }
@@ -378,17 +420,26 @@ function BulkDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Marcar em lote</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <Label>Matéria</Label>
-            <Select value={subjectId} onValueChange={setSubjectId}>
-              <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>{filtered.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div>
+              <Label>Matéria</Label>
+              <Select value={subjectId} onValueChange={setSubjectId}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>{filtered.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            {currentSubj && currentSubj.subdivisions?.length > 1 && (
+              <div>
+                <Label>Subdivisão</Label>
+                <Select value={subdivision} onValueChange={setSubdivision}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{currentSubj.subdivisions.map((sd) => <SelectItem key={sd} value={sd}>{sd}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>Turno</Label>
               <Select value={shift} onValueChange={(v) => setShift(v as Shift)}>
@@ -411,48 +462,67 @@ function BulkDialog({
                 </SelectContent>
               </Select>
             </div>
+            {kind === "practice" && (
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={isAbex} onChange={(e) => setIsAbex(e.target.checked)} /> Prática ABEX
+              </label>
+            )}
+            <div className="text-sm text-muted-foreground">
+              {dates.length} data{dates.length !== 1 ? "s" : ""} selecionada{dates.length !== 1 ? "s" : ""}
+            </div>
           </div>
-          {kind === "practice" && (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={isAbex} onChange={(e) => setIsAbex(e.target.checked)} /> Prática ABEX
-            </label>
-          )}
           <div>
-            <Label>Subdivisão</Label>
-            <Input value={subdivision} onChange={(e) => setSubdivision(e.target.value)} placeholder="A" />
-          </div>
-          <div>
-            <Label>Datas (YYYY-MM-DD, separadas por vírgula ou espaço)</Label>
-            <Input value={datesText} onChange={(e) => setDatesText(e.target.value)} placeholder="2026-02-09, 2026-02-16, 2026-02-23" />
+            <Label className="mb-2 block">Selecione as datas</Label>
+            <Calendar
+              mode="multiple"
+              selected={dates}
+              onSelect={(d) => setDates(d ?? [])}
+              disabled={(d) => holidaySet.has(toISODate(d)) || d.getDay() === 0}
+              className="pointer-events-auto rounded-md border"
+            />
+            <p className="text-[11px] text-muted-foreground mt-2">Feriados e domingos estão desabilitados.</p>
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={submit}>Criar</Button>
+          <Button onClick={submit}>Criar ({dates.length})</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-/* ---------- RESCHEDULE DIALOG ---------- */
-function RescheduleDialog({ entry, onClose, onSaved }: { entry: any | null; onClose: () => void; onSaved: () => void }) {
+/* ---------- RESCHEDULE DIALOG (com aviso de conflito) ---------- */
+function RescheduleDialog({ entry, classCode, onClose, onSaved }: { entry: any | null; classCode: string; onClose: () => void; onSaved: () => void }) {
   const resched = useServerFn(rescheduleEntry);
+  const checkConflicts = useServerFn(checkScheduleConflicts);
   const [date, setDate] = useState("");
   const [shift, setShift] = useState<Shift>("morning");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [conflicts, setConflicts] = useState<any[]>([]);
 
   useEffect(() => {
     if (entry) {
       setDate(entry.date);
       const sh = entry.shift as Shift; setShift(sh);
       const [s, e] = DEFAULT_SHIFT_TIMES[sh]; setStart(s); setEnd(e);
+      setConflicts([]);
     }
   }, [entry]);
 
+  useEffect(() => {
+    if (!entry || !date) { setConflicts([]); return; }
+    let cancelled = false;
+    checkConflicts({ data: { class_code: classCode as any, date, shift, excludeId: entry.id } })
+      .then((r) => { if (!cancelled) setConflicts((r as any[]) ?? []); })
+      .catch(() => { if (!cancelled) setConflicts([]); });
+    return () => { cancelled = true; };
+  }, [entry, date, shift, classCode]);
+
   if (!entry) return null;
   const submit = async () => {
+    if (conflicts.length > 0 && !confirm(`Já existem ${conflicts.length} entrada(s) nesse turno. Remarcar mesmo assim?`)) return;
     try {
       await resched({ data: { entryId: entry.id, newDate: date, newShift: shift, newStartTime: start, newEndTime: end } });
       toast.success("Remarcada"); onSaved();
@@ -483,6 +553,18 @@ function RescheduleDialog({ entry, onClose, onSaved }: { entry: any | null; onCl
             <div><Label>Início</Label><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} /></div>
             <div><Label>Fim</Label><Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} /></div>
           </div>
+          {conflicts.length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3">
+              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-bold text-sm">
+                <AlertTriangle className="size-4" /> Conflito de horário
+              </div>
+              <ul className="mt-2 text-xs space-y-1">
+                {conflicts.map((c: any) => (
+                  <li key={c.id}>• {c.subject?.name ?? c.kind} — {c.start_time?.slice(0,5)}–{c.end_time?.slice(0,5)}{c.subdivision !== "A" ? ` (Sub ${c.subdivision})` : ""}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
