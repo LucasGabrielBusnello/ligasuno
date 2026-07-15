@@ -2980,6 +2980,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          class_code: Database["public"]["Enums"]["atm_class"] | null
           cpf: string | null
           created_at: string
           current_semester: number | null
@@ -2989,12 +2990,14 @@ export type Database = {
           is_unochapeco_student: boolean
           matricula: string | null
           phone: string | null
+          profile_reviewed_at: string | null
           registration_number: string | null
           updated_at: string
           username: string
         }
         Insert: {
           avatar_url?: string | null
+          class_code?: Database["public"]["Enums"]["atm_class"] | null
           cpf?: string | null
           created_at?: string
           current_semester?: number | null
@@ -3004,12 +3007,14 @@ export type Database = {
           is_unochapeco_student?: boolean
           matricula?: string | null
           phone?: string | null
+          profile_reviewed_at?: string | null
           registration_number?: string | null
           updated_at?: string
           username: string
         }
         Update: {
           avatar_url?: string | null
+          class_code?: Database["public"]["Enums"]["atm_class"] | null
           cpf?: string | null
           created_at?: string
           current_semester?: number | null
@@ -3019,6 +3024,7 @@ export type Database = {
           is_unochapeco_student?: boolean
           matricula?: string | null
           phone?: string | null
+          profile_reviewed_at?: string | null
           registration_number?: string | null
           updated_at?: string
           username?: string
@@ -3400,6 +3406,7 @@ export type Database = {
         | "used"
         | "cancelled"
         | "reserved"
+      atm_class: "ATM31" | "ATM30" | "ATM29" | "ATM28" | "ATM27" | "ATM26"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3551,6 +3558,7 @@ export const Constants = {
         "cancelled",
         "reserved",
       ],
+      atm_class: ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"],
     },
   },
 } as const
