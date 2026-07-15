@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      academic_terms: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_current: boolean
+          name: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_current?: boolean
+          name: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_current?: boolean
+          name?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ad_analytics: {
         Row: {
           action: string
@@ -2977,6 +3007,45 @@ export type Database = {
         }
         Relationships: []
       }
+      personal_schedule_items: {
+        Row: {
+          color: string
+          created_at: string
+          date: string
+          end_time: string | null
+          id: string
+          notes: string | null
+          start_time: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          date: string
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          date?: string
+          end_time?: string | null
+          id?: string
+          notes?: string | null
+          start_time?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -3203,28 +3272,43 @@ export type Database = {
       }
       subjects: {
         Row: {
+          class_codes: string[]
           created_at: string
           description: string | null
           id: string
           name: string
-          semester: number
+          professor: string | null
+          professor_contact: string | null
+          semester: number | null
+          subdivisions: string[]
           updated_at: string
+          workload_hours: number | null
         }
         Insert: {
+          class_codes?: string[]
           created_at?: string
           description?: string | null
           id?: string
           name: string
-          semester: number
+          professor?: string | null
+          professor_contact?: string | null
+          semester?: number | null
+          subdivisions?: string[]
           updated_at?: string
+          workload_hours?: number | null
         }
         Update: {
+          class_codes?: string[]
           created_at?: string
           description?: string | null
           id?: string
           name?: string
-          semester?: number
+          professor?: string | null
+          professor_contact?: string | null
+          semester?: number | null
+          subdivisions?: string[]
           updated_at?: string
+          workload_hours?: number | null
         }
         Relationships: []
       }
