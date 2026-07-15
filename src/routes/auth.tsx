@@ -311,7 +311,7 @@ function AuthPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "sim" })}
                         className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "sim" ? "border-primary bg-primary/10" : "border-border"}`}>Sim</button>
-                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "nao", matricula: "", current_semester: "" })}
+                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "nao", matricula: "", class_code: "" })}
                         className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "nao" ? "border-primary bg-primary/10" : "border-border"}`}>Não</button>
                     </div>
                   </div>
@@ -329,16 +329,18 @@ function AuthPage() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="su-sem">Semestre atual (1 a 20)</Label>
-                        <Input
-                          id="su-sem"
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={su.current_semester}
-                          onChange={(e) => setSu({ ...su, current_semester: e.target.value })}
-                          placeholder="Ex.: 3"
-                        />
+                        <Label htmlFor="su-atm">Turma ATM</Label>
+                        <select
+                          id="su-atm"
+                          value={su.class_code}
+                          onChange={(e) => setSu({ ...su, class_code: e.target.value as any })}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <option value="">Selecione sua turma…</option>
+                          {["ATM31","ATM30","ATM29","ATM28","ATM27","ATM26"].map((c) => (
+                            <option key={c} value={c}>{c} — formatura em 20{c.slice(3)}</option>
+                          ))}
+                        </select>
                       </div>
                     </>
                   )}
