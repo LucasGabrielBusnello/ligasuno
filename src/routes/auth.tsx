@@ -83,7 +83,7 @@ function AuthPage() {
     phone: "",
     is_unochapeco: "" as "" | "sim" | "nao",
     matricula: "",
-    current_semester: "",
+    class_code: "" as "" | "ATM31" | "ATM30" | "ATM29" | "ATM28" | "ATM27" | "ATM26",
     password: "",
     confirmPassword: "",
   });
@@ -141,8 +141,8 @@ function AuthPage() {
     }
     if (su.is_unochapeco === "sim") {
       if (!/^\d{9}$/.test(su.matricula)) { const m = "Matrícula deve ter 9 dígitos."; setError(m); toast.error(m); return; }
-      const sem = parseInt(su.current_semester, 10);
-      if (Number.isNaN(sem) || sem < 1 || sem > 20) { const m = "Semestre deve ser entre 1 e 20."; setError(m); toast.error(m); return; }
+      const validClasses = ["ATM31","ATM30","ATM29","ATM28","ATM27","ATM26"];
+      if (!validClasses.includes(su.class_code)) { const m = "Selecione sua turma ATM."; setError(m); toast.error(m); return; }
     }
 
     setLoading(true);
@@ -173,17 +173,19 @@ function AuthPage() {
       return;
     }
 
-    // Atualiza perfil (Unochapecó, matrícula, semestre) e envia e-mail de boas-vindas
+    // Atualiza perfil (Unochapecó, matrícula, turma ATM) e envia e-mail de boas-vindas
     if (data.user) {
-      const patch: any = { is_unochapeco_student: su.is_unochapeco === "sim" };
+      const patch: any = {
+        is_unochapeco_student: su.is_unochapeco === "sim",
+        profile_reviewed_at: new Date().toISOString(),
+      };
       if (su.is_unochapeco === "sim") {
         const mat = su.matricula.replace(/\D/g, "");
         if (mat) patch.matricula = mat;
-        const sem = parseInt(su.current_semester, 10);
-        if (!Number.isNaN(sem)) patch.current_semester = sem;
+        patch.class_code = su.class_code;
       } else {
         patch.matricula = null;
-        patch.current_semester = null;
+        patch.class_code = null;
       }
       try { await supabase.from("profiles").update(patch).eq("id", data.user.id); } catch {}
       try { await welcome({ data: { user_id: data.user.id } }); } catch (e) { console.warn("welcome email failed", e); }
