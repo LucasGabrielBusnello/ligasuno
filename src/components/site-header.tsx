@@ -17,9 +17,10 @@ const NAV = [
 ] as const;
 
 export function SiteHeader() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, isCoordination, loading } = useAuth();
   const nav = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   const [profileOpen, setProfileOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
