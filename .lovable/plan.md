@@ -1,108 +1,74 @@
 
-# Fase 4 — Grid semanal + editor da coordenação
+## O que ainda falta do plano original (revisão)
 
-Recebi os dois anexos e usei-os como referência visual. A Fase 1 já está entregue; este plano cobre a Fase 4 (a Fase 2 e a Fase 3 continuam na ordem original antes desta). Confirme se quer que eu execute **direto a Fase 4** agora ou mantenha a ordem 2 → 3 → 4.
+Marcado ✅ = pronto · ⏳ = parcial · ❌ = pendente
 
-## Visual do grid (baseado nos anexos)
+- ✅ Rebrand MEDUNO, tema verde, barra superior com Aluno/AAAMD/Ligas/CAMED
+- ✅ Login com matrícula/turma + diálogo "Atualizar cadastro" único
+- ✅ Painéis administrativos removidos do header (Admin/Coordenação isolados)
+- ✅ Currículo (componentes, turmas, subdivisões, professor, contato, carga horária)
+- ✅ Semestres letivos (início/fim) e feriados
+- ✅ Grid semanal do aluno com turnos manhã/tarde/noite, seg–sáb
+- ✅ Zona verde automática quando outra subdivisão tem aula
+- ✅ Cores por tipo (aula, prática, avaliação, zona verde, feriado, remarcada)
+- ✅ Editor da coordenação com painel lateral por turno, "Marcar em lote", remarcação
+- ✅ Ir para data específica no cronograma
+- ⏳ **Prática em cor roxa** — hoje está âmbar; ajustar para roxo
+- ⏳ **Filtro por subdivisão do aluno** no grid (mostrar só aulas da turma dele) + botão para trocar A/B/C direto na lista de matérias
+- ⏳ **Agenda pessoal do aluno aparecendo dentro do grid** (hoje é lista separada)
+- ⏳ **Eventos inscritos (atlética/ligas) no cronograma do aluno**
+- ❌ **Google Agenda**: botão "Sincronizar" com preview das subdivisões antes do envio
+- ❌ **Copiar/duplicar semana inteira** para outra semana no editor da coordenação
+- ❌ **"Marcar em lote" com calendário multi-seleção** (hoje aceita datas digitadas)
+- ❌ **Aviso de conflito** ao remarcar para um turno já ocupado
+- ❌ Notificações de mudança de cronograma para a turma afetada
+- ❌ Exportação do cronograma (PDF/print)
 
-Layout de tabela semanal, uma linha por turno, uma coluna por dia:
+## O que vou implementar agora
 
-```text
-┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
-│ Turno /  │ Segunda  │ Terça    │ Quarta   │ Quinta   │ Sexta    │ Sábado   │
-│ Horário  │ 09/02/26 │ 10/02/26 │ 11/02/26 │ 12/02/26 │ 13/02/26 │ 14/02/26 │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
-│ Manhã    │ Genética │ (verde)  │ Farmaco  │ Patologia│ Imuno    │ FERIADO  │
-│ 08–12    │ Cássia   │          │ Lilian   │ Mauro    │ Carine   │          │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
-│ Tarde    │ (verde)  │ Hab.Prof │ (verde)  │ Psic.Méd │ Micro    │ FERIADO  │
-│ 13:30–17 │          │ Odila    │          │ Lucinda  │ Adriana  │          │
-├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
-│ Noite    │ (verde)  │ (verde)  │ (verde)  │ (verde)  │ (verde)  │ FERIADO  │
-│ 19–22    │          │          │          │          │          │          │
-└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
-```
+### 1. Home enxuta (`src/routes/index.tsx`)
+- Manter apenas: header (já existe globalmente) + hero MEDUNO + **card de anúncio da atlética**.
+- **Remover** da home: grid de páginas (Aluno/AAAMD/Ligas/CAMED) e listagem de Ligas.
+- Mover conteúdos:
+  - Lista de **Ligas** e busca → passar para `/ligas` (se ainda não estiver lá).
+  - Atalhos rápidos que estavam no hub → já cobertos pela barra superior; nada duplicado.
+- Card da atlética continua clicável levando para `/aaamd`.
 
-Cores das células (fixas no design system, tema verde MEDUNO):
-- **Aula normal**: fundo branco/tema, texto escuro
-- **Prática**: amarelo
-- **Avaliação/prova**: vermelho
-- **Zona verde (livre)**: verde-limão
-- **Feriado**: ciano
-- **Remarcada — origem**: hachurado cinza + label "Remarcada para DD/MM"
-- **Remarcada — destino**: azul-claro + label "Remarcada de DD/MM"
+### 2. Google Agenda (App User Connector)
+- Configurar cliente `google_calendar` via App User Connector.
+- Tabela `app_user_connections` (cifrada) para guardar a chave por usuário.
+- Botão **"Sincronizar com Google Agenda"** acima do grid do aluno.
+- Diálogo de preview: lista `Matéria (Turma X)` conforme subdivisões escolhidas + eventos pessoais + eventos inscritos, com botão confirmar.
+- Server fn cria/atualiza eventos no calendário "primary" (idempotente por `extendedProperties.private.meduno_entry_id`).
+- Botão "Desconectar Google Agenda" no perfil.
 
-Legenda fixa acima do grid. Turno mostra até 2 itens empilhados; se houver mais, badge "+N".
+### 3. Copiar semana (coordenação)
+- Botão **"Copiar esta semana para…"** no header do editor.
+- Popover com date-picker da semana destino + checkbox "sobrescrever se houver conflito".
+- Server fn `copyWeek({ classCode, fromMonday, toMonday, overwrite })`.
 
-## Modelo de dados
+### 4. Marcar em lote com calendário multi-seleção
+- Substituir input de datas por `<Calendar mode="multiple">` (shadcn) com destaque para dias letivos e feriados desabilitados.
+- Mantém opções atuais (tipo aula/prática/prova, matéria, turno, subdivisão).
 
-Novas tabelas (com GRANT + RLS):
+### 5. Ajustes visuais/comportamentais complementares
+- **Prática em roxo** (ajuste em `schedule-grid.tsx` + legenda).
+- **Filtro por subdivisão no painel do aluno**: seletor A/B/C ao lado das matérias; grid mostra só entradas daquela subdivisão + entradas sem subdivisão.
+- **Eventos inscritos no grid do aluno**: unir `event_registrations` (atlética) + `league_events` inscritos e renderizar no dia (cor accent, não interfere em zona verde).
+- **Aviso de conflito na remarcação**: ao escolher data/turno destino, checar `schedule_entries` existentes e mostrar alerta antes de confirmar.
 
-- `academic_terms` — `id`, `name`, `start_date`, `end_date`, `is_current bool`. Edição: coordenação.
-- `holidays` — `id`, `term_id`, `date`, `label`. Renderiza célula ciano em todos os turnos do dia.
-- `schedule_entries`:
-  - `id`, `term_id`, `subject_id`, `class_code atm_class`, `subdivision text` (default 'A')
-  - `date`, `shift` enum('morning','afternoon','night'), `start_time`, `end_time`
-  - `kind` enum('class','practice','exam','green_zone','abex')
-  - `rescheduled_from_entry_id` (nullable, aponta para entrada de origem)
-  - `rescheduled_to_date` (nullable, na entrada de origem)
-  - `notes`
-- `personal_schedule_items` (se ainda não veio da Fase 3) — itens pessoais do aluno.
+## Detalhes técnicos
 
-RLS:
-- `schedule_entries`, `academic_terms`, `holidays`: SELECT para authenticated; INSERT/UPDATE/DELETE só `coordination_staff` ou admin master (função `has_role`).
-- `personal_schedule_items`: `auth.uid() = user_id`.
+- **Banco:** nova tabela `app_user_connections` (id, user_id, connector_id, connection_key_ciphertext, timestamps) com RLS só `service_role`; nenhum schema change para copy-week / multi-select / roxo.
+- **Server functions novas:** `src/lib/schedule.functions.ts` → `copyWeek`; `src/lib/google-calendar.functions.ts` → `connectGoogle`, `disconnectGoogle`, `syncScheduleToGoogle`, `previewScheduleSync`.
+- **Cripto:** `src/server/connectionKeyCrypto.ts` (AES-256-GCM com `APP_USER_CONNECTION_KEY_SECRET`).
+- **Componentes novos:** `google-sync-dialog.tsx`, `copy-week-popover.tsx`, atualizar `bulk-mark-dialog` (dentro de `coordenacao.cronograma.tsx`) para calendário multi-seleção.
+- **Rota home:** editar apenas `src/routes/index.tsx`; nada em `__root.tsx`.
 
-## Regra "janela verde automática"
+## Fora do escopo desta rodada
 
-Ao renderizar o grid **do aluno**: para cada turno sem `schedule_entries` da turma dele, se existir entrada de outra turma no mesmo turno → renderiza célula verde-limão com label "Janela verde". No grid **da coordenação**, mostra as entradas reais sem essa substituição.
+- Notificações push/e-mail de mudança de cronograma.
+- Exportação PDF do cronograma.
+- Two-way sync (Google → MEDUNO) — só faremos MEDUNO → Google.
 
-## Aba Coordenação
-
-Botão "Coordenação" no canto superior direito do `/aluno` (só visível para `coordination_staff` / admin master). Abre `/coordenacao/cronograma`:
-
-1. **Seletor de turma ATM** (ATM31…ATM26) + seletor de semana.
-2. **Grid** idêntico ao do aluno, mas editável.
-3. **Clique em turno** → painel lateral direito com lista de entradas + botões:
-   - `+ Adicionar` → escolhe matéria (filtradas por `class_codes` que contêm a turma selecionada). Se a matéria tem várias turmas, pergunta subdivisão. Horário default do turno pré-preenchido.
-   - `Zona verde` → cria entrada `kind='green_zone'` no turno inteiro sem perguntar mais nada.
-   - `⋮` por entrada → **Editar** / **Remarcar** / **Excluir**.
-4. **Remarcar**: modal com date/turno destino → cria nova entrada em destino com `rescheduled_from_entry_id = origem.id`, e marca origem com `rescheduled_to_date`. Ambas renderizam com cores/labels específicas.
-5. **Marcar em lote**: botão acima do grid → modal (matéria, subdivisão, turno, tipo) + calendário com multi-seleção de dias → cria em massa via server fn.
-6. **Feriados**: aba separada dentro de Coordenação para CRUD de `holidays` do term atual.
-
-## Server functions (todas com `requireSupabaseAuth` + checagem `coordination_staff`)
-
-- `listScheduleWeek({ classCode, weekStart })` → entries + holidays + expansão de janela verde (opcional, ou faz no cliente).
-- `createScheduleEntry`, `updateScheduleEntry`, `deleteScheduleEntry`
-- `rescheduleEntry({ entryId, newDate, newShift, newStartTime, newEndTime })`
-- `bulkCreateScheduleEntries({ subjectId, subdivision, shift, kind, dates[] })`
-- `setGreenZone({ classCode, date, shift })`
-- `listHolidays`, `createHoliday`, `deleteHoliday`
-- `listAcademicTerms`, `upsertAcademicTerm`, `setCurrentTerm`
-
-## Aluno v2 (dentro desta fase)
-
-Substitui a "faixa do dia" da Fase 3 por:
-- Toggle **Dia** / **Semana** no topo.
-- **Semana**: grid completo com regra de janela verde automática, sobreposto com `personal_schedule_items` (cor customizada por item).
-- **Dia**: coluna vertical mostrando o dia atual + itens pessoais + próxima aula.
-- Sem edição de entradas oficiais; só CRUD dos itens pessoais.
-
-## Arquivos previstos
-
-- **Migration**: `academic_terms`, `holidays`, `schedule_entries`, enums, GRANT, RLS + `has_role` já existente.
-- **Server fns**: `src/lib/schedule.functions.ts`, `src/lib/schedule.server.ts`.
-- **Rotas**:
-  - `src/routes/coordenacao.cronograma.tsx` (grid coordenação)
-  - `src/routes/coordenacao.feriados.tsx`
-  - `src/routes/coordenacao.termos.tsx`
-  - Atualiza `src/routes/aluno.tsx` (grid semanal + toggle)
-- **Componentes**: `ScheduleGrid`, `ScheduleCell`, `ShiftSidePanel`, `BulkCreateDialog`, `RescheduleDialog`, `HolidayManager`.
-- **Header**: adiciona link "Coordenação" condicional em `__root.tsx` para `coordination_staff`.
-
-## Confirmações antes de executar
-
-1. Seguir **ordem original** (Fase 2 → 3 → 4) ou pular direto para Fase 4 agora?
-2. Confirma horários padrão dos turnos: **manhã 08:00–12:00, tarde 13:30–17:30, noite 19:00–22:00**?
-3. Tipo `abex` (Prática ABEX aparece no anexo 2) — trato como subtipo de `practice` com label diferente, ou como `kind` próprio?
+Confirmando esse plano, sigo com a implementação.

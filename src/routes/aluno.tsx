@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,7 @@ import { toast } from "sonner";
 import { Stethoscope, LogIn, BookOpen, Mail, Plus, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { listSubjects, listPersonalItems, upsertPersonalItem, deletePersonalItem } from "@/lib/curriculum.functions";
 import { listScheduleWeek } from "@/lib/schedule.functions";
-import { ScheduleGrid, ScheduleLegend, getMonday, toISODate } from "@/components/schedule-grid";
+import { ScheduleGrid, ScheduleLegend, getMonday, toISODate, type ExtraEvent } from "@/components/schedule-grid";
 
 
 export const Route = createFileRoute("/aluno")({
@@ -53,8 +54,20 @@ function AlunoPage() {
   const [weekEntries, setWeekEntries] = useState<any[]>([]);
   const [weekHolidays, setWeekHolidays] = useState<any[]>([]);
   const [otherEntries, setOtherEntries] = useState<any[]>([]);
+  const [extraEvents, setExtraEvents] = useState<ExtraEvent[]>([]);
 
   const classCode = (profile as any)?.class_code as string | null;
+
+  // Persist per-subject subdivision selection in localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("meduno:mySub");
+      if (raw) setMySub(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem("meduno:mySub", JSON.stringify(mySub)); } catch { /* ignore */ }
+  }, [mySub]);
 
   const reload = async () => {
     const [s, i] = await Promise.all([listSubj(), listItems({ data: {} })]);
@@ -62,11 +75,44 @@ function AlunoPage() {
     setItems((i as any[]) ?? []);
   };
   const reloadWeek = async () => {
-    const r = await loadWeek({ data: { weekStart: toISODate(monday) } });
+    const weekStart = toISODate(monday);
+    const weekEnd = toISODate(new Date(monday.getTime() + 6 * 86400000));
+    const r = await loadWeek({ data: { weekStart } });
     const all = ((r as any).entries ?? []) as any[];
     setWeekEntries(classCode ? all.filter((e) => e.class_code === classCode) : []);
     setOtherEntries(all);
     setWeekHolidays((r as any).holidays ?? []);
+
+    // Registered events (atlética + ligas)
+    if (user) {
+      const [{ data: eventRegs }, { data: leagueEvts }, { data: atlEvts }, { data: myLeagues }] = await Promise.all([
+        supabase.from("event_registrations").select("event_id").eq("user_id", user.id),
+        supabase.from("league_events").select("id, league_id, title, event_date").gte("event_date", weekStart).lte("event_date", weekEnd),
+        supabase.from("athletic_events").select("id, title, starts_at, ends_at").gte("starts_at", weekStart + "T00:00:00").lte("starts_at", weekEnd + "T23:59:59"),
+        supabase.from("league_memberships").select("league_id").eq("user_id", user.id),
+      ]);
+      const regIds = new Set((eventRegs ?? []).map((r: any) => r.event_id));
+      const leagueIds = new Set((myLeagues ?? []).map((m: any) => m.league_id));
+      const extras: ExtraEvent[] = [];
+      for (const ev of (atlEvts ?? []) as any[]) {
+        if (regIds.has(ev.id)) {
+          const d = new Date(ev.starts_at);
+          extras.push({
+            id: `atl-${ev.id}`, title: ev.title, date: d.toISOString().slice(0, 10),
+            start_time: d.toTimeString().slice(0, 5),
+            end_time: ev.ends_at ? new Date(ev.ends_at).toTimeString().slice(0, 5) : null,
+            source: "atletica",
+          });
+        }
+      }
+      for (const ev of (leagueEvts ?? []) as any[]) {
+        if (!ev.event_date) continue;
+        if (regIds.has(ev.id) || leagueIds.has(ev.league_id)) {
+          extras.push({ id: `lg-${ev.id}`, title: ev.title, date: ev.event_date, start_time: null, end_time: null, source: "liga" });
+        }
+      }
+      setExtraEvents(extras);
+    }
   };
 
   useEffect(() => { if (user) reload(); }, [user]);
@@ -77,6 +123,23 @@ function AlunoPage() {
     () => subjects.filter((s) => !classCode || s.class_codes?.includes(classCode)),
     [subjects, classCode]
   );
+
+  // Filter week entries by student's subdivision per subject
+  const filteredWeekEntries = useMemo(() => {
+    return weekEntries.filter((e) => {
+      if (!e.subject_id) return true;
+      const subj = subjects.find((s) => s.id === e.subject_id);
+      if (!subj || (subj.subdivisions?.length ?? 1) <= 1) return true;
+      const chosen = mySub[e.subject_id] ?? "A";
+      return e.subdivision === chosen;
+    });
+  }, [weekEntries, subjects, mySub]);
+
+  const weekPersonalItems = useMemo(() => {
+    const start = toISODate(monday);
+    const end = toISODate(new Date(monday.getTime() + 6 * 86400000));
+    return items.filter((i) => i.date >= start && i.date <= end);
+  }, [items, monday]);
 
   const today = new Date().toISOString().slice(0, 10);
   const todayItems = items.filter((i) => i.date === today);
@@ -151,10 +214,12 @@ function AlunoPage() {
           </div>
           <ScheduleGrid
             monday={monday}
-            entries={weekEntries}
+            entries={filteredWeekEntries}
             holidays={weekHolidays}
             classCode={classCode ?? undefined}
             otherClassEntries={otherEntries}
+            personalItems={weekPersonalItems as any}
+            extraEvents={extraEvents}
           />
         </section>
       )}

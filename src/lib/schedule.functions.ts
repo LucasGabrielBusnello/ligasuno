@@ -167,6 +167,78 @@ export const bulkCreateScheduleEntries = createServerFn({ method: "POST" })
     return { count: rows.length };
   });
 
+export const checkScheduleConflicts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({
+      class_code: z.enum(ATM_CLASSES),
+      date: z.string(),
+      shift: z.enum(SHIFTS),
+      excludeId: z.string().uuid().optional(),
+    }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    let q = context.supabase.from("schedule_entries")
+      .select("id, subdivision, start_time, end_time, kind, subject:subjects(name)")
+      .eq("class_code", data.class_code)
+      .eq("date", data.date)
+      .eq("shift", data.shift);
+    if (data.excludeId) q = q.neq("id", data.excludeId);
+    const { data: rows, error } = await q;
+    if (error) throw error;
+    return rows ?? [];
+  });
+
+export const copyScheduleWeek = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({
+      class_code: z.enum(ATM_CLASSES),
+      fromMonday: z.string(),
+      toMonday: z.string(),
+      overwrite: z.boolean().default(false),
+    }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const from = new Date(data.fromMonday + "T00:00:00");
+    const fromEnd = new Date(from); fromEnd.setDate(fromEnd.getDate() + 6);
+    const to = new Date(data.toMonday + "T00:00:00");
+    const toEnd = new Date(to); toEnd.setDate(toEnd.getDate() + 6);
+    const dayOffset = Math.round((to.getTime() - from.getTime()) / 86400000);
+
+    const { data: src, error: e1 } = await context.supabase
+      .from("schedule_entries")
+      .select("*")
+      .eq("class_code", data.class_code)
+      .gte("date", data.fromMonday)
+      .lte("date", fromEnd.toISOString().slice(0, 10));
+    if (e1) throw e1;
+
+    if (data.overwrite) {
+      await context.supabase.from("schedule_entries")
+        .delete()
+        .eq("class_code", data.class_code)
+        .gte("date", data.toMonday)
+        .lte("date", toEnd.toISOString().slice(0, 10));
+    }
+
+    const rows = (src ?? []).map((o: any) => {
+      const d = new Date(o.date + "T00:00:00"); d.setDate(d.getDate() + dayOffset);
+      return {
+        term_id: o.term_id, subject_id: o.subject_id, class_code: o.class_code,
+        subdivision: o.subdivision, date: d.toISOString().slice(0, 10),
+        shift: o.shift, start_time: o.start_time, end_time: o.end_time,
+        kind: o.kind, is_abex: o.is_abex, notes: o.notes,
+        created_by: context.userId,
+      };
+    });
+    if (rows.length === 0) return { count: 0 };
+    const { error: e2 } = await context.supabase.from("schedule_entries").insert(rows);
+    if (e2) throw e2;
+    return { count: rows.length };
+  });
+
 /* ---------- HOLIDAYS ---------- */
 
 export const listHolidays = createServerFn({ method: "GET" })
