@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, LogIn, LogOut, UserCircle, Trophy, Users, Building2, Stethoscope, Menu, X } from "lucide-react";
+import { GraduationCap, LogIn, LogOut, UserCircle, Trophy, Users, Building2, Stethoscope, Menu, X, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { ProfileEditDialog } from "@/components/profile-edit-dialog";

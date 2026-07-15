@@ -23,6 +23,8 @@ import { Route as SlugIndexRouteImport } from './routes/$slug/index'
 import { Route as PresidenteSlugRouteImport } from './routes/presidente.$slug'
 import { Route as LiganteSlugRouteImport } from './routes/ligante.$slug'
 import { Route as DiretorSlugRouteImport } from './routes/diretor.$slug'
+import { Route as CoordenacaoFeriadosRouteImport } from './routes/coordenacao.feriados'
+import { Route as CoordenacaoCronogramaRouteImport } from './routes/coordenacao.cronograma'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicPaymentsMpWebhookRouteImport } from './routes/api/public/payments/mp-webhook'
 import { Route as ApiPublicPaymentsMpOauthStartRouteImport } from './routes/api/public/payments/mp-oauth-start'
@@ -102,6 +104,16 @@ const DiretorSlugRoute = DiretorSlugRouteImport.update({
   path: '/diretor/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoordenacaoFeriadosRoute = CoordenacaoFeriadosRouteImport.update({
+  id: '/coordenacao/feriados',
+  path: '/coordenacao/feriados',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoordenacaoCronogramaRoute = CoordenacaoCronogramaRouteImport.update({
+  id: '/coordenacao/cronograma',
+  path: '/coordenacao/cronograma',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -162,6 +174,8 @@ export interface FileRoutesByFullPath {
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
+  '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
+  '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -186,6 +200,8 @@ export interface FileRoutesByTo {
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
+  '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
+  '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -211,6 +227,8 @@ export interface FileRoutesById {
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
+  '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
+  '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -237,6 +255,8 @@ export interface FileRouteTypes {
     | '/ligas'
     | '/painel'
     | '/perfil'
+    | '/coordenacao/cronograma'
+    | '/coordenacao/feriados'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -261,6 +281,8 @@ export interface FileRouteTypes {
     | '/ligas'
     | '/painel'
     | '/perfil'
+    | '/coordenacao/cronograma'
+    | '/coordenacao/feriados'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -285,6 +307,8 @@ export interface FileRouteTypes {
     | '/ligas'
     | '/painel'
     | '/perfil'
+    | '/coordenacao/cronograma'
+    | '/coordenacao/feriados'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -310,6 +334,8 @@ export interface RootRouteChildren {
   LigasRoute: typeof LigasRoute
   PainelRoute: typeof PainelRoute
   PerfilRoute: typeof PerfilRoute
+  CoordenacaoCronogramaRoute: typeof CoordenacaoCronogramaRoute
+  CoordenacaoFeriadosRoute: typeof CoordenacaoFeriadosRoute
   DiretorSlugRoute: typeof DiretorSlugRoute
   LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
@@ -424,6 +450,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DiretorSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coordenacao/feriados': {
+      id: '/coordenacao/feriados'
+      path: '/coordenacao/feriados'
+      fullPath: '/coordenacao/feriados'
+      preLoaderRoute: typeof CoordenacaoFeriadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/coordenacao/cronograma': {
+      id: '/coordenacao/cronograma'
+      path: '/coordenacao/cronograma'
+      fullPath: '/coordenacao/cronograma'
+      preLoaderRoute: typeof CoordenacaoCronogramaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -494,6 +534,8 @@ const rootRouteChildren: RootRouteChildren = {
   LigasRoute: LigasRoute,
   PainelRoute: PainelRoute,
   PerfilRoute: PerfilRoute,
+  CoordenacaoCronogramaRoute: CoordenacaoCronogramaRoute,
+  CoordenacaoFeriadosRoute: CoordenacaoFeriadosRoute,
   DiretorSlugRoute: DiretorSlugRoute,
   LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,

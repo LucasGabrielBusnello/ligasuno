@@ -36,6 +36,7 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdminMaster, setIsAdminMaster] = useState(false);
+  const [isCoordination, setIsCoordination] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export function useAuth() {
       if (!sess?.user) {
         setProfile(null);
         setIsAdminMaster(false);
+        setIsCoordination(false);
         setLoading(false);
       } else {
         loadExtras(sess.user.id);
@@ -65,13 +67,24 @@ export function useAuth() {
       supabase.from("user_roles").select("role").eq("user_id", uid),
     ]);
     setProfile(p as Profile | null);
-    setIsAdminMaster(!!roles?.some((r: any) => r.role === "admin_master"));
+    const admin = !!roles?.some((r: any) => r.role === "admin_master");
+    const coord = admin || !!roles?.some((r: any) => r.role === "coordenacao");
+    setIsAdminMaster(admin);
+    // Also treat coordination_staff email as coordination
+    let coordFinal = coord;
+    if (!coordFinal && (p as any)?.email) {
+      const { data: cs } = await supabase
+        .from("coordination_staff").select("email").ilike("email", (p as any).email).maybeSingle();
+      if (cs) coordFinal = true;
+    }
+    setIsCoordination(coordFinal);
     setLoading(false);
   }
 
-  return { user, session, profile, isAdminMaster, loading };
+  return { user, session, profile, isAdminMaster, isCoordination, loading };
 }
 
 export async function signOut() {
   await supabase.auth.signOut();
 }
+
