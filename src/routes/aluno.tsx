@@ -213,10 +213,12 @@ function AlunoPage() {
           </div>
           <ScheduleGrid
             monday={monday}
-            entries={weekEntries}
+            entries={filteredWeekEntries}
             holidays={weekHolidays}
             classCode={classCode ?? undefined}
             otherClassEntries={otherEntries}
+            personalItems={weekPersonalItems as any}
+            extraEvents={extraEvents}
           />
         </section>
       )}
