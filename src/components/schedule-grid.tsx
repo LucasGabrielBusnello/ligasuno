@@ -137,6 +137,24 @@ export function ScheduleGrid({
     return m;
   }, [otherClassEntries, classCode]);
 
+  const personalByCell = useMemo(() => {
+    const m: Record<string, PersonalItem[]> = {};
+    for (const p of personalItems ?? []) {
+      const sh = shiftFromTime(p.start_time) ?? "morning";
+      (m[`${p.date}|${sh}`] ??= []).push(p);
+    }
+    return m;
+  }, [personalItems]);
+
+  const extraByCell = useMemo(() => {
+    const m: Record<string, ExtraEvent[]> = {};
+    for (const e of extraEvents ?? []) {
+      const sh = shiftFromTime(e.start_time) ?? "night";
+      (m[`${e.date}|${sh}`] ??= []).push(e);
+    }
+    return m;
+  }, [extraEvents]);
+
   return (
     <div className="w-full overflow-x-auto rounded-2xl border border-border/60 bg-background">
       <table className="w-full min-w-[860px] border-collapse text-sm">
