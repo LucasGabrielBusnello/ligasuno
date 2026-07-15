@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, LogIn, LogOut, UserCircle, Trophy, Users, Building2, Stethoscope, Menu, X } from "lucide-react";
+import { GraduationCap, LogIn, LogOut, UserCircle, Trophy, Users, Building2, Stethoscope, Menu, X, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { ProfileEditDialog } from "@/components/profile-edit-dialog";
@@ -17,9 +17,10 @@ const NAV = [
 ] as const;
 
 export function SiteHeader() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, isCoordination, loading } = useAuth();
   const nav = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   const [profileOpen, setProfileOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -65,7 +66,18 @@ export function SiteHeader() {
                   </Link>
                 );
               })}
+              {isCoordination && (
+                <Link
+                  to="/coordenacao/cronograma"
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                    pathname.startsWith("/coordenacao") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <Settings2 className="size-4" /> Coordenação
+                </Link>
+              )}
             </nav>
+
           </div>
 
           <div className="flex items-center gap-1.5">

@@ -9,8 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Stethoscope, LogIn, BookOpen, Mail, Plus, Trash2, Calendar as CalIcon } from "lucide-react";
+import { Stethoscope, LogIn, BookOpen, Mail, Plus, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
 import { listSubjects, listPersonalItems, upsertPersonalItem, deletePersonalItem } from "@/lib/curriculum.functions";
+import { listScheduleWeek } from "@/lib/schedule.functions";
+import { ScheduleGrid, ScheduleLegend, getMonday, toISODate } from "@/components/schedule-grid";
+
 
 export const Route = createFileRoute("/aluno")({
   head: () => ({
@@ -34,16 +37,22 @@ type PersonalItem = {
 };
 
 function AlunoPage() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, isCoordination, loading } = useAuth();
   const listSubj = useServerFn(listSubjects);
   const listItems = useServerFn(listPersonalItems);
   const deleteItem = useServerFn(deletePersonalItem);
+  const loadWeek = useServerFn(listScheduleWeek);
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [items, setItems] = useState<PersonalItem[]>([]);
   const [mySub, setMySub] = useState<Record<string, string>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PersonalItem | null>(null);
+  const [view, setView] = useState<"day" | "week">("day");
+  const [monday, setMonday] = useState<Date>(() => getMonday(new Date()));
+  const [weekEntries, setWeekEntries] = useState<any[]>([]);
+  const [weekHolidays, setWeekHolidays] = useState<any[]>([]);
+  const [otherEntries, setOtherEntries] = useState<any[]>([]);
 
   const classCode = (profile as any)?.class_code as string | null;
 
@@ -52,8 +61,17 @@ function AlunoPage() {
     setSubjects((s as any[]) ?? []);
     setItems((i as any[]) ?? []);
   };
+  const reloadWeek = async () => {
+    const r = await loadWeek({ data: { weekStart: toISODate(monday) } });
+    const all = ((r as any).entries ?? []) as any[];
+    setWeekEntries(classCode ? all.filter((e) => e.class_code === classCode) : []);
+    setOtherEntries(all);
+    setWeekHolidays((r as any).holidays ?? []);
+  };
 
   useEffect(() => { if (user) reload(); }, [user]);
+  useEffect(() => { if (user && view === "week") reloadWeek(); }, [user, view, monday, classCode]);
+
 
   const mySubjects = useMemo(
     () => subjects.filter((s) => !classCode || s.class_codes?.includes(classCode)),
@@ -96,16 +114,51 @@ function AlunoPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/40 via-background to-background dark:from-emerald-950/20">
       <section className="max-w-6xl mx-auto px-4 pt-10 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="size-12 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-lg"><Stethoscope className="size-6" /></div>
-          <div>
-            <h1 className="text-3xl font-black tracking-tight">Painel do Aluno</h1>
-            <p className="text-sm text-muted-foreground">
-              Olá, {profile?.full_name ?? profile?.username}{classCode ? ` · Turma ${classCode}` : ""}
-            </p>
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-3">
+            <div className="size-12 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-lg"><Stethoscope className="size-6" /></div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight">Painel do Aluno</h1>
+              <p className="text-sm text-muted-foreground">
+                Olá, {profile?.full_name ?? profile?.username}{classCode ? ` · Turma ${classCode}` : ""}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-full border border-border/60 p-0.5 bg-background">
+              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Dia</button>
+              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Semana</button>
+            </div>
+            {isCoordination && (
+              <Button asChild variant="outline" size="sm"><Link to="/coordenacao/cronograma"><Settings2 className="size-4" /> Coordenação</Link></Button>
+            )}
           </div>
         </div>
       </section>
+
+      {view === "week" && (
+        <section className="max-w-6xl mx-auto px-4 pb-6 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="icon" onClick={() => { const m = new Date(monday); m.setDate(m.getDate() - 7); setMonday(m); }}><ChevronLeft className="size-4" /></Button>
+              <div className="text-sm font-semibold px-2">
+                {monday.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — {new Date(monday.getTime() + 5 * 86400000).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+              </div>
+              <Button variant="outline" size="icon" onClick={() => { const m = new Date(monday); m.setDate(m.getDate() + 7); setMonday(m); }}><ChevronRight className="size-4" /></Button>
+              <Button variant="ghost" size="sm" onClick={() => setMonday(getMonday(new Date()))}>Hoje</Button>
+            </div>
+            <ScheduleLegend />
+          </div>
+          <ScheduleGrid
+            monday={monday}
+            entries={weekEntries}
+            holidays={weekHolidays}
+            classCode={classCode ?? undefined}
+            otherClassEntries={otherEntries}
+          />
+        </section>
+      )}
+
 
       <section className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-4 pb-16">
         {/* Agenda pessoal - hoje */}

@@ -1503,6 +1503,41 @@ export type Database = {
           },
         ]
       }
+      holidays: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          label: string
+          term_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          label: string
+          term_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          label?: string
+          term_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "holidays_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_activities: {
         Row: {
           caption: string | null
@@ -3100,6 +3135,88 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_entries: {
+        Row: {
+          class_code: Database["public"]["Enums"]["atm_class"]
+          created_at: string
+          created_by: string | null
+          date: string
+          end_time: string
+          id: string
+          is_abex: boolean
+          kind: Database["public"]["Enums"]["schedule_kind"]
+          notes: string | null
+          rescheduled_from_entry_id: string | null
+          rescheduled_to_date: string | null
+          shift: Database["public"]["Enums"]["shift_period"]
+          start_time: string
+          subdivision: string
+          subject_id: string | null
+          term_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          class_code: Database["public"]["Enums"]["atm_class"]
+          created_at?: string
+          created_by?: string | null
+          date: string
+          end_time: string
+          id?: string
+          is_abex?: boolean
+          kind?: Database["public"]["Enums"]["schedule_kind"]
+          notes?: string | null
+          rescheduled_from_entry_id?: string | null
+          rescheduled_to_date?: string | null
+          shift: Database["public"]["Enums"]["shift_period"]
+          start_time: string
+          subdivision?: string
+          subject_id?: string | null
+          term_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          class_code?: Database["public"]["Enums"]["atm_class"]
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          end_time?: string
+          id?: string
+          is_abex?: boolean
+          kind?: Database["public"]["Enums"]["schedule_kind"]
+          notes?: string | null
+          rescheduled_from_entry_id?: string | null
+          rescheduled_to_date?: string | null
+          shift?: Database["public"]["Enums"]["shift_period"]
+          start_time?: string
+          subdivision?: string
+          subject_id?: string | null
+          term_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_entries_rescheduled_from_entry_id_fkey"
+            columns: ["rescheduled_from_entry_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_entries_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_entries_term_id_fkey"
+            columns: ["term_id"]
+            isOneToOne: false
+            referencedRelation: "academic_terms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       semester_cycles: {
         Row: {
           amount_cents: number
@@ -3429,6 +3546,7 @@ export type Database = {
         Returns: boolean
       }
       is_camed_president: { Args: { _user_id: string }; Returns: boolean }
+      is_coordination: { Args: { _user_id: string }; Returns: boolean }
       is_league_member: {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean
@@ -3475,6 +3593,7 @@ export type Database = {
         | "diretor"
         | "ligante"
         | "visitante"
+        | "coordenacao"
       athletic_cash_category:
         | "product"
         | "event_online"
@@ -3491,6 +3610,8 @@ export type Database = {
         | "cancelled"
         | "reserved"
       atm_class: "ATM31" | "ATM30" | "ATM29" | "ATM28" | "ATM27" | "ATM26"
+      schedule_kind: "class" | "practice" | "exam" | "green_zone" | "abex"
+      shift_period: "morning" | "afternoon" | "night"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3624,6 +3745,7 @@ export const Constants = {
         "diretor",
         "ligante",
         "visitante",
+        "coordenacao",
       ],
       athletic_cash_category: [
         "product",
@@ -3643,6 +3765,8 @@ export const Constants = {
         "reserved",
       ],
       atm_class: ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"],
+      schedule_kind: ["class", "practice", "exam", "green_zone", "abex"],
+      shift_period: ["morning", "afternoon", "night"],
     },
   },
 } as const
