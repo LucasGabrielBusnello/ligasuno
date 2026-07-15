@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { SiteHeader } from "@/components/site-header";
 
 import appCss from "../styles.css?url";
 
@@ -75,18 +76,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "google", content: "notranslate" },
       { httpEquiv: "Content-Language", content: "pt-BR" },
-      { title: "Ligas Unochapecó" },
-      { name: "description", content: "Centralizes all academic leagues, offering a unified platform for information, management, and event participation." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Ligas Unochapecó" },
-      { property: "og:description", content: "Centralizes all academic leagues, offering a unified platform for information, management, and event participation." },
+      { title: "MEDUNO — Medicina Unochapecó" },
+      { name: "description", content: "Plataforma integrada para estudantes, ligas acadêmicas, atlética e CAMED de Medicina da Unochapecó." },
+      { property: "og:title", content: "MEDUNO — Medicina Unochapecó" },
+      { property: "og:description", content: "Plataforma integrada para estudantes, ligas, atlética e CAMED de Medicina da Unochapecó." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Ligas Unochapecó" },
-      { name: "twitter:description", content: "Centralizes all academic leagues, offering a unified platform for information, management, and event participation." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ltcTiKetBFV5AhiYSaV8TJSBNs82/social-images/social-1779893153554-images_(2).webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ltcTiKetBFV5AhiYSaV8TJSBNs82/social-images/social-1779893153554-images_(2).webp" },
+      { name: "twitter:title", content: "MEDUNO — Medicina Unochapecó" },
+      { name: "twitter:description", content: "Plataforma integrada para estudantes, ligas, atlética e CAMED de Medicina da Unochapecó." },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -118,6 +115,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <SiteHeader />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster richColors position="top-center" />

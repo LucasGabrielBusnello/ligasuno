@@ -108,68 +108,6 @@ function HomePage() {
 
   return (
     <div className="min-h-screen overflow-x-hidden">
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between gap-2 sm:gap-3">
-          <Link to="/" className="flex items-center gap-2 group min-w-0">
-            <div className="size-10 shrink-0 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
-              <GraduationCap className="size-5 text-primary-foreground" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-black text-base sm:text-lg leading-none tracking-tight truncate">Ligas Acadêmicas</div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">Unochapecó</div>
-            </div>
-          </Link>
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {loading ? null : user ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setProfileOpen(true)}
-                  className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent rounded-full px-3 py-1.5 transition-colors"
-                  title="Editar meus dados"
-                >
-                  <UserCircle className="size-4" /> {profile?.username ?? user.email}
-                </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="sm:hidden"
-                  onClick={() => setProfileOpen(true)}
-                  title="Meus dados"
-                >
-                  <UserCircle className="size-5" />
-                </Button>
-
-                <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-3" title="Painel do Aluno">
-                  <Link to="/painel"><GraduationCap className="size-4" /> <span className="hidden sm:inline">Painel</span></Link>
-                </Button>
-
-
-
-                {isCamedPresident && (
-                  <Button asChild variant="default" size="icon" className="sm:size-auto sm:px-3 bg-gradient-to-r from-primary to-accent" title="CAMED">
-                    <Link to="/camed"><Building2 className="size-4" /> <span className="hidden sm:inline">CAMED</span></Link>
-                  </Button>
-                )}
-                {isAdminMaster && (
-                  <Button asChild variant="default" size="icon" className="sm:size-auto sm:px-3 bg-gradient-to-r from-primary to-accent" title="Admin">
-                    <Link to="/admin"><Shield className="size-4" /> <span className="hidden sm:inline">ADMIN</span></Link>
-                  </Button>
-                )}
-                <Button variant="ghost" size="icon" onClick={() => signOut()} title="Sair">
-                  <LogOut className="size-4" />
-                </Button>
-              </>
-            ) : (
-              <Button asChild size="sm">
-                <Link to="/auth"><LogIn className="size-4" /> Entrar</Link>
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
-
       {/* HERO */}
       <section className="hub-hero text-white">
         <div className="max-w-7xl mx-auto px-4 py-20 md:py-28 text-center animate-fade-up">
@@ -352,7 +290,7 @@ function HomePage() {
       </main>
 
       <footer className="border-t border-border/50 mt-16 py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Ligas Acadêmicas · Unochapecó
+        © {new Date().getFullYear()} MEDUNO · Medicina Unochapecó
       </footer>
 
       {user && (
