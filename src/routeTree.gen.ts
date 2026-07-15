@@ -9,11 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PainelRouteImport } from './routes/painel'
+import { Route as LigasRouteImport } from './routes/ligas'
 import { Route as CamedRouteImport } from './routes/camed'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AtleticaRouteImport } from './routes/atletica'
+import { Route as AlunoRouteImport } from './routes/aluno'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AaamdRouteImport } from './routes/aaamd'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugIndexRouteImport } from './routes/$slug/index'
 import { Route as PresidenteSlugRouteImport } from './routes/presidente.$slug'
@@ -28,9 +32,19 @@ import { Route as ApiPublicCronMarkOverdueRouteImport } from './routes/api/publi
 import { Route as ApiPublicCronEventSnapshotRouteImport } from './routes/api/public/cron/event-snapshot'
 import { Route as ApiPublicCronEventRemindersRouteImport } from './routes/api/public/cron/event-reminders'
 
+const PerfilRoute = PerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PainelRoute = PainelRouteImport.update({
   id: '/painel',
   path: '/painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LigasRoute = LigasRouteImport.update({
+  id: '/ligas',
+  path: '/ligas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CamedRoute = CamedRouteImport.update({
@@ -48,9 +62,19 @@ const AtleticaRoute = AtleticaRouteImport.update({
   path: '/atletica',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AlunoRoute = AlunoRouteImport.update({
+  id: '/aluno',
+  path: '/aluno',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AaamdRoute = AaamdRouteImport.update({
+  id: '/aaamd',
+  path: '/aaamd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -129,11 +153,15 @@ const ApiPublicCronEventRemindersRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aaamd': typeof AaamdRoute
   '/admin': typeof AdminRoute
+  '/aluno': typeof AlunoRoute
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -149,11 +177,15 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aaamd': typeof AaamdRoute
   '/admin': typeof AdminRoute
+  '/aluno': typeof AlunoRoute
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -170,11 +202,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/aaamd': typeof AaamdRoute
   '/admin': typeof AdminRoute
+  '/aluno': typeof AlunoRoute
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
+  '/perfil': typeof PerfilRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
   '/presidente/$slug': typeof PresidenteSlugRoute
@@ -192,11 +228,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/aaamd'
     | '/admin'
+    | '/aluno'
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/ligas'
     | '/painel'
+    | '/perfil'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -212,11 +252,15 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/aaamd'
     | '/admin'
+    | '/aluno'
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/ligas'
     | '/painel'
+    | '/perfil'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -232,11 +276,15 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/aaamd'
     | '/admin'
+    | '/aluno'
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/ligas'
     | '/painel'
+    | '/perfil'
     | '/diretor/$slug'
     | '/ligante/$slug'
     | '/presidente/$slug'
@@ -253,11 +301,15 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AaamdRoute: typeof AaamdRoute
   AdminRoute: typeof AdminRoute
+  AlunoRoute: typeof AlunoRoute
   AtleticaRoute: typeof AtleticaRoute
   AuthRoute: typeof AuthRoute
   CamedRoute: typeof CamedRoute
+  LigasRoute: typeof LigasRoute
   PainelRoute: typeof PainelRoute
+  PerfilRoute: typeof PerfilRoute
   DiretorSlugRoute: typeof DiretorSlugRoute
   LiganteSlugRoute: typeof LiganteSlugRoute
   PresidenteSlugRoute: typeof PresidenteSlugRoute
@@ -274,11 +326,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/perfil': {
+      id: '/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/painel': {
       id: '/painel'
       path: '/painel'
       fullPath: '/painel'
       preLoaderRoute: typeof PainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ligas': {
+      id: '/ligas'
+      path: '/ligas'
+      fullPath: '/ligas'
+      preLoaderRoute: typeof LigasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/camed': {
@@ -302,11 +368,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AtleticaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/aluno': {
+      id: '/aluno'
+      path: '/aluno'
+      fullPath: '/aluno'
+      preLoaderRoute: typeof AlunoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/aaamd': {
+      id: '/aaamd'
+      path: '/aaamd'
+      fullPath: '/aaamd'
+      preLoaderRoute: typeof AaamdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -405,11 +485,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AaamdRoute: AaamdRoute,
   AdminRoute: AdminRoute,
+  AlunoRoute: AlunoRoute,
   AtleticaRoute: AtleticaRoute,
   AuthRoute: AuthRoute,
   CamedRoute: CamedRoute,
+  LigasRoute: LigasRoute,
   PainelRoute: PainelRoute,
+  PerfilRoute: PerfilRoute,
   DiretorSlugRoute: DiretorSlugRoute,
   LiganteSlugRoute: LiganteSlugRoute,
   PresidenteSlugRoute: PresidenteSlugRoute,
