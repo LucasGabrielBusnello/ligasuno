@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3, BookOpen } from "lucide-react";
+import { CurriculumAdmin } from "@/components/curriculum-admin";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 import { Switch } from "@/components/ui/switch";
@@ -43,10 +44,11 @@ function AdminPage() {
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         <h1 className="text-3xl md:text-4xl font-black mb-8">Painel ADMIN</h1>
         <Tabs defaultValue="ligas">
-          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full h-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
             <TabsTrigger value="ligas"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
             <TabsTrigger value="camed"><Users className="size-4 mr-1.5" />CAMED</TabsTrigger>
             <TabsTrigger value="coord"><UserCog className="size-4 mr-1.5" />Coordenação</TabsTrigger>
+            <TabsTrigger value="curriculo"><BookOpen className="size-4 mr-1.5" />Currículo</TabsTrigger>
             <TabsTrigger value="ads"><Megaphone className="size-4 mr-1.5" />Anúncios</TabsTrigger>
             <TabsTrigger value="usuarios"><UserIcon className="size-4 mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="config"><Settings className="size-4 mr-1.5" />Configurações</TabsTrigger>
@@ -54,6 +56,7 @@ function AdminPage() {
           <TabsContent value="ligas" className="mt-6"><LeaguesAdmin /></TabsContent>
           <TabsContent value="camed" className="mt-6"><CamedAdmin /></TabsContent>
           <TabsContent value="coord" className="mt-6"><CoordinationAdmin /></TabsContent>
+          <TabsContent value="curriculo" className="mt-6"><CurriculumAdmin /></TabsContent>
           <TabsContent value="ads" className="mt-6"><AdsAdmin /></TabsContent>
           <TabsContent value="usuarios" className="mt-6"><UsersAdmin /></TabsContent>
           <TabsContent value="config" className="mt-6"><SettingsAdmin /></TabsContent>
