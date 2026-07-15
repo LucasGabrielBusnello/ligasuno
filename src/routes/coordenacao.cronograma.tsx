@@ -108,6 +108,7 @@ function CoordCronograma() {
             <p className="text-sm text-muted-foreground">Edite as aulas, práticas, avaliações, zonas verdes e remarcações.</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm"><Link to="/coordenacao/curriculo">Currículo</Link></Button>
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/feriados">Feriados</Link></Button>
             <Button size="sm" onClick={() => setBulkOpen(true)}><CalendarPlus className="size-4" /> Marcar em lote</Button>
           </div>
