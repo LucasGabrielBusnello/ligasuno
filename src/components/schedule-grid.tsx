@@ -231,6 +231,18 @@ export function ScheduleGrid({
                         {cellEntries.length > 3 && (
                           <div className="text-[10px] text-muted-foreground">+{cellEntries.length - 3}</div>
                         )}
+                        {(personalByCell[`${iso}|${sh}`] ?? []).map((p) => (
+                          <div key={"p-" + p.id} className="rounded-md border px-1.5 py-0.5 text-[10px] leading-tight" style={{ borderLeft: `3px solid ${p.color}`, background: `${p.color}18` }}>
+                            <div className="font-semibold truncate">{p.title}</div>
+                            {p.start_time && <div className="opacity-70">{p.start_time.slice(0,5)}{p.end_time ? `–${p.end_time.slice(0,5)}` : ""}</div>}
+                          </div>
+                        ))}
+                        {(extraByCell[`${iso}|${sh}`] ?? []).map((ev) => (
+                          <div key={"e-" + ev.id} className="rounded-md border border-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-950/30 px-1.5 py-0.5 text-[10px] leading-tight text-fuchsia-900 dark:text-fuchsia-100">
+                            <div className="font-semibold truncate">🎉 {ev.title}</div>
+                            <div className="opacity-70">{ev.source === "atletica" ? "Atlética" : "Liga"}</div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </td>
@@ -254,11 +266,12 @@ export function ScheduleLegend() {
   return (
     <div className="flex flex-wrap gap-3 py-2">
       {chip("bg-background border border-emerald-300", "Aula")}
-      {chip("bg-amber-300", "Prática / ABEX")}
+      {chip("bg-violet-400", "Prática / ABEX")}
       {chip("bg-red-400", "Avaliação")}
       {chip("bg-lime-300", "Zona verde")}
       {chip("bg-cyan-200", "Feriado")}
       {chip("bg-sky-200", "Remarcada")}
+      {chip("bg-fuchsia-300", "Evento inscrito")}
     </div>
   );
 }
