@@ -24,6 +24,7 @@ import { Route as PresidenteSlugRouteImport } from './routes/presidente.$slug'
 import { Route as LiganteSlugRouteImport } from './routes/ligante.$slug'
 import { Route as DiretorSlugRouteImport } from './routes/diretor.$slug'
 import { Route as CoordenacaoFeriadosRouteImport } from './routes/coordenacao.feriados'
+import { Route as CoordenacaoCurriculoRouteImport } from './routes/coordenacao.curriculo'
 import { Route as CoordenacaoCronogramaRouteImport } from './routes/coordenacao.cronograma'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicPaymentsMpWebhookRouteImport } from './routes/api/public/payments/mp-webhook'
@@ -109,6 +110,11 @@ const CoordenacaoFeriadosRoute = CoordenacaoFeriadosRouteImport.update({
   path: '/coordenacao/feriados',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoordenacaoCurriculoRoute = CoordenacaoCurriculoRouteImport.update({
+  id: '/coordenacao/curriculo',
+  path: '/coordenacao/curriculo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CoordenacaoCronogramaRoute = CoordenacaoCronogramaRouteImport.update({
   id: '/coordenacao/cronograma',
   path: '/coordenacao/cronograma',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
+  '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
   '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
+  '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
   '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
+  '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
   '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
   '/diretor/$slug': typeof DiretorSlugRoute
   '/ligante/$slug': typeof LiganteSlugRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/perfil'
     | '/coordenacao/cronograma'
+    | '/coordenacao/curriculo'
     | '/coordenacao/feriados'
     | '/diretor/$slug'
     | '/ligante/$slug'
@@ -282,6 +292,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/perfil'
     | '/coordenacao/cronograma'
+    | '/coordenacao/curriculo'
     | '/coordenacao/feriados'
     | '/diretor/$slug'
     | '/ligante/$slug'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/perfil'
     | '/coordenacao/cronograma'
+    | '/coordenacao/curriculo'
     | '/coordenacao/feriados'
     | '/diretor/$slug'
     | '/ligante/$slug'
@@ -335,6 +347,7 @@ export interface RootRouteChildren {
   PainelRoute: typeof PainelRoute
   PerfilRoute: typeof PerfilRoute
   CoordenacaoCronogramaRoute: typeof CoordenacaoCronogramaRoute
+  CoordenacaoCurriculoRoute: typeof CoordenacaoCurriculoRoute
   CoordenacaoFeriadosRoute: typeof CoordenacaoFeriadosRoute
   DiretorSlugRoute: typeof DiretorSlugRoute
   LiganteSlugRoute: typeof LiganteSlugRoute
@@ -457,6 +470,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoordenacaoFeriadosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/coordenacao/curriculo': {
+      id: '/coordenacao/curriculo'
+      path: '/coordenacao/curriculo'
+      fullPath: '/coordenacao/curriculo'
+      preLoaderRoute: typeof CoordenacaoCurriculoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/coordenacao/cronograma': {
       id: '/coordenacao/cronograma'
       path: '/coordenacao/cronograma'
@@ -535,6 +555,7 @@ const rootRouteChildren: RootRouteChildren = {
   PainelRoute: PainelRoute,
   PerfilRoute: PerfilRoute,
   CoordenacaoCronogramaRoute: CoordenacaoCronogramaRoute,
+  CoordenacaoCurriculoRoute: CoordenacaoCurriculoRoute,
   CoordenacaoFeriadosRoute: CoordenacaoFeriadosRoute,
   DiretorSlugRoute: DiretorSlugRoute,
   LiganteSlugRoute: LiganteSlugRoute,
