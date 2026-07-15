@@ -108,6 +108,7 @@ function CoordCronograma() {
             <p className="text-sm text-muted-foreground">Edite as aulas, práticas, avaliações, zonas verdes e remarcações.</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm"><Link to="/coordenacao/curriculo">Currículo</Link></Button>
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/feriados">Feriados</Link></Button>
             <Button size="sm" onClick={() => setBulkOpen(true)}><CalendarPlus className="size-4" /> Marcar em lote</Button>
           </div>
@@ -123,7 +124,17 @@ function CoordCronograma() {
               <SelectContent>{CLASSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-1 ml-auto">
+          <div className="flex items-center gap-1 ml-auto flex-wrap">
+            <Input
+              type="date"
+              className="w-40 h-9"
+              value={toISODate(monday)}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) return;
+                setMonday(getMonday(new Date(v + "T00:00:00")));
+              }}
+            />
             <Button variant="outline" size="icon" onClick={() => shiftWeek(-1)}><ChevronLeft className="size-4" /></Button>
             <div className="text-sm font-semibold px-3">
               {monday.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — {new Date(monday.getTime() + 5 * 86400000).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
