@@ -57,10 +57,36 @@ export function toISODate(d: Date) {
 function kindStyle(e: ScheduleEntry) {
   if (e.kind === "green_zone") return "bg-lime-200/70 dark:bg-lime-900/40 border-lime-400 text-lime-900 dark:text-lime-100";
   if (e.kind === "exam") return "bg-red-200/80 dark:bg-red-950/60 border-red-400 text-red-900 dark:text-red-100";
-  if (e.kind === "practice" || e.kind === "abex" || e.is_abex) return "bg-amber-200/80 dark:bg-amber-950/60 border-amber-400 text-amber-900 dark:text-amber-100";
+  if (e.kind === "practice" || e.kind === "abex" || e.is_abex) return "bg-violet-200/80 dark:bg-violet-950/60 border-violet-400 text-violet-900 dark:text-violet-100";
   if (e.rescheduled_from_entry_id) return "bg-sky-100 dark:bg-sky-950/40 border-sky-400 text-sky-900 dark:text-sky-100";
   if (e.rescheduled_to_date) return "bg-muted border-dashed text-muted-foreground";
   return "bg-background border-emerald-300 text-foreground";
+}
+
+export type PersonalItem = {
+  id: string;
+  title: string;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  color: string;
+};
+export type ExtraEvent = {
+  id: string;
+  title: string;
+  date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  source: "atletica" | "liga";
+};
+
+function shiftFromTime(t?: string | null): Shift | null {
+  if (!t) return null;
+  const h = parseInt(t.slice(0, 2), 10);
+  if (isNaN(h)) return null;
+  if (h < 13) return "morning";
+  if (h < 18) return "afternoon";
+  return "night";
 }
 
 export function ScheduleGrid({
@@ -69,6 +95,8 @@ export function ScheduleGrid({
   holidays,
   classCode,
   otherClassEntries,
+  personalItems,
+  extraEvents,
   onCellClick,
 }: {
   monday: Date;
@@ -77,6 +105,8 @@ export function ScheduleGrid({
   classCode?: string;
   /** used for "janela verde automática" — if empty for a class shift and another class has any entry, show green */
   otherClassEntries?: ScheduleEntry[];
+  personalItems?: PersonalItem[];
+  extraEvents?: ExtraEvent[];
   onCellClick?: (date: string, shift: Shift) => void;
 }) {
   const days = useMemo(() => weekDays(monday), [monday]);
