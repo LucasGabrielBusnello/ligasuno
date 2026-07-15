@@ -85,29 +85,30 @@ function AlunoPage() {
 
     // Registered events (atlética + ligas)
     if (user) {
-      const [{ data: eventRegs }, { data: leagueEvts }] = await Promise.all([
+      const [{ data: eventRegs }, { data: leagueEvts }, { data: atlEvts }, { data: myLeagues }] = await Promise.all([
         supabase.from("event_registrations").select("event_id").eq("user_id", user.id),
-        supabase.from("league_events").select("id, title, event_date, start_time, end_time").gte("event_date", weekStart).lte("event_date", weekEnd),
+        supabase.from("league_events").select("id, league_id, title, event_date").gte("event_date", weekStart).lte("event_date", weekEnd),
+        supabase.from("athletic_events").select("id, title, starts_at, ends_at").gte("starts_at", weekStart + "T00:00:00").lte("starts_at", weekEnd + "T23:59:59"),
+        supabase.from("league_memberships").select("league_id").eq("user_id", user.id),
       ]);
       const regIds = new Set((eventRegs ?? []).map((r: any) => r.event_id));
+      const leagueIds = new Set((myLeagues ?? []).map((m: any) => m.league_id));
       const extras: ExtraEvent[] = [];
-      // Atlética events in current week
-      const { data: atlEvts } = await supabase
-        .from("athletic_events")
-        .select("id, title, event_date, start_time, end_time")
-        .gte("event_date", weekStart).lte("event_date", weekEnd);
       for (const ev of (atlEvts ?? []) as any[]) {
         if (regIds.has(ev.id)) {
-          extras.push({ id: `atl-${ev.id}`, title: ev.title, date: ev.event_date, start_time: ev.start_time, end_time: ev.end_time, source: "atletica" });
+          const d = new Date(ev.starts_at);
+          extras.push({
+            id: `atl-${ev.id}`, title: ev.title, date: d.toISOString().slice(0, 10),
+            start_time: d.toTimeString().slice(0, 5),
+            end_time: ev.ends_at ? new Date(ev.ends_at).toTimeString().slice(0, 5) : null,
+            source: "atletica",
+          });
         }
       }
-      // League events (show all for user's leagues)
-      const { data: myLeagues } = await supabase.from("league_memberships").select("league_id").eq("user_id", user.id);
-      const leagueIds = new Set((myLeagues ?? []).map((m: any) => m.league_id));
       for (const ev of (leagueEvts ?? []) as any[]) {
-        // include if user is member of that league (need league_id on event) — safe fallback: include registered events
-        if (regIds.has(ev.id) || leagueIds.has((ev as any).league_id)) {
-          extras.push({ id: `lg-${ev.id}`, title: ev.title, date: ev.event_date, start_time: ev.start_time, end_time: ev.end_time, source: "liga" });
+        if (!ev.event_date) continue;
+        if (regIds.has(ev.id) || leagueIds.has(ev.league_id)) {
+          extras.push({ id: `lg-${ev.id}`, title: ev.title, date: ev.event_date, start_time: null, end_time: null, source: "liga" });
         }
       }
       setExtraEvents(extras);
