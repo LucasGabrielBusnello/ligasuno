@@ -1,94 +1,108 @@
 
-# Reformulação MEDUNO — Plano em 5 fases
+# Fase 4 — Grid semanal + editor da coordenação
 
-Escopo enorme. Vou entregar fase por fase; você aprova cada entrega antes da próxima. Tema verde atual preservado; painel do Aluno ganha tema medicina Unochapecó (variante do verde).
+Recebi os dois anexos e usei-os como referência visual. A Fase 1 já está entregue; este plano cobre a Fase 4 (a Fase 2 e a Fase 3 continuam na ordem original antes desta). Confirme se quer que eu execute **direto a Fase 4** agora ou mantenha a ordem 2 → 3 → 4.
 
-**Aguardando anexo**: documento com o exemplo de divisão manhã/tarde/noite seg-sáb. Ele é necessário para calibrar a Fase 4 (grid do cronograma). Fases 1–3 seguem sem o anexo. Se demorar, começo a Fase 4 com o padrão (08–12 / 13:30–17:30 / 19–22, seg-sáb) e ajusto depois.
+## Visual do grid (baseado nos anexos)
 
----
+Layout de tabela semanal, uma linha por turno, uma coluna por dia:
 
-## Fase 1 — Identidade + navegação + subURLs + cadastro atualizado
+```text
+┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
+│ Turno /  │ Segunda  │ Terça    │ Quarta   │ Quinta   │ Sexta    │ Sábado   │
+│ Horário  │ 09/02/26 │ 10/02/26 │ 11/02/26 │ 12/02/26 │ 13/02/26 │ 14/02/26 │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+│ Manhã    │ Genética │ (verde)  │ Farmaco  │ Patologia│ Imuno    │ FERIADO  │
+│ 08–12    │ Cássia   │          │ Lilian   │ Mauro    │ Carine   │          │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+│ Tarde    │ (verde)  │ Hab.Prof │ (verde)  │ Psic.Méd │ Micro    │ FERIADO  │
+│ 13:30–17 │          │ Odila    │          │ Lucinda  │ Adriana  │          │
+├──────────┼──────────┼──────────┼──────────┼──────────┼──────────┼──────────┤
+│ Noite    │ (verde)  │ (verde)  │ (verde)  │ (verde)  │ (verde)  │ FERIADO  │
+│ 19–22    │          │          │          │          │          │          │
+└──────────┴──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘
+```
 
-- Renomear "Ligasuno" → "MEDUNO" em toda a UI (títulos, `<head>`, meta OG, textos, e-mails). URLs/domínio ficam como estão.
-- Nova barra de topo global (em `__root.tsx`), suave, com:
-  - Esquerda: logo MEDUNO + links **Aluno**, **AAAMD**, **Ligas**, **CAMED**.
-  - Direita: ícone de usuário → **/perfil** (menu com sair).
-  - Remover dali os atalhos Admin/Coordenação/Presidente. Admin master continua acessando `/admin` direto pela URL.
-- Novas rotas (cada uma com `head()` próprio, tema/paleta próprios sobre o verde base):
-  - `/` — home decorada (herda atual, sem os painéis privados no topo).
-  - `/aluno` — painel do aluno (só estudantes Unochapecó; não-alunos veem CTA para atualizar cadastro).
-  - `/aaamd` — hoje `/atletica`; mantenho `/atletica` como redirect.
-  - `/ligas` — hub de ligas (hoje na home).
-  - `/camed` — já existe; painéis de gestão (diretor/presidente CAMED) passam a viver **dentro** dessa página, não no header global.
-  - `/perfil` — hoje `/painel`; mantenho `/painel` como redirect.
-- Cadastro (signup) e edição de perfil:
-  - Remover campo "semestre (1–20)".
-  - Se marcar "aluno(a) da Unochapecó" → passar a exigir **Matrícula (9 dígitos)** + **Turma ATM** (dropdown: ATM31, ATM30, ATM29, ATM28, ATM27, ATM26).
-  - Migração de dados: cria coluna `class_code` em `profiles`, mantém `current_semester` só como legado (deprecado, sem uso na UI).
-- Modal "Atualizar cadastro" no primeiro login pós-mudança:
-  - Aparece 1x para qualquer usuário logado com campos obrigatórios em falta (matrícula/turma se for aluno Unochapecó) OU sem `profile_reviewed_at`.
-  - Ao confirmar, grava `profile_reviewed_at = now()`. Só reaparece se algo obrigatório voltar a faltar.
+Cores das células (fixas no design system, tema verde MEDUNO):
+- **Aula normal**: fundo branco/tema, texto escuro
+- **Prática**: amarelo
+- **Avaliação/prova**: vermelho
+- **Zona verde (livre)**: verde-limão
+- **Feriado**: ciano
+- **Remarcada — origem**: hachurado cinza + label "Remarcada para DD/MM"
+- **Remarcada — destino**: azul-claro + label "Remarcada de DD/MM"
 
-## Fase 2 — Componentes curriculares (CRUD coordenação)
+Legenda fixa acima do grid. Turno mostra até 2 itens empilhados; se houver mais, badge "+N".
 
-Base de dados para o cronograma. Sem UI de aluno ainda.
+## Modelo de dados
 
-- Tabela `subjects_v2` (não mexo na `subjects` antiga para não quebrar `/painel`):
-  - `name`, `class_codes text[]` (turmas ATM que têm o componente), `professor`, `professor_contact` (opcional), `subdivisions text[]` (default `['A']`).
-- Nova aba **Componentes** dentro de `/admin` (visível a admin master **e** coordenadores):
-  - CRUD completo. Botão para adicionar letras de subdivisão (A, B, C…).
-  - Deixar `subdivisions` vazio = automaticamente `['A']`.
-- Nova tabela `coordination_staff` (já criada em rodada anterior) ganha UI de gestão em `/admin` se ainda não tiver.
-- RLS: leitura autenticada; escrita só admin master + coordenadores.
+Novas tabelas (com GRANT + RLS):
 
-## Fase 3 — Semestre letivo + itens pessoais + Aluno v1 (leitura)
+- `academic_terms` — `id`, `name`, `start_date`, `end_date`, `is_current bool`. Edição: coordenação.
+- `holidays` — `id`, `term_id`, `date`, `label`. Renderiza célula ciano em todos os turnos do dia.
+- `schedule_entries`:
+  - `id`, `term_id`, `subject_id`, `class_code atm_class`, `subdivision text` (default 'A')
+  - `date`, `shift` enum('morning','afternoon','night'), `start_time`, `end_time`
+  - `kind` enum('class','practice','exam','green_zone','abex')
+  - `rescheduled_from_entry_id` (nullable, aponta para entrada de origem)
+  - `rescheduled_to_date` (nullable, na entrada de origem)
+  - `notes`
+- `personal_schedule_items` (se ainda não veio da Fase 3) — itens pessoais do aluno.
 
-- Tabela `academic_terms`: `start_date`, `end_date`, `is_current`. Editável pela coordenação em `/admin` → aba **Semestre**.
-- Tabela `personal_schedule_items`: itens que o próprio aluno cria (`title`, `date`, `start_time`, `end_time`, `color`). RLS `auth.uid() = user_id`.
-- `/aluno` reformulado, rolável, tema medicina (verde variante):
-  - Topo: faixa horizontal com **atividades do dia** (aulas + práticas + provas + eventos do usuário + itens pessoais + zonas verdes + atividades de liga do usuário).
-  - Abaixo: **lista de matérias do semestre** com carga horária, professor(es), e-mail, e badge de turma editável por matéria (default "A"). Botão para trocar a letra por componente. Isso filtra o cronograma.
-  - Ainda **sem** o grid completo — só a lista do dia. O grid vem na Fase 4.
+RLS:
+- `schedule_entries`, `academic_terms`, `holidays`: SELECT para authenticated; INSERT/UPDATE/DELETE só `coordination_staff` ou admin master (função `has_role`).
+- `personal_schedule_items`: `auth.uid() = user_id`.
 
-## Fase 4 — Grid do cronograma + editor visual da coordenação
+## Regra "janela verde automática"
 
-Esta é a fase mais pesada. Uso o documento anexo para calibrar visual.
+Ao renderizar o grid **do aluno**: para cada turno sem `schedule_entries` da turma dele, se existir entrada de outra turma no mesmo turno → renderiza célula verde-limão com label "Janela verde". No grid **da coordenação**, mostra as entradas reais sem essa substituição.
 
-- Tabela `schedule_entries`:
-  - `term_id`, `subject_id`, `class_code` (ATM), `subdivision` (A/B/…), `date`, `shift` (`morning`/`afternoon`/`night`), `start_time`, `end_time`, `kind` (`class`/`practice`/`exam`/`green_zone`), `original_date` (para remarcações), `notes`.
-- Grid semanal (seg-sáb, 3 turnos) para o aluno em `/aluno`:
-  - Só mostra dias dentro do `academic_term` corrente.
-  - Cores: aula normal (tema), **prática = roxo**, **prova = vermelho**, **zona verde = verde**, **remarcada origem/destino = 2 cores distintas com legenda "Remarcada de/para DD/MM"**, itens pessoais na cor escolhida pelo aluno, eventos (liga/atlética) em cor própria.
-  - Regra automática: se a turma do aluno **não** tem aula naquele turno mas outra turma tem, o turno vira "janela verde" para ele (sem permitir remarcação em cima).
-  - Slots vazios exibem "Turno sem aulas ou remarcações".
-  - Botão "+" no aluno → cria item pessoal (título, data, início, fim, cor).
-- Aba **Coordenação** (canto superior direito, só para quem estiver em `coordination_staff`):
-  - Seletor de turma ATM → renderiza o mesmo grid.
-  - Clique num turno → painel lateral direito com:
-    - Lista dos itens já daquele turno + `⋮` (Editar / Remarcar / Excluir).
-    - Botão **+** → escolhe matéria (filtradas pelas que têm essa turma) → se a matéria tem várias turmas, pergunta qual + subdivisão → campo horário início/fim (vazio = padrão do turno).
-    - Botão **Zona verde** → marca turno inteiro sem perguntar turma.
-  - Botão superior **Marcar em lote**: escolhe matéria, subdivisão, turno, tipo (Aula/Prática/Prova), e um calendário multi-seleção de dias do semestre → cria em massa.
-  - Remarcar: cria nova `schedule_entries` no destino com `original_date` = data original, e marca a origem como "remarcada".
+## Aba Coordenação
 
-## Fase 5 — Google Calendar (OAuth por usuário) + polish
+Botão "Coordenação" no canto superior direito do `/aluno` (só visível para `coordination_staff` / admin master). Abre `/coordenacao/cronograma`:
 
-- Configurar App User Connector `google_calendar` (Lovable) + tabela `app_user_connections` cifrada (padrão da knowledge).
-- Botão em `/aluno` **Vincular Google Agenda**:
-  - Antes de sincronizar, mostra preview: lista "Microbiologia (Turma B), Anatomia (Turma A)…" conforme escolhas do aluno + confirmação das turmas.
-  - Ao confirmar, cria eventos na agenda dele (aulas + práticas + provas + itens pessoais + eventos inscritos), respeitando remarcações.
-  - Botão "Desvincular" chama `disconnectAppUser` e apaga a linha.
-- Ajustes finais: SEO (`head()` por rota nova), cleanup do header antigo, redirects `/atletica`→`/aaamd` e `/painel`→`/perfil`.
+1. **Seletor de turma ATM** (ATM31…ATM26) + seletor de semana.
+2. **Grid** idêntico ao do aluno, mas editável.
+3. **Clique em turno** → painel lateral direito com lista de entradas + botões:
+   - `+ Adicionar` → escolhe matéria (filtradas por `class_codes` que contêm a turma selecionada). Se a matéria tem várias turmas, pergunta subdivisão. Horário default do turno pré-preenchido.
+   - `Zona verde` → cria entrada `kind='green_zone'` no turno inteiro sem perguntar mais nada.
+   - `⋮` por entrada → **Editar** / **Remarcar** / **Excluir**.
+4. **Remarcar**: modal com date/turno destino → cria nova entrada em destino com `rescheduled_from_entry_id = origem.id`, e marca origem com `rescheduled_to_date`. Ambas renderizam com cores/labels específicas.
+5. **Marcar em lote**: botão acima do grid → modal (matéria, subdivisão, turno, tipo) + calendário com multi-seleção de dias → cria em massa via server fn.
+6. **Feriados**: aba separada dentro de Coordenação para CRUD de `holidays` do term atual.
 
----
+## Server functions (todas com `requireSupabaseAuth` + checagem `coordination_staff`)
 
-## Detalhes técnicos (referência)
+- `listScheduleWeek({ classCode, weekStart })` → entries + holidays + expansão de janela verde (opcional, ou faz no cliente).
+- `createScheduleEntry`, `updateScheduleEntry`, `deleteScheduleEntry`
+- `rescheduleEntry({ entryId, newDate, newShift, newStartTime, newEndTime })`
+- `bulkCreateScheduleEntries({ subjectId, subdivision, shift, kind, dates[] })`
+- `setGreenZone({ classCode, date, shift })`
+- `listHolidays`, `createHoliday`, `deleteHoliday`
+- `listAcademicTerms`, `upsertAcademicTerm`, `setCurrentTerm`
 
-- Stack: TanStack Start atual, sem mudanças. Novas rotas em `src/routes/{aluno,aaamd,ligas,perfil}.tsx` + subrotas onde couber.
-- DB: novas tabelas `subjects_v2`, `academic_terms`, `personal_schedule_items`, `schedule_entries`, `app_user_connections`. Coluna `class_code` + `profile_reviewed_at` em `profiles`. Todas com RLS + GRANTs padrão.
-- Server functions em `src/lib/schedule.functions.ts`, `src/lib/coordination.functions.ts`, `src/lib/google-calendar.functions.ts`. Google Calendar via `callAsAppUser` server-side (nunca do browser).
-- Segurança: leitura de `schedule_entries` para autenticados; escrita só coordenação. `personal_schedule_items` escopo `auth.uid()`.
-- Coordenação = quem está em `coordination_staff` (checagem via função `is_coordinator(uid)` SECURITY DEFINER).
-- Painéis contextuais: CAMED (diretor/presidente) só dentro de `/camed`, Liga (presidente/diretor) já dentro de `/presidente/$slug` e `/diretor/$slug` — só removo os atalhos do header global.
+## Aluno v2 (dentro desta fase)
 
-**Ordem de execução**: 1 → 2 → 3 → (anexo) → 4 → 5. Cada fase é uma iteração aprovável. Quando o anexo chegar, incorporo à Fase 4 antes de começar.
+Substitui a "faixa do dia" da Fase 3 por:
+- Toggle **Dia** / **Semana** no topo.
+- **Semana**: grid completo com regra de janela verde automática, sobreposto com `personal_schedule_items` (cor customizada por item).
+- **Dia**: coluna vertical mostrando o dia atual + itens pessoais + próxima aula.
+- Sem edição de entradas oficiais; só CRUD dos itens pessoais.
+
+## Arquivos previstos
+
+- **Migration**: `academic_terms`, `holidays`, `schedule_entries`, enums, GRANT, RLS + `has_role` já existente.
+- **Server fns**: `src/lib/schedule.functions.ts`, `src/lib/schedule.server.ts`.
+- **Rotas**:
+  - `src/routes/coordenacao.cronograma.tsx` (grid coordenação)
+  - `src/routes/coordenacao.feriados.tsx`
+  - `src/routes/coordenacao.termos.tsx`
+  - Atualiza `src/routes/aluno.tsx` (grid semanal + toggle)
+- **Componentes**: `ScheduleGrid`, `ScheduleCell`, `ShiftSidePanel`, `BulkCreateDialog`, `RescheduleDialog`, `HolidayManager`.
+- **Header**: adiciona link "Coordenação" condicional em `__root.tsx` para `coordination_staff`.
+
+## Confirmações antes de executar
+
+1. Seguir **ordem original** (Fase 2 → 3 → 4) ou pular direto para Fase 4 agora?
+2. Confirma horários padrão dos turnos: **manhã 08:00–12:00, tarde 13:30–17:30, noite 19:00–22:00**?
+3. Tipo `abex` (Prática ABEX aparece no anexo 2) — trato como subtipo de `practice` com label diferente, ou como `kind` próprio?
