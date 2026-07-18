@@ -20,7 +20,7 @@ import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
 } from "@/lib/schedule.functions";
-import { listSubjects } from "@/lib/curriculum.functions";
+import { listSubjects, listTerms } from "@/lib/curriculum.functions";
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 
@@ -41,6 +41,7 @@ function CoordCronograma() {
   const { user, isCoordination, loading } = useAuth();
   const load = useServerFn(listScheduleWeek);
   const listSubj = useServerFn(listSubjects);
+  const listTermsFn = useServerFn(listTerms);
   const delEntry = useServerFn(deleteScheduleEntry);
   const saveEntry = useServerFn(upsertScheduleEntry);
   const copyWeek = useServerFn(copyScheduleWeek);
@@ -50,6 +51,7 @@ function CoordCronograma() {
   const [entries, setEntries] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [currentTerm, setCurrentTerm] = useState<any | null>(null);
 
   const [panel, setPanel] = useState<{ date: string; shift: Shift } | null>(null);
   const [entryDialog, setEntryDialog] = useState<{ open: boolean; editing?: any; date?: string; shift?: Shift }>({ open: false });
@@ -61,14 +63,17 @@ function CoordCronograma() {
 
   const reload = async () => {
     const weekStart = toISODate(monday);
-    const [w, s] = await Promise.all([
+    const [w, s, t] = await Promise.all([
       load({ data: { weekStart, classCode: classCode as any } }),
       listSubj(),
+      listTermsFn(),
     ]);
     const all = ((w as any).entries ?? []) as any[];
-    setEntries(all.filter((e) => e.class_code === classCode));
+    setEntries(all.filter((e) => e.class_code === classCode || e.subdivision === "*"));
     setHolidays((w as any).holidays ?? []);
     setSubjects((s as any[]) ?? []);
+    const terms = (t as any[]) ?? [];
+    setCurrentTerm(terms.find((x) => x.is_current) ?? terms[0] ?? null);
   };
 
   useEffect(() => { if (user && isCoordination) reload(); }, [user, isCoordination, monday, classCode]);
@@ -184,6 +189,19 @@ function CoordCronograma() {
           </div>
         </CardContent></Card>
 
+        {currentTerm && (() => {
+          const weekEnd = new Date(monday); weekEnd.setDate(weekEnd.getDate() + 5);
+          const startD = new Date(currentTerm.start_date + "T00:00:00");
+          const endD = new Date(currentTerm.end_date + "T00:00:00");
+          const out = weekEnd < startD || monday > endD;
+          return out ? (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-900 dark:text-amber-100 flex items-center gap-2">
+              <AlertTriangle className="size-4" />
+              Semana fora do período letivo <b>{currentTerm.name}</b> ({new Date(currentTerm.start_date+"T00:00:00").toLocaleDateString("pt-BR")} — {new Date(currentTerm.end_date+"T00:00:00").toLocaleDateString("pt-BR")}).
+            </div>
+          ) : null;
+        })()}
+
         <ScheduleLegend />
 
         <ScheduleGrid
@@ -276,8 +294,7 @@ function EntryDialog({
   const [shift, setShift] = useState<Shift>("morning");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const [kind, setKind] = useState<"class" | "practice" | "exam" | "abex">("class");
-  const [isAbex, setIsAbex] = useState(false);
+  const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
 
   useEffect(() => {
     if (!state.open) return;
@@ -290,8 +307,7 @@ function EntryDialog({
     setShift(sh);
     setStart((e?.start_time ?? ds).slice(0, 5));
     setEnd((e?.end_time ?? de).slice(0, 5));
-    setKind((e?.kind && e.kind !== "green_zone" ? e.kind : "class") as any);
-    setIsAbex(!!e?.is_abex);
+    setKind((e?.kind && e.kind !== "green_zone" && e.kind !== "abex" ? e.kind : "class") as any);
   }, [state.open, editing, state.date, state.shift]);
 
   const filteredSubjects = useMemo(
@@ -299,13 +315,17 @@ function EntryDialog({
     [subjects, classCode]
   );
   const currentSubj = subjects.find((s) => s.id === subjectId);
+  const availableSubs = useMemo(() => {
+    const list = currentSubj?.subdivisions?.length ? currentSubj.subdivisions : ["A"];
+    return Array.from(new Set([...list, "*"]));
+  }, [currentSubj]);
 
   const submit = async () => {
     try {
       await save({ data: {
         id: editing?.id, class_code: classCode as any, subject_id: subjectId || null,
         subdivision: subdivision || "A", date, shift, start_time: start, end_time: end,
-        kind: kind as any, is_abex: kind === "practice" ? isAbex : false, notes: null,
+        kind: kind as any, is_abex: false, notes: null,
       }});
       toast.success("Salvo"); onSaved();
     } catch (e: any) { toast.error(e.message); }
@@ -325,15 +345,17 @@ function EntryDialog({
               </SelectContent>
             </Select>
           </div>
-          {currentSubj && currentSubj.subdivisions?.length > 1 && (
-            <div>
-              <Label>Subdivisão</Label>
-              <Select value={subdivision} onValueChange={setSubdivision}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{currentSubj.subdivisions.map((sd) => <SelectItem key={sd} value={sd}>{sd}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          )}
+          <div>
+            <Label>Subdivisão</Label>
+            <Select value={subdivision} onValueChange={setSubdivision}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {availableSubs.map((sd) => (
+                  <SelectItem key={sd} value={sd}>{sd === "*" ? "Todas as turmas (*)" : sd}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
             <div>
@@ -366,12 +388,6 @@ function EntryDialog({
               </SelectContent>
             </Select>
           </div>
-          {kind === "practice" && (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={isAbex} onChange={(e) => setIsAbex(e.target.checked)} />
-              Prática ABEX
-            </label>
-          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
@@ -391,25 +407,30 @@ function BulkDialog({
   const [subdivision, setSubdivision] = useState("A");
   const [shift, setShift] = useState<Shift>("morning");
   const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
-  const [isAbex, setIsAbex] = useState(false);
   const [dates, setDates] = useState<Date[]>([]);
+  const [startTime, setStartTime] = useState(DEFAULT_SHIFT_TIMES.morning[0]);
+  const [endTime, setEndTime] = useState(DEFAULT_SHIFT_TIMES.morning[1]);
 
   useEffect(() => {
     if (open) {
-      setSubjectId(""); setSubdivision("A"); setShift("morning"); setKind("class"); setIsAbex(false); setDates([]);
+      setSubjectId(""); setSubdivision("A"); setShift("morning"); setKind("class"); setDates([]);
+      setStartTime(DEFAULT_SHIFT_TIMES.morning[0]); setEndTime(DEFAULT_SHIFT_TIMES.morning[1]);
     }
   }, [open]);
 
   const holidaySet = useMemo(() => new Set((holidays ?? []).map((h: any) => h.date)), [holidays]);
   const currentSubj = subjects.find((s) => s.id === subjectId);
+  const availableSubs = useMemo(() => {
+    const list = currentSubj?.subdivisions?.length ? currentSubj.subdivisions : ["A"];
+    return Array.from(new Set([...list, "*"]));
+  }, [currentSubj]);
 
   const submit = async () => {
     if (dates.length === 0) { toast.error("Selecione ao menos uma data"); return; }
-    const [s, e] = DEFAULT_SHIFT_TIMES[shift];
     try {
       const r = await bulk({ data: {
         class_code: classCode as any, subject_id: subjectId || null, subdivision, shift,
-        start_time: s, end_time: e, kind, is_abex: kind === "practice" ? isAbex : false,
+        start_time: startTime, end_time: endTime, kind, is_abex: false,
         dates: dates.map((d) => toISODate(d)),
       }});
       toast.success(`${(r as any).count} entradas criadas`); onSaved();
@@ -431,18 +452,23 @@ function BulkDialog({
                 <SelectContent>{filtered.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            {currentSubj && currentSubj.subdivisions?.length > 1 && (
-              <div>
-                <Label>Subdivisão</Label>
-                <Select value={subdivision} onValueChange={setSubdivision}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{currentSubj.subdivisions.map((sd) => <SelectItem key={sd} value={sd}>{sd}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label>Subdivisão</Label>
+              <Select value={subdivision} onValueChange={setSubdivision}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {availableSubs.map((sd) => (
+                    <SelectItem key={sd} value={sd}>{sd === "*" ? "Todas as turmas (*)" : sd}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Turno</Label>
-              <Select value={shift} onValueChange={(v) => setShift(v as Shift)}>
+              <Select value={shift} onValueChange={(v) => {
+                const nv = v as Shift; setShift(nv);
+                const [s, e] = DEFAULT_SHIFT_TIMES[nv]; setStartTime(s); setEndTime(e);
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="morning">Manhã</SelectItem>
@@ -450,6 +476,10 @@ function BulkDialog({
                   <SelectItem value="night">Noite</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label>Início</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
+              <div><Label>Fim</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
             </div>
             <div>
               <Label>Tipo</Label>
@@ -462,11 +492,6 @@ function BulkDialog({
                 </SelectContent>
               </Select>
             </div>
-            {kind === "practice" && (
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={isAbex} onChange={(e) => setIsAbex(e.target.checked)} /> Prática ABEX
-              </label>
-            )}
             <div className="text-sm text-muted-foreground">
               {dates.length} data{dates.length !== 1 ? "s" : ""} selecionada{dates.length !== 1 ? "s" : ""}
             </div>
