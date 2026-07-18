@@ -192,23 +192,22 @@ function AtleticaPage() {
       <SportsShowcase athletic={ath} />
 
 
-      {/* TABS */}
+      {/* SIDEBAR + CONTENT */}
       <main className="max-w-7xl mx-auto px-3 md:px-4 py-8">
-        <Tabs defaultValue="produtos">
-          <TabsList className={`w-full grid ${isDirector ? "grid-cols-2 md:grid-cols-5" : "grid-cols-2 md:grid-cols-4"} h-auto p-1 bg-white/5 border border-white/10`}>
-            <TabsTrigger value="produtos" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-black"><Store className="size-4 mr-1.5" />Produtos</TabsTrigger>
-            <TabsTrigger value="eventos" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-black"><PartyPopper className="size-4 mr-1.5" />Eventos</TabsTrigger>
-            <TabsTrigger value="socios" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-black"><Users className="size-4 mr-1.5" />Sócios</TabsTrigger>
-            {isDirector && <TabsTrigger value="diretoria" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-black"><Shield className="size-4 mr-1.5" />Diretoria</TabsTrigger>}
-            <TabsTrigger value="sobre" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-black"><Sparkles className="size-4 mr-1.5" />Sobre</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="produtos" className="mt-6"><PublicProducts athletic={ath} isMember={isActiveMember} /></TabsContent>
-          <TabsContent value="eventos" className="mt-6"><PublicEvents athletic={ath} isMember={isActiveMember} /></TabsContent>
-          <TabsContent value="socios" className="mt-6"><SociosArea athletic={ath} isMember={isActiveMember} user={user} /></TabsContent>
-          {isDirector && <TabsContent value="diretoria" className="mt-6"><DirectorPanel athletic={ath} /></TabsContent>}
-          <TabsContent value="sobre" className="mt-6"><SobrePanel athletic={ath} /></TabsContent>
-        </Tabs>
+        <AtleticaSectionLayout
+          primaryColor={ath.primary_color}
+          isMember={isActiveMember}
+          isDirector={isDirector}
+          renderSection={(section) => {
+            if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
+            if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
+            if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
+            if (section === "sobre") return <SobrePanel athletic={ath} />;
+            if (section === "socio" && isActiveMember) return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
+            if (section === "diretoria" && isDirector) return <DirectorPanel athletic={ath} />;
+            return null;
+          }}
+        />
       </main>
 
         <footer className="mt-16 border-t border-white/10 py-8 text-center text-xs opacity-60">
