@@ -389,25 +389,30 @@ function BulkDialog({
   const [subdivision, setSubdivision] = useState("A");
   const [shift, setShift] = useState<Shift>("morning");
   const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
-  const [isAbex, setIsAbex] = useState(false);
   const [dates, setDates] = useState<Date[]>([]);
+  const [startTime, setStartTime] = useState(DEFAULT_SHIFT_TIMES.morning[0]);
+  const [endTime, setEndTime] = useState(DEFAULT_SHIFT_TIMES.morning[1]);
 
   useEffect(() => {
     if (open) {
-      setSubjectId(""); setSubdivision("A"); setShift("morning"); setKind("class"); setIsAbex(false); setDates([]);
+      setSubjectId(""); setSubdivision("A"); setShift("morning"); setKind("class"); setDates([]);
+      setStartTime(DEFAULT_SHIFT_TIMES.morning[0]); setEndTime(DEFAULT_SHIFT_TIMES.morning[1]);
     }
   }, [open]);
 
   const holidaySet = useMemo(() => new Set((holidays ?? []).map((h: any) => h.date)), [holidays]);
   const currentSubj = subjects.find((s) => s.id === subjectId);
+  const availableSubs = useMemo(() => {
+    const list = currentSubj?.subdivisions?.length ? currentSubj.subdivisions : ["A"];
+    return Array.from(new Set([...list, "*"]));
+  }, [currentSubj]);
 
   const submit = async () => {
     if (dates.length === 0) { toast.error("Selecione ao menos uma data"); return; }
-    const [s, e] = DEFAULT_SHIFT_TIMES[shift];
     try {
       const r = await bulk({ data: {
         class_code: classCode as any, subject_id: subjectId || null, subdivision, shift,
-        start_time: s, end_time: e, kind, is_abex: kind === "practice" ? isAbex : false,
+        start_time: startTime, end_time: endTime, kind, is_abex: false,
         dates: dates.map((d) => toISODate(d)),
       }});
       toast.success(`${(r as any).count} entradas criadas`); onSaved();
@@ -429,18 +434,23 @@ function BulkDialog({
                 <SelectContent>{filtered.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            {currentSubj && currentSubj.subdivisions?.length > 1 && (
-              <div>
-                <Label>Subdivisão</Label>
-                <Select value={subdivision} onValueChange={setSubdivision}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{currentSubj.subdivisions.map((sd) => <SelectItem key={sd} value={sd}>{sd}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            )}
+            <div>
+              <Label>Subdivisão</Label>
+              <Select value={subdivision} onValueChange={setSubdivision}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {availableSubs.map((sd) => (
+                    <SelectItem key={sd} value={sd}>{sd === "*" ? "Todas as turmas (*)" : sd}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Turno</Label>
-              <Select value={shift} onValueChange={(v) => setShift(v as Shift)}>
+              <Select value={shift} onValueChange={(v) => {
+                const nv = v as Shift; setShift(nv);
+                const [s, e] = DEFAULT_SHIFT_TIMES[nv]; setStartTime(s); setEndTime(e);
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="morning">Manhã</SelectItem>
@@ -448,6 +458,10 @@ function BulkDialog({
                   <SelectItem value="night">Noite</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label>Início</Label><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></div>
+              <div><Label>Fim</Label><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></div>
             </div>
             <div>
               <Label>Tipo</Label>
@@ -460,11 +474,6 @@ function BulkDialog({
                 </SelectContent>
               </Select>
             </div>
-            {kind === "practice" && (
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={isAbex} onChange={(e) => setIsAbex(e.target.checked)} /> Prática ABEX
-              </label>
-            )}
             <div className="text-sm text-muted-foreground">
               {dates.length} data{dates.length !== 1 ? "s" : ""} selecionada{dates.length !== 1 ? "s" : ""}
             </div>
