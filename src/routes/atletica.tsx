@@ -118,7 +118,7 @@ function AtleticaPage() {
   return (
     <AtleticaCartProvider>
       <PaidReturnToast />
-      <div className="min-h-screen bg-neutral-950 text-white" style={{
+      <div className="min-h-screen bg-neutral-950 text-white lg:pl-[240px]" style={{
         // @ts-expect-error
         "--ath-primary": ath.primary_color, "--ath-secondary": ath.secondary_color,
       }}>
