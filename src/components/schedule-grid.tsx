@@ -208,6 +208,16 @@ export function ScheduleGrid({
                       <div className="text-[10px] font-bold text-lime-800 dark:text-lime-200 text-center pt-4">JANELA VERDE</div>
                     ) : (
                       <div className="flex flex-col gap-1">
+                        {(() => {
+                          const bySub: Record<string, number> = {};
+                          for (const e of cellEntries) bySub[e.subdivision] = (bySub[e.subdivision] ?? 0) + 1;
+                          const hasClash = Object.values(bySub).some((n) => n > 1);
+                          return hasClash ? (
+                            <div className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-[9px] font-black uppercase bg-amber-200 text-amber-900 border border-amber-400">
+                              ⚠ Choque
+                            </div>
+                          ) : null;
+                        })()}
                         {cellEntries.slice(0, 3).map((e) => (
                           <div key={e.id} className={cn("rounded-md border px-1.5 py-1 text-[11px] leading-tight", kindStyle(e))}>
                             <div className="font-bold truncate">
@@ -217,7 +227,7 @@ export function ScheduleGrid({
                             {e.kind !== "green_zone" && (
                               <div className="opacity-80 truncate">
                                 {e.subject?.professor ?? ""}
-                                {e.subdivision && e.subdivision !== "A" ? ` · ${e.subdivision}` : ""}
+                                {e.subdivision === "*" ? " · Todas" : (e.subdivision && e.subdivision !== "A" ? ` · ${e.subdivision}` : "")}
                               </div>
                             )}
                             {e.rescheduled_from_entry_id && (
