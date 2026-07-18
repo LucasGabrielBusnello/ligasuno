@@ -1150,8 +1150,8 @@ function AtleticaSectionLayout({
   );
 }
 
-/* ============ ESPORTES (aba pública dedicada) ============ */
-function SportsSection({ athletic, user, isMember }: { athletic: Athletic; user: any; isMember: boolean }) {
+/* ============ ESPORTES (aberto a todos) ============ */
+function SportsSection({ athletic, user }: { athletic: Athletic; user: any; isMember: boolean }) {
   if (!user) {
     return (
       <div className="space-y-4">
@@ -1161,18 +1161,9 @@ function SportsSection({ athletic, user, isMember }: { athletic: Athletic; user:
       </div>
     );
   }
-  if (!isMember) {
-    return (
-      <div className="space-y-4">
-        <SportsShowcase athletic={athletic} />
-        <EmptyDark icon={<Crown className="size-10" />} title="Inscrições exclusivas para sócios"
-          desc={`Associe-se por R$ ${Number(athletic.membership_price).toFixed(2)} para participar das modalidades.`}
-          action={<AssociarButton athletic={athletic} onDone={() => window.location.reload()} />} />
-      </div>
-    );
-  }
   return <MemberSports athletic={athletic} userId={user.id} />;
 }
+
 
 /* ============ PAINEL DO SÓCIO (Carteirinha + Benefícios + Parceiros) ============ */
 function MemberDashboard({ athletic, user, profile, membership }: {
