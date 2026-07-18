@@ -1090,7 +1090,206 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
 }
 
 
-/* ============ SÓCIOS ============ */
+/* ============ SIDEBAR LAYOUT ============ */
+type SectionKey = "produtos" | "eventos" | "esportes" | "sobre" | "socio" | "diretoria";
+
+function AtleticaSectionLayout({
+  primaryColor, isMember, isDirector, renderSection,
+}: {
+  primaryColor: string;
+  isMember: boolean;
+  isDirector: boolean;
+  renderSection: (s: SectionKey) => React.ReactNode;
+}) {
+  const [active, setActive] = useState<SectionKey>("produtos");
+  const items: Array<{ key: SectionKey; label: string; icon: React.ReactNode; show: boolean }> = [
+    { key: "produtos", label: "Produtos", icon: <Store className="size-4" />, show: true },
+    { key: "eventos", label: "Eventos", icon: <PartyPopper className="size-4" />, show: true },
+    { key: "esportes", label: "Esportes", icon: <Trophy className="size-4" />, show: true },
+    { key: "sobre", label: "Sobre", icon: <Info className="size-4" />, show: true },
+    { key: "socio", label: "Painel do Sócio", icon: <IdCard className="size-4" />, show: isMember },
+    { key: "diretoria", label: "Diretoria", icon: <Shield className="size-4" />, show: isDirector },
+  ];
+  const visible = items.filter((i) => i.show);
+
+  return (
+    <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-6">
+      <aside className="hidden lg:block">
+        <nav className="sticky top-20 space-y-1 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-2">
+          <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest font-black opacity-60">Navegação</div>
+          {visible.map((i) => {
+            const on = active === i.key;
+            return (
+              <button key={i.key} onClick={() => setActive(i.key)}
+                className={`w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${on ? "text-white shadow-lg" : "text-white/80 hover:bg-white/10"}`}
+                style={on ? { background: primaryColor } : undefined}>
+                {i.icon}<span className="truncate">{i.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <div className="lg:hidden -mx-3 px-3 mb-4 overflow-x-auto">
+        <div className="flex gap-2 min-w-max pb-1">
+          {visible.map((i) => {
+            const on = active === i.key;
+            return (
+              <button key={i.key} onClick={() => setActive(i.key)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-black uppercase tracking-wider whitespace-nowrap transition ${on ? "text-white shadow-lg" : "text-white/80 bg-white/5 border border-white/10"}`}
+                style={on ? { background: primaryColor } : undefined}>
+                {i.icon}{i.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <section className="min-w-0">{renderSection(active)}</section>
+    </div>
+  );
+}
+
+/* ============ ESPORTES (aba pública dedicada) ============ */
+function SportsSection({ athletic, user, isMember }: { athletic: Athletic; user: any; isMember: boolean }) {
+  if (!user) {
+    return (
+      <div className="space-y-4">
+        <SportsShowcase athletic={athletic} />
+        <EmptyDark icon={<UserPlus className="size-10" />} title="Faça login para se inscrever nos esportes"
+          action={<Button asChild><Link to="/auth">Entrar</Link></Button>} />
+      </div>
+    );
+  }
+  if (!isMember) {
+    return (
+      <div className="space-y-4">
+        <SportsShowcase athletic={athletic} />
+        <EmptyDark icon={<Crown className="size-10" />} title="Inscrições exclusivas para sócios"
+          desc={`Associe-se por R$ ${Number(athletic.membership_price).toFixed(2)} para participar das modalidades.`}
+          action={<AssociarButton athletic={athletic} onDone={() => window.location.reload()} />} />
+      </div>
+    );
+  }
+  return <MemberSports athletic={athletic} userId={user.id} />;
+}
+
+/* ============ PAINEL DO SÓCIO (Carteirinha + Benefícios + Parceiros) ============ */
+function MemberDashboard({ athletic, user, profile, membership }: {
+  athletic: Athletic; user: any; profile: any; membership: Membership | null;
+}) {
+  return (
+    <div className="space-y-6">
+      <MemberIdCard athletic={athletic} profile={profile} membership={membership} email={user?.email} />
+      <Card className="bg-white/5 border-white/10 text-white">
+        <CardContent className="p-5 grid sm:grid-cols-3 gap-3 text-sm">
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="text-[10px] uppercase tracking-widest opacity-60 font-black">Modalidades</div>
+            <div className="mt-1 opacity-90">Inscreva-se na aba <b>Esportes</b>.</div>
+          </div>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="text-[10px] uppercase tracking-widest opacity-60 font-black">Eventos</div>
+            <div className="mt-1 opacity-90">Ingressos com preço de sócio na aba <b>Eventos</b>.</div>
+          </div>
+          <div className="rounded-xl bg-white/5 border border-white/10 p-3">
+            <div className="text-[10px] uppercase tracking-widest opacity-60 font-black">Loja</div>
+            <div className="mt-1 opacity-90">Preço reduzido nos produtos com desconto de sócio.</div>
+          </div>
+        </CardContent>
+      </Card>
+      <div>
+        <h3 className="text-xs uppercase tracking-widest font-black opacity-70 mb-3 flex items-center gap-2">
+          <Handshake className="size-3.5" /> Parceiros com desconto
+        </h3>
+        <MemberPartners athletic={athletic} />
+      </div>
+    </div>
+  );
+}
+
+function MemberIdCard({ athletic, profile, membership, email }: {
+  athletic: Athletic; profile: any; membership: Membership | null; email?: string;
+}) {
+  const name = profile?.full_name || membership?.full_name || "Sócio(a) AAAMD";
+  const until = membership?.member_until ? new Date(membership.member_until) : null;
+  const validUntil = until ? until.toLocaleDateString("pt-BR") : "—";
+  const daysLeft = until ? Math.max(0, Math.ceil((until.getTime() - Date.now()) / 86400000)) : null;
+  const cpf = membership?.cpf || "—";
+  const mat = profile?.matricula || membership?.matricula || "—";
+  const cls = profile?.class_code || "—";
+  const memId = membership?.id ? membership.id.slice(0, 8).toUpperCase() : "—";
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-white/15 shadow-2xl"
+      style={{ background: `linear-gradient(135deg, ${athletic.primary_color} 0%, #0a0a0a 55%, ${athletic.secondary_color} 130%)` }}>
+      <div className="absolute inset-0 opacity-40 mix-blend-overlay pointer-events-none"
+        style={{ backgroundImage: "radial-gradient(circle at 20% 10%, rgba(255,255,255,.15), transparent 40%), radial-gradient(circle at 90% 90%, rgba(255,255,255,.1), transparent 40%)" }} />
+      <div className="relative p-6 md:p-7 text-white">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            {athletic.logo_url ? (
+              <img src={athletic.logo_url} className="size-12 rounded-full border-2 border-white/40 object-cover shrink-0" alt="" />
+            ) : (
+              <div className="size-12 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <Shield className="size-6" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-widest font-black opacity-80">Carteirinha de Sócio</div>
+              <div className="font-black text-lg leading-tight truncate">{athletic.short_name ?? athletic.name}</div>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 border border-emerald-300/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest">
+              <CheckCircle2 className="size-3" /> Ativa
+            </div>
+            {daysLeft !== null && (
+              <div className="mt-1 text-[10px] opacity-80">{daysLeft} dia{daysLeft === 1 ? "" : "s"} restante{daysLeft === 1 ? "" : "s"}</div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-1">
+          <div className="text-[10px] uppercase tracking-widest opacity-70 font-bold">Nome</div>
+          <div className="font-black text-2xl md:text-3xl leading-tight tracking-tight uppercase break-words">{name}</div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-3 py-2">
+            <div className="text-[9px] uppercase tracking-widest opacity-70 font-black">Turma</div>
+            <div className="font-black text-sm mt-0.5">{cls}</div>
+          </div>
+          <div className="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-3 py-2">
+            <div className="text-[9px] uppercase tracking-widest opacity-70 font-black">Matrícula</div>
+            <div className="font-black text-sm mt-0.5">{mat}</div>
+          </div>
+          <div className="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-3 py-2">
+            <div className="text-[9px] uppercase tracking-widest opacity-70 font-black">CPF</div>
+            <div className="font-black text-sm mt-0.5">{cpf}</div>
+          </div>
+          <div className="rounded-xl bg-white/10 border border-white/15 backdrop-blur px-3 py-2">
+            <div className="text-[9px] uppercase tracking-widest opacity-70 font-black">Válida até</div>
+            <div className="font-black text-sm mt-0.5">{validUntil}</div>
+          </div>
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-widest opacity-70 font-black">E-mail</div>
+            <div className="text-xs opacity-90 truncate">{email ?? membership?.email ?? "—"}</div>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-[10px] uppercase tracking-widest opacity-70 font-black">Nº</div>
+            <div className="font-mono font-black text-sm tracking-widest">{memId}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============ SÓCIOS (legado - mantido para compat) ============ */
+
 function SociosArea({ athletic, isMember, user }: { athletic: Athletic; isMember: boolean; user: any }) {
   if (!user) {
     return <EmptyDark icon={<Users className="size-12" />} title="Faça login para acessar a área do sócio"
