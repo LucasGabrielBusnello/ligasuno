@@ -22,6 +22,8 @@ export type Database = {
           is_current: boolean
           name: string
           start_date: string
+          term_end_date: string | null
+          term_start_date: string | null
           updated_at: string
         }
         Insert: {
@@ -31,6 +33,8 @@ export type Database = {
           is_current?: boolean
           name: string
           start_date: string
+          term_end_date?: string | null
+          term_start_date?: string | null
           updated_at?: string
         }
         Update: {
@@ -40,6 +44,8 @@ export type Database = {
           is_current?: boolean
           name?: string
           start_date?: string
+          term_end_date?: string | null
+          term_start_date?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1294,6 +1300,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      class_subdivisions: {
+        Row: {
+          afternoon_end: string | null
+          afternoon_start: string | null
+          class_code: string
+          created_at: string
+          id: string
+          letter: string
+          morning_end: string | null
+          morning_start: string | null
+          night_end: string | null
+          night_start: string | null
+          updated_at: string
+        }
+        Insert: {
+          afternoon_end?: string | null
+          afternoon_start?: string | null
+          class_code: string
+          created_at?: string
+          id?: string
+          letter: string
+          morning_end?: string | null
+          morning_start?: string | null
+          night_end?: string | null
+          night_start?: string | null
+          updated_at?: string
+        }
+        Update: {
+          afternoon_end?: string | null
+          afternoon_start?: string | null
+          class_code?: string
+          created_at?: string
+          id?: string
+          letter?: string
+          morning_end?: string | null
+          morning_start?: string | null
+          night_end?: string | null
+          night_start?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       coordination_staff: {
         Row: {
