@@ -276,8 +276,7 @@ function EntryDialog({
   const [shift, setShift] = useState<Shift>("morning");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
-  const [kind, setKind] = useState<"class" | "practice" | "exam" | "abex">("class");
-  const [isAbex, setIsAbex] = useState(false);
+  const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
 
   useEffect(() => {
     if (!state.open) return;
@@ -290,8 +289,7 @@ function EntryDialog({
     setShift(sh);
     setStart((e?.start_time ?? ds).slice(0, 5));
     setEnd((e?.end_time ?? de).slice(0, 5));
-    setKind((e?.kind && e.kind !== "green_zone" ? e.kind : "class") as any);
-    setIsAbex(!!e?.is_abex);
+    setKind((e?.kind && e.kind !== "green_zone" && e.kind !== "abex" ? e.kind : "class") as any);
   }, [state.open, editing, state.date, state.shift]);
 
   const filteredSubjects = useMemo(
