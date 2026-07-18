@@ -1116,23 +1116,30 @@ function AtleticaSectionLayout({
   const visible = items.filter((i) => i.show);
 
   return (
-    <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-6">
-      <aside className="hidden lg:block">
-        <nav className="sticky top-20 space-y-1 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-2">
-          <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest font-black opacity-60">Navegação</div>
+    <>
+      {/* Fixed side rail (desktop) — full height, follows scroll, outside page container */}
+      <aside className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-[240px] flex-col border-r border-white/10 bg-neutral-950/85 backdrop-blur-xl">
+        <div className="px-5 pt-6 pb-4 border-b border-white/10">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-black opacity-60">Atlética</div>
+          <div className="mt-1 text-sm font-black text-white/90">Navegação</div>
+        </div>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
           {visible.map((i) => {
             const on = active === i.key;
             return (
               <button key={i.key} onClick={() => setActive(i.key)}
-                className={`w-full flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${on ? "text-white shadow-lg" : "text-white/80 hover:bg-white/10"}`}
+                className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${on ? "text-white shadow-lg" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
                 style={on ? { background: primaryColor } : undefined}>
-                {i.icon}<span className="truncate">{i.label}</span>
+                <span className="shrink-0">{i.icon}</span>
+                <span className="truncate">{i.label}</span>
               </button>
             );
           })}
         </nav>
+        <div className="px-5 py-3 border-t border-white/10 text-[10px] opacity-50 font-mono">MEDUNO • AAAMD</div>
       </aside>
 
+      {/* Horizontal chips (mobile) */}
       <div className="lg:hidden -mx-3 px-3 mb-4 overflow-x-auto">
         <div className="flex gap-2 min-w-max pb-1">
           {visible.map((i) => {
@@ -1149,9 +1156,10 @@ function AtleticaSectionLayout({
       </div>
 
       <section className="min-w-0">{renderSection(active)}</section>
-    </div>
+    </>
   );
 }
+
 
 /* ============ ESPORTES (aberto a todos) ============ */
 function SportsSection({ athletic, user }: { athletic: Athletic; user: any; isMember: boolean }) {
