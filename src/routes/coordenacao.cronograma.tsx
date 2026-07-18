@@ -327,15 +327,17 @@ function EntryDialog({
               </SelectContent>
             </Select>
           </div>
-          {currentSubj && currentSubj.subdivisions?.length > 1 && (
-            <div>
-              <Label>Subdivisão</Label>
-              <Select value={subdivision} onValueChange={setSubdivision}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{currentSubj.subdivisions.map((sd) => <SelectItem key={sd} value={sd}>{sd}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          )}
+          <div>
+            <Label>Subdivisão</Label>
+            <Select value={subdivision} onValueChange={setSubdivision}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {availableSubs.map((sd) => (
+                  <SelectItem key={sd} value={sd}>{sd === "*" ? "Todas as turmas (*)" : sd}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div><Label>Data</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
             <div>
@@ -368,12 +370,6 @@ function EntryDialog({
               </SelectContent>
             </Select>
           </div>
-          {kind === "practice" && (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={isAbex} onChange={(e) => setIsAbex(e.target.checked)} />
-              Prática ABEX
-            </label>
-          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
