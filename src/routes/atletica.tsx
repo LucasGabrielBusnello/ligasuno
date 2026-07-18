@@ -193,24 +193,23 @@ function AtleticaPage() {
 
 
       {/* SIDEBAR + CONTENT */}
-      <div className="lg:pl-[240px]">
-        <main className="max-w-6xl mx-auto px-3 md:px-6 py-8">
-          <AtleticaSectionLayout
-            primaryColor={ath.primary_color}
-            isMember={isActiveMember}
-            isDirector={isDirector}
-            renderSection={(section) => {
-              if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
-              if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
-              if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
-              if (section === "sobre") return <SobrePanel athletic={ath} />;
-              if (section === "socio" && isActiveMember) return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
-              if (section === "diretoria" && isDirector) return <DirectorPanel athletic={ath} />;
-              return null;
-            }}
-          />
-        </main>
-      </div>
+      <main className="max-w-6xl mx-auto px-3 md:px-6 py-8">
+        <AtleticaSectionLayout
+          primaryColor={ath.primary_color}
+          isMember={isActiveMember}
+          isDirector={isDirector}
+          renderSection={(section) => {
+            if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
+            if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
+            if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
+            if (section === "sobre") return <SobrePanel athletic={ath} />;
+            if (section === "socio" && isActiveMember) return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
+            if (section === "diretoria" && isDirector) return <DirectorPanel athletic={ath} />;
+            return null;
+          }}
+        />
+      </main>
+
 
 
         <footer className="mt-16 border-t border-white/10 py-8 text-center text-xs opacity-60">
