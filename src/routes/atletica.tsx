@@ -1117,7 +1117,7 @@ function AtleticaSectionLayout({
   return (
     <>
       {/* Fixed side rail (desktop) — full height, follows scroll, outside page container */}
-      <aside className="hidden lg:flex fixed left-0 top-0 z-40 h-screen w-[240px] flex-col border-r border-white/10 bg-neutral-950/85 backdrop-blur-xl">
+      <aside className="hidden lg:flex fixed left-0 top-14 z-30 h-[calc(100vh-3.5rem)] w-[240px] flex-col border-r border-white/10 bg-neutral-950/85 backdrop-blur-xl">
         <div className="px-5 pt-6 pb-4 border-b border-white/10">
           <div className="text-[10px] uppercase tracking-[0.2em] font-black opacity-60">Atlética</div>
           <div className="mt-1 text-sm font-black text-white/90">Navegação</div>
