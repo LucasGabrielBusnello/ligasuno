@@ -20,7 +20,7 @@ import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
 } from "@/lib/schedule.functions";
-import { listSubjects } from "@/lib/curriculum.functions";
+import { listSubjects, listTerms } from "@/lib/curriculum.functions";
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 
