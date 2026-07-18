@@ -297,13 +297,17 @@ function EntryDialog({
     [subjects, classCode]
   );
   const currentSubj = subjects.find((s) => s.id === subjectId);
+  const availableSubs = useMemo(() => {
+    const list = currentSubj?.subdivisions?.length ? currentSubj.subdivisions : ["A"];
+    return Array.from(new Set([...list, "*"]));
+  }, [currentSubj]);
 
   const submit = async () => {
     try {
       await save({ data: {
         id: editing?.id, class_code: classCode as any, subject_id: subjectId || null,
         subdivision: subdivision || "A", date, shift, start_time: start, end_time: end,
-        kind: kind as any, is_abex: kind === "practice" ? isAbex : false, notes: null,
+        kind: kind as any, is_abex: false, notes: null,
       }});
       toast.success("Salvo"); onSaved();
     } catch (e: any) { toast.error(e.message); }
