@@ -41,6 +41,7 @@ function CoordCronograma() {
   const { user, isCoordination, loading } = useAuth();
   const load = useServerFn(listScheduleWeek);
   const listSubj = useServerFn(listSubjects);
+  const listTermsFn = useServerFn(listTerms);
   const delEntry = useServerFn(deleteScheduleEntry);
   const saveEntry = useServerFn(upsertScheduleEntry);
   const copyWeek = useServerFn(copyScheduleWeek);
@@ -50,6 +51,7 @@ function CoordCronograma() {
   const [entries, setEntries] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [currentTerm, setCurrentTerm] = useState<any | null>(null);
 
   const [panel, setPanel] = useState<{ date: string; shift: Shift } | null>(null);
   const [entryDialog, setEntryDialog] = useState<{ open: boolean; editing?: any; date?: string; shift?: Shift }>({ open: false });
@@ -61,14 +63,17 @@ function CoordCronograma() {
 
   const reload = async () => {
     const weekStart = toISODate(monday);
-    const [w, s] = await Promise.all([
+    const [w, s, t] = await Promise.all([
       load({ data: { weekStart, classCode: classCode as any } }),
       listSubj(),
+      listTermsFn(),
     ]);
     const all = ((w as any).entries ?? []) as any[];
-    setEntries(all.filter((e) => e.class_code === classCode));
+    setEntries(all.filter((e) => e.class_code === classCode || e.subdivision === "*"));
     setHolidays((w as any).holidays ?? []);
     setSubjects((s as any[]) ?? []);
+    const terms = (t as any[]) ?? [];
+    setCurrentTerm(terms.find((x) => x.is_current) ?? terms[0] ?? null);
   };
 
   useEffect(() => { if (user && isCoordination) reload(); }, [user, isCoordination, monday, classCode]);
