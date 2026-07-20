@@ -1555,20 +1555,24 @@ function DirectorPanel({ athletic, allowedTabs, isPresident }: {
 function DirectorMembers({ athletic }: { athletic: Athletic }) {
   const [members, setMembers] = useState<Membership[]>([]);
   const [pending, setPending] = useState<any[]>([]);
+  const [cycles, setCycles] = useState<any[]>([]);
   const [editing, setEditing] = useState<Partial<Membership> | null>(null);
   const upsert = useServerFn(upsertAthleticMember);
   const del = useServerFn(deleteAthleticMember);
   const confirm = useServerFn(confirmMembershipPayment);
 
   async function reload() {
-    const [{ data }, { data: p }] = await Promise.all([
+    const [{ data }, { data: p }, { data: cy }] = await Promise.all([
       supabase.from("athletic_memberships").select("*").eq("athletic_id", athletic.id).order("created_at", { ascending: false }),
       supabase.from("athletic_membership_payments").select("*").eq("athletic_id", athletic.id).eq("status", "pending").order("created_at", { ascending: false }),
+      supabase.from("athletic_membership_cycles").select("id, name, ends_at, open").eq("athletic_id", athletic.id).order("starts_at", { ascending: false }),
     ]);
     setMembers((data as any) ?? []);
     setPending((p as any) ?? []);
+    setCycles((cy as any) ?? []);
   }
   useEffect(() => { reload(); }, [athletic.id]);
+
 
   return (
     <div className="space-y-6">
