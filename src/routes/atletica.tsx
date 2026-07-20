@@ -2561,7 +2561,146 @@ function CollectionsMarquee({ athletic, onOpenCollection }: { athletic: Athletic
 /* ============ ESPORTES — Grid ============ */
 type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean; gender: "masculino" | "feminino" | "misto"; max_capacity: number | null; enrollment_open: boolean; whatsapp_url: string | null };
 
+/* ============ HISTÓRIA (Página Inicial) ============ */
+function HistoryShowcase({ ath }: { ath: Athletic }) {
+  const images: string[] = ((ath as any).history_images as string[] | null) ?? [];
+  const title: string = (ath as any).history_title || "Conheça a Nossa História";
+  const description: string | null = (ath as any).history_description ?? null;
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (images.length < 2) return;
+    const t = setInterval(() => setIndex((i) => (i + 1) % images.length), 5000);
+    return () => clearInterval(t);
+  }, [images.length]);
+
+  if (images.length === 0 && !description) return null;
+
+  return (
+    <section className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-black/40">
+      <div className="grid md:grid-cols-2 gap-0">
+        {images.length > 0 && (
+          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[360px] bg-black overflow-hidden">
+            {images.map((src, i) => (
+              <img
+                key={src + i}
+                src={src}
+                alt={`História ${i + 1}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
+              />
+            ))}
+            {images.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setIndex(i)}
+                    aria-label={`Foto ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${i === index ? "w-6 bg-white" : "w-1.5 bg-white/50"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="p-6 md:p-10 flex flex-col justify-center">
+          <div
+            className="inline-flex self-start items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-4"
+            style={{ background: `${ath.primary_color}22`, color: "#fff", border: `1px solid ${ath.primary_color}66` }}
+          >
+            <BookOpen className="size-3.5" /> Nossa história
+          </div>
+          <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
+          {description && (
+            <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============ Config → Imagens da história ============ */
+function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
+  const [title, setTitle] = useState<string>((athletic as any).history_title ?? "Conheça a Nossa História");
+  const [description, setDescription] = useState<string>((athletic as any).history_description ?? "");
+  const [images, setImages] = useState<string[]>((((athletic as any).history_images as string[] | null) ?? []).slice());
+  const upd = useServerFn(updateAthletic);
+  return (
+    <Card className="bg-white/5 border-white/10 text-white">
+      <CardContent className="p-6 space-y-4">
+        <div>
+          <h4 className="font-black">Nossa história (página inicial)</h4>
+          <p className="text-xs opacity-70">Adicione um título, descrição e fotos para a seção "Conheça a Nossa História" na aba Página Inicial. As imagens passam automaticamente.</p>
+        </div>
+        <div><Label>Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+        <div>
+          <Label>Descrição</Label>
+          <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Conte um pouco sobre a trajetória da atlética..." />
+        </div>
+        <div className="space-y-2">
+          <Label>Imagens</Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {images.map((url, i) => (
+              <div key={i} className="relative group rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-square">
+                <img src={url} alt={`História ${i + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setImages(images.filter((_, j) => j !== i))}
+                  className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  aria-label="Remover imagem"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+                <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+                  <button
+                    type="button"
+                    disabled={i === 0}
+                    onClick={() => {
+                      const arr = images.slice();
+                      [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+                      setImages(arr);
+                    }}
+                    className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
+                  >←</button>
+                  <button
+                    type="button"
+                    disabled={i === images.length - 1}
+                    onClick={() => {
+                      const arr = images.slice();
+                      [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+                      setImages(arr);
+                    }}
+                    className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
+                  >→</button>
+                </div>
+              </div>
+            ))}
+            <div className="aspect-square rounded-lg border border-dashed border-white/20 bg-black/20 p-2 flex items-center justify-center">
+              <ImageUpload value="" onChange={(url) => { if (url) setImages([...images, url]); }} folder="atletica/history" />
+            </div>
+          </div>
+        </div>
+        <Button
+          onClick={async () => {
+            try {
+              await upd({ data: {
+                id: athletic.id,
+                history_title: title,
+                history_description: description || null,
+                history_images: images,
+              } as any });
+              toast.success("História salva");
+            } catch (e: any) { toast.error(e?.message ?? "Falha ao salvar"); }
+          }}
+        >Salvar história</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SportsShowcase({ athletic }: { athletic: Athletic }) {
+
   const [sports, setSports] = useState<Sport[]>([]);
   useEffect(() => {
     (async () => {
