@@ -19,7 +19,7 @@ import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
   Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
-  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power,
+  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
@@ -1501,8 +1501,9 @@ function InicioSection({ ath, isActiveMember, myMembership }: {
         }} />
       </div>
 
-      {/* ESPORTES SHOWCASE */}
-      <div className="px-3 md:px-0"><SportsShowcase athletic={ath} /></div>
+      {/* HISTÓRIA */}
+      <div className="px-3 md:px-0"><HistoryShowcase ath={ath} /></div>
+
     </div>
   );
 }
@@ -1554,20 +1555,24 @@ function DirectorPanel({ athletic, allowedTabs, isPresident }: {
 function DirectorMembers({ athletic }: { athletic: Athletic }) {
   const [members, setMembers] = useState<Membership[]>([]);
   const [pending, setPending] = useState<any[]>([]);
+  const [cycles, setCycles] = useState<any[]>([]);
   const [editing, setEditing] = useState<Partial<Membership> | null>(null);
   const upsert = useServerFn(upsertAthleticMember);
   const del = useServerFn(deleteAthleticMember);
   const confirm = useServerFn(confirmMembershipPayment);
 
   async function reload() {
-    const [{ data }, { data: p }] = await Promise.all([
+    const [{ data }, { data: p }, { data: cy }] = await Promise.all([
       supabase.from("athletic_memberships").select("*").eq("athletic_id", athletic.id).order("created_at", { ascending: false }),
       supabase.from("athletic_membership_payments").select("*").eq("athletic_id", athletic.id).eq("status", "pending").order("created_at", { ascending: false }),
+      supabase.from("athletic_membership_cycles").select("id, name, ends_at, open").eq("athletic_id", athletic.id).order("starts_at", { ascending: false }),
     ]);
     setMembers((data as any) ?? []);
     setPending((p as any) ?? []);
+    setCycles((cy as any) ?? []);
   }
   useEffect(() => { reload(); }, [athletic.id]);
+
 
   return (
     <div className="space-y-6">
@@ -1662,7 +1667,46 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                 <div><Label>Sócio até (data)</Label><Input type="date" value={editing.member_until ?? ""} onChange={(e) => setEditing({ ...editing, member_until: e.target.value })} /></div>
               </div>
 
+              <div className="rounded-lg border p-3 space-y-2">
+                <Label className="text-xs uppercase tracking-widest opacity-70">Ciclo de associação</Label>
+                <Select
+                  value={(editing as any).cycle_id ?? "__none"}
+                  onValueChange={(v) => setEditing({ ...editing, cycle_id: v === "__none" ? null : v } as any)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecionar ciclo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Sem ciclo</SelectItem>
+                    {cycles.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} (válido até {new Date(c.ends_at).toLocaleDateString("pt-BR")})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] opacity-60">
+                  Ao selecionar um ciclo, a data limite de sócio é preenchida automaticamente com o fim do ciclo.
+                </p>
+              </div>
+
+              {!editing.id && (
+                <label className="flex items-start gap-2 text-sm rounded-lg border p-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={(editing as any).send_invite ?? true}
+                    onChange={(e) => setEditing({ ...editing, send_invite: e.target.checked } as any)}
+                  />
+                  <span>
+                    <strong>Enviar convite por e-mail</strong>
+                    <span className="block text-[11px] opacity-70">
+                      Se este e-mail ainda não tem conta, enviamos um convite. Assim que a pessoa criar a conta com o mesmo e-mail, ela é vinculada automaticamente como sócia.
+                    </span>
+                  </span>
+                </label>
+              )}
+
               {(editing.role === "diretor" || editing.role === "presidente") && (
+
                 <div className="rounded-lg border p-3 space-y-2">
                   <Label className="text-xs uppercase tracking-widest opacity-70">Abas da Diretoria liberadas</Label>
                   <p className="text-[11px] opacity-60">Presidente sempre tem acesso a todas. Para diretores, marque abaixo. Sem seleção = todas liberadas.</p>
@@ -1693,7 +1737,12 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
             <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
             <Button onClick={async () => {
               try {
-                await upsert({ data: { ...(editing as any), added_manually: !editing?.id } });
+                await upsert({ data: {
+                  ...(editing as any),
+                  added_manually: !editing?.id,
+                  send_invite: !editing?.id && ((editing as any).send_invite ?? true),
+                } });
+
                 toast.success("Salvo"); setEditing(null); reload();
               } catch (e: any) { toast.error(e?.message); }
             }}>Salvar</Button>
@@ -2201,15 +2250,11 @@ function DirectorConfig({ athletic }: { athletic: Athletic }) {
 
       <MembershipCyclesCard athletic={athletic} />
 
-      <Card className="bg-emerald-500/5 border-emerald-500/30 text-white">
-        <CardContent className="p-6">
-          <h4 className="font-bold flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-400" /> Vendas online via Pix (ativo)</h4>
-          <p className="text-sm opacity-80 mt-2">Associações, ingressos e produtos aceitam Pix na conta da plataforma. Cada pagamento aprovado entra automaticamente no caixa da atlética. Taxas da plataforma configuráveis no painel admin.</p>
-        </CardContent>
-      </Card>
+      <HistoryImagesCard athletic={athletic} />
     </div>
   );
 }
+
 
 /* --- Ciclos de associação --- */
 function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
@@ -2263,7 +2308,7 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
                 </div>
               </div>
               <div className="flex gap-1">
-                <Button size="sm" variant="outline" onClick={() => setEditing(c)}>Editar</Button>
+                <Button size="sm" variant="outline" className="bg-white text-black hover:bg-neutral-100 hover:text-black border-white" onClick={() => setEditing(c)}>Editar</Button>
                 <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => {
                   if (!confirm2("Remover ciclo?")) return;
                   try { await delFn({ data: { athletic_id: athletic.id, id: c.id } }); toast.success("Removido"); reload(); }
@@ -2521,7 +2566,146 @@ function CollectionsMarquee({ athletic, onOpenCollection }: { athletic: Athletic
 /* ============ ESPORTES — Grid ============ */
 type Sport = { id: string; athletic_id: string; name: string; description: string | null; image_url: string | null; coach: string | null; schedule: string | null; display_order: number; active: boolean; gender: "masculino" | "feminino" | "misto"; max_capacity: number | null; enrollment_open: boolean; whatsapp_url: string | null };
 
+/* ============ HISTÓRIA (Página Inicial) ============ */
+function HistoryShowcase({ ath }: { ath: Athletic }) {
+  const images: string[] = ((ath as any).history_images as string[] | null) ?? [];
+  const title: string = (ath as any).history_title || "Conheça a Nossa História";
+  const description: string | null = (ath as any).history_description ?? null;
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (images.length < 2) return;
+    const t = setInterval(() => setIndex((i) => (i + 1) % images.length), 5000);
+    return () => clearInterval(t);
+  }, [images.length]);
+
+  if (images.length === 0 && !description) return null;
+
+  return (
+    <section className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-black/40">
+      <div className="grid md:grid-cols-2 gap-0">
+        {images.length > 0 && (
+          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[360px] bg-black overflow-hidden">
+            {images.map((src, i) => (
+              <img
+                key={src + i}
+                src={src}
+                alt={`História ${i + 1}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
+              />
+            ))}
+            {images.length > 1 && (
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+                {images.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setIndex(i)}
+                    aria-label={`Foto ${i + 1}`}
+                    className={`h-1.5 rounded-full transition-all ${i === index ? "w-6 bg-white" : "w-1.5 bg-white/50"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="p-6 md:p-10 flex flex-col justify-center">
+          <div
+            className="inline-flex self-start items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-4"
+            style={{ background: `${ath.primary_color}22`, color: "#fff", border: `1px solid ${ath.primary_color}66` }}
+          >
+            <BookOpen className="size-3.5" /> Nossa história
+          </div>
+          <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
+          {description && (
+            <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============ Config → Imagens da história ============ */
+function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
+  const [title, setTitle] = useState<string>((athletic as any).history_title ?? "Conheça a Nossa História");
+  const [description, setDescription] = useState<string>((athletic as any).history_description ?? "");
+  const [images, setImages] = useState<string[]>((((athletic as any).history_images as string[] | null) ?? []).slice());
+  const upd = useServerFn(updateAthletic);
+  return (
+    <Card className="bg-white/5 border-white/10 text-white">
+      <CardContent className="p-6 space-y-4">
+        <div>
+          <h4 className="font-black">Nossa história (página inicial)</h4>
+          <p className="text-xs opacity-70">Adicione um título, descrição e fotos para a seção "Conheça a Nossa História" na aba Página Inicial. As imagens passam automaticamente.</p>
+        </div>
+        <div><Label>Título</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} /></div>
+        <div>
+          <Label>Descrição</Label>
+          <Textarea rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Conte um pouco sobre a trajetória da atlética..." />
+        </div>
+        <div className="space-y-2">
+          <Label>Imagens</Label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {images.map((url, i) => (
+              <div key={i} className="relative group rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-square">
+                <img src={url} alt={`História ${i + 1}`} className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setImages(images.filter((_, j) => j !== i))}
+                  className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                  aria-label="Remover imagem"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+                <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+                  <button
+                    type="button"
+                    disabled={i === 0}
+                    onClick={() => {
+                      const arr = images.slice();
+                      [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+                      setImages(arr);
+                    }}
+                    className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
+                  >←</button>
+                  <button
+                    type="button"
+                    disabled={i === images.length - 1}
+                    onClick={() => {
+                      const arr = images.slice();
+                      [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+                      setImages(arr);
+                    }}
+                    className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
+                  >→</button>
+                </div>
+              </div>
+            ))}
+            <div className="aspect-square rounded-lg border border-dashed border-white/20 bg-black/20 p-2 flex items-center justify-center">
+              <ImageUpload value="" onChange={(url) => { if (url) setImages([...images, url]); }} folder="atletica/history" />
+            </div>
+          </div>
+        </div>
+        <Button
+          onClick={async () => {
+            try {
+              await upd({ data: {
+                id: athletic.id,
+                history_title: title,
+                history_description: description || null,
+                history_images: images,
+              } as any });
+              toast.success("História salva");
+            } catch (e: any) { toast.error(e?.message ?? "Falha ao salvar"); }
+          }}
+        >Salvar história</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function SportsShowcase({ athletic }: { athletic: Athletic }) {
+
   const [sports, setSports] = useState<Sport[]>([]);
   useEffect(() => {
     (async () => {
