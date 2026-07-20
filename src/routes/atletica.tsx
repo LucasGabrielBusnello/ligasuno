@@ -2303,7 +2303,7 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
                 </div>
               </div>
               <div className="flex gap-1">
-                <Button size="sm" variant="outline" onClick={() => setEditing(c)}>Editar</Button>
+                <Button size="sm" variant="outline" className="bg-white text-black hover:bg-neutral-100 hover:text-black border-white" onClick={() => setEditing(c)}>Editar</Button>
                 <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => {
                   if (!confirm2("Remover ciclo?")) return;
                   try { await delFn({ data: { athletic_id: athletic.id, id: c.id } }); toast.success("Removido"); reload(); }
