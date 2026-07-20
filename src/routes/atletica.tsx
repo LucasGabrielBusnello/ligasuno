@@ -2245,10 +2245,11 @@ function DirectorConfig({ athletic }: { athletic: Athletic }) {
 
       <MembershipCyclesCard athletic={athletic} />
 
-      <Card className="bg-emerald-500/5 border-emerald-500/30 text-white">
-        <CardContent className="p-6">
-          <h4 className="font-bold flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-400" /> Vendas online via Pix (ativo)</h4>
-          <p className="text-sm opacity-80 mt-2">Associações, ingressos e produtos aceitam Pix na conta da plataforma. Cada pagamento aprovado entra automaticamente no caixa da atlética. Taxas da plataforma configuráveis no painel admin.</p>
+      <HistoryImagesCard athletic={athletic} />
+    </div>
+  );
+}
+
         </CardContent>
       </Card>
     </div>
