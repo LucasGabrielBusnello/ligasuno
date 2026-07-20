@@ -93,9 +93,9 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
       try {
         const { data: ath } = await supabaseAdmin
           .from("athletics").select("name, slug, primary_color").eq("id", data.athletic_id).maybeSingle();
-        ath_name = (ath as any)?.name ?? "sua atlética";
-        ath_slug = (ath as any)?.slug ?? "";
-        const brand = (ath as any)?.primary_color ?? "#1f5132";
+        const ath_name: string = (ath as any)?.name ?? "sua atlética";
+        const brand: string = (ath as any)?.primary_color ?? "#1f5132";
+
         const { sendGmail, emailLayout, emailInfoCard } = await import("./gmail.server");
         await sendGmail({
           to: data.email,
