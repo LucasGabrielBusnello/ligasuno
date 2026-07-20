@@ -2191,16 +2191,179 @@ function DirectorConfig({ athletic }: { athletic: Athletic }) {
         </CardContent>
       </Card>
 
+      <MembershipCyclesCard athletic={athletic} />
+
       <Card className="bg-emerald-500/5 border-emerald-500/30 text-white">
         <CardContent className="p-6">
           <h4 className="font-bold flex items-center gap-2"><CheckCircle2 className="size-4 text-emerald-400" /> Vendas online via Pix (ativo)</h4>
           <p className="text-sm opacity-80 mt-2">Associações, ingressos e produtos aceitam Pix na conta da plataforma. Cada pagamento aprovado entra automaticamente no caixa da atlética. Taxas da plataforma configuráveis no painel admin.</p>
         </CardContent>
-
       </Card>
     </div>
   );
 }
+
+/* --- Ciclos de associação --- */
+function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
+  const [open, setOpen] = useState<boolean>(Boolean((athletic as any).memberships_open));
+  const [cycles, setCycles] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+  const setOpenFn = useServerFn(setMembershipsOpen);
+  const upsertFn = useServerFn(upsertMembershipCycle);
+  const delFn = useServerFn(deleteMembershipCycle);
+  async function reload() {
+    const { data } = await supabase.from("athletic_membership_cycles")
+      .select("*").eq("athletic_id", athletic.id).order("starts_at", { ascending: false });
+    setCycles((data as any) ?? []);
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+  return (
+    <Card className="bg-white/5 border-white/10 text-white">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h4 className="font-black">Ciclos de associação</h4>
+            <p className="text-xs opacity-70">Enquanto houver um ciclo ativo, quem se associar recebe automaticamente o status de sócio até a data final do ciclo, com preços separados para novos e renovações.</p>
+          </div>
+          <label className="flex items-center gap-2 text-sm shrink-0">
+            <input type="checkbox" checked={open} onChange={async (e) => {
+              const v = e.target.checked; setOpen(v);
+              try { await setOpenFn({ data: { athletic_id: athletic.id, open: v } }); toast.success(v ? "Associações abertas" : "Associações fechadas"); }
+              catch (err: any) { toast.error(err?.message); setOpen(!v); }
+            }} />
+            Aberto para novas associações
+          </label>
+        </div>
+
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setEditing({
+            athletic_id: athletic.id, name: "", starts_at: "", ends_at: "",
+            price_new: athletic.membership_price ?? 0, price_renewal: athletic.membership_price ?? 0, open: true,
+          })}><Plus className="size-4" /> Novo ciclo</Button>
+        </div>
+
+        <div className="space-y-2">
+          {cycles.length === 0 && <div className="text-sm opacity-60">Nenhum ciclo cadastrado.</div>}
+          {cycles.map((c) => (
+            <div key={c.id} className="flex flex-col md:flex-row md:items-center gap-2 p-3 rounded-lg bg-black/30 border border-white/10">
+              <div className="flex-1">
+                <div className="font-bold">{c.name}</div>
+                <div className="text-xs opacity-70">
+                  {new Date(c.starts_at).toLocaleDateString("pt-BR")} → {new Date(c.ends_at).toLocaleDateString("pt-BR")}
+                  {" · "}Novo R$ {Number(c.price_new).toFixed(2)} · Renovação R$ {Number(c.price_renewal).toFixed(2)}
+                  {c.open ? " · Aberto" : " · Fechado"}
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <Button size="sm" variant="outline" onClick={() => setEditing(c)}>Editar</Button>
+                <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => {
+                  if (!confirm2("Remover ciclo?")) return;
+                  try { await delFn({ data: { athletic_id: athletic.id, id: c.id } }); toast.success("Removido"); reload(); }
+                  catch (err: any) { toast.error(err?.message); }
+                }}><Trash2 className="size-3.5" /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>{editing?.id ? "Editar ciclo" : "Novo ciclo"}</DialogTitle></DialogHeader>
+            {editing && (
+              <div className="space-y-3">
+                <div><Label>Nome (ex.: 2026/1)</Label><Input value={editing.name ?? ""} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Início</Label><Input type="date" value={(editing.starts_at ?? "").slice(0, 10)} onChange={(e) => setEditing({ ...editing, starts_at: e.target.value })} /></div>
+                  <div><Label>Fim</Label><Input type="date" value={(editing.ends_at ?? "").slice(0, 10)} onChange={(e) => setEditing({ ...editing, ends_at: e.target.value })} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Preço novo sócio (R$)</Label><Input type="number" step="0.01" value={editing.price_new ?? 0} onChange={(e) => setEditing({ ...editing, price_new: +e.target.value })} /></div>
+                  <div><Label>Preço renovação (R$)</Label><Input type="number" step="0.01" value={editing.price_renewal ?? 0} onChange={(e) => setEditing({ ...editing, price_renewal: +e.target.value })} /></div>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={editing.open ?? true} onChange={(e) => setEditing({ ...editing, open: e.target.checked })} />
+                  Ciclo aberto (aceita associações)
+                </label>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
+              <Button onClick={async () => {
+                try {
+                  await upsertFn({ data: {
+                    id: editing.id, athletic_id: athletic.id, name: editing.name,
+                    starts_at: editing.starts_at, ends_at: editing.ends_at,
+                    price_new: Number(editing.price_new) || 0, price_renewal: Number(editing.price_renewal) || 0,
+                    open: !!editing.open,
+                  } });
+                  toast.success("Salvo"); setEditing(null); reload();
+                } catch (err: any) { toast.error(err?.message); }
+              }}>Salvar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* --- InfinitePay integration card --- */
+function InfinitepayCard({ athletic }: { athletic: Athletic }) {
+  const [status, setStatus] = useState<{ connected: boolean; handle: string | null } | null>(null);
+  const [form, setForm] = useState({ handle: "", api_key: "", webhook_secret: "" });
+  const [busy, setBusy] = useState(false);
+  const getStatus = useServerFn(getInfinitepayStatus);
+  const save = useServerFn(saveInfinitepayCredentials);
+  const disc = useServerFn(disconnectInfinitepay);
+  async function reload() {
+    try { const r = await getStatus({ data: { athletic_id: athletic.id } }); setStatus(r as any); }
+    catch { setStatus({ connected: false, handle: null }); }
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+  return (
+    <Card className="bg-white/5 border-white/10 text-white">
+      <CardContent className="p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-lime-500/20 border border-lime-400/40 flex items-center justify-center">
+            <Link2 className="size-5 text-lime-300" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-black">InfinitePay da atlética</h4>
+            <p className="text-xs opacity-70">Conecte a conta InfinitePay para receber pagamentos direto na sua conta bancária.</p>
+          </div>
+          {status?.connected && (
+            <Badge className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">Conectada</Badge>
+          )}
+        </div>
+
+        {status?.connected ? (
+          <div className="rounded-lg border border-white/10 p-3 bg-black/20 flex items-center justify-between gap-2">
+            <div className="text-sm">Handle: <b>@{status.handle}</b></div>
+            <Button size="sm" variant="outline" onClick={async () => {
+              if (!confirm2("Desconectar InfinitePay?")) return;
+              setBusy(true);
+              try { await disc({ data: { athletic_id: athletic.id } }); toast.success("Desconectada"); reload(); }
+              catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+            }} disabled={busy}><Power className="size-3.5" /> Desconectar</Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div><Label>Handle InfinitePay (sem @)</Label><Input value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value.replace(/^@/, "") })} placeholder="sua-atletica" /></div>
+            <div><Label>API Key</Label><Input type="password" value={form.api_key} onChange={(e) => setForm({ ...form, api_key: e.target.value })} placeholder="ip_live_…" /></div>
+            <div><Label>Webhook Secret</Label><Input type="password" value={form.webhook_secret} onChange={(e) => setForm({ ...form, webhook_secret: e.target.value })} /></div>
+            <Button disabled={busy || !form.handle || !form.api_key || !form.webhook_secret} onClick={async () => {
+              setBusy(true);
+              try { await save({ data: { athletic_id: athletic.id, ...form } }); toast.success("Conectada"); setForm({ handle: "", api_key: "", webhook_secret: "" }); reload(); }
+              catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+            }}>Conectar InfinitePay</Button>
+            <p className="text-[11px] opacity-60">Suas credenciais ficam criptografadas no servidor. Gere sua API key e webhook secret no painel InfinitePay &rarr; Integrações.</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 /* ============ helpers ============ */
 function Chip({ children, active, onClick, color }: any) {
