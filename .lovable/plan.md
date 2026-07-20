@@ -1,81 +1,108 @@
-# Plano de implementação
+# Reforma da aba Atlética
 
-Pedido muito grande — divido em 4 fases para você aprovar antes de eu abrir migrations e reescrever telas inteiras. Cada fase é independente e pode ser aprovada/adiada.
+## 1. Nova "Página Inicial" (substitui "Sobre")
+- Primeira aba do sidebar (topo), ícone Home.
+- Conteúdo (ordem vertical):
+  1. **Hero central** com logo grande + nome + tagline (o que já existe no topo, migra pra dentro dessa aba).
+  2. **Card de coleção vigente** (`FeaturedCollection` — reutilizar `CollectionsMarquee` em modo destaque).
+  3. **Bloco Sobre** (descrição, história, presidência) — o conteúdo atual de `SobrePanel`.
+- Remover o hero global e o marquee que hoje aparecem **acima** do sidebar; passam a viver dentro da aba.
+- Aba "Sobre" deixa de existir como item separado.
+- Aba **Produtos** vira segundo item; deixa de ser a inicial.
 
----
+## 2. Sidebar corrigida
+- Buttons já são stateful, mas o hero e marquee gigantes acima empurram o conteúdo pra fora da viewport, dando a sensação de "não funciona". Ao mover hero/marquee pra dentro da Página Inicial (item 1), clicar em Produtos/Eventos abre a seção imediatamente.
+- Adicionar `scrollTo({ top: 0 })` no `setActive` para garantir feedback visual.
+- Header sticky continua; sidebar `fixed top-14`.
 
-## Fase 1 — Cronograma (coordenação)
+## 3. Ciclos de associação (Diretoria > Configurações)
+Nova tabela `athletic_membership_cycles`:
+- `athletic_id`, `name`, `starts_at`, `ends_at`, `price_new`, `price_renewal`, `open` (bool), `created_at`.
+Nova coluna em `athletics`: `memberships_open` (bool) — chave-mestra pra abrir/fechar novas associações.
+Nova coluna em `athletic_memberships`: `cycle_id` (FK opcional).
 
-**Banco**
-- Adicionar `term_start_date` e `term_end_date` em `academic_terms` (semestre letivo).
-- Nova tabela `class_subdivisions` (class_code, letter A/B/C…, shift_morning_start, shift_morning_end, shift_afternoon_start, shift_afternoon_end, shift_night_start, shift_night_end). Turma "A" criada automaticamente.
+Regras:
+- Se `memberships_open = false` **ou** não existe ciclo ativo (com `open=true` e data atual dentro do intervalo): botão "Associar-se" bloqueado com mensagem.
+- Se há ciclo ativo: usa `price_new` ou `price_renewal` (renovação = usuário tinha membership no ciclo anterior).
+- Ao pagar: `member_until = ciclo.ends_at`, `cycle_id = ciclo.id`.
 
-**UI Coordenação → Currículo**
-- No editor de turma ATM: barra listando A (fixa), botão "+" adiciona B, C, D… (próxima letra). Clicar na barra abre painel com 3 blocos (Manhã/Tarde/Noite) e horários início/fim; vazios usam o padrão global.
+UI: em **Diretoria > Configurações**, novo bloco "Ciclos de associação":
+- Toggle "Aceitar novas associações".
+- Lista de ciclos com CRUD (nome, período, preço novo, preço renovação, ativo).
 
-**UI Cronograma**
-- Grid semanal respeita `term_start_date`/`term_end_date` — semanas fora do período mostram aviso "fora do semestre letivo".
-- Ao criar/editar entrada, opção **"Todas as turmas"** (grava uma entrada por subdivisão existente, ou entrada especial `subdivision = '*'` que aparece em todas).
-- Remover a opção **"Prática Abex"** do seletor de tipo.
-- **Criar em lote** ganha campos `start_time`/`end_time` opcionais (fallback ao padrão da turma+turno).
-- **Alerta de choque**: badge vermelho na célula quando duas matérias ocupam mesmo horário/subdivisão; tooltip lista as conflitantes.
+## 4. Permissões granulares por membro
+Nova coluna em `athletic_memberships`: `director_tabs text[]` (default `NULL`).
+- `NULL` = comportamento atual (presidente + diretor têm tudo).
+- Array = restrição às abas listadas. Ignorado se `role='presidente'`.
+- Chaves: `produtos, eventos, esportes, socios, financeiro, parceiros, configuracoes`.
 
----
+UI: no modal de adicionar/editar membro (Diretoria > Sócios), quando `role` for `diretor`, aparecem 7 checkboxes.
+Front-end filtra abas do `DirectorPanel` conforme `director_tabs`.
 
-## Fase 2 — Atlética com sidebar
+## 5. InfinitePay no Financeiro (API completa)
+Nova tabela `athletic_infinitepay_accounts`:
+- `athletic_id` (unique), `handle`, `api_key_encrypted`, `webhook_secret_encrypted`, `connected_at`.
+Secret global `INFINITEPAY_API_URL` (base URL).
 
-**Layout**
-- Reescrever `/atletica` para layout com sidebar esquerda (colapsável em mobile via Sheet). Abas: **Produtos, Eventos, Esportes, Sobre, Diretoria, Painel do Sócio** (só sócios).
-- Manter paleta verde/laranja atual.
+UI: em **Diretoria > Financeiro**, novo card "InfinitePay":
+- Campo pra colar handle + API key + webhook secret; botão "Conectar".
+- Server function `saveInfinitepayCredentials` (guarda com Web Crypto AES-GCM, chave em `APP_ENCRYPTION_KEY` gerada via `generate_secret`).
+- Server function `disconnectInfinitepay`.
+- Server function `createInfinitepayCharge` (usada pela associação/produtos como método alternativo ao MP).
+- Route `src/routes/api/public/payments/infinitepay-webhook.ts` (verifica HMAC do webhook secret; marca `paid`).
 
-**Mudanças por aba**
-- **Produtos**: layout ajustado, lógica mantida.
-- **Eventos**: mantido.
-- **Esportes** (nova, substitui "Sócio"): grade de esportes com foto, descrição, gênero e botão "Entrar no grupo WhatsApp". Remove inscrição/vagas.
-- **Sobre**: descrição + no fim da página, seção **Parceiros** (movida de "Sócio").
-- **Painel do Sócio** (visível só a sócios ativos): mostra data-fim da associação + **carteirinha** no modelo da imagem enviada (fundo verde, título laranja, logo central, dados: Nome, CPF, RA/matrícula, Turma ATM, Data de nascimento, Data fim associação, logo AAAMD no rodapé).
+Passo 1 desta entrega: só o skeleton (tabela, tela de conectar, secret de encryption). Pagamentos via InfinitePay ficam pra segundo turno assim que confirmar endpoints exatos da API (que variam por conta merchant/checkout).
 
-**Perfil do sócio**
-- `profiles` já tem cpf/full_name/class_code. Faltam **matrícula** (já existe `enrollment_id`) e **data de nascimento** — adicionar `birth_date`.
+## Detalhes técnicos
 
----
+### Migração (1 arquivo)
+```sql
+alter table athletics add column if not exists memberships_open boolean not null default true;
 
-## Fase 3 — Diretoria (reformulações)
+create table public.athletic_membership_cycles (
+  id uuid primary key default gen_random_uuid(),
+  athletic_id uuid not null references athletics(id) on delete cascade,
+  name text not null,
+  starts_at date not null,
+  ends_at date not null,
+  price_new numeric(10,2) not null,
+  price_renewal numeric(10,2) not null,
+  open boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+-- grants, RLS (director read/write, anon read active), trigger updated_at
 
-**Permissões granulares**
-- Nova coluna `permissions` (jsonb) em `athletic_memberships` armazenando flags: `socios, produtos, eventos, esportes, parceiros, caixa, config`.
-- Ao criar/editar membro em Diretoria → Sócios, checkboxes com essas 7 permissões. Sidebar da Diretoria mostra só as abas permitidas. Presidente e admin master têm tudo.
+alter table athletic_memberships
+  add column if not exists cycle_id uuid references athletic_membership_cycles(id) on delete set null,
+  add column if not exists director_tabs text[];
 
-**Aba Eventos (diretoria)**
-- Botão "Gerar ingressos" → renomear para **"Registrar venda"** (formulário: nome, e-mail, telefone, valor pago manual, método de pagamento manual).
-- "Gerenciar" mostra lista de ingressos vendidos (já existe parcialmente, garantir).
-- Editor de evento: checkbox **"Sem limite de ingressos"** (grava `capacity = null`).
+create table public.athletic_infinitepay_accounts (
+  id uuid primary key default gen_random_uuid(),
+  athletic_id uuid not null unique references athletics(id) on delete cascade,
+  handle text not null,
+  api_key_encrypted text not null,
+  webhook_secret_encrypted text not null,
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+-- grants, RLS (só diretoria)
+```
 
-**Aba Caixa**
-- Campo para anexar comprovante em entradas manuais (upload no storage), igual às ligas.
+### Server functions novas
+`src/lib/athletic.functions.ts`:
+- `upsertMembershipCycle`, `deleteMembershipCycle`, `toggleMembershipsOpen`
+- `saveInfinitepayCredentials`, `disconnectInfinitepay`, `getInfinitepayStatus`
 
-**Conta InfinitePay**
-- Nova aba **Config → Pagamentos**: quem tem permissão `caixa` (ou `config`) pode vincular/alterar handle da InfinitePay (input de texto salvo em `athletics.infinitepay_handle`).
-- Adicionar coluna `infinitepay_handle text` em `athletics`.
-- Server fn de checkout gera link `https://checkout.infinitepay.io/{handle}?...` (Pix sem taxa; cartão com taxa da InfinitePay).
-- Split "virtual": após confirmação (webhook InfinitePay), aplicar taxa configurada e registrar no caixa como fez anteriormente com o MP.
+### Front-end
+- `src/routes/atletica.tsx`:
+  - Adiciona `SectionKey = "inicio" | ...`; remove `"sobre"`; `inicio` como default.
+  - Novo componente `InicioSection` (hero + coleção destaque + sobre).
+  - Remove hero e marquee do topo (fora de `<main>`).
+  - `DirectorPanel`: filtra abas por `director_tabs`; nova sub-aba "Ciclos" dentro de Configurações; novo card InfinitePay em Financeiro.
+  - Modal editar membro: checkboxes de abas.
+  - `AssociarButton`: consulta ciclo ativo; bloqueia se fechado; mostra preço apropriado (novo vs renovação).
 
-**Painel Admin → Config**
-- Já existe fee_atletica_*. Zerar valores default (definir 0 nas configs existentes via migration) e adicionar aviso de que taxas são cobradas via split virtual.
-
----
-
-## Fase 4 — Hub inicial
-
-- Adicionar de volta um **card de propaganda** na home logo abaixo da barra superior — por enquanto, banner fixo da AAAMD Desbravadores (imagem de capa da atlética + CTA "Conheça a AAAMD" → `/atletica`).
-
----
-
-## Perguntas antes de começar
-
-1. **Ordem**: implemento Fase 1 → 2 → 3 → 4 sequencialmente (uma resposta por fase, você aprova cada migration antes da próxima), ok?
-2. **InfinitePay checkout**: uso o **link de checkout público** deles (`checkout.infinitepay.io/{handle}`) por enquanto? A API oficial de split não existe; confirmação de pagamento seria manual ou via webhook simples da InfinitePay (você precisaria configurar no painel deles depois).
-3. **Turmas globais**: quando você marca "Todas as turmas" no cronograma, prefere gravar **1 entrada por subdivisão** (duplica no banco, fácil editar depois individualmente) ou **1 entrada com marca especial `*`** (mais limpo, mas edições futuras afetam todas)?
-4. **Data de nascimento**: adicionar no fluxo de revisão de perfil (dialog que já pede matrícula/turma) para os já-cadastrados preencherem?
-
-Confirme ordem e as 3 perguntas para eu abrir a Fase 1.
+## Fora de escopo (próximos turnos)
+- Implementar de fato os endpoints de charge/webhook da InfinitePay (precisa das credenciais reais e do dashboard InfinitePay pra confirmar URLs e payload).
+- Migrar pagamentos MP existentes pro fluxo de escolha MP/InfinitePay no checkout.

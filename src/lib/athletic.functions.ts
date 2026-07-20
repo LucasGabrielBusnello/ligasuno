@@ -27,6 +27,7 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
       member_until: z.string().optional().nullable(),
       active: z.boolean().default(true),
       added_manually: z.boolean().default(true),
+      director_tabs: z.array(z.string()).optional().nullable(),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
@@ -58,7 +59,9 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
       active: data.active,
       added_manually: data.added_manually,
       user_id: linked_user_id,
+      director_tabs: data.director_tabs ?? null,
     };
+
 
     if (data.id) {
       const { error } = await supabaseAdmin.from("athletic_memberships")

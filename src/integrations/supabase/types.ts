@@ -444,6 +444,91 @@ export type Database = {
           },
         ]
       }
+      athletic_infinitepay_accounts: {
+        Row: {
+          api_key_encrypted: string
+          athletic_id: string
+          connected_at: string
+          handle: string
+          id: string
+          updated_at: string
+          webhook_secret_encrypted: string
+        }
+        Insert: {
+          api_key_encrypted: string
+          athletic_id: string
+          connected_at?: string
+          handle: string
+          id?: string
+          updated_at?: string
+          webhook_secret_encrypted: string
+        }
+        Update: {
+          api_key_encrypted?: string
+          athletic_id?: string
+          connected_at?: string
+          handle?: string
+          id?: string
+          updated_at?: string
+          webhook_secret_encrypted?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_infinitepay_accounts_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: true
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_membership_cycles: {
+        Row: {
+          athletic_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          name: string
+          open: boolean
+          price_new: number
+          price_renewal: number
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          athletic_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          name: string
+          open?: boolean
+          price_new: number
+          price_renewal: number
+          starts_at: string
+          updated_at?: string
+        }
+        Update: {
+          athletic_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          name?: string
+          open?: boolean
+          price_new?: number
+          price_renewal?: number
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_membership_cycles_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athletic_membership_payments: {
         Row: {
           amount: number
@@ -526,6 +611,8 @@ export type Database = {
           athletic_id: string
           cpf: string | null
           created_at: string
+          cycle_id: string | null
+          director_tabs: string[] | null
           email: string
           full_name: string
           id: string
@@ -543,6 +630,8 @@ export type Database = {
           athletic_id: string
           cpf?: string | null
           created_at?: string
+          cycle_id?: string | null
+          director_tabs?: string[] | null
           email: string
           full_name: string
           id?: string
@@ -560,6 +649,8 @@ export type Database = {
           athletic_id?: string
           cpf?: string | null
           created_at?: string
+          cycle_id?: string | null
+          director_tabs?: string[] | null
           email?: string
           full_name?: string
           id?: string
@@ -577,6 +668,13 @@ export type Database = {
             columns: ["athletic_id"]
             isOneToOne: false
             referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "athletic_memberships_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_membership_cycles"
             referencedColumns: ["id"]
           },
         ]
@@ -984,6 +1082,7 @@ export type Database = {
           logo_url: string | null
           membership_period_days: number
           membership_price: number
+          memberships_open: boolean
           name: string
           president_id: string | null
           primary_color: string
@@ -1001,6 +1100,7 @@ export type Database = {
           logo_url?: string | null
           membership_period_days?: number
           membership_price?: number
+          memberships_open?: boolean
           name: string
           president_id?: string | null
           primary_color?: string
@@ -1018,6 +1118,7 @@ export type Database = {
           logo_url?: string | null
           membership_period_days?: number
           membership_price?: number
+          memberships_open?: boolean
           name?: string
           president_id?: string | null
           primary_color?: string
