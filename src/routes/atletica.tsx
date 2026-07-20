@@ -1667,7 +1667,46 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                 <div><Label>Sócio até (data)</Label><Input type="date" value={editing.member_until ?? ""} onChange={(e) => setEditing({ ...editing, member_until: e.target.value })} /></div>
               </div>
 
+              <div className="rounded-lg border p-3 space-y-2">
+                <Label className="text-xs uppercase tracking-widest opacity-70">Ciclo de associação</Label>
+                <Select
+                  value={(editing as any).cycle_id ?? "__none"}
+                  onValueChange={(v) => setEditing({ ...editing, cycle_id: v === "__none" ? null : v } as any)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecionar ciclo" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Sem ciclo</SelectItem>
+                    {cycles.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} (válido até {new Date(c.ends_at).toLocaleDateString("pt-BR")})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] opacity-60">
+                  Ao selecionar um ciclo, a data limite de sócio é preenchida automaticamente com o fim do ciclo.
+                </p>
+              </div>
+
+              {!editing.id && (
+                <label className="flex items-start gap-2 text-sm rounded-lg border p-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={(editing as any).send_invite ?? true}
+                    onChange={(e) => setEditing({ ...editing, send_invite: e.target.checked } as any)}
+                  />
+                  <span>
+                    <strong>Enviar convite por e-mail</strong>
+                    <span className="block text-[11px] opacity-70">
+                      Se este e-mail ainda não tem conta, enviamos um convite. Assim que a pessoa criar a conta com o mesmo e-mail, ela é vinculada automaticamente como sócia.
+                    </span>
+                  </span>
+                </label>
+              )}
+
               {(editing.role === "diretor" || editing.role === "presidente") && (
+
                 <div className="rounded-lg border p-3 space-y-2">
                   <Label className="text-xs uppercase tracking-widest opacity-70">Abas da Diretoria liberadas</Label>
                   <p className="text-[11px] opacity-60">Presidente sempre tem acesso a todas. Para diretores, marque abaixo. Sem seleção = todas liberadas.</p>
