@@ -33,6 +33,11 @@ import {
   createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
   createMembershipCardPayment, createEventTicketCardPayment, createCartCheckout,
 } from "@/lib/athletic-payments.functions";
+import {
+  setMembershipsOpen, upsertMembershipCycle, deleteMembershipCycle,
+  getInfinitepayStatus, saveInfinitepayCredentials, disconnectInfinitepay,
+} from "@/lib/athletic-config.functions";
+
 import { AtleticaCartProvider, useAtleticaCart, type CartItem } from "@/hooks/use-atletica-cart";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
