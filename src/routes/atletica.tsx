@@ -2250,11 +2250,6 @@ function DirectorConfig({ athletic }: { athletic: Athletic }) {
   );
 }
 
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 /* --- Ciclos de associação --- */
 function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
