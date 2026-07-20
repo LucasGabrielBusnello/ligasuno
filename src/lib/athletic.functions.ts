@@ -632,8 +632,12 @@ export const updateAthletic = createServerFn({ method: "POST" })
       membership_price: z.number().min(0).optional(),
       membership_period_days: z.number().int().min(1).optional(),
       published: z.boolean().optional(),
+      history_title: z.string().max(200).optional().nullable(),
+      history_description: z.string().max(3000).optional().nullable(),
+      history_images: z.array(z.string()).optional(),
     }).parse(i),
   )
+
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.id });
