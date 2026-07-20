@@ -2165,7 +2165,10 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
           </tbody>
         </table>
       </Card>
+
+      <InfinitepayCard athletic={athletic} />
     </div>
+
   );
 }
 
