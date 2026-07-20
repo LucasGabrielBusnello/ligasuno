@@ -50,8 +50,7 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
 
     // Se veio cycle_id, busca o ciclo para definir member_until automaticamente
     let effective_member_until = data.member_until ?? null;
-    let ath_name: string | null = null;
-    let ath_slug: string | null = null;
+
     if (data.cycle_id) {
       const { data: cyc } = await supabaseAdmin
         .from("athletic_membership_cycles").select("ends_at").eq("id", data.cycle_id).maybeSingle();
