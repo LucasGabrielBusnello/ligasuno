@@ -28,6 +28,8 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
       active: z.boolean().default(true),
       added_manually: z.boolean().default(true),
       director_tabs: z.array(z.string()).optional().nullable(),
+      cycle_id: z.string().uuid().optional().nullable(),
+      send_invite: z.boolean().default(false),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
@@ -46,6 +48,16 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
       .from("profiles").select("id").ilike("email", data.email).maybeSingle();
     if (prof) linked_user_id = (prof as any).id;
 
+    // Se veio cycle_id, busca o ciclo para definir member_until automaticamente
+    let effective_member_until = data.member_until ?? null;
+    let ath_name: string | null = null;
+    let ath_slug: string | null = null;
+    if (data.cycle_id) {
+      const { data: cyc } = await supabaseAdmin
+        .from("athletic_membership_cycles").select("ends_at").eq("id", data.cycle_id).maybeSingle();
+      if (cyc && !effective_member_until) effective_member_until = (cyc as any).ends_at;
+    }
+
     const payload: any = {
       athletic_id: data.athletic_id,
       full_name: data.full_name,
@@ -55,27 +67,69 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
       matricula: data.matricula ?? null,
       semestre: data.semestre ?? null,
       role: data.role,
-      member_until: data.member_until ?? null,
+      member_until: effective_member_until,
       active: data.active,
       added_manually: data.added_manually,
       user_id: linked_user_id,
       director_tabs: data.director_tabs ?? null,
+      cycle_id: data.cycle_id ?? null,
     };
 
-
+    let result_id: string;
     if (data.id) {
       const { error } = await supabaseAdmin.from("athletic_memberships")
         .update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);
-      return { id: data.id };
+      result_id = data.id;
     } else {
       const { data: row, error } = await supabaseAdmin
         .from("athletic_memberships").upsert(payload, { onConflict: "athletic_id,email" })
         .select("id").single();
       if (error) throw new Error(error.message);
-      return { id: (row as any).id };
+      result_id = (row as any).id;
     }
+
+    // Envia convite por e-mail se solicitado e o e-mail ainda não tem conta
+    if (data.send_invite && !linked_user_id) {
+      try {
+        const { data: ath } = await supabaseAdmin
+          .from("athletics").select("name, slug, primary_color").eq("id", data.athletic_id).maybeSingle();
+        ath_name = (ath as any)?.name ?? "sua atlética";
+        ath_slug = (ath as any)?.slug ?? "";
+        const brand = (ath as any)?.primary_color ?? "#1f5132";
+        const { sendGmail, emailLayout, emailInfoCard } = await import("./gmail.server");
+        await sendGmail({
+          to: data.email,
+          subject: `Você foi cadastrado(a) como sócio(a) da ${ath_name}`,
+          html: emailLayout({
+            title: `Bem-vindo(a) à ${ath_name}!`,
+            brandColor: brand,
+            leagueName: ath_name,
+            bodyHtml: `<p>Olá, <strong>${data.full_name}</strong>! A diretoria da <strong>${ath_name}</strong> cadastrou você como sócio(a) no site do MEDUNO.</p>
+              <p>Para acessar seus benefícios, agenda, carteirinha digital e todos os recursos da atlética, basta criar sua conta com este mesmo e-mail (<strong>${data.email}</strong>). Assim que você concluir o cadastro, sua condição de sócio(a) será ativada automaticamente.</p>
+              ${emailInfoCard({
+                title: "Como acessar",
+                brandColor: brand,
+                rows: [
+                  { label: "Site", value: "https://ligasuno.com.br" },
+                  { label: "E-mail cadastrado", value: data.email },
+                  { label: "Atlética", value: ath_name },
+                ],
+              })}
+              <p>Se já tem conta com outro e-mail, atualize seu e-mail no perfil para o mesmo utilizado neste convite.</p>`,
+            ctaLabel: "Criar minha conta",
+            ctaUrl: `https://ligasuno.com.br/auth`,
+            signature: `— Diretoria da ${ath_name}`,
+          }),
+        });
+      } catch (e) {
+        console.error("upsertAthleticMember: falha ao enviar convite", e);
+      }
+    }
+
+    return { id: result_id };
   });
+
 
 export const deleteAthleticMember = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
