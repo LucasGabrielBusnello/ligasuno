@@ -1501,8 +1501,9 @@ function InicioSection({ ath, isActiveMember, myMembership }: {
         }} />
       </div>
 
-      {/* ESPORTES SHOWCASE */}
-      <div className="px-3 md:px-0"><SportsShowcase athletic={ath} /></div>
+      {/* HISTÓRIA */}
+      <div className="px-3 md:px-0"><HistoryShowcase ath={ath} /></div>
+
     </div>
   );
 }
