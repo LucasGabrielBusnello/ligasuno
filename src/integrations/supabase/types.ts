@@ -1078,6 +1078,9 @@ export type Database = {
           cover_url: string | null
           created_at: string
           description: string | null
+          history_description: string | null
+          history_images: Json
+          history_title: string | null
           id: string
           logo_url: string | null
           membership_period_days: number
@@ -1096,6 +1099,9 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           description?: string | null
+          history_description?: string | null
+          history_images?: Json
+          history_title?: string | null
           id?: string
           logo_url?: string | null
           membership_period_days?: number
@@ -1114,6 +1120,9 @@ export type Database = {
           cover_url?: string | null
           created_at?: string
           description?: string | null
+          history_description?: string | null
+          history_images?: Json
+          history_title?: string | null
           id?: string
           logo_url?: string | null
           membership_period_days?: number
