@@ -19,7 +19,7 @@ import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
   Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
-  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info,
+  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
@@ -141,74 +141,27 @@ function AtleticaPage() {
           </div>
         </header>
 
-      {/* HERO */}
-      <section className="relative overflow-hidden min-h-[520px] flex items-center">
-        {ath.cover_url ? (
-          <>
-            <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover" alt={ath.name} />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
-            <div className="absolute inset-0" style={{
-              background: `radial-gradient(ellipse at top left, ${ath.primary_color}55, transparent 55%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}55, transparent 55%)`,
-            }} />
-          </>
-        ) : (
-          <div className="absolute inset-0" style={{
-            background: `radial-gradient(ellipse at top left, ${ath.primary_color}44, transparent 60%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}44, transparent 60%), #000`,
-          }} />
-        )}
-        <div className="relative max-w-7xl mx-auto px-4 py-16 md:py-24 text-center w-full">
-          {ath.logo_url && (
-            <img src={ath.logo_url} alt={ath.name} className="mx-auto size-32 md:size-40 rounded-full border-4 shadow-2xl object-cover mb-6"
-              style={{ borderColor: ath.primary_color }} />
-          )}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 text-xs uppercase tracking-widest font-bold backdrop-blur"
-            style={{ background: `${ath.primary_color}33`, color: "#fff", border: `1px solid ${ath.primary_color}88` }}>
-            <Trophy className="size-3.5" /> Campeã Geral Série B Intermed 2026
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4 uppercase drop-shadow-2xl">
-            {ath.name}
-          </h1>
-          <p className="max-w-2xl mx-auto text-lg opacity-95 drop-shadow-lg">
-            {ath.description ?? "Há 19 anos a maior do Oeste."}
-          </p>
-          {!isActiveMember && (
-            <div className="mt-8">
-              <AssociarButton athletic={ath} onDone={() => window.location.reload()} />
-            </div>
-          )}
-          {isActiveMember && (
-            <Badge className="mt-8 text-sm px-4 py-1.5" style={{ background: ath.secondary_color, color: "white" }}>
-              <Crown className="size-3.5 mr-1.5" /> Sócio ativo até {new Date(myMembership!.member_until!).toLocaleDateString("pt-BR")}
-            </Badge>
-          )}
-        </div>
-      </section>
-
-      {/* MARQUEE COLEÇÕES + ESPORTES */}
-      <CollectionsMarquee athletic={ath} onOpenCollection={(colId) => {
-        window.dispatchEvent(new CustomEvent("aaamd:filter-collection", { detail: colId }));
-        document.getElementById("produtos-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }} />
-      <SportsShowcase athletic={ath} />
-
-
       {/* SIDEBAR + CONTENT */}
-      <main className="max-w-6xl mx-auto px-3 md:px-6 py-8">
+      <main className="max-w-6xl mx-auto px-3 md:px-6 py-6">
         <AtleticaSectionLayout
           primaryColor={ath.primary_color}
           isMember={isActiveMember}
           isDirector={isDirector}
+          directorTabs={(myMembership as any)?.director_tabs ?? null}
           renderSection={(section) => {
+            if (section === "inicio") return (
+              <InicioSection ath={ath} isActiveMember={isActiveMember} myMembership={myMembership} />
+            );
             if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
             if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
             if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
-            if (section === "sobre") return <SobrePanel athletic={ath} />;
             if (section === "socio" && isActiveMember) return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
-            if (section === "diretoria" && isDirector) return <DirectorPanel athletic={ath} />;
+            if (section === "diretoria" && isDirector) return <DirectorPanel athletic={ath} allowedTabs={(myMembership as any)?.director_tabs ?? null} isPresident={myMembership?.role === "presidente"} />;
             return null;
           }}
         />
       </main>
+
 
 
 
@@ -1093,26 +1046,29 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
 
 
 /* ============ SIDEBAR LAYOUT ============ */
-type SectionKey = "produtos" | "eventos" | "esportes" | "sobre" | "socio" | "diretoria";
+type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "socio" | "diretoria";
 
 function AtleticaSectionLayout({
-  primaryColor, isMember, isDirector, renderSection,
+  primaryColor, isMember, isDirector, directorTabs, renderSection,
 }: {
   primaryColor: string;
   isMember: boolean;
   isDirector: boolean;
+  directorTabs: string[] | null;
   renderSection: (s: SectionKey) => React.ReactNode;
 }) {
-  const [active, setActive] = useState<SectionKey>("produtos");
+  const [active, setActive] = useState<SectionKey>("inicio");
   const items: Array<{ key: SectionKey; label: string; icon: React.ReactNode; show: boolean }> = [
+    { key: "inicio", label: "Página Inicial", icon: <Home className="size-4" />, show: true },
     { key: "produtos", label: "Produtos", icon: <Store className="size-4" />, show: true },
     { key: "eventos", label: "Eventos", icon: <PartyPopper className="size-4" />, show: true },
     { key: "esportes", label: "Esportes", icon: <Trophy className="size-4" />, show: true },
-    { key: "sobre", label: "Sobre", icon: <Info className="size-4" />, show: true },
     { key: "socio", label: "Painel do Sócio", icon: <IdCard className="size-4" />, show: isMember },
     { key: "diretoria", label: "Diretoria", icon: <Shield className="size-4" />, show: isDirector },
   ];
   const visible = items.filter((i) => i.show);
+  const go = (k: SectionKey) => { setActive(k); if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" }); };
+  void directorTabs;
 
   return (
     <>
@@ -1126,7 +1082,7 @@ function AtleticaSectionLayout({
           {visible.map((i) => {
             const on = active === i.key;
             return (
-              <button key={i.key} onClick={() => setActive(i.key)}
+              <button key={i.key} onClick={() => go(i.key)}
                 className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${on ? "text-white shadow-lg" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
                 style={on ? { background: primaryColor } : undefined}>
                 <span className="shrink-0">{i.icon}</span>
@@ -1144,7 +1100,7 @@ function AtleticaSectionLayout({
           {visible.map((i) => {
             const on = active === i.key;
             return (
-              <button key={i.key} onClick={() => setActive(i.key)}
+              <button key={i.key} onClick={() => go(i.key)}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-black uppercase tracking-wider whitespace-nowrap transition ${on ? "text-white shadow-lg" : "text-white/80 bg-white/5 border border-white/10"}`}
                 style={on ? { background: primaryColor } : undefined}>
                 {i.icon}{i.label}
@@ -1153,6 +1109,7 @@ function AtleticaSectionLayout({
           })}
         </div>
       </div>
+
 
       <section className="min-w-0">{renderSection(active)}</section>
     </>
@@ -1487,40 +1444,105 @@ function MemberSports({ athletic, userId }: { athletic: Athletic; userId: string
 
 
 /* ============ SOBRE ============ */
-function SobrePanel({ athletic }: { athletic: Athletic }) {
+/* ============ PÁGINA INICIAL (hero + coleções + sobre) ============ */
+function InicioSection({ ath, isActiveMember, myMembership }: {
+  ath: Athletic; isActiveMember: boolean; myMembership: Membership | null;
+}) {
   return (
-    <Card className="bg-white/5 border-white/10 text-white">
-      <CardContent className="p-8 space-y-4">
-        <h2 className="text-3xl font-black uppercase" style={{ color: athletic.primary_color }}>{athletic.name}</h2>
-        {athletic.description && <p className="opacity-80 whitespace-pre-line">{athletic.description}</p>}
-      </CardContent>
-    </Card>
+    <div className="space-y-8 -mx-3 md:-mx-6">
+      {/* HERO */}
+      <section className="relative overflow-hidden rounded-none md:rounded-3xl min-h-[420px] flex items-center">
+        {ath.cover_url ? (
+          <>
+            <img src={ath.cover_url} className="absolute inset-0 w-full h-full object-cover" alt={ath.name} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/90" />
+            <div className="absolute inset-0" style={{
+              background: `radial-gradient(ellipse at top left, ${ath.primary_color}55, transparent 55%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}55, transparent 55%)`,
+            }} />
+          </>
+        ) : (
+          <div className="absolute inset-0" style={{
+            background: `radial-gradient(ellipse at top left, ${ath.primary_color}44, transparent 60%), radial-gradient(ellipse at bottom right, ${ath.secondary_color}44, transparent 60%), #000`,
+          }} />
+        )}
+        <div className="relative max-w-4xl mx-auto px-6 py-16 md:py-20 text-center w-full">
+          {ath.logo_url && (
+            <img src={ath.logo_url} alt={ath.name} className="mx-auto size-28 md:size-36 rounded-full border-4 shadow-2xl object-cover mb-6"
+              style={{ borderColor: ath.primary_color }} />
+          )}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 text-xs uppercase tracking-widest font-bold backdrop-blur"
+            style={{ background: `${ath.primary_color}33`, color: "#fff", border: `1px solid ${ath.primary_color}88` }}>
+            <Trophy className="size-3.5" /> Campeã Geral Série B Intermed 2026
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 uppercase drop-shadow-2xl">{ath.name}</h1>
+          {ath.description && (
+            <p className="max-w-2xl mx-auto text-base md:text-lg opacity-95 drop-shadow-lg whitespace-pre-line">{ath.description}</p>
+          )}
+          {!isActiveMember && (
+            <div className="mt-8"><AssociarButton athletic={ath} onDone={() => window.location.reload()} /></div>
+          )}
+          {isActiveMember && myMembership?.member_until && (
+            <Badge className="mt-8 text-sm px-4 py-1.5" style={{ background: ath.secondary_color, color: "white" }}>
+              <Crown className="size-3.5 mr-1.5" /> Sócio ativo até {new Date(myMembership.member_until).toLocaleDateString("pt-BR")}
+            </Badge>
+          )}
+        </div>
+      </section>
+
+      {/* COLEÇÕES */}
+      <div className="px-3 md:px-0">
+        <CollectionsMarquee athletic={ath} onOpenCollection={() => {
+          window.dispatchEvent(new CustomEvent("aaamd:goto-section", { detail: "produtos" }));
+        }} />
+      </div>
+
+      {/* ESPORTES SHOWCASE */}
+      <div className="px-3 md:px-0"><SportsShowcase athletic={ath} /></div>
+    </div>
   );
 }
 
 /* ============ DIRETORIA ============ */
-function DirectorPanel({ athletic }: { athletic: Athletic }) {
+function DirectorPanel({ athletic, allowedTabs, isPresident }: {
+  athletic: Athletic; allowedTabs: string[] | null; isPresident: boolean;
+}) {
+  const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "caixa", "config"] as const;
+  const canSee = (t: string) => isPresident || !allowedTabs || allowedTabs.length === 0 || allowedTabs.includes(t);
+  const tabs = ALL.filter(canSee);
+  const initial = tabs[0] ?? "socios";
+  const icons: Record<string, React.ReactNode> = {
+    socios: <Users className="size-4 mr-1.5" />, produtos: <ShoppingBag className="size-4 mr-1.5" />,
+    eventos: <PartyPopper className="size-4 mr-1.5" />, esportes: <Trophy className="size-4 mr-1.5" />,
+    parceiros: <Handshake className="size-4 mr-1.5" />, caixa: <Wallet className="size-4 mr-1.5" />,
+    config: <Settings className="size-4 mr-1.5" />,
+  };
+  const labels: Record<string, string> = {
+    socios: "Sócios", produtos: "Produtos", eventos: "Eventos", esportes: "Esportes",
+    parceiros: "Parceiros", caixa: "Caixa", config: "Config",
+  };
+  if (tabs.length === 0) {
+    return <EmptyDark icon={<Shield className="size-10" />} title="Sem permissões" desc="O presidente ainda não liberou abas para você." />;
+  }
   return (
-    <Tabs defaultValue="socios">
-      <TabsList className="w-full grid grid-cols-4 md:grid-cols-7 h-auto bg-white/5 border border-white/10">
-        <TabsTrigger value="socios" className="data-[state=active]:bg-white data-[state=active]:text-black"><Users className="size-4 mr-1.5" />Sócios</TabsTrigger>
-        <TabsTrigger value="produtos" className="data-[state=active]:bg-white data-[state=active]:text-black"><ShoppingBag className="size-4 mr-1.5" />Produtos</TabsTrigger>
-        <TabsTrigger value="eventos" className="data-[state=active]:bg-white data-[state=active]:text-black"><PartyPopper className="size-4 mr-1.5" />Eventos</TabsTrigger>
-        <TabsTrigger value="esportes" className="data-[state=active]:bg-white data-[state=active]:text-black"><Trophy className="size-4 mr-1.5" />Esportes</TabsTrigger>
-        <TabsTrigger value="parceiros" className="data-[state=active]:bg-white data-[state=active]:text-black"><Handshake className="size-4 mr-1.5" />Parceiros</TabsTrigger>
-        <TabsTrigger value="caixa" className="data-[state=active]:bg-white data-[state=active]:text-black"><Wallet className="size-4 mr-1.5" />Caixa</TabsTrigger>
-        <TabsTrigger value="config" className="data-[state=active]:bg-white data-[state=active]:text-black"><Settings className="size-4 mr-1.5" />Config</TabsTrigger>
+    <Tabs defaultValue={initial}>
+      <TabsList className="w-full grid h-auto bg-white/5 border border-white/10" style={{ gridTemplateColumns: `repeat(${Math.min(tabs.length, 7)}, minmax(0, 1fr))` }}>
+        {tabs.map((t) => (
+          <TabsTrigger key={t} value={t} className="data-[state=active]:bg-white data-[state=active]:text-black">
+            {icons[t]}{labels[t]}
+          </TabsTrigger>
+        ))}
       </TabsList>
-      <TabsContent value="socios" className="mt-4"><DirectorMembers athletic={athletic} /></TabsContent>
-      <TabsContent value="produtos" className="mt-4"><DirectorProducts athletic={athletic} /></TabsContent>
-      <TabsContent value="eventos" className="mt-4"><DirectorEvents athletic={athletic} /></TabsContent>
-      <TabsContent value="esportes" className="mt-4"><DirectorSports athletic={athletic} /></TabsContent>
-      <TabsContent value="parceiros" className="mt-4"><DirectorPartners athletic={athletic} /></TabsContent>
-      <TabsContent value="caixa" className="mt-4"><DirectorCash athletic={athletic} /></TabsContent>
-      <TabsContent value="config" className="mt-4"><DirectorConfig athletic={athletic} /></TabsContent>
+      {canSee("socios") && <TabsContent value="socios" className="mt-4"><DirectorMembers athletic={athletic} /></TabsContent>}
+      {canSee("produtos") && <TabsContent value="produtos" className="mt-4"><DirectorProducts athletic={athletic} /></TabsContent>}
+      {canSee("eventos") && <TabsContent value="eventos" className="mt-4"><DirectorEvents athletic={athletic} /></TabsContent>}
+      {canSee("esportes") && <TabsContent value="esportes" className="mt-4"><DirectorSports athletic={athletic} /></TabsContent>}
+      {canSee("parceiros") && <TabsContent value="parceiros" className="mt-4"><DirectorPartners athletic={athletic} /></TabsContent>}
+      {canSee("caixa") && <TabsContent value="caixa" className="mt-4"><DirectorCash athletic={athletic} /></TabsContent>}
+      {canSee("config") && <TabsContent value="config" className="mt-4"><DirectorConfig athletic={athletic} /></TabsContent>}
     </Tabs>
   );
 }
+
 
 
 /* --- Sócios (Diretoria) --- */
@@ -1634,8 +1656,34 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                 </div>
                 <div><Label>Sócio até (data)</Label><Input type="date" value={editing.member_until ?? ""} onChange={(e) => setEditing({ ...editing, member_until: e.target.value })} /></div>
               </div>
+
+              {(editing.role === "diretor" || editing.role === "presidente") && (
+                <div className="rounded-lg border p-3 space-y-2">
+                  <Label className="text-xs uppercase tracking-widest opacity-70">Abas da Diretoria liberadas</Label>
+                  <p className="text-[11px] opacity-60">Presidente sempre tem acesso a todas. Para diretores, marque abaixo. Sem seleção = todas liberadas.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ["socios", "Sócios"], ["produtos", "Produtos"], ["eventos", "Eventos"],
+                      ["esportes", "Esportes"], ["parceiros", "Parceiros"], ["caixa", "Caixa"], ["config", "Config"],
+                    ].map(([k, lbl]) => {
+                      const current: string[] = ((editing as any).director_tabs as string[] | null) ?? [];
+                      const checked = current.includes(k);
+                      return (
+                        <label key={k} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="checkbox" checked={checked} onChange={(e) => {
+                            const next = e.target.checked ? [...current, k] : current.filter((x) => x !== k);
+                            setEditing({ ...editing, director_tabs: next } as any);
+                          }} />
+                          <span>{lbl}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
             <Button onClick={async () => {
