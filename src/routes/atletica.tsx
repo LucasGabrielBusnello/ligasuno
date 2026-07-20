@@ -1737,7 +1737,12 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
             <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
             <Button onClick={async () => {
               try {
-                await upsert({ data: { ...(editing as any), added_manually: !editing?.id } });
+                await upsert({ data: {
+                  ...(editing as any),
+                  added_manually: !editing?.id,
+                  send_invite: !editing?.id && ((editing as any).send_invite ?? true),
+                } });
+
                 toast.success("Salvo"); setEditing(null); reload();
               } catch (e: any) { toast.error(e?.message); }
             }}>Salvar</Button>
