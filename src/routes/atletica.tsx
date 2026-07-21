@@ -1891,17 +1891,48 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
 /* --- Eventos (Diretoria) --- */
 function DirectorEvents({ athletic }: { athletic: Athletic }) {
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [filterEv, setFilterEv] = useState<string>("__all");
   const [editEv, setEditEv] = useState<Partial<EventRow> | null>(null);
   const [selected, setSelected] = useState<EventRow | null>(null);
   const ue = useServerFn(upsertEvent); const de = useServerFn(deleteEvent);
   async function reload() {
     const { data } = await supabase.from("athletic_events").select("*").eq("athletic_id", athletic.id).order("created_at", { ascending: false });
     setEvents((data as any) ?? []);
+    const ids = ((data as any) ?? []).map((e: any) => e.id);
+    if (ids.length) {
+      const { data: t } = await supabase.from("athletic_event_tickets").select("event_id,price_paid,sold_channel,status").in("event_id", ids).eq("status", "sold");
+      setTickets((t as any) ?? []);
+    } else setTickets([]);
   }
   useEffect(() => { reload(); }, [athletic.id]);
 
+  const scoped = useMemo(() => filterEv === "__all" ? tickets : tickets.filter((t) => t.event_id === filterEv), [tickets, filterEv]);
+  const siteRevenue = useMemo(() => scoped.filter((t) => t.sold_channel !== "manual").reduce((s, t) => s + Number(t.price_paid || 0), 0), [scoped]);
+  const manualRevenue = useMemo(() => scoped.filter((t) => t.sold_channel === "manual").reduce((s, t) => s + Number(t.price_paid || 0), 0), [scoped]);
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas pelo site</div>
+          <div className="text-2xl font-black mt-1 text-emerald-200">R$ {siteRevenue.toFixed(2)}</div>
+        </div>
+        <div className="rounded-2xl border border-orange-400/30 bg-orange-500/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas manuais</div>
+          <div className="text-2xl font-black mt-1 text-orange-200">R$ {manualRevenue.toFixed(2)}</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Filtro por evento</div>
+          <Select value={filterEv} onValueChange={setFilterEv}>
+            <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos</SelectItem>
+              {events.map((e) => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <div className="flex justify-between items-center">
         <h3 className="font-black text-lg">Eventos ({events.length})</h3>
         <Button size="sm" onClick={() => setEditEv({ athletic_id: athletic.id, published: true, online_sales_open: false, price_member: 0, price_visitor: 0, total_tickets: 100 })}><Plus className="size-4" /> Novo evento</Button>
