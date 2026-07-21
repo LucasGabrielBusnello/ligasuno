@@ -4,11 +4,14 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteHeader } from "@/components/site-header";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 
@@ -116,9 +119,39 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <SiteHeader />
+      <VisitTracker />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster richColors position="top-center" />
     </QueryClientProvider>
   );
+}
+
+function VisitTracker() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      let vid = localStorage.getItem("meduno_visitor_id");
+      if (!vid) {
+        vid = (crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36));
+        localStorage.setItem("meduno_visitor_id", vid);
+      }
+      const key = `meduno_visit_${pathname}`;
+      const last = Number(sessionStorage.getItem(key) || 0);
+      const now = Date.now();
+      if (now - last < 30_000) return;
+      sessionStorage.setItem(key, String(now));
+      supabase.auth.getUser().then(({ data }) => {
+        supabase.from("site_visits" as any).insert({
+          visitor_id: vid,
+          user_id: data.user?.id ?? null,
+          path: pathname,
+          referrer: document.referrer || null,
+          user_agent: navigator.userAgent,
+        } as any).then(() => {});
+      });
+    } catch {}
+  }, [pathname]);
+  return null;
 }

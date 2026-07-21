@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, LogIn, LogOut, UserCircle, Trophy, Users, Building2, Stethoscope, Menu, X, Settings2 } from "lucide-react";
+import { GraduationCap, LogIn, LogOut, UserCircle, Trophy, Users, Building2, Stethoscope, Menu, X, Settings2, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { ProfileEditDialog } from "@/components/profile-edit-dialog";
@@ -17,7 +17,7 @@ const NAV = [
 ] as const;
 
 export function SiteHeader() {
-  const { user, profile, isCoordination, loading } = useAuth();
+  const { user, profile, isCoordination, isAdminMaster, isCamedPresident, loading } = useAuth();
   const nav = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -107,12 +107,19 @@ export function SiteHeader() {
                     {profile?.full_name ?? profile?.username ?? user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => nav({ to: "/perfil" })}>
-                    <UserCircle className="size-4" /> Meu perfil
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setProfileOpen(true)}>
                     Editar dados
                   </DropdownMenuItem>
+                  {isCamedPresident && (
+                    <DropdownMenuItem onClick={() => nav({ to: "/camed-painel" })}>
+                      <Building2 className="size-4" /> Painel do CAMED
+                    </DropdownMenuItem>
+                  )}
+                  {isAdminMaster && (
+                    <DropdownMenuItem onClick={() => nav({ to: "/admin" })}>
+                      <Shield className="size-4" /> Painel do Administrador
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()}>
                     <LogOut className="size-4" /> Sair

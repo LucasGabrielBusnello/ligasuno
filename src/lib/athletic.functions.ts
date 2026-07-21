@@ -597,6 +597,7 @@ export const addAthleticCashEntry = createServerFn({ method: "POST" })
       description: z.string().min(1).max(200),
       gross_amount: z.number().min(0),
       is_income: z.boolean().default(true),
+      receipt_url: z.string().url().max(500).optional().nullable(),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
@@ -611,8 +612,25 @@ export const addAthleticCashEntry = createServerFn({ method: "POST" })
       gross_amount: data.gross_amount,
       net_amount: data.gross_amount,
       is_income: data.is_income,
+      receipt_url: data.receipt_url ?? null,
       created_by: userId,
-    });
+    } as any);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* Diretor exclui um lançamento do caixa */
+export const deleteAthleticCashEntry = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ athletic_id: z.string().uuid(), id: z.string().uuid() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ok } = await supabase.rpc("is_athletic_director", { _user_id: userId, _athletic_id: data.athletic_id });
+    if (!ok) throw new Error("Sem permissão");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("athletic_cash_entries").delete().eq("id", data.id).eq("athletic_id", data.athletic_id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

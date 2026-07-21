@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as LigasRouteImport } from './routes/ligas'
+import { Route as CamedPainelRouteImport } from './routes/camed-painel'
 import { Route as CamedRouteImport } from './routes/camed'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AtleticaRouteImport } from './routes/atletica'
@@ -48,6 +49,11 @@ const PainelRoute = PainelRouteImport.update({
 const LigasRoute = LigasRouteImport.update({
   id: '/ligas',
   path: '/ligas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CamedPainelRoute = CamedPainelRouteImport.update({
+  id: '/camed-painel',
+  path: '/camed-painel',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CamedRoute = CamedRouteImport.update({
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/camed-painel': typeof CamedPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByTo {
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/camed-painel': typeof CamedPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/atletica': typeof AtleticaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
+  '/camed-painel': typeof CamedPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/perfil': typeof PerfilRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/camed-painel'
     | '/ligas'
     | '/painel'
     | '/perfil'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/camed-painel'
     | '/ligas'
     | '/painel'
     | '/perfil'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/atletica'
     | '/auth'
     | '/camed'
+    | '/camed-painel'
     | '/ligas'
     | '/painel'
     | '/perfil'
@@ -343,6 +355,7 @@ export interface RootRouteChildren {
   AtleticaRoute: typeof AtleticaRoute
   AuthRoute: typeof AuthRoute
   CamedRoute: typeof CamedRoute
+  CamedPainelRoute: typeof CamedPainelRoute
   LigasRoute: typeof LigasRoute
   PainelRoute: typeof PainelRoute
   PerfilRoute: typeof PerfilRoute
@@ -384,6 +397,13 @@ declare module '@tanstack/react-router' {
       path: '/ligas'
       fullPath: '/ligas'
       preLoaderRoute: typeof LigasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/camed-painel': {
+      id: '/camed-painel'
+      path: '/camed-painel'
+      fullPath: '/camed-painel'
+      preLoaderRoute: typeof CamedPainelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/camed': {
@@ -551,6 +571,7 @@ const rootRouteChildren: RootRouteChildren = {
   AtleticaRoute: AtleticaRoute,
   AuthRoute: AuthRoute,
   CamedRoute: CamedRoute,
+  CamedPainelRoute: CamedPainelRoute,
   LigasRoute: LigasRoute,
   PainelRoute: PainelRoute,
   PerfilRoute: PerfilRoute,

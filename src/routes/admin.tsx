@@ -44,12 +44,13 @@ function AdminPage() {
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         <h1 className="text-3xl md:text-4xl font-black mb-8">Painel ADMIN</h1>
         <Tabs defaultValue="ligas">
-          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
+          <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full h-auto">
             <TabsTrigger value="ligas"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
             <TabsTrigger value="camed"><Users className="size-4 mr-1.5" />CAMED</TabsTrigger>
             <TabsTrigger value="coord"><UserCog className="size-4 mr-1.5" />Coordenação</TabsTrigger>
             <TabsTrigger value="curriculo"><BookOpen className="size-4 mr-1.5" />Currículo</TabsTrigger>
             <TabsTrigger value="ads"><Megaphone className="size-4 mr-1.5" />Anúncios</TabsTrigger>
+            <TabsTrigger value="visitas"><BarChart3 className="size-4 mr-1.5" />Visitas</TabsTrigger>
             <TabsTrigger value="usuarios"><UserIcon className="size-4 mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="config"><Settings className="size-4 mr-1.5" />Configurações</TabsTrigger>
           </TabsList>
@@ -58,6 +59,7 @@ function AdminPage() {
           <TabsContent value="coord" className="mt-6"><CoordinationAdmin /></TabsContent>
           <TabsContent value="curriculo" className="mt-6"><CurriculumAdmin /></TabsContent>
           <TabsContent value="ads" className="mt-6"><AdsAdmin /></TabsContent>
+          <TabsContent value="visitas" className="mt-6"><VisitsAdmin /></TabsContent>
           <TabsContent value="usuarios" className="mt-6"><UsersAdmin /></TabsContent>
           <TabsContent value="config" className="mt-6"><SettingsAdmin /></TabsContent>
         </Tabs>
@@ -779,6 +781,126 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
             </ResponsiveContainer>
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ===================== VISITAS ===================== */
+function VisitsAdmin() {
+  const [granularity, setGranularity] = useState<"hour" | "day" | "week" | "month">("day");
+  const [range, setRange] = useState<number>(30); // days back
+  const [data, setData] = useState<{ label: string; unique: number; total: number }[]>([]);
+  const [totals, setTotals] = useState({ users: 0, uniqueVisitors: 0, totalVisits: 0, adClicks: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const now = new Date();
+      const since = new Date(now.getTime() - range * 24 * 60 * 60 * 1000).toISOString();
+      const [{ data: visits }, { count: userCount }, { count: adClicks }] = await Promise.all([
+        supabase.from("site_visits" as any).select("visitor_id, created_at").gte("created_at", since).order("created_at"),
+        supabase.from("profiles").select("*", { count: "exact", head: true }),
+        supabase.from("ad_analytics").select("*", { count: "exact", head: true }).eq("action", "click").gte("created_at", since),
+      ]);
+      const list = (visits as any[]) ?? [];
+      const uniqueSet = new Set(list.map((v) => v.visitor_id));
+      setTotals({
+        users: userCount ?? 0,
+        uniqueVisitors: uniqueSet.size,
+        totalVisits: list.length,
+        adClicks: adClicks ?? 0,
+      });
+      // Bucket
+      const buckets: Record<string, { unique: Set<string>; total: number }> = {};
+      const bucketKey = (d: Date) => {
+        if (granularity === "hour") return d.toISOString().slice(0, 13) + ":00";
+        if (granularity === "day") return d.toISOString().slice(0, 10);
+        if (granularity === "week") {
+          const day = new Date(d);
+          const dayIdx = (day.getDay() + 6) % 7;
+          day.setDate(day.getDate() - dayIdx);
+          return day.toISOString().slice(0, 10);
+        }
+        return d.toISOString().slice(0, 7);
+      };
+      list.forEach((v) => {
+        const k = bucketKey(new Date(v.created_at));
+        if (!buckets[k]) buckets[k] = { unique: new Set(), total: 0 };
+        buckets[k].unique.add(v.visitor_id);
+        buckets[k].total += 1;
+      });
+      const chart = Object.entries(buckets)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([label, v]) => ({ label, unique: v.unique.size, total: v.total }));
+      setData(chart);
+      setLoading(false);
+    })();
+  }, [granularity, range]);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard label="Usuários cadastrados" value={totals.users} />
+        <MetricCard label="Visitantes únicos" value={totals.uniqueVisitors} />
+        <MetricCard label="Visitas totais" value={totals.totalVisits} />
+        <MetricCard label="Cliques em anúncios" value={totals.adClicks} />
+      </div>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3 flex-wrap">
+          <CardTitle className="flex items-center gap-2"><BarChart3 className="size-5" /> Visitas ao longo do tempo</CardTitle>
+          <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-1 rounded-lg border p-1">
+              {(["hour", "day", "week", "month"] as const).map((g) => (
+                <button key={g} type="button" onClick={() => setGranularity(g)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md ${granularity === g ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
+                  {g === "hour" ? "Horas" : g === "day" ? "Dias" : g === "week" ? "Semanas" : "Meses"}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1 rounded-lg border p-1">
+              {[1, 7, 30, 90, 365].map((r) => (
+                <button key={r} type="button" onClick={() => setRange(r)}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md ${range === r ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
+                  {r === 1 ? "24h" : r === 365 ? "1 ano" : `${r}d`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="h-72 flex items-center justify-center opacity-60">Carregando...</div>
+          ) : data.length === 0 ? (
+            <div className="h-72 flex items-center justify-center opacity-60">Sem visitas neste período</div>
+          ) : (
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="total" name="Visitas totais" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="unique" name="Visitantes únicos" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: number }) {
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{label}</div>
+        <div className="text-3xl font-black mt-1">{value.toLocaleString("pt-BR")}</div>
       </CardContent>
     </Card>
   );

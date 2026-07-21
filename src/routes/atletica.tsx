@@ -19,13 +19,13 @@ import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
   Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
-  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen,
+  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen, Eye, Paperclip,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
   upsertCollection, deleteCollection, upsertProduct, deleteProduct,
   upsertEvent, deleteEvent, generateTicketBatch, registerManualTicketSale,
-  addAthleticCashEntry, updateAthletic, upsertSport, deleteSport,
+  addAthleticCashEntry, deleteAthleticCashEntry, updateAthletic, upsertSport, deleteSport,
   upsertPartner, deletePartner, enrollInSport, unenrollFromSport,
 } from "@/lib/athletic.functions";
 
@@ -1123,17 +1123,8 @@ function AtleticaSectionLayout({
 
 
 /* ============ ESPORTES (aberto a todos) ============ */
-function SportsSection({ athletic, user }: { athletic: Athletic; user: any; isMember: boolean }) {
-  if (!user) {
-    return (
-      <div className="space-y-4">
-        <SportsShowcase athletic={athletic} />
-        <EmptyDark icon={<UserPlus className="size-10" />} title="Faça login para se inscrever nos esportes"
-          action={<Button asChild><Link to="/auth">Entrar</Link></Button>} />
-      </div>
-    );
-  }
-  return <MemberSports athletic={athletic} userId={user.id} />;
+function SportsSection({ athletic }: { athletic: Athletic; user: any; isMember: boolean }) {
+  return <SportsList athletic={athletic} />;
 }
 
 
@@ -1295,7 +1286,7 @@ function SociosArea({ athletic, isMember, user }: { athletic: Athletic; isMember
           </div>
         </TabsContent>
         <TabsContent value="parceiros" className="mt-4"><MemberPartners athletic={athletic} /></TabsContent>
-        <TabsContent value="esportes" className="mt-4"><MemberSports athletic={athletic} userId={user.id} /></TabsContent>
+        <TabsContent value="esportes" className="mt-4"><SportsList athletic={athletic} /></TabsContent>
       </Tabs>
     </div>
   );
@@ -1346,103 +1337,52 @@ function MemberPartners({ athletic }: { athletic: Athletic }) {
   );
 }
 
-/* --- Sócios: Esportes (inscrição) --- */
-function MemberSports({ athletic, userId }: { athletic: Athletic; userId: string }) {
+/* ============ ESPORTES (Público) ============ */
+function SportsList({ athletic }: { athletic: Athletic }) {
   const [sports, setSports] = useState<Sport[]>([]);
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  const [mine, setMine] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
-  const enroll = useServerFn(enrollInSport);
-  const unenroll = useServerFn(unenrollFromSport);
-
   async function reload() {
     setLoading(true);
     const { data: s } = await supabase.from("athletic_sports" as any)
       .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
-    const list: Sport[] = (s as any) ?? [];
-    setSports(list);
-    if (list.length) {
-      const ids = list.map((x) => x.id);
-      const { data: enr } = await supabase.from("athletic_sport_enrollments" as any)
-        .select("sport_id, user_id").in("sport_id", ids);
-      const c: Record<string, number> = {};
-      const m = new Set<string>();
-      ((enr as any) ?? []).forEach((e: any) => {
-        c[e.sport_id] = (c[e.sport_id] ?? 0) + 1;
-        if (e.user_id === userId) m.add(e.sport_id);
-      });
-      setCounts(c); setMine(m);
-    }
+    setSports((s as any) ?? []);
     setLoading(false);
   }
-  useEffect(() => { reload(); }, [athletic.id, userId]);
-
-  async function toggle(s: Sport) {
-    try {
-      if (mine.has(s.id)) {
-        await unenroll({ data: { sport_id: s.id } });
-        toast.success("Inscrição cancelada");
-      } else {
-        await enroll({ data: { sport_id: s.id } });
-        toast.success("Inscrito!");
-      }
-      reload();
-    } catch (e: any) { toast.error(e?.message ?? "Erro"); }
-  }
-
+  useEffect(() => { reload(); }, [athletic.id]);
   if (loading) return <div className="flex justify-center py-8 opacity-60"><Loader2 className="size-6 animate-spin" /></div>;
   if (sports.length === 0) return <EmptyDark icon={<Trophy className="size-12" />} title="Nenhum esporte disponível" />;
-
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {sports.map((s) => {
-        const enrolled = mine.has(s.id);
-        const cur = counts[s.id] ?? 0;
-        const full = !!s.max_capacity && cur >= s.max_capacity;
-        const closed = !s.enrollment_open;
-        return (
-          <Card key={s.id} className="bg-white/5 border-white/10 text-white overflow-hidden flex flex-col">
-            <div className="aspect-video bg-black/40 relative">
-              {s.image_url ? <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" /> :
-                <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />}
-              <div className="absolute top-2 right-2 flex gap-1">
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-black/70 border border-white/20">
-                  {s.gender === "masculino" ? "♂ Masc." : s.gender === "feminino" ? "♀ Fem." : "⚧ Misto"}
-                </span>
-              </div>
+      {sports.map((s) => (
+        <Card key={s.id} className="bg-white/5 border-white/10 text-white overflow-hidden flex flex-col">
+          <div className="aspect-video bg-black/40 relative">
+            {s.image_url ? <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" /> :
+              <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />}
+            <div className="absolute top-2 right-2 flex gap-1">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-black/70 border border-white/20">
+                {s.gender === "masculino" ? "♂ Masc." : s.gender === "feminino" ? "♀ Fem." : "⚧ Misto"}
+              </span>
             </div>
-            <CardContent className="p-4 flex-1 flex flex-col gap-2">
-              <div className="font-black text-lg">{s.name}</div>
-              {s.coach && <div className="text-xs opacity-70">Treinador: {s.coach}</div>}
-              {s.schedule && <div className="text-xs opacity-70">🕒 {s.schedule}</div>}
-              {s.description && <p className="text-sm opacity-80 line-clamp-3">{s.description}</p>}
-              <div className="text-xs opacity-70 mt-auto pt-2">
-                {s.max_capacity ? <span>Vagas: <b>{cur}/{s.max_capacity}</b></span> : <span>{cur} inscritos</span>}
-              </div>
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="sm"
-                  className={enrolled ? "bg-red-600 hover:bg-red-700 text-white" : ""}
-                  onClick={() => toggle(s)}
-                  disabled={!enrolled && (full || closed)}
-                >
-                  {enrolled ? <><UserMinus className="size-4 mr-1.5" />Sair</> :
-                    closed ? "Inscrições fechadas" :
-                      full ? "Vagas esgotadas" :
-                        <><UserPlus className="size-4 mr-1.5" />Quero me inscrever</>}
-                </Button>
-                {enrolled && s.whatsapp_url && (
-                  <a href={s.whatsapp_url} target="_blank" rel="noopener noreferrer"
-                     className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-md text-sm font-semibold bg-[#25D366] hover:bg-[#1eb958] text-white transition-colors">
-                    <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden><path d="M20.52 3.48A11.86 11.86 0 0 0 12.02 0C5.39 0 .04 5.35.04 11.98c0 2.11.55 4.17 1.6 5.99L0 24l6.2-1.62a11.94 11.94 0 0 0 5.82 1.49h.01c6.63 0 11.98-5.35 11.98-11.98 0-3.2-1.25-6.21-3.49-8.41ZM12.03 21.3h-.01a9.9 9.9 0 0 1-5.04-1.38l-.36-.22-3.68.96.98-3.59-.23-.37a9.9 9.9 0 0 1-1.52-5.3c0-5.48 4.46-9.94 9.95-9.94 2.66 0 5.15 1.04 7.03 2.91a9.87 9.87 0 0 1 2.91 7.04c0 5.48-4.46 9.94-9.94 9.94Zm5.45-7.44c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15s-.77.97-.94 1.17c-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51l-.57-.01c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.11 3.22 5.11 4.52.71.31 1.27.49 1.7.63.71.23 1.36.19 1.87.12.57-.09 1.77-.72 2.02-1.42.25-.7.25-1.29.17-1.42-.07-.13-.27-.2-.57-.35Z"/></svg>
-                    Entrar no grupo do WhatsApp
-                  </a>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+          </div>
+          <CardContent className="p-4 flex-1 flex flex-col gap-2">
+            <div className="font-black text-lg">{s.name}</div>
+            {s.coach && <div className="text-xs opacity-70">Treinador: {s.coach}</div>}
+            {s.schedule && <div className="text-xs opacity-70">🕒 {s.schedule}</div>}
+            {s.description && <p className="text-sm opacity-80 line-clamp-3">{s.description}</p>}
+            <div className="mt-auto pt-2">
+              {s.whatsapp_url ? (
+                <a href={s.whatsapp_url} target="_blank" rel="noopener noreferrer"
+                   className="inline-flex w-full items-center justify-center gap-1.5 h-10 px-3 rounded-md text-sm font-bold bg-[#25D366] hover:bg-[#1eb958] text-white transition-colors">
+                  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden><path d="M20.52 3.48A11.86 11.86 0 0 0 12.02 0C5.39 0 .04 5.35.04 11.98c0 2.11.55 4.17 1.6 5.99L0 24l6.2-1.62a11.94 11.94 0 0 0 5.82 1.49h.01c6.63 0 11.98-5.35 11.98-11.98 0-3.2-1.25-6.21-3.49-8.41Z"/></svg>
+                  Entrar no grupo do WhatsApp
+                </a>
+              ) : (
+                <div className="text-xs opacity-50 text-center py-2">Grupo indisponível</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
@@ -1657,14 +1597,12 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                 <div><Label>Matrícula</Label><Input value={editing.matricula ?? ""} onChange={(e) => setEditing({ ...editing, matricula: e.target.value })} /></div>
                 <div><Label>Semestre</Label><Input value={editing.semestre ?? ""} onChange={(e) => setEditing({ ...editing, semestre: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Cargo</Label>
-                  <Select value={editing.role ?? "socio"} onValueChange={(v) => setEditing({ ...editing, role: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="socio">Sócio</SelectItem><SelectItem value="diretor">Diretor</SelectItem><SelectItem value="presidente">Presidente</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Sócio até (data)</Label><Input type="date" value={editing.member_until ?? ""} onChange={(e) => setEditing({ ...editing, member_until: e.target.value })} /></div>
+              <div>
+                <Label>Cargo</Label>
+                <Select value={editing.role ?? "socio"} onValueChange={(v) => setEditing({ ...editing, role: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="socio">Sócio</SelectItem><SelectItem value="diretor">Diretor</SelectItem><SelectItem value="presidente">Presidente</SelectItem></SelectContent>
+                </Select>
               </div>
 
               <div className="rounded-lg border p-3 space-y-2">
@@ -2153,8 +2091,10 @@ function EventManagerDialog({ athletic, event, onClose }: { athletic: Athletic; 
 /* --- Caixa --- */
 function DirectorCash({ athletic }: { athletic: Athletic }) {
   const [entries, setEntries] = useState<any[]>([]);
-  const [manual, setManual] = useState({ description: "", gross_amount: 0, is_income: true, category: "manual" as const });
+  const [manual, setManual] = useState({ description: "", gross_amount: 0, is_income: true, receipt_url: "" });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const add = useServerFn(addAthleticCashEntry);
+  const del = useServerFn(deleteAthleticCashEntry);
   async function reload() {
     const { data } = await supabase.from("athletic_cash_entries").select("*").eq("athletic_id", athletic.id).order("occurred_at", { ascending: false });
     setEntries((data as any) ?? []);
@@ -2162,6 +2102,13 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
   useEffect(() => { reload(); }, [athletic.id]);
   const total = useMemo(() => entries.reduce((s, e) => s + (e.is_income ? +e.net_amount : -+e.net_amount), 0), [entries]);
   const byCat = useMemo(() => entries.reduce((m: any, e) => { m[e.category] = (m[e.category] ?? 0) + (e.is_income ? +e.net_amount : -+e.net_amount); return m; }, {}), [entries]);
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  }
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -2184,10 +2131,24 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
             </Select>
             <Button onClick={async () => {
               try {
-                await add({ data: { athletic_id: athletic.id, category: manual.is_income ? "manual" : "withdraw", description: manual.description, gross_amount: manual.gross_amount, is_income: manual.is_income } });
-                setManual({ description: "", gross_amount: 0, is_income: true, category: "manual" }); reload();
+                if (!manual.description.trim()) return toast.error("Descrição obrigatória");
+                await add({ data: {
+                  athletic_id: athletic.id,
+                  category: manual.is_income ? "manual" : "withdraw",
+                  description: manual.description,
+                  gross_amount: manual.gross_amount,
+                  is_income: manual.is_income,
+                  receipt_url: manual.receipt_url || null,
+                } });
+                setManual({ description: "", gross_amount: 0, is_income: true, receipt_url: "" });
+                toast.success("Lançamento registrado");
+                reload();
               } catch (e: any) { toast.error(e?.message); }
             }}>Lançar</Button>
+          </div>
+          <div>
+            <Label className="text-xs opacity-70 flex items-center gap-1.5"><Paperclip className="size-3.5" /> Comprovante (opcional, imagem até 5 MB)</Label>
+            <ImageUpload label="" folder={`atletica/${athletic.id}/receipts`} value={manual.receipt_url} onChange={(url) => setManual({ ...manual, receipt_url: url })} />
           </div>
         </CardContent>
       </Card>
@@ -2197,29 +2158,59 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
           <thead className="bg-white/5"><tr>
             <th className="text-left p-2">Data</th><th className="text-left p-2">Categoria</th>
             <th className="text-left p-2">Descrição</th><th className="text-right p-2">Bruto</th>
-            <th className="text-right p-2">Taxas</th><th className="text-right p-2">Líquido</th>
+            <th className="text-right p-2">Líquido</th><th className="p-2"></th>
           </tr></thead>
           <tbody>
             {entries.length === 0 && <tr><td colSpan={6} className="p-6 text-center opacity-60">Sem movimentações</td></tr>}
-            {entries.map((e) => (
-              <tr key={e.id} className="border-t border-white/10">
-                <td className="p-2 opacity-80">{new Date(e.occurred_at).toLocaleString("pt-BR")}</td>
-                <td className="p-2"><Badge variant="secondary">{e.category}</Badge></td>
-                <td className="p-2">{e.description}</td>
-                <td className="p-2 text-right">R$ {Number(e.gross_amount).toFixed(2)}</td>
-                <td className="p-2 text-right opacity-70">R$ {(Number(e.mp_fee) + Number(e.platform_fee)).toFixed(2)}</td>
-                <td className={`p-2 text-right font-bold ${e.is_income ? "text-emerald-300" : "text-red-300"}`}>{e.is_income ? "+" : "-"} R$ {Number(e.net_amount).toFixed(2)}</td>
-              </tr>
-            ))}
+            {entries.map((e) => {
+              const isOpen = expanded.has(e.id);
+              return (
+                <>
+                  <tr key={e.id} className="border-t border-white/10">
+                    <td className="p-2 opacity-80">{new Date(e.occurred_at).toLocaleString("pt-BR")}</td>
+                    <td className="p-2"><Badge variant="secondary">{e.category}</Badge></td>
+                    <td className="p-2">
+                      <span>{e.description}</span>
+                      {e.receipt_url && <Paperclip className="size-3 inline ml-1 opacity-60" />}
+                    </td>
+                    <td className="p-2 text-right">R$ {Number(e.gross_amount).toFixed(2)}</td>
+                    <td className={`p-2 text-right font-bold ${e.is_income ? "text-emerald-300" : "text-red-300"}`}>{e.is_income ? "+" : "-"} R$ {Number(e.net_amount).toFixed(2)}</td>
+                    <td className="p-2 text-right whitespace-nowrap">
+                      {e.receipt_url && (
+                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => toggleExpand(e.id)} aria-label="Ver comprovante">
+                          <Eye className="size-3.5" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400" onClick={async () => {
+                        if (!confirm2("Excluir este lançamento?")) return;
+                        try { await del({ data: { athletic_id: athletic.id, id: e.id } }); toast.success("Removido"); reload(); }
+                        catch (err: any) { toast.error(err?.message); }
+                      }} aria-label="Excluir">
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                  {isOpen && e.receipt_url && (
+                    <tr className="border-t border-white/5 bg-black/30">
+                      <td colSpan={6} className="p-3">
+                        <a href={e.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-block">
+                          <img src={e.receipt_url} alt="Comprovante" className="max-h-80 rounded-lg border border-white/10" />
+                        </a>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
           </tbody>
         </table>
       </Card>
 
       <InfinitepayCard athletic={athletic} />
     </div>
-
   );
 }
+
 
 /* --- Config --- */
 function DirectorConfig({ athletic }: { athletic: Athletic }) {
