@@ -103,7 +103,7 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
             <form onSubmit={submit} className="space-y-3">
               <div>
                 <Label htmlFor="m-email" className="text-neutral-300 text-xs">E-mail</Label>
-                <Input id="m-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-neutral-950 border-neutral-800" />
+                <Input id="m-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-neutral-950 border-neutral-800 text-neutral-100 placeholder:text-neutral-500" />
               </div>
               <div>
                 <Label htmlFor="m-pwd" className="text-neutral-300 text-xs">Senha</Label>
