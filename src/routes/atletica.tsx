@@ -19,7 +19,7 @@ import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
   Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
-  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen, Eye, Paperclip,
+  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen, Eye, Paperclip, Receipt, TrendingUp,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
@@ -152,6 +152,7 @@ function AtleticaPage() {
           primaryColor={ath.primary_color}
           isMember={isActiveMember}
           isDirector={isDirector}
+          hasUser={!!user}
           directorTabs={(myMembership as any)?.director_tabs ?? null}
           renderSection={(section) => {
             if (section === "inicio") return (
@@ -160,6 +161,7 @@ function AtleticaPage() {
             if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
             if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
             if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
+            if (section === "compras" && user) return <PurchaseHistorySection athletic={ath} user={user} />;
             if (section === "socio" && isActiveMember) return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
             if (section === "diretoria" && isDirector) return <DirectorPanel athletic={ath} allowedTabs={(myMembership as any)?.director_tabs ?? null} isPresident={myMembership?.role === "presidente"} />;
             return null;
@@ -1051,14 +1053,15 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
 
 
 /* ============ SIDEBAR LAYOUT ============ */
-type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "socio" | "diretoria";
+type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "compras" | "socio" | "diretoria";
 
 function AtleticaSectionLayout({
-  primaryColor, isMember, isDirector, directorTabs, renderSection,
+  primaryColor, isMember, isDirector, hasUser, directorTabs, renderSection,
 }: {
   primaryColor: string;
   isMember: boolean;
   isDirector: boolean;
+  hasUser: boolean;
   directorTabs: string[] | null;
   renderSection: (s: SectionKey) => React.ReactNode;
 }) {
@@ -1068,6 +1071,7 @@ function AtleticaSectionLayout({
     { key: "produtos", label: "Produtos", icon: <Store className="size-4" />, show: true },
     { key: "eventos", label: "Eventos", icon: <PartyPopper className="size-4" />, show: true },
     { key: "esportes", label: "Esportes", icon: <Trophy className="size-4" />, show: true },
+    { key: "compras", label: "Histórico de Compras", icon: <Receipt className="size-4" />, show: hasUser },
     { key: "socio", label: "Painel do Sócio", icon: <IdCard className="size-4" />, show: isMember },
     { key: "diretoria", label: "Diretoria", icon: <Shield className="size-4" />, show: isDirector },
   ];
@@ -1697,21 +1701,50 @@ function confirm2(msg: string): boolean { return typeof window !== "undefined" &
 function DirectorProducts({ athletic }: { athletic: Athletic }) {
   const [cols, setCols] = useState<Collection[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [filterCol, setFilterCol] = useState<string>("__all");
   const [editCol, setEditCol] = useState<Partial<Collection> | null>(null);
   const [editProd, setEditProd] = useState<Partial<Product> | null>(null);
   const uc = useServerFn(upsertCollection); const dc = useServerFn(deleteCollection);
   const up = useServerFn(upsertProduct); const dp = useServerFn(deleteProduct);
   async function reload() {
-    const [{ data: c }, { data: p }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: o }] = await Promise.all([
       supabase.from("athletic_collections").select("*").eq("athletic_id", athletic.id).order("display_order"),
       supabase.from("athletic_products").select("*").eq("athletic_id", athletic.id).order("created_at", { ascending: false }),
+      supabase.from("athletic_product_orders").select("id,total,status,created_at").eq("athletic_id", athletic.id).eq("status", "paid"),
     ]);
-    setCols((c as any) ?? []); setProds((p as any) ?? []);
+    setCols((c as any) ?? []); setProds((p as any) ?? []); setOrders((o as any) ?? []);
   }
   useEffect(() => { reload(); }, [athletic.id]);
 
+  const visibleProds = useMemo(() => filterCol === "__all" ? prods : prods.filter((p: any) => p.collection_id === filterCol), [prods, filterCol]);
+  const siteRevenue = useMemo(() => orders.reduce((s, o) => s + Number(o.total || 0), 0), [orders]);
+
   return (
     <div className="space-y-6">
+      {/* Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas pelo site (pagas)</div>
+          <div className="text-2xl font-black mt-1 text-emerald-200">R$ {siteRevenue.toFixed(2)}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">{orders.length} pedido(s)</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Produtos cadastrados</div>
+          <div className="text-2xl font-black mt-1">{prods.length}</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Filtro por coleção</div>
+          <Select value={filterCol} onValueChange={setFilterCol}>
+            <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas</SelectItem>
+              {cols.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Coleções */}
       <div>
         <div className="flex justify-between items-center mb-2">
@@ -1736,11 +1769,11 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
       {/* Produtos */}
       <div>
         <div className="flex justify-between items-center mb-2">
-          <h3 className="font-black text-lg">Produtos ({prods.length})</h3>
+          <h3 className="font-black text-lg">Produtos ({visibleProds.length})</h3>
           <Button size="sm" onClick={() => setEditProd({ athletic_id: athletic.id, active: true, price: 0, discount_pct: 0, second_item_discount_pct: 0, images: [] })}><Plus className="size-4" /> Novo produto</Button>
         </div>
         <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {prods.map((p) => (
+          {visibleProds.map((p) => (
             <Card key={p.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
               <div className="aspect-square bg-black/40">
                 {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-12" /></div>}
@@ -1858,17 +1891,48 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
 /* --- Eventos (Diretoria) --- */
 function DirectorEvents({ athletic }: { athletic: Athletic }) {
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [filterEv, setFilterEv] = useState<string>("__all");
   const [editEv, setEditEv] = useState<Partial<EventRow> | null>(null);
   const [selected, setSelected] = useState<EventRow | null>(null);
   const ue = useServerFn(upsertEvent); const de = useServerFn(deleteEvent);
   async function reload() {
     const { data } = await supabase.from("athletic_events").select("*").eq("athletic_id", athletic.id).order("created_at", { ascending: false });
     setEvents((data as any) ?? []);
+    const ids = ((data as any) ?? []).map((e: any) => e.id);
+    if (ids.length) {
+      const { data: t } = await supabase.from("athletic_event_tickets").select("event_id,price_paid,sold_channel,status").in("event_id", ids).eq("status", "sold");
+      setTickets((t as any) ?? []);
+    } else setTickets([]);
   }
   useEffect(() => { reload(); }, [athletic.id]);
 
+  const scoped = useMemo(() => filterEv === "__all" ? tickets : tickets.filter((t) => t.event_id === filterEv), [tickets, filterEv]);
+  const siteRevenue = useMemo(() => scoped.filter((t) => t.sold_channel !== "manual").reduce((s, t) => s + Number(t.price_paid || 0), 0), [scoped]);
+  const manualRevenue = useMemo(() => scoped.filter((t) => t.sold_channel === "manual").reduce((s, t) => s + Number(t.price_paid || 0), 0), [scoped]);
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas pelo site</div>
+          <div className="text-2xl font-black mt-1 text-emerald-200">R$ {siteRevenue.toFixed(2)}</div>
+        </div>
+        <div className="rounded-2xl border border-orange-400/30 bg-orange-500/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas manuais</div>
+          <div className="text-2xl font-black mt-1 text-orange-200">R$ {manualRevenue.toFixed(2)}</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Filtro por evento</div>
+          <Select value={filterEv} onValueChange={setFilterEv}>
+            <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todos</SelectItem>
+              {events.map((e) => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
       <div className="flex justify-between items-center">
         <h3 className="font-black text-lg">Eventos ({events.length})</h3>
         <Button size="sm" onClick={() => setEditEv({ athletic_id: athletic.id, published: true, online_sales_open: false, price_member: 0, price_visitor: 0, total_tickets: 100 })}><Plus className="size-4" /> Novo evento</Button>
@@ -2102,6 +2166,12 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
   useEffect(() => { reload(); }, [athletic.id]);
   const total = useMemo(() => entries.reduce((s, e) => s + (e.is_income ? +e.net_amount : -+e.net_amount), 0), [entries]);
   const byCat = useMemo(() => entries.reduce((m: any, e) => { m[e.category] = (m[e.category] ?? 0) + (e.is_income ? +e.net_amount : -+e.net_amount); return m; }, {}), [entries]);
+  const siteTotal = useMemo(() => entries
+    .filter((e) => e.is_income && ["product", "event_online", "membership"].includes(e.category))
+    .reduce((s, e) => s + +e.net_amount, 0), [entries]);
+  const manualTotal = useMemo(() => entries
+    .filter((e) => e.is_income && ["event_manual", "manual"].includes(e.category))
+    .reduce((s, e) => s + +e.net_amount, 0), [entries]);
   function toggleExpand(id: string) {
     setExpanded((prev) => {
       const n = new Set(prev);
@@ -2111,6 +2181,18 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
   }
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70 flex items-center gap-1.5"><TrendingUp className="size-3.5" /> Vendas Totais no Site</div>
+          <div className="text-2xl font-black mt-1 text-emerald-200">R$ {siteTotal.toFixed(2)}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">Produtos + eventos online + associações</div>
+        </div>
+        <div className="rounded-2xl border border-orange-400/30 bg-gradient-to-br from-orange-500/15 to-orange-500/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70 flex items-center gap-1.5"><Wallet className="size-3.5" /> Vendas Totais Manuais</div>
+          <div className="text-2xl font-black mt-1 text-orange-200">R$ {manualTotal.toFixed(2)}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">Ingressos manuais + lançamentos manuais</div>
+        </div>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <StatBox label="Saldo total" value={`R$ ${total.toFixed(2)}`} highlight />
         <StatBox label="Produtos" value={`R$ ${(byCat.product ?? 0).toFixed(2)}`} />
@@ -2686,7 +2768,8 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
                 history_description: description || null,
                 history_images: images,
               } as any });
-              toast.success("História salva");
+              toast.success("História salva — recarregando…");
+              setTimeout(() => window.location.reload(), 600);
             } catch (e: any) { toast.error(e?.message ?? "Falha ao salvar"); }
           }}
         >Salvar história</Button>
@@ -2950,6 +3033,134 @@ function ProductImagesEditor({ images, onChange }: { images: string[]; onChange:
           folder="atletica/products"
         />
       </div>
+    </div>
+  );
+}
+
+/* ============ HISTÓRICO DE COMPRAS DO USUÁRIO ============ */
+function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: any }) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [memberships, setMemberships] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const [ordersRes, ticketsRes, membershipsRes] = await Promise.all([
+        supabase.from("athletic_product_orders")
+          .select("id,total,subtotal,status,created_at,buyer_name")
+          .eq("athletic_id", athletic.id).eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase.from("athletic_event_tickets")
+          .select("id,code,price_paid,status,sold_at,event_id,athletic_events(title,starts_at)")
+          .eq("buyer_user_id", user.id)
+          .order("sold_at", { ascending: false }),
+        supabase.from("athletic_membership_payments")
+          .select("id,amount,status,created_at,method")
+          .eq("athletic_id", athletic.id).eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
+      setOrders((ordersRes.data as any) ?? []);
+      setTickets((ticketsRes.data as any) ?? []);
+      setMemberships((membershipsRes.data as any) ?? []);
+      setLoading(false);
+    })();
+  }, [athletic.id, user.id]);
+
+  const totalSpent = useMemo(() => {
+    const o = orders.filter((x) => x.status === "paid").reduce((s, x) => s + Number(x.total || 0), 0);
+    const t = tickets.filter((x) => x.status === "sold").reduce((s, x) => s + Number(x.price_paid || 0), 0);
+    const m = memberships.filter((x) => x.status === "paid" || x.status === "approved").reduce((s, x) => s + Number(x.amount || 0), 0);
+    return o + t + m;
+  }, [orders, tickets, memberships]);
+
+  if (loading) {
+    return <div className="text-center py-12 opacity-60"><Loader2 className="size-8 animate-spin mx-auto" /></div>;
+  }
+
+  const empty = orders.length === 0 && tickets.length === 0 && memberships.length === 0;
+
+  return (
+    <div className="space-y-6 text-white">
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-5">
+        <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Total investido na atlética</div>
+        <div className="text-3xl font-black mt-1">R$ {totalSpent.toFixed(2)}</div>
+        <div className="text-xs opacity-60 mt-1">Somando produtos, ingressos e associações pagas</div>
+      </div>
+
+      {empty && (
+        <div className="text-center py-16 opacity-60">
+          <Receipt className="size-12 mx-auto opacity-40 mb-3" />
+          <p className="font-bold">Você ainda não fez compras aqui.</p>
+        </div>
+      )}
+
+      {orders.length > 0 && (
+        <div>
+          <h3 className="font-black text-lg mb-3 flex items-center gap-2"><ShoppingBag className="size-4" /> Produtos ({orders.length})</h3>
+          <div className="space-y-2">
+            {orders.map((o) => (
+              <Card key={o.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
+                    <div className="text-xs opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black">R$ {Number(o.total).toFixed(2)}</div>
+                    <Badge variant={o.status === "paid" ? "default" : "secondary"} className="text-[10px]">{o.status}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tickets.length > 0 && (
+        <div>
+          <h3 className="font-black text-lg mb-3 flex items-center gap-2"><Ticket className="size-4" /> Ingressos ({tickets.length})</h3>
+          <div className="space-y-2">
+            {tickets.map((t) => (
+              <Card key={t.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">{t.athletic_events?.title ?? "Evento"}</div>
+                    <div className="text-xs opacity-60">Código {t.code} • {t.sold_at ? new Date(t.sold_at).toLocaleDateString("pt-BR") : "—"}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black">R$ {Number(t.price_paid || 0).toFixed(2)}</div>
+                    <Badge variant="secondary" className="text-[10px]">{t.status}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {memberships.length > 0 && (
+        <div>
+          <h3 className="font-black text-lg mb-3 flex items-center gap-2"><IdCard className="size-4" /> Associações ({memberships.length})</h3>
+          <div className="space-y-2">
+            {memberships.map((m) => (
+              <Card key={m.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm">Associação • {m.method ?? "—"}</div>
+                    <div className="text-xs opacity-60">{new Date(m.created_at).toLocaleString("pt-BR")}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black">R$ {Number(m.amount).toFixed(2)}</div>
+                    <Badge variant={m.status === "paid" || m.status === "approved" ? "default" : "secondary"} className="text-[10px]">{m.status}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
