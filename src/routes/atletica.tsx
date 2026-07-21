@@ -2091,8 +2091,10 @@ function EventManagerDialog({ athletic, event, onClose }: { athletic: Athletic; 
 /* --- Caixa --- */
 function DirectorCash({ athletic }: { athletic: Athletic }) {
   const [entries, setEntries] = useState<any[]>([]);
-  const [manual, setManual] = useState({ description: "", gross_amount: 0, is_income: true, category: "manual" as const });
+  const [manual, setManual] = useState({ description: "", gross_amount: 0, is_income: true, receipt_url: "" });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const add = useServerFn(addAthleticCashEntry);
+  const del = useServerFn(deleteAthleticCashEntry);
   async function reload() {
     const { data } = await supabase.from("athletic_cash_entries").select("*").eq("athletic_id", athletic.id).order("occurred_at", { ascending: false });
     setEntries((data as any) ?? []);
@@ -2100,6 +2102,13 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
   useEffect(() => { reload(); }, [athletic.id]);
   const total = useMemo(() => entries.reduce((s, e) => s + (e.is_income ? +e.net_amount : -+e.net_amount), 0), [entries]);
   const byCat = useMemo(() => entries.reduce((m: any, e) => { m[e.category] = (m[e.category] ?? 0) + (e.is_income ? +e.net_amount : -+e.net_amount); return m; }, {}), [entries]);
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  }
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
@@ -2122,10 +2131,24 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
             </Select>
             <Button onClick={async () => {
               try {
-                await add({ data: { athletic_id: athletic.id, category: manual.is_income ? "manual" : "withdraw", description: manual.description, gross_amount: manual.gross_amount, is_income: manual.is_income } });
-                setManual({ description: "", gross_amount: 0, is_income: true, category: "manual" }); reload();
+                if (!manual.description.trim()) return toast.error("Descrição obrigatória");
+                await add({ data: {
+                  athletic_id: athletic.id,
+                  category: manual.is_income ? "manual" : "withdraw",
+                  description: manual.description,
+                  gross_amount: manual.gross_amount,
+                  is_income: manual.is_income,
+                  receipt_url: manual.receipt_url || null,
+                } });
+                setManual({ description: "", gross_amount: 0, is_income: true, receipt_url: "" });
+                toast.success("Lançamento registrado");
+                reload();
               } catch (e: any) { toast.error(e?.message); }
             }}>Lançar</Button>
+          </div>
+          <div>
+            <Label className="text-xs opacity-70 flex items-center gap-1.5"><Paperclip className="size-3.5" /> Comprovante (opcional, imagem até 5 MB)</Label>
+            <ImageUpload label="" folder={`atletica/${athletic.id}/receipts`} value={manual.receipt_url} onChange={(url) => setManual({ ...manual, receipt_url: url })} />
           </div>
         </CardContent>
       </Card>
@@ -2135,29 +2158,59 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
           <thead className="bg-white/5"><tr>
             <th className="text-left p-2">Data</th><th className="text-left p-2">Categoria</th>
             <th className="text-left p-2">Descrição</th><th className="text-right p-2">Bruto</th>
-            <th className="text-right p-2">Taxas</th><th className="text-right p-2">Líquido</th>
+            <th className="text-right p-2">Líquido</th><th className="p-2"></th>
           </tr></thead>
           <tbody>
             {entries.length === 0 && <tr><td colSpan={6} className="p-6 text-center opacity-60">Sem movimentações</td></tr>}
-            {entries.map((e) => (
-              <tr key={e.id} className="border-t border-white/10">
-                <td className="p-2 opacity-80">{new Date(e.occurred_at).toLocaleString("pt-BR")}</td>
-                <td className="p-2"><Badge variant="secondary">{e.category}</Badge></td>
-                <td className="p-2">{e.description}</td>
-                <td className="p-2 text-right">R$ {Number(e.gross_amount).toFixed(2)}</td>
-                <td className="p-2 text-right opacity-70">R$ {(Number(e.mp_fee) + Number(e.platform_fee)).toFixed(2)}</td>
-                <td className={`p-2 text-right font-bold ${e.is_income ? "text-emerald-300" : "text-red-300"}`}>{e.is_income ? "+" : "-"} R$ {Number(e.net_amount).toFixed(2)}</td>
-              </tr>
-            ))}
+            {entries.map((e) => {
+              const isOpen = expanded.has(e.id);
+              return (
+                <>
+                  <tr key={e.id} className="border-t border-white/10">
+                    <td className="p-2 opacity-80">{new Date(e.occurred_at).toLocaleString("pt-BR")}</td>
+                    <td className="p-2"><Badge variant="secondary">{e.category}</Badge></td>
+                    <td className="p-2">
+                      <span>{e.description}</span>
+                      {e.receipt_url && <Paperclip className="size-3 inline ml-1 opacity-60" />}
+                    </td>
+                    <td className="p-2 text-right">R$ {Number(e.gross_amount).toFixed(2)}</td>
+                    <td className={`p-2 text-right font-bold ${e.is_income ? "text-emerald-300" : "text-red-300"}`}>{e.is_income ? "+" : "-"} R$ {Number(e.net_amount).toFixed(2)}</td>
+                    <td className="p-2 text-right whitespace-nowrap">
+                      {e.receipt_url && (
+                        <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => toggleExpand(e.id)} aria-label="Ver comprovante">
+                          <Eye className="size-3.5" />
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 px-2 text-red-400" onClick={async () => {
+                        if (!confirm2("Excluir este lançamento?")) return;
+                        try { await del({ data: { athletic_id: athletic.id, id: e.id } }); toast.success("Removido"); reload(); }
+                        catch (err: any) { toast.error(err?.message); }
+                      }} aria-label="Excluir">
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </td>
+                  </tr>
+                  {isOpen && e.receipt_url && (
+                    <tr className="border-t border-white/5 bg-black/30">
+                      <td colSpan={6} className="p-3">
+                        <a href={e.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-block">
+                          <img src={e.receipt_url} alt="Comprovante" className="max-h-80 rounded-lg border border-white/10" />
+                        </a>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
           </tbody>
         </table>
       </Card>
 
       <InfinitepayCard athletic={athletic} />
     </div>
-
   );
 }
+
 
 /* --- Config --- */
 function DirectorConfig({ athletic }: { athletic: Athletic }) {
