@@ -19,7 +19,7 @@ import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
   Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
-  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen, Eye, Paperclip,
+  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen, Eye, Paperclip, Receipt, TrendingUp,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
