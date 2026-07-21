@@ -1701,21 +1701,50 @@ function confirm2(msg: string): boolean { return typeof window !== "undefined" &
 function DirectorProducts({ athletic }: { athletic: Athletic }) {
   const [cols, setCols] = useState<Collection[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [filterCol, setFilterCol] = useState<string>("__all");
   const [editCol, setEditCol] = useState<Partial<Collection> | null>(null);
   const [editProd, setEditProd] = useState<Partial<Product> | null>(null);
   const uc = useServerFn(upsertCollection); const dc = useServerFn(deleteCollection);
   const up = useServerFn(upsertProduct); const dp = useServerFn(deleteProduct);
   async function reload() {
-    const [{ data: c }, { data: p }] = await Promise.all([
+    const [{ data: c }, { data: p }, { data: o }] = await Promise.all([
       supabase.from("athletic_collections").select("*").eq("athletic_id", athletic.id).order("display_order"),
       supabase.from("athletic_products").select("*").eq("athletic_id", athletic.id).order("created_at", { ascending: false }),
+      supabase.from("athletic_product_orders").select("id,total,status,created_at").eq("athletic_id", athletic.id).eq("status", "paid"),
     ]);
-    setCols((c as any) ?? []); setProds((p as any) ?? []);
+    setCols((c as any) ?? []); setProds((p as any) ?? []); setOrders((o as any) ?? []);
   }
   useEffect(() => { reload(); }, [athletic.id]);
 
+  const visibleProds = useMemo(() => filterCol === "__all" ? prods : prods.filter((p: any) => p.collection_id === filterCol), [prods, filterCol]);
+  const siteRevenue = useMemo(() => orders.reduce((s, o) => s + Number(o.total || 0), 0), [orders]);
+
   return (
     <div className="space-y-6">
+      {/* Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas pelo site (pagas)</div>
+          <div className="text-2xl font-black mt-1 text-emerald-200">R$ {siteRevenue.toFixed(2)}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">{orders.length} pedido(s)</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Produtos cadastrados</div>
+          <div className="text-2xl font-black mt-1">{prods.length}</div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Filtro por coleção</div>
+          <Select value={filterCol} onValueChange={setFilterCol}>
+            <SelectTrigger className="mt-1 h-8"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">Todas</SelectItem>
+              {cols.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Coleções */}
       <div>
         <div className="flex justify-between items-center mb-2">
@@ -1740,11 +1769,11 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
       {/* Produtos */}
       <div>
         <div className="flex justify-between items-center mb-2">
-          <h3 className="font-black text-lg">Produtos ({prods.length})</h3>
+          <h3 className="font-black text-lg">Produtos ({visibleProds.length})</h3>
           <Button size="sm" onClick={() => setEditProd({ athletic_id: athletic.id, active: true, price: 0, discount_pct: 0, second_item_discount_pct: 0, images: [] })}><Plus className="size-4" /> Novo produto</Button>
         </div>
         <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {prods.map((p) => (
+          {visibleProds.map((p) => (
             <Card key={p.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
               <div className="aspect-square bg-black/40">
                 {p.images?.[0] ? <img src={p.images[0]} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full flex items-center justify-center opacity-30"><ShoppingBag className="size-12" /></div>}
