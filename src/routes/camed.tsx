@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send } from "lucide-react";
+import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send, BookOpen, Newspaper, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/camed")({
   head: () => ({
