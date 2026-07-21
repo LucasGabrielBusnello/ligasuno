@@ -3036,3 +3036,131 @@ function ProductImagesEditor({ images, onChange }: { images: string[]; onChange:
     </div>
   );
 }
+
+/* ============ HISTÓRICO DE COMPRAS DO USUÁRIO ============ */
+function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: any }) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [memberships, setMemberships] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const [ordersRes, ticketsRes, membershipsRes] = await Promise.all([
+        supabase.from("athletic_product_orders")
+          .select("id,total,subtotal,status,created_at,buyer_name")
+          .eq("athletic_id", athletic.id).eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase.from("athletic_event_tickets")
+          .select("id,code,price_paid,status,sold_at,event_id,athletic_events(title,starts_at)")
+          .eq("buyer_user_id", user.id)
+          .order("sold_at", { ascending: false }),
+        supabase.from("athletic_membership_payments")
+          .select("id,amount,status,created_at,method")
+          .eq("athletic_id", athletic.id).eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
+      setOrders((ordersRes.data as any) ?? []);
+      setTickets((ticketsRes.data as any) ?? []);
+      setMemberships((membershipsRes.data as any) ?? []);
+      setLoading(false);
+    })();
+  }, [athletic.id, user.id]);
+
+  const totalSpent = useMemo(() => {
+    const o = orders.filter((x) => x.status === "paid").reduce((s, x) => s + Number(x.total || 0), 0);
+    const t = tickets.filter((x) => x.status === "sold").reduce((s, x) => s + Number(x.price_paid || 0), 0);
+    const m = memberships.filter((x) => x.status === "paid" || x.status === "approved").reduce((s, x) => s + Number(x.amount || 0), 0);
+    return o + t + m;
+  }, [orders, tickets, memberships]);
+
+  if (loading) {
+    return <div className="text-center py-12 opacity-60"><Loader2 className="size-8 animate-spin mx-auto" /></div>;
+  }
+
+  const empty = orders.length === 0 && tickets.length === 0 && memberships.length === 0;
+
+  return (
+    <div className="space-y-6 text-white">
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/10 to-transparent p-5">
+        <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Total investido na atlética</div>
+        <div className="text-3xl font-black mt-1">R$ {totalSpent.toFixed(2)}</div>
+        <div className="text-xs opacity-60 mt-1">Somando produtos, ingressos e associações pagas</div>
+      </div>
+
+      {empty && (
+        <div className="text-center py-16 opacity-60">
+          <Receipt className="size-12 mx-auto opacity-40 mb-3" />
+          <p className="font-bold">Você ainda não fez compras aqui.</p>
+        </div>
+      )}
+
+      {orders.length > 0 && (
+        <div>
+          <h3 className="font-black text-lg mb-3 flex items-center gap-2"><ShoppingBag className="size-4" /> Produtos ({orders.length})</h3>
+          <div className="space-y-2">
+            {orders.map((o) => (
+              <Card key={o.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
+                    <div className="text-xs opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black">R$ {Number(o.total).toFixed(2)}</div>
+                    <Badge variant={o.status === "paid" ? "default" : "secondary"} className="text-[10px]">{o.status}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tickets.length > 0 && (
+        <div>
+          <h3 className="font-black text-lg mb-3 flex items-center gap-2"><Ticket className="size-4" /> Ingressos ({tickets.length})</h3>
+          <div className="space-y-2">
+            {tickets.map((t) => (
+              <Card key={t.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">{t.athletic_events?.title ?? "Evento"}</div>
+                    <div className="text-xs opacity-60">Código {t.code} • {t.sold_at ? new Date(t.sold_at).toLocaleDateString("pt-BR") : "—"}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black">R$ {Number(t.price_paid || 0).toFixed(2)}</div>
+                    <Badge variant="secondary" className="text-[10px]">{t.status}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {memberships.length > 0 && (
+        <div>
+          <h3 className="font-black text-lg mb-3 flex items-center gap-2"><IdCard className="size-4" /> Associações ({memberships.length})</h3>
+          <div className="space-y-2">
+            {memberships.map((m) => (
+              <Card key={m.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm">Associação • {m.method ?? "—"}</div>
+                    <div className="text-xs opacity-60">{new Date(m.created_at).toLocaleString("pt-BR")}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="font-black">R$ {Number(m.amount).toFixed(2)}</div>
+                    <Badge variant={m.status === "paid" || m.status === "approved" ? "default" : "secondary"} className="text-[10px]">{m.status}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
