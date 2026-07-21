@@ -107,12 +107,19 @@ export function SiteHeader() {
                     {profile?.full_name ?? profile?.username ?? user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => nav({ to: "/perfil" })}>
-                    <UserCircle className="size-4" /> Meu perfil
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setProfileOpen(true)}>
                     Editar dados
                   </DropdownMenuItem>
+                  {isCamedPresident && (
+                    <DropdownMenuItem onClick={() => nav({ to: "/camed-painel" })}>
+                      <Building2 className="size-4" /> Painel do CAMED
+                    </DropdownMenuItem>
+                  )}
+                  {isAdminMaster && (
+                    <DropdownMenuItem onClick={() => nav({ to: "/admin" })}>
+                      <Shield className="size-4" /> Painel do Administrador
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => signOut()}>
                     <LogOut className="size-4" /> Sair
