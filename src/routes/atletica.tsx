@@ -27,7 +27,9 @@ import {
   upsertEvent, deleteEvent, generateTicketBatch, registerManualTicketSale,
   addAthleticCashEntry, deleteAthleticCashEntry, updateAthletic, upsertSport, deleteSport,
   upsertPartner, deletePartner, enrollInSport, unenrollFromSport,
+  updateOrderItemDelivery, registerManualProductSale, retryProductOrderCheckout,
 } from "@/lib/athletic.functions";
+
 
 import {
   createMembershipPixPayment, createEventTicketPixPayment, createProductPixPayment,
@@ -1705,29 +1707,39 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
   const [filterCol, setFilterCol] = useState<string>("__all");
   const [editCol, setEditCol] = useState<Partial<Collection> | null>(null);
   const [editProd, setEditProd] = useState<Partial<Product> | null>(null);
+  const [manualFor, setManualFor] = useState<Product | null>(null);
+  const [deliveriesFor, setDeliveriesFor] = useState<string | null>(null);
   const uc = useServerFn(upsertCollection); const dc = useServerFn(deleteCollection);
   const up = useServerFn(upsertProduct); const dp = useServerFn(deleteProduct);
   async function reload() {
     const [{ data: c }, { data: p }, { data: o }] = await Promise.all([
       supabase.from("athletic_collections").select("*").eq("athletic_id", athletic.id).order("display_order"),
       supabase.from("athletic_products").select("*").eq("athletic_id", athletic.id).order("created_at", { ascending: false }),
-      supabase.from("athletic_product_orders").select("id,total,status,created_at").eq("athletic_id", athletic.id).eq("status", "paid"),
+      supabase.from("athletic_product_orders").select("id,total,status,source,created_at").eq("athletic_id", athletic.id).eq("status", "paid"),
     ]);
     setCols((c as any) ?? []); setProds((p as any) ?? []); setOrders((o as any) ?? []);
   }
   useEffect(() => { reload(); }, [athletic.id]);
 
   const visibleProds = useMemo(() => filterCol === "__all" ? prods : prods.filter((p: any) => p.collection_id === filterCol), [prods, filterCol]);
-  const siteRevenue = useMemo(() => orders.reduce((s, o) => s + Number(o.total || 0), 0), [orders]);
+  const siteRevenue = useMemo(() => orders.filter((o: any) => o.source !== "manual").reduce((s, o) => s + Number(o.total || 0), 0), [orders]);
+  const manualRevenue = useMemo(() => orders.filter((o: any) => o.source === "manual").reduce((s, o) => s + Number(o.total || 0), 0), [orders]);
+  const siteCount = orders.filter((o: any) => o.source !== "manual").length;
+  const manualCount = orders.filter((o: any) => o.source === "manual").length;
 
   return (
     <div className="space-y-6">
       {/* Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4">
-          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas pelo site (pagas)</div>
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas pelo site</div>
           <div className="text-2xl font-black mt-1 text-emerald-200">R$ {siteRevenue.toFixed(2)}</div>
-          <div className="text-[11px] opacity-60 mt-0.5">{orders.length} pedido(s)</div>
+          <div className="text-[11px] opacity-60 mt-0.5">{siteCount} pedido(s)</div>
+        </div>
+        <div className="rounded-2xl border border-orange-400/30 bg-orange-500/10 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Vendas manuais</div>
+          <div className="text-2xl font-black mt-1 text-orange-200">R$ {manualRevenue.toFixed(2)}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">{manualCount} venda(s)</div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="text-[10px] uppercase tracking-widest font-black opacity-70">Produtos cadastrados</div>
@@ -1772,7 +1784,7 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
           <h3 className="font-black text-lg">Produtos ({visibleProds.length})</h3>
           <Button size="sm" onClick={() => setEditProd({ athletic_id: athletic.id, active: true, price: 0, discount_pct: 0, second_item_discount_pct: 0, images: [] })}><Plus className="size-4" /> Novo produto</Button>
         </div>
-        <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
           {visibleProds.map((p) => (
             <Card key={p.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
               <div className="aspect-square bg-black/40">
@@ -1781,10 +1793,25 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
               <CardContent className="p-3">
                 <div className="font-bold text-sm line-clamp-2 h-10">{p.title}</div>
                 <div className="text-xs opacity-70">R$ {Number(p.price).toFixed(2)} • Est: {p.stock ?? "∞"}</div>
-                <div className="flex gap-1 mt-2">
+                <div className="flex gap-1 mt-2 flex-wrap">
                   <Button size="sm" variant="outline" className="flex-1 bg-white text-black hover:bg-neutral-100 hover:text-black border-white" onClick={() => setEditProd(p)}>Editar</Button>
                   <Button size="sm" variant="ghost" className="text-red-400" onClick={async () => { if (!confirm2("Remover?")) return; await dp({ data: { athletic_id: athletic.id, id: p.id } }); reload(); }}><Trash2 className="size-3.5" /></Button>
                 </div>
+                <div className="flex gap-1 mt-1.5">
+                  <Button size="sm" variant="outline" className="flex-1 border-orange-400/50 text-orange-200 hover:bg-orange-500/20"
+                    onClick={() => setManualFor(p)}>
+                    <Plus className="size-3.5 mr-1" /> Venda manual
+                  </Button>
+                  <Button size="sm" variant="outline" className="flex-1 border-white/20"
+                    onClick={() => setDeliveriesFor(deliveriesFor === p.id ? null : p.id)}>
+                    <Paperclip className="size-3.5 mr-1" /> Entregas
+                  </Button>
+                </div>
+                {deliveriesFor === p.id && (
+                  <div className="mt-3">
+                    <DeliveriesList athletic={athletic} productId={p.id} />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -1873,9 +1900,6 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                 />
                 <div className="text-[11px] opacity-60 mt-1">Após esta data as vendas ficam bloqueadas e um contador regressivo aparece no card.</div>
               </div>
-
-
-
             </div>
           )}
           <DialogFooter>
@@ -1884,9 +1908,186 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog venda manual */}
+      <ManualSaleDialog
+        product={manualFor}
+        athletic={athletic}
+        onClose={(refresh) => { setManualFor(null); if (refresh) reload(); }}
+      />
     </div>
   );
 }
+
+function DeliveriesList({ athletic, productId }: { athletic: Athletic; productId: string }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const updDelivery = useServerFn(updateOrderItemDelivery);
+
+  async function reload() {
+    setLoading(true);
+    const { data } = await supabase
+      .from("athletic_product_order_items")
+      .select("id,quantity,line_total,delivery_status,delivered_at,order_id,athletic_product_orders!inner(id,buyer_name,buyer_email,buyer_cpf,buyer_registration,buyer_semester,source,status,created_at,athletic_id)")
+      .eq("product_id", productId)
+      .order("id", { ascending: false });
+    const filtered = ((data as any[]) ?? []).filter((it) =>
+      it.athletic_product_orders?.athletic_id === athletic.id &&
+      it.athletic_product_orders?.status === "paid"
+    );
+    setItems(filtered);
+    setLoading(false);
+  }
+  useEffect(() => { reload(); }, [productId]);
+
+  async function toggle(itemId: string, delivered: boolean) {
+    try {
+      await updDelivery({ data: { athletic_id: athletic.id, item_id: itemId, delivered } });
+      setItems((prev) => prev.map((it) => it.id === itemId ? { ...it, delivery_status: delivered ? "delivered" : "pending" } : it));
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+  }
+
+  if (loading) return <div className="text-center py-4 opacity-60"><Loader2 className="size-4 animate-spin mx-auto" /></div>;
+  if (items.length === 0) return <div className="text-center text-xs opacity-60 py-3 rounded-lg bg-black/30 border border-white/10">Nenhum comprador ainda.</div>;
+
+  const pending = items.filter((i) => i.delivery_status !== "delivered").length;
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-black/30 divide-y divide-white/10">
+      <div className="p-2 flex items-center justify-between text-[11px] uppercase tracking-widest font-bold opacity-70">
+        <span>{items.length} comprador(es)</span>
+        <span>{pending} aguardando</span>
+      </div>
+      {items.map((it) => {
+        const o = it.athletic_product_orders;
+        const delivered = it.delivery_status === "delivered";
+        return (
+          <div key={it.id} className="p-2 flex items-center gap-2 text-xs">
+            <div className="flex-1 min-w-0">
+              <div className="font-bold truncate">{o?.buyer_name}{o?.source === "manual" && <span className="ml-1 text-[9px] uppercase tracking-widest text-orange-300">manual</span>}</div>
+              <div className="opacity-60 truncate">
+                {o?.buyer_email} · Qtd {it.quantity} · R$ {Number(it.line_total).toFixed(2)}
+                {o?.buyer_registration ? ` · Mat ${o.buyer_registration}` : ""}
+                {o?.buyer_semester ? ` · ${o.buyer_semester}º sem` : ""}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant={delivered ? "default" : "outline"}
+              onClick={() => toggle(it.id, !delivered)}
+              className={delivered ? "bg-emerald-600 hover:bg-emerald-500" : "border-yellow-400/40 text-yellow-200"}
+            >
+              {delivered ? <><CheckCircle2 className="size-3 mr-1" /> Entregue</> : "Marcar entregue"}
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ManualSaleDialog({ product, athletic, onClose }: {
+  product: Product | null; athletic: Athletic; onClose: (refresh?: boolean) => void;
+}) {
+  const [form, setForm] = useState({
+    quantity: 1, buyer_name: "", buyer_email: "", buyer_cpf: "",
+    buyer_registration: "", buyer_semester: "",
+    method: "dinheiro" as "pix" | "dinheiro" | "cartao",
+    apply_member_price: false,
+    notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const register = useServerFn(registerManualProductSale);
+
+  useEffect(() => {
+    if (product) setForm({
+      quantity: 1, buyer_name: "", buyer_email: "", buyer_cpf: "",
+      buyer_registration: "", buyer_semester: "",
+      method: "dinheiro", apply_member_price: false, notes: "",
+    });
+  }, [product?.id]);
+
+  if (!product) return null;
+
+  async function submit() {
+    if (!product) return;
+    if (!form.buyer_name.trim() || !form.buyer_email.trim() || !form.buyer_cpf.trim()) {
+      toast.error("Nome, e-mail e CPF são obrigatórios");
+      return;
+    }
+    try {
+      setSaving(true);
+      await register({ data: {
+        athletic_id: athletic.id,
+        product_id: product.id,
+        quantity: Number(form.quantity),
+        buyer_name: form.buyer_name.trim(),
+        buyer_email: form.buyer_email.trim(),
+        buyer_cpf: form.buyer_cpf.trim(),
+        buyer_registration: form.buyer_registration.trim() || null,
+        buyer_semester: form.buyer_semester ? Number(form.buyer_semester) : null,
+        method: form.method,
+        apply_member_price: form.apply_member_price,
+        notes: form.notes.trim() || null,
+      } });
+      toast.success("Venda registrada — recibo enviado por e-mail");
+      onClose(true);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao registrar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!product} onOpenChange={(o) => !o && onClose(false)}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Registrar venda manual</DialogTitle>
+          <DialogDescription className="text-xs">{product.title}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Quantidade *</Label><Input type="number" min={1} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Math.max(1, Number(e.target.value)) })} /></div>
+            <div><Label>Forma de pagamento *</Label>
+              <Select value={form.method} onValueChange={(v) => setForm({ ...form, method: v as any })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dinheiro">Dinheiro</SelectItem>
+                  <SelectItem value="pix">Pix</SelectItem>
+                  <SelectItem value="cartao">Cartão</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div><Label>Nome do comprador *</Label><Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>E-mail *</Label><Input type="email" value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} /></div>
+            <div><Label>CPF *</Label><Input value={form.buyer_cpf} onChange={(e) => setForm({ ...form, buyer_cpf: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Matrícula</Label><Input value={form.buyer_registration} onChange={(e) => setForm({ ...form, buyer_registration: e.target.value })} /></div>
+            <div><Label>Semestre</Label><Input type="number" min={0} max={20} value={form.buyer_semester} onChange={(e) => setForm({ ...form, buyer_semester: e.target.value })} /></div>
+          </div>
+          {product.member_price && (
+            <label className="flex items-center gap-2 text-sm rounded-lg border border-white/10 p-2 cursor-pointer">
+              <input type="checkbox" checked={form.apply_member_price} onChange={(e) => setForm({ ...form, apply_member_price: e.target.checked })} />
+              Aplicar preço de sócio (R$ {Number(product.member_price).toFixed(2)})
+            </label>
+          )}
+          <div><Label>Observações</Label><Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onClose(false)} disabled={saving}>Cancelar</Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving && <Loader2 className="size-3.5 animate-spin mr-1" />} Registrar venda
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 /* --- Eventos (Diretoria) --- */
 function DirectorEvents({ athletic }: { athletic: Athletic }) {
@@ -2644,59 +2845,58 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
   const images: string[] = ((ath as any).history_images as string[] | null) ?? [];
   const title: string = (ath as any).history_title || "Conheça a Nossa História";
   const description: string | null = (ath as any).history_description ?? null;
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    if (images.length < 2) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % images.length), 5000);
-    return () => clearInterval(t);
-  }, [images.length]);
 
   if (images.length === 0 && !description) return null;
 
+  // duplicamos as imagens para efeito de marquee infinito
+  const track = images.length > 0 ? [...images, ...images] : [];
+
   return (
     <section className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-black/40">
-      <div className="grid md:grid-cols-2 gap-0">
-        {images.length > 0 && (
-          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[360px] bg-black overflow-hidden">
-            {images.map((src, i) => (
-              <img
-                key={src + i}
-                src={src}
-                alt={`História ${i + 1}`}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
-              />
-            ))}
-            {images.length > 1 && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                {images.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setIndex(i)}
-                    aria-label={`Foto ${i + 1}`}
-                    className={`h-1.5 rounded-full transition-all ${i === index ? "w-6 bg-white" : "w-1.5 bg-white/50"}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="p-6 md:p-10 flex flex-col justify-center">
-          <div
-            className="inline-flex self-start items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-4"
-            style={{ background: `${ath.primary_color}22`, color: "#fff", border: `1px solid ${ath.primary_color}66` }}
-          >
-            <BookOpen className="size-3.5" /> Nossa história
-          </div>
-          <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
-          {description && (
-            <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
-          )}
+      <div className="p-6 md:p-10 max-w-4xl mx-auto text-center">
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-4"
+          style={{ background: `${ath.primary_color}22`, color: "#fff", border: `1px solid ${ath.primary_color}66` }}
+        >
+          <BookOpen className="size-3.5" /> Nossa história
         </div>
+        <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
+        {description && (
+          <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
+        )}
       </div>
+      {images.length > 0 && (
+        <div className="relative overflow-hidden pb-8">
+          <div
+            className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none"
+            style={{ background: "linear-gradient(to right, rgba(10,10,10,0.9), transparent)" }}
+          />
+          <div
+            className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none"
+            style={{ background: "linear-gradient(to left, rgba(10,10,10,0.9), transparent)" }}
+          />
+          <div
+            className="flex gap-4 w-max"
+            style={{
+              animation: `aaamd-history-marquee ${Math.max(20, images.length * 6)}s linear infinite`,
+            }}
+          >
+            {track.map((src, i) => (
+              <div
+                key={i}
+                className="relative shrink-0 w-72 md:w-96 aspect-[4/3] rounded-xl overflow-hidden border border-white/10 bg-black shadow-xl"
+              >
+                <img src={src} alt="História" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+          <style>{`@keyframes aaamd-history-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
+        </div>
+      )}
     </section>
   );
 }
+
 
 /* ============ Config → Imagens da história ============ */
 function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
@@ -3043,17 +3243,19 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
   const [tickets, setTickets] = useState<any[]>([]);
   const [memberships, setMemberships] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const retry = useServerFn(retryProductOrderCheckout);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       const [ordersRes, ticketsRes, membershipsRes] = await Promise.all([
         supabase.from("athletic_product_orders")
-          .select("id,total,subtotal,status,created_at,buyer_name")
+          .select("id,total,subtotal,status,created_at,buyer_name,athletic_product_order_items(id,title,quantity,line_total,delivery_status,product_id,athletic_products(images))")
           .eq("athletic_id", athletic.id).eq("user_id", user.id)
           .order("created_at", { ascending: false }),
         supabase.from("athletic_event_tickets")
-          .select("id,code,price_paid,status,sold_at,event_id,athletic_events(title,starts_at)")
+          .select("id,code,price_paid,status,sold_at,event_id,athletic_events(title,starts_at,image_url)")
           .eq("buyer_user_id", user.id)
           .order("sold_at", { ascending: false }),
         supabase.from("athletic_membership_payments")
@@ -3074,6 +3276,17 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
     const m = memberships.filter((x) => x.status === "paid" || x.status === "approved").reduce((s, x) => s + Number(x.amount || 0), 0);
     return o + t + m;
   }, [orders, tickets, memberships]);
+
+  async function finalize(orderId: string) {
+    try {
+      setRetrying(orderId);
+      const res: any = await retry({ data: { order_id: orderId } });
+      if (res?.init_point) window.location.href = res.init_point;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao gerar checkout");
+      setRetrying(null);
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-12 opacity-60"><Loader2 className="size-8 animate-spin mx-auto" /></div>;
@@ -3099,21 +3312,58 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
       {orders.length > 0 && (
         <div>
           <h3 className="font-black text-lg mb-3 flex items-center gap-2"><ShoppingBag className="size-4" /> Produtos ({orders.length})</h3>
-          <div className="space-y-2">
-            {orders.map((o) => (
-              <Card key={o.id} className="bg-white/5 border-white/10 text-white">
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-bold text-sm truncate">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
-                    <div className="text-xs opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")}</div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-black">R$ {Number(o.total).toFixed(2)}</div>
-                    <Badge variant={o.status === "paid" ? "default" : "secondary"} className="text-[10px]">{o.status}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="space-y-3">
+            {orders.map((o) => {
+              const items: any[] = o.athletic_product_order_items ?? [];
+              const firstImage = items.find((i) => i?.athletic_products?.images?.[0])?.athletic_products?.images?.[0];
+              const isPending = o.status === "pending";
+              return (
+                <Card key={o.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="size-16 rounded-lg bg-black/40 overflow-hidden shrink-0 flex items-center justify-center">
+                        {firstImage
+                          ? <img src={firstImage} alt="" className="w-full h-full object-cover" />
+                          : <ShoppingBag className="size-6 opacity-40" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm truncate">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
+                        <div className="text-xs opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")}</div>
+                        <div className="text-[11px] opacity-80 mt-1 line-clamp-2">
+                          {items.map((it) => `${it.title} × ${it.quantity}`).join(" · ") || "—"}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-black">R$ {Number(o.total).toFixed(2)}</div>
+                        <Badge variant={o.status === "paid" ? "default" : "secondary"} className="text-[10px]">{o.status}</Badge>
+                      </div>
+                    </div>
+                    {items.length > 0 && o.status === "paid" && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {items.map((it) => (
+                          <span key={it.id} className={`text-[10px] px-2 py-0.5 rounded-full border ${it.delivery_status === "delivered" ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200" : "border-yellow-400/40 bg-yellow-500/10 text-yellow-200"}`}>
+                            {it.title} — {it.delivery_status === "delivered" ? "entregue" : "aguardando entrega"}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {isPending && (
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => finalize(o.id)}
+                          disabled={retrying === o.id}
+                          style={{ background: athletic.primary_color }}
+                        >
+                          {retrying === o.id ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <CreditCard className="size-3.5 mr-1" />}
+                          Finalizar compra
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -3124,8 +3374,13 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
           <div className="space-y-2">
             {tickets.map((t) => (
               <Card key={t.id} className="bg-white/5 border-white/10 text-white">
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="size-14 rounded-lg bg-black/40 overflow-hidden shrink-0">
+                    {t.athletic_events?.image_url
+                      ? <img src={t.athletic_events.image_url} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center"><Ticket className="size-5 opacity-40" /></div>}
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <div className="font-bold text-sm truncate">{t.athletic_events?.title ?? "Evento"}</div>
                     <div className="text-xs opacity-60">Código {t.code} • {t.sold_at ? new Date(t.sold_at).toLocaleDateString("pt-BR") : "—"}</div>
                   </div>
@@ -3164,3 +3419,4 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
     </div>
   );
 }
+

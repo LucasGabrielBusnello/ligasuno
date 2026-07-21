@@ -800,3 +800,182 @@ export const unenrollFromSport = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/* ============ ENTREGAS & VENDAS MANUAIS DE PRODUTOS ============ */
+
+export const updateOrderItemDelivery = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      athletic_id: z.string().uuid(),
+      item_id: z.string().uuid(),
+      delivered: z.boolean(),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ok } = await supabase.rpc("is_athletic_director", {
+      _user_id: userId, _athletic_id: data.athletic_id,
+    });
+    if (!ok) throw new Error("Sem permissão");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("athletic_product_order_items" as any)
+      .update({
+        delivery_status: data.delivered ? "delivered" : "pending",
+        delivered_at: data.delivered ? new Date().toISOString() : null,
+        delivered_by: data.delivered ? userId : null,
+      } as any)
+      .eq("id", data.item_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const registerManualProductSale = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      athletic_id: z.string().uuid(),
+      product_id: z.string().uuid(),
+      quantity: z.number().int().min(1).max(50),
+      buyer_name: z.string().min(2).max(150),
+      buyer_email: z.string().email(),
+      buyer_cpf: z.string().min(11).max(20),
+      buyer_registration: z.string().max(50).optional().nullable(),
+      buyer_semester: z.number().int().min(0).max(20).optional().nullable(),
+      method: z.enum(["pix", "dinheiro", "cartao"]).default("dinheiro"),
+      apply_member_price: z.boolean().default(false),
+      notes: z.string().max(500).optional().nullable(),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: ok } = await supabase.rpc("is_athletic_director", {
+      _user_id: userId, _athletic_id: data.athletic_id,
+    });
+    if (!ok) throw new Error("Sem permissão");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: prod } = await supabaseAdmin
+      .from("athletic_products").select("*").eq("id", data.product_id).maybeSingle();
+    if (!prod) throw new Error("Produto não encontrado");
+    if ((prod as any).athletic_id !== data.athletic_id) throw new Error("Produto de outra atlética");
+
+    let unit = Number(data.apply_member_price && (prod as any).member_price ? (prod as any).member_price : (prod as any).price);
+    if (Number((prod as any).discount_pct) > 0) unit = unit * (1 - Number((prod as any).discount_pct) / 100);
+    let lineTotal = unit * data.quantity;
+    if (data.quantity >= 2 && Number((prod as any).second_item_discount_pct) > 0) {
+      const extras = data.quantity - 1;
+      lineTotal -= unit * extras * (Number((prod as any).second_item_discount_pct) / 100);
+    }
+    unit = Math.round(unit * 100) / 100;
+    lineTotal = Math.round(lineTotal * 100) / 100;
+    const rawSubtotal = Math.round(unit * data.quantity * 100) / 100;
+
+    const { data: order, error: oErr } = await supabaseAdmin
+      .from("athletic_product_orders").insert({
+        athletic_id: data.athletic_id,
+        user_id: null,
+        buyer_name: data.buyer_name,
+        buyer_email: data.buyer_email.toLowerCase(),
+        buyer_cpf: data.buyer_cpf,
+        buyer_registration: data.buyer_registration ?? null,
+        buyer_semester: data.buyer_semester ?? null,
+        subtotal: rawSubtotal,
+        discount_total: rawSubtotal - lineTotal,
+        total: lineTotal,
+        status: "paid",
+        source: "manual",
+        notes: `Venda manual (${data.method})` + (data.notes ? ` — ${data.notes}` : ""),
+      } as any).select("id").single();
+    if (oErr) throw new Error(oErr.message);
+
+    await supabaseAdmin.from("athletic_product_order_items").insert({
+      order_id: (order as any).id,
+      product_id: (prod as any).id,
+      title: (prod as any).title,
+      unit_price: unit,
+      quantity: data.quantity,
+      line_total: lineTotal,
+    });
+
+    // desconta estoque
+    if ((prod as any).stock != null) {
+      const newStock = Math.max(0, Number((prod as any).stock) - data.quantity);
+      await supabaseAdmin.from("athletic_products").update({ stock: newStock }).eq("id", (prod as any).id);
+    }
+
+    // Enviar recibo por e-mail
+    try {
+      const { data: ath } = await supabaseAdmin
+        .from("athletics").select("name, primary_color").eq("id", data.athletic_id).maybeSingle();
+      const brand: string = (ath as any)?.primary_color ?? "#1f5132";
+      const athName: string = (ath as any)?.name ?? "AAAMD";
+      const { sendGmail, emailLayout, emailInfoCard } = await import("./gmail.server");
+      await sendGmail({
+        to: data.buyer_email,
+        subject: `Recibo de compra — ${athName}`,
+        html: emailLayout({
+          title: `Obrigado pela sua compra, ${data.buyer_name.split(" ")[0]}!`,
+          brandColor: brand,
+          leagueName: athName,
+          bodyHtml: `<p>Registramos sua compra na <strong>${athName}</strong>. Guarde este e-mail como comprovante.</p>
+            ${emailInfoCard({
+              title: "Detalhes",
+              brandColor: brand,
+              rows: [
+                { label: "Produto", value: `${(prod as any).title} × ${data.quantity}` },
+                { label: "Valor unitário", value: `R$ ${unit.toFixed(2)}` },
+                { label: "Total pago", value: `R$ ${lineTotal.toFixed(2)}` },
+                { label: "Forma de pagamento", value: data.method.toUpperCase() },
+                { label: "Pedido", value: (order as any).id.slice(0, 8).toUpperCase() },
+              ],
+            })}
+            <p>Assim que retirar seu produto, o status de entrega será marcado no sistema.</p>`,
+          signature: `— Diretoria da ${athName}`,
+        }),
+      });
+    } catch (e) {
+      console.error("registerManualProductSale: falha ao enviar recibo", e);
+    }
+
+    return { ok: true, order_id: (order as any).id };
+  });
+
+export const retryProductOrderCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ order_id: z.string().uuid() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { createCheckoutPreference } = await import("@/lib/mp.server");
+    const { data: order } = await supabaseAdmin
+      .from("athletic_product_orders").select("*").eq("id", data.order_id).maybeSingle();
+    if (!order) throw new Error("Pedido não encontrado");
+    if ((order as any).user_id !== userId) throw new Error("Sem permissão");
+    if ((order as any).status !== "pending") throw new Error("Pedido não está pendente");
+
+    const { data: items } = await supabaseAdmin
+      .from("athletic_product_order_items").select("title,quantity").eq("order_id", data.order_id);
+    const totalQty = ((items as any[]) ?? []).reduce((s, i) => s + Number(i.quantity), 0);
+    const firstTitle = ((items as any[]) ?? [])[0]?.title ?? "Pedido AAAMD";
+    const title = totalQty <= 1 ? firstTitle : `Pedido AAAMD (${totalQty} itens)`;
+
+    const origin = (process.env.PUBLIC_APP_URL || "https://ligasuno.com.br").replace(/\/$/, "");
+    const pref = await createCheckoutPreference({
+      title,
+      unitPrice: Number((order as any).total),
+      payerEmail: (order as any).buyer_email,
+      payerName: (order as any).buyer_name,
+      payerCpf: (order as any).buyer_cpf,
+      externalReference: `ath_prod:${(order as any).id}`,
+      notificationUrl: `${origin}/api/public/payments/mp-webhook`,
+      successUrl: `${origin}/atletica?paid=1`,
+      failureUrl: `${origin}/atletica?paid=0`,
+      pendingUrl: `${origin}/atletica?paid=pending`,
+      metadata: { athletic_id: (order as any).athletic_id, user_id: userId },
+    });
+    return { init_point: pref.init_point };
+  });
+
