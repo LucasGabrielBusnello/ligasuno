@@ -2644,59 +2644,58 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
   const images: string[] = ((ath as any).history_images as string[] | null) ?? [];
   const title: string = (ath as any).history_title || "Conheça a Nossa História";
   const description: string | null = (ath as any).history_description ?? null;
-  const [index, setIndex] = useState(0);
-  useEffect(() => {
-    if (images.length < 2) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % images.length), 5000);
-    return () => clearInterval(t);
-  }, [images.length]);
 
   if (images.length === 0 && !description) return null;
 
+  // duplicamos as imagens para efeito de marquee infinito
+  const track = images.length > 0 ? [...images, ...images] : [];
+
   return (
     <section className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-black/40">
-      <div className="grid md:grid-cols-2 gap-0">
-        {images.length > 0 && (
-          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[360px] bg-black overflow-hidden">
-            {images.map((src, i) => (
-              <img
-                key={src + i}
-                src={src}
-                alt={`História ${i + 1}`}
-                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${i === index ? "opacity-100" : "opacity-0"}`}
-              />
-            ))}
-            {images.length > 1 && (
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                {images.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setIndex(i)}
-                    aria-label={`Foto ${i + 1}`}
-                    className={`h-1.5 rounded-full transition-all ${i === index ? "w-6 bg-white" : "w-1.5 bg-white/50"}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        <div className="p-6 md:p-10 flex flex-col justify-center">
-          <div
-            className="inline-flex self-start items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-4"
-            style={{ background: `${ath.primary_color}22`, color: "#fff", border: `1px solid ${ath.primary_color}66` }}
-          >
-            <BookOpen className="size-3.5" /> Nossa história
-          </div>
-          <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
-          {description && (
-            <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
-          )}
+      <div className="p-6 md:p-10 max-w-4xl mx-auto text-center">
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-4"
+          style={{ background: `${ath.primary_color}22`, color: "#fff", border: `1px solid ${ath.primary_color}66` }}
+        >
+          <BookOpen className="size-3.5" /> Nossa história
         </div>
+        <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
+        {description && (
+          <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
+        )}
       </div>
+      {images.length > 0 && (
+        <div className="relative overflow-hidden pb-8">
+          <div
+            className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none"
+            style={{ background: "linear-gradient(to right, rgba(10,10,10,0.9), transparent)" }}
+          />
+          <div
+            className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none"
+            style={{ background: "linear-gradient(to left, rgba(10,10,10,0.9), transparent)" }}
+          />
+          <div
+            className="flex gap-4 w-max"
+            style={{
+              animation: `aaamd-history-marquee ${Math.max(20, images.length * 6)}s linear infinite`,
+            }}
+          >
+            {track.map((src, i) => (
+              <div
+                key={i}
+                className="relative shrink-0 w-72 md:w-96 aspect-[4/3] rounded-xl overflow-hidden border border-white/10 bg-black shadow-xl"
+              >
+                <img src={src} alt="História" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+          <style>{`@keyframes aaamd-history-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
+        </div>
+      )}
     </section>
   );
 }
+
 
 /* ============ Config → Imagens da história ============ */
 function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
