@@ -1286,7 +1286,7 @@ function SociosArea({ athletic, isMember, user }: { athletic: Athletic; isMember
           </div>
         </TabsContent>
         <TabsContent value="parceiros" className="mt-4"><MemberPartners athletic={athletic} /></TabsContent>
-        <TabsContent value="esportes" className="mt-4"><MemberSports athletic={athletic} userId={user.id} /></TabsContent>
+        <TabsContent value="esportes" className="mt-4"><SportsList athletic={athletic} /></TabsContent>
       </Tabs>
     </div>
   );
