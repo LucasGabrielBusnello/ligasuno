@@ -1657,14 +1657,12 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                 <div><Label>Matrícula</Label><Input value={editing.matricula ?? ""} onChange={(e) => setEditing({ ...editing, matricula: e.target.value })} /></div>
                 <div><Label>Semestre</Label><Input value={editing.semestre ?? ""} onChange={(e) => setEditing({ ...editing, semestre: e.target.value })} /></div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><Label>Cargo</Label>
-                  <Select value={editing.role ?? "socio"} onValueChange={(v) => setEditing({ ...editing, role: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="socio">Sócio</SelectItem><SelectItem value="diretor">Diretor</SelectItem><SelectItem value="presidente">Presidente</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Sócio até (data)</Label><Input type="date" value={editing.member_until ?? ""} onChange={(e) => setEditing({ ...editing, member_until: e.target.value })} /></div>
+              <div>
+                <Label>Cargo</Label>
+                <Select value={editing.role ?? "socio"} onValueChange={(v) => setEditing({ ...editing, role: v as any })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="socio">Sócio</SelectItem><SelectItem value="diretor">Diretor</SelectItem><SelectItem value="presidente">Presidente</SelectItem></SelectContent>
+                </Select>
               </div>
 
               <div className="rounded-lg border p-3 space-y-2">
