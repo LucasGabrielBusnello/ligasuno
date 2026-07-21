@@ -3044,17 +3044,19 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
   const [tickets, setTickets] = useState<any[]>([]);
   const [memberships, setMemberships] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState<string | null>(null);
+  const retry = useServerFn(retryProductOrderCheckout);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       const [ordersRes, ticketsRes, membershipsRes] = await Promise.all([
         supabase.from("athletic_product_orders")
-          .select("id,total,subtotal,status,created_at,buyer_name")
+          .select("id,total,subtotal,status,created_at,buyer_name,athletic_product_order_items(id,title,quantity,line_total,delivery_status,product_id,athletic_products(images))")
           .eq("athletic_id", athletic.id).eq("user_id", user.id)
           .order("created_at", { ascending: false }),
         supabase.from("athletic_event_tickets")
-          .select("id,code,price_paid,status,sold_at,event_id,athletic_events(title,starts_at)")
+          .select("id,code,price_paid,status,sold_at,event_id,athletic_events(title,starts_at,image_url)")
           .eq("buyer_user_id", user.id)
           .order("sold_at", { ascending: false }),
         supabase.from("athletic_membership_payments")
@@ -3075,6 +3077,17 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
     const m = memberships.filter((x) => x.status === "paid" || x.status === "approved").reduce((s, x) => s + Number(x.amount || 0), 0);
     return o + t + m;
   }, [orders, tickets, memberships]);
+
+  async function finalize(orderId: string) {
+    try {
+      setRetrying(orderId);
+      const res: any = await retry({ data: { order_id: orderId } });
+      if (res?.init_point) window.location.href = res.init_point;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao gerar checkout");
+      setRetrying(null);
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-12 opacity-60"><Loader2 className="size-8 animate-spin mx-auto" /></div>;
@@ -3100,21 +3113,58 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
       {orders.length > 0 && (
         <div>
           <h3 className="font-black text-lg mb-3 flex items-center gap-2"><ShoppingBag className="size-4" /> Produtos ({orders.length})</h3>
-          <div className="space-y-2">
-            {orders.map((o) => (
-              <Card key={o.id} className="bg-white/5 border-white/10 text-white">
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-bold text-sm truncate">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
-                    <div className="text-xs opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")}</div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-black">R$ {Number(o.total).toFixed(2)}</div>
-                    <Badge variant={o.status === "paid" ? "default" : "secondary"} className="text-[10px]">{o.status}</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="space-y-3">
+            {orders.map((o) => {
+              const items: any[] = o.athletic_product_order_items ?? [];
+              const firstImage = items.find((i) => i?.athletic_products?.images?.[0])?.athletic_products?.images?.[0];
+              const isPending = o.status === "pending";
+              return (
+                <Card key={o.id} className="bg-white/5 border-white/10 text-white overflow-hidden">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="size-16 rounded-lg bg-black/40 overflow-hidden shrink-0 flex items-center justify-center">
+                        {firstImage
+                          ? <img src={firstImage} alt="" className="w-full h-full object-cover" />
+                          : <ShoppingBag className="size-6 opacity-40" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-sm truncate">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
+                        <div className="text-xs opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")}</div>
+                        <div className="text-[11px] opacity-80 mt-1 line-clamp-2">
+                          {items.map((it) => `${it.title} × ${it.quantity}`).join(" · ") || "—"}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-black">R$ {Number(o.total).toFixed(2)}</div>
+                        <Badge variant={o.status === "paid" ? "default" : "secondary"} className="text-[10px]">{o.status}</Badge>
+                      </div>
+                    </div>
+                    {items.length > 0 && o.status === "paid" && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {items.map((it) => (
+                          <span key={it.id} className={`text-[10px] px-2 py-0.5 rounded-full border ${it.delivery_status === "delivered" ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200" : "border-yellow-400/40 bg-yellow-500/10 text-yellow-200"}`}>
+                            {it.title} — {it.delivery_status === "delivered" ? "entregue" : "aguardando entrega"}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {isPending && (
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => finalize(o.id)}
+                          disabled={retrying === o.id}
+                          style={{ background: athletic.primary_color }}
+                        >
+                          {retrying === o.id ? <Loader2 className="size-3.5 animate-spin mr-1" /> : <CreditCard className="size-3.5 mr-1" />}
+                          Finalizar compra
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       )}
@@ -3125,8 +3175,13 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
           <div className="space-y-2">
             {tickets.map((t) => (
               <Card key={t.id} className="bg-white/5 border-white/10 text-white">
-                <CardContent className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="size-14 rounded-lg bg-black/40 overflow-hidden shrink-0">
+                    {t.athletic_events?.image_url
+                      ? <img src={t.athletic_events.image_url} alt="" className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center"><Ticket className="size-5 opacity-40" /></div>}
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <div className="font-bold text-sm truncate">{t.athletic_events?.title ?? "Evento"}</div>
                     <div className="text-xs opacity-60">Código {t.code} • {t.sold_at ? new Date(t.sold_at).toLocaleDateString("pt-BR") : "—"}</div>
                   </div>
@@ -3165,3 +3220,4 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
     </div>
   );
 }
+
