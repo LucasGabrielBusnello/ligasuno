@@ -1123,17 +1123,8 @@ function AtleticaSectionLayout({
 
 
 /* ============ ESPORTES (aberto a todos) ============ */
-function SportsSection({ athletic, user }: { athletic: Athletic; user: any; isMember: boolean }) {
-  if (!user) {
-    return (
-      <div className="space-y-4">
-        <SportsShowcase athletic={athletic} />
-        <EmptyDark icon={<UserPlus className="size-10" />} title="Faça login para se inscrever nos esportes"
-          action={<Button asChild><Link to="/auth">Entrar</Link></Button>} />
-      </div>
-    );
-  }
-  return <MemberSports athletic={athletic} userId={user.id} />;
+function SportsSection({ athletic }: { athletic: Athletic; user: any; isMember: boolean }) {
+  return <SportsList athletic={athletic} />;
 }
 
 
