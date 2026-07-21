@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send } from "lucide-react";
+import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send, BookOpen, Newspaper, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/camed")({
   head: () => ({
@@ -49,8 +49,92 @@ function CamedPublicPage() {
           <AnonymousMessageCard />
           <BookingCard />
         </div>
+        <HistoryShowcase info={info} />
+        <NewsSection />
       </main>
     </div>
+  );
+}
+
+function HistoryShowcase({ info }: { info: any }) {
+  const images: string[] = Array.isArray(info?.history_images) ? info.history_images : [];
+  const title: string = info?.history_title || "Conheça a Nossa História";
+  const description: string | null = info?.history_description ?? null;
+  if (!info) return null;
+  if (images.length === 0 && !description) return null;
+  const track = images.length > 0 ? [...images, ...images] : [];
+  return (
+    <section className="rounded-2xl overflow-hidden border border-emerald-200/60 dark:border-emerald-900/40 bg-gradient-to-b from-emerald-50/60 to-white dark:from-emerald-950/30 dark:to-background">
+      <div className="p-6 md:p-10 max-w-4xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] uppercase tracking-widest font-bold mb-4 bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 border border-emerald-600/30">
+          <BookOpen className="size-3.5" /> Nossa história
+        </div>
+        <h2 className="text-2xl md:text-4xl font-black tracking-tight mb-4">{title}</h2>
+        {description && (
+          <p className="text-sm md:text-base text-muted-foreground whitespace-pre-line leading-relaxed">{description}</p>
+        )}
+      </div>
+      {images.length > 0 && (
+        <div className="relative overflow-hidden pb-8">
+          <div className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, var(--background), transparent)" }} />
+          <div className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, var(--background), transparent)" }} />
+          <div className="flex gap-4 w-max" style={{ animation: `camed-history-marquee ${Math.max(20, images.length * 6)}s linear infinite` }}>
+            {track.map((src, i) => (
+              <div key={i} className="relative shrink-0 w-72 md:w-96 aspect-[4/3] rounded-xl overflow-hidden border border-emerald-200/60 dark:border-emerald-900/40 bg-muted shadow-xl">
+                <img src={src} alt="História do CAMED" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+          <style>{`@keyframes camed-history-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }`}</style>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function NewsSection() {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false }).limit(24)
+      .then(({ data }) => setItems((data as any[]) ?? []));
+  }, []);
+  if (items.length === 0) return null;
+  return (
+    <section>
+      <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
+        <Newspaper className="size-6 text-emerald-600" /> Notícias
+      </h2>
+      <p className="text-sm text-muted-foreground mb-6">Últimas publicações do Centro Acadêmico.</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map((n) => {
+          const body = (
+            <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow border-emerald-200/50 dark:border-emerald-900/40">
+              {n.image_url && (
+                <div className="aspect-video bg-muted overflow-hidden">
+                  <img src={n.image_url} alt={n.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="secondary" className="text-[10px]">{n.category ?? "Geral"}</Badge>
+                  <span className="text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleDateString("pt-BR")}</span>
+                </div>
+                <h4 className="font-black mt-2 leading-tight flex items-start gap-1.5">
+                  <span className="flex-1">{n.title}</span>
+                  {n.link && <ExternalLink className="size-3.5 mt-0.5 text-muted-foreground shrink-0" />}
+                </h4>
+                {n.excerpt && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3 whitespace-pre-line">{n.excerpt}</p>}
+              </CardContent>
+            </Card>
+          );
+          return n.link ? (
+            <a key={n.id} href={n.link} target="_blank" rel="noopener noreferrer" className="block">{body}</a>
+          ) : (
+            <div key={n.id}>{body}</div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

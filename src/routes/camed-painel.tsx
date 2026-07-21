@@ -75,29 +75,83 @@ function CamedPage() {
 }
 
 function InfoTab() {
-  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "" });
-  useEffect(() => { supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => data && setInfo({ ...data, email: (data as any).email ?? "" })); }, []);
+  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as string[] });
+  useEffect(() => {
+    supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
+      if (!data) return;
+      const d: any = data;
+      setInfo({
+        title: d.title ?? "",
+        subtitle: d.subtitle ?? "",
+        description: d.description ?? "",
+        email: d.email ?? "",
+        history_title: d.history_title ?? "Conheça a Nossa História",
+        history_description: d.history_description ?? "",
+        history_images: Array.isArray(d.history_images) ? d.history_images : [],
+      });
+    });
+  }, []);
   async function save() {
     const email = info.email?.trim() || null;
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast.error("E-mail inválido");
-    const { error } = await supabase.from("camed_info").update({ title: info.title, subtitle: info.subtitle, description: info.description, email }).eq("id", 1);
+    const { error } = await supabase.from("camed_info").update({
+      title: info.title,
+      subtitle: info.subtitle,
+      description: info.description,
+      email,
+      history_title: info.history_title || "Conheça a Nossa História",
+      history_description: info.history_description || null,
+      history_images: info.history_images ?? [],
+    } as any).eq("id", 1);
     if (error) return toast.error(error.message);
     toast.success("Informações atualizadas");
   }
+  const images: string[] = info.history_images ?? [];
+  function setImages(next: string[]) { setInfo({ ...info, history_images: next }); }
   return (
-    <Card><CardHeader><CardTitle>Informações do CAMED</CardTitle></CardHeader>
-      <CardContent className="space-y-3">
-        <div><Label>Título</Label><Input value={info.title} onChange={(e) => setInfo({ ...info, title: e.target.value })} /></div>
-        <div><Label>Subtítulo</Label><Input value={info.subtitle} onChange={(e) => setInfo({ ...info, subtitle: e.target.value })} /></div>
-        <div><Label>Descrição</Label><Textarea rows={6} value={info.description} onChange={(e) => setInfo({ ...info, description: e.target.value })} /></div>
-        <div>
-          <Label className="flex items-center gap-1.5"><Mail className="size-4" /> E-mail do CAMED</Label>
-          <Input type="email" placeholder="camed@exemplo.com" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} />
-          <p className="text-xs text-muted-foreground mt-1">Para onde o LIGASUNO envia mensagens anônimas e notificações de agendamento.</p>
-        </div>
-        <Button onClick={save}>Salvar</Button>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card><CardHeader><CardTitle>Informações do CAMED</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div><Label>Título</Label><Input value={info.title} onChange={(e) => setInfo({ ...info, title: e.target.value })} /></div>
+          <div><Label>Subtítulo</Label><Input value={info.subtitle} onChange={(e) => setInfo({ ...info, subtitle: e.target.value })} /></div>
+          <div><Label>Descrição</Label><Textarea rows={6} value={info.description} onChange={(e) => setInfo({ ...info, description: e.target.value })} /></div>
+          <div>
+            <Label className="flex items-center gap-1.5"><Mail className="size-4" /> E-mail do CAMED</Label>
+            <Input type="email" placeholder="camed@exemplo.com" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} />
+            <p className="text-xs text-muted-foreground mt-1">Para onde o MEDUNO envia mensagens anônimas e notificações de agendamento.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><History className="size-5" /> Nossa história</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">Título, descrição e fotos exibidas em carrossel na página pública do CAMED.</p>
+          <div><Label>Título</Label><Input value={info.history_title} onChange={(e) => setInfo({ ...info, history_title: e.target.value })} /></div>
+          <div><Label>Descrição</Label><Textarea rows={4} value={info.history_description} onChange={(e) => setInfo({ ...info, history_description: e.target.value })} placeholder="Conte a trajetória do CAMED..." /></div>
+          <div className="space-y-2">
+            <Label>Imagens</Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {images.map((url, i) => (
+                <div key={i} className="relative group rounded-lg overflow-hidden border bg-muted aspect-square">
+                  <img src={url} alt={`História ${i + 1}`} className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => setImages(images.filter((_, j) => j !== i))} className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition" aria-label="Remover"><Trash2 className="size-3.5" /></button>
+                  <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+                    <button type="button" disabled={i === 0} onClick={() => { const a = images.slice(); [a[i-1], a[i]] = [a[i], a[i-1]]; setImages(a); }} className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30">←</button>
+                    <button type="button" disabled={i === images.length - 1} onClick={() => { const a = images.slice(); [a[i], a[i+1]] = [a[i+1], a[i]]; setImages(a); }} className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30">→</button>
+                  </div>
+                </div>
+              ))}
+              <div className="aspect-square rounded-lg border border-dashed p-2 flex items-center justify-center">
+                <ImageUpload value="" onChange={(url) => { if (url) setImages([...images, url]); }} folder="camed/history" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Button onClick={save}>Salvar tudo</Button>
+    </div>
   );
 }
 
