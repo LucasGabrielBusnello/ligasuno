@@ -152,6 +152,7 @@ function AtleticaPage() {
           primaryColor={ath.primary_color}
           isMember={isActiveMember}
           isDirector={isDirector}
+          hasUser={!!user}
           directorTabs={(myMembership as any)?.director_tabs ?? null}
           renderSection={(section) => {
             if (section === "inicio") return (
@@ -160,6 +161,7 @@ function AtleticaPage() {
             if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
             if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
             if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
+            if (section === "compras" && user) return <PurchaseHistorySection athletic={ath} user={user} />;
             if (section === "socio" && isActiveMember) return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
             if (section === "diretoria" && isDirector) return <DirectorPanel athletic={ath} allowedTabs={(myMembership as any)?.director_tabs ?? null} isPresident={myMembership?.role === "presidente"} />;
             return null;
