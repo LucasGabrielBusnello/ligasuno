@@ -39,6 +39,7 @@ export function MaintenanceGate({ children }: { children: React.ReactNode }) {
 }
 
 function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
@@ -47,10 +48,22 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setBusy(false);
-    if (error) return toast.error(error.message || "Falha ao entrar");
-    toast.success("Entrando…");
+    if (mode === "login") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      setBusy(false);
+      if (error) return toast.error(error.message || "Falha ao entrar");
+      toast.success("Entrando…");
+    } else {
+      if (password.length < 8) { setBusy(false); return toast.error("A senha deve ter no mínimo 8 caracteres."); }
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/` },
+      });
+      setBusy(false);
+      if (error) return toast.error(error.message || "Falha ao cadastrar");
+      toast.success("Conta criada! Se o site estiver liberado para você, já pode entrar.");
+    }
   }
 
   return (
@@ -75,7 +88,18 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
 
         <Card className="bg-neutral-900/70 border-neutral-800 backdrop-blur">
           <CardContent className="p-5 text-left">
-            <div className="text-xs uppercase tracking-wide text-neutral-500 mb-3">Acesso restrito à versão teste</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs uppercase tracking-wide text-neutral-500">
+                {mode === "login" ? "Acesso restrito à versão teste" : "Criar conta"}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                className="text-xs text-emerald-400 hover:text-emerald-300 underline"
+              >
+                {mode === "login" ? "Cadastrar" : "Entrar"}
+              </button>
+            </div>
             <form onSubmit={submit} className="space-y-3">
               <div>
                 <Label htmlFor="m-email" className="text-neutral-300 text-xs">E-mail</Label>
@@ -87,7 +111,7 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
                   <Input
                     id="m-pwd"
                     type={show ? "text" : "password"}
-                    autoComplete="current-password"
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -99,8 +123,13 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
                 </div>
               </div>
               <Button type="submit" disabled={busy} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white">
-                <LogIn className="size-4" /> {busy ? "Entrando…" : "Entrar"}
+                <LogIn className="size-4" /> {busy ? (mode === "login" ? "Entrando…" : "Cadastrando…") : (mode === "login" ? "Entrar" : "Criar conta")}
               </Button>
+              {mode === "signup" && (
+                <p className="text-[11px] text-neutral-500 text-center">
+                  Após criar a conta, o acesso à versão teste só é liberado para e-mails autorizados.
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>
@@ -108,3 +137,4 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
     </div>
   );
 }
+
