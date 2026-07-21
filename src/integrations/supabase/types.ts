@@ -787,6 +787,9 @@ export type Database = {
       }
       athletic_product_order_items: {
         Row: {
+          delivered_at: string | null
+          delivered_by: string | null
+          delivery_status: Database["public"]["Enums"]["delivery_status"]
           id: string
           line_total: number
           order_id: string
@@ -797,6 +800,9 @@ export type Database = {
           variant: Json | null
         }
         Insert: {
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_status?: Database["public"]["Enums"]["delivery_status"]
           id?: string
           line_total: number
           order_id: string
@@ -807,6 +813,9 @@ export type Database = {
           variant?: Json | null
         }
         Update: {
+          delivered_at?: string | null
+          delivered_by?: string | null
+          delivery_status?: Database["public"]["Enums"]["delivery_status"]
           id?: string
           line_total?: number
           order_id?: string
@@ -840,12 +849,15 @@ export type Database = {
           buyer_email: string
           buyer_name: string
           buyer_phone: string | null
+          buyer_registration: string | null
+          buyer_semester: number | null
           created_at: string
           discount_total: number
           id: string
           mp_payment_id: string | null
           mp_preference_id: string | null
           notes: string | null
+          source: Database["public"]["Enums"]["order_source"]
           status: Database["public"]["Enums"]["athletic_order_status"]
           subtotal: number
           total: number
@@ -858,12 +870,15 @@ export type Database = {
           buyer_email: string
           buyer_name: string
           buyer_phone?: string | null
+          buyer_registration?: string | null
+          buyer_semester?: number | null
           created_at?: string
           discount_total?: number
           id?: string
           mp_payment_id?: string | null
           mp_preference_id?: string | null
           notes?: string | null
+          source?: Database["public"]["Enums"]["order_source"]
           status?: Database["public"]["Enums"]["athletic_order_status"]
           subtotal: number
           total: number
@@ -876,12 +891,15 @@ export type Database = {
           buyer_email?: string
           buyer_name?: string
           buyer_phone?: string | null
+          buyer_registration?: string | null
+          buyer_semester?: number | null
           created_at?: string
           discount_total?: number
           id?: string
           mp_payment_id?: string | null
           mp_preference_id?: string | null
           notes?: string | null
+          source?: Database["public"]["Enums"]["order_source"]
           status?: Database["public"]["Enums"]["athletic_order_status"]
           subtotal?: number
           total?: number
@@ -3822,6 +3840,8 @@ export type Database = {
         | "cancelled"
         | "reserved"
       atm_class: "ATM31" | "ATM30" | "ATM29" | "ATM28" | "ATM27" | "ATM26"
+      delivery_status: "pending" | "delivered"
+      order_source: "site" | "manual"
       schedule_kind: "class" | "practice" | "exam" | "green_zone" | "abex"
       shift_period: "morning" | "afternoon" | "night"
     }
@@ -3977,6 +3997,8 @@ export const Constants = {
         "reserved",
       ],
       atm_class: ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"],
+      delivery_status: ["pending", "delivered"],
+      order_source: ["site", "manual"],
       schedule_kind: ["class", "practice", "exam", "green_zone", "abex"],
       shift_period: ["morning", "afternoon", "night"],
     },
