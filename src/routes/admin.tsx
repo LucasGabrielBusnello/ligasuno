@@ -908,3 +908,90 @@ function MetricCard({ label, value }: { label: string; value: number }) {
   );
 }
 
+function MaintenanceAdmin() {
+  const [enabled, setEnabled] = useState<boolean>(false);
+  const [list, setList] = useState<Array<{ id: string; email: string; note: string | null }>>([]);
+  const [email, setEmail] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const [{ data: s }, { data: al }] = await Promise.all([
+      supabase.from("app_settings").select("maintenance_enabled").eq("id", 1).maybeSingle(),
+      supabase.from("maintenance_allowlist" as any).select("id, email, note").order("created_at", { ascending: false }),
+    ]);
+    setEnabled(!!(s as any)?.maintenance_enabled);
+    setList(((al as any) ?? []) as any);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    const { error } = await supabase.from("app_settings").update({ maintenance_enabled: next } as any).eq("id", 1);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    setEnabled(next);
+    toast.success(next ? "Modo manutenção ativado" : "Modo manutenção desativado");
+  }
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    const v = email.trim().toLowerCase();
+    if (!v) return;
+    const { error } = await supabase.from("maintenance_allowlist" as any).insert({ email: v, note: note.trim() || null } as any);
+    if (error) return toast.error(error.message);
+    setEmail(""); setNote(""); load();
+    toast.success("E-mail adicionado");
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Remover este e-mail da lista?")) return;
+    const { error } = await supabase.from("maintenance_allowlist" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    load();
+  }
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><Wrench className="size-4 text-emerald-500" /> Modo manutenção</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground">
+            Quando ativado, apenas você (administrador master) e os e-mails na lista abaixo conseguem acessar o site. Os demais veem a tela de manutenção com opção de login.
+          </div>
+          <Button onClick={() => toggle(!enabled)} disabled={busy} variant={enabled ? "destructive" : "default"}>
+            {enabled ? "Desativar" : "Ativar"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">E-mails com acesso à versão teste</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form onSubmit={add} className="grid md:grid-cols-[1fr_1fr_auto] gap-2">
+            <Input placeholder="email@exemplo.com" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input placeholder="Observação (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Button type="submit"><Plus className="size-4" /> Adicionar</Button>
+          </form>
+          <div className="divide-y border rounded-md">
+            {list.length === 0 && <div className="p-4 text-sm text-muted-foreground text-center">Nenhum e-mail cadastrado.</div>}
+            {list.map((r) => (
+              <div key={r.id} className="p-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{r.email}</div>
+                  {r.note && <div className="text-xs text-muted-foreground truncate">{r.note}</div>}
+                </div>
+                <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="size-4 text-destructive" /></Button>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
