@@ -137,6 +137,7 @@ export type Database = {
           fee_semester_fixed: number
           fee_semester_pct: number
           id: number
+          maintenance_enabled: boolean
           updated_at: string
         }
         Insert: {
@@ -157,6 +158,7 @@ export type Database = {
           fee_semester_fixed?: number
           fee_semester_pct?: number
           id?: number
+          maintenance_enabled?: boolean
           updated_at?: string
         }
         Update: {
@@ -177,6 +179,7 @@ export type Database = {
           fee_semester_fixed?: number
           fee_semester_pct?: number
           id?: number
+          maintenance_enabled?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -2975,6 +2978,27 @@ export type Database = {
           slug?: string
           theme_color?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      maintenance_allowlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          note: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          note?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          note?: string | null
         }
         Relationships: []
       }
