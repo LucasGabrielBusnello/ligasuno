@@ -1,12 +1,30 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, LogIn, LogOut, UserCircle, Trophy, Users, Building2, Stethoscope, Menu, X, Settings2, Shield } from "lucide-react";
+import {
+  GraduationCap,
+  LogIn,
+  LogOut,
+  UserCircle,
+  Trophy,
+  Users,
+  Building2,
+  Stethoscope,
+  Menu,
+  X,
+  Settings2,
+  Shield,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, signOut } from "@/hooks/use-auth";
 import { ProfileEditDialog } from "@/components/profile-edit-dialog";
 import { ProfileReviewDialog } from "@/components/profile-review-dialog";
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 
 const NAV = [
@@ -59,7 +77,9 @@ export function SiteHeader() {
                     key={n.to}
                     to={n.to}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                      active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     }`}
                   >
                     <Icon className="size-4" /> {n.label}
@@ -70,14 +90,15 @@ export function SiteHeader() {
                 <Link
                   to="/coordenacao/cronograma"
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    pathname.startsWith("/coordenacao") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    pathname.startsWith("/coordenacao")
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
                   }`}
                 >
                   <Settings2 className="size-4" /> Coordenação
                 </Link>
               )}
             </nav>
-
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -107,9 +128,7 @@ export function SiteHeader() {
                     {profile?.full_name ?? profile?.username ?? user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>
-                    Editar dados
-                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>aEditar dados</DropdownMenuItem>
                   {isCamedPresident && (
                     <DropdownMenuItem onClick={() => nav({ to: "/camed-painel" })}>
                       <Building2 className="size-4" /> Painel do CAMED
@@ -128,7 +147,9 @@ export function SiteHeader() {
               </DropdownMenu>
             ) : (
               <Button asChild size="sm">
-                <Link to="/auth"><LogIn className="size-4" /> Entrar</Link>
+                <Link to="/auth">
+                  <LogIn className="size-4" /> Entrar
+                </Link>
               </Button>
             )}
           </div>
