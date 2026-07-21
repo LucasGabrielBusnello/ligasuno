@@ -2106,6 +2106,12 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
   useEffect(() => { reload(); }, [athletic.id]);
   const total = useMemo(() => entries.reduce((s, e) => s + (e.is_income ? +e.net_amount : -+e.net_amount), 0), [entries]);
   const byCat = useMemo(() => entries.reduce((m: any, e) => { m[e.category] = (m[e.category] ?? 0) + (e.is_income ? +e.net_amount : -+e.net_amount); return m; }, {}), [entries]);
+  const siteTotal = useMemo(() => entries
+    .filter((e) => e.is_income && ["product", "event_online", "membership"].includes(e.category))
+    .reduce((s, e) => s + +e.net_amount, 0), [entries]);
+  const manualTotal = useMemo(() => entries
+    .filter((e) => e.is_income && ["event_manual", "manual"].includes(e.category))
+    .reduce((s, e) => s + +e.net_amount, 0), [entries]);
   function toggleExpand(id: string) {
     setExpanded((prev) => {
       const n = new Set(prev);
@@ -2115,6 +2121,18 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
   }
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70 flex items-center gap-1.5"><TrendingUp className="size-3.5" /> Vendas Totais no Site</div>
+          <div className="text-2xl font-black mt-1 text-emerald-200">R$ {siteTotal.toFixed(2)}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">Produtos + eventos online + associações</div>
+        </div>
+        <div className="rounded-2xl border border-orange-400/30 bg-gradient-to-br from-orange-500/15 to-orange-500/5 p-4">
+          <div className="text-[10px] uppercase tracking-widest font-black opacity-70 flex items-center gap-1.5"><Wallet className="size-3.5" /> Vendas Totais Manuais</div>
+          <div className="text-2xl font-black mt-1 text-orange-200">R$ {manualTotal.toFixed(2)}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">Ingressos manuais + lançamentos manuais</div>
+        </div>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <StatBox label="Saldo total" value={`R$ ${total.toFixed(2)}`} highlight />
         <StatBox label="Produtos" value={`R$ ${(byCat.product ?? 0).toFixed(2)}`} />
