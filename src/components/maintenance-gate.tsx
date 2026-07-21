@@ -103,7 +103,7 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
             <form onSubmit={submit} className="space-y-3">
               <div>
                 <Label htmlFor="m-email" className="text-neutral-300 text-xs">E-mail</Label>
-                <Input id="m-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-neutral-950 border-neutral-800" />
+                <Input id="m-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="bg-neutral-950 border-neutral-800 text-neutral-100 placeholder:text-neutral-500" />
               </div>
               <div>
                 <Label htmlFor="m-pwd" className="text-neutral-300 text-xs">Senha</Label>
@@ -115,7 +115,7 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-neutral-950 border-neutral-800 pr-10"
+                    className="bg-neutral-950 border-neutral-800 pr-10 text-neutral-100 placeholder:text-neutral-500"
                   />
                   <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300" tabIndex={-1} aria-label={show ? "Esconder" : "Mostrar"}>
                     {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
