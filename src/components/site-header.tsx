@@ -117,6 +117,11 @@ export function SiteHeader() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setProfileOpen(true)}>Editar dados</DropdownMenuItem>
+                  {isCoordination && (
+                    <DropdownMenuItem onClick={() => nav({ to: "/coordenacao/cronograma" })}>
+                      <Settings2 className="size-4" /> Painel da Coordenação
+                    </DropdownMenuItem>
+                  )}
                   {isCamedPresident && (
                     <DropdownMenuItem onClick={() => nav({ to: "/camed-painel" })}>
                       <Building2 className="size-4" /> Painel do CAMED
