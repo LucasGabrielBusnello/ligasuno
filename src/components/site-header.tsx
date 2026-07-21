@@ -128,7 +128,7 @@ export function SiteHeader() {
                     {profile?.full_name ?? profile?.username ?? user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>aEditar dados</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>Editar dados</DropdownMenuItem>
                   {isCamedPresident && (
                     <DropdownMenuItem onClick={() => nav({ to: "/camed-painel" })}>
                       <Building2 className="size-4" /> Painel do CAMED
