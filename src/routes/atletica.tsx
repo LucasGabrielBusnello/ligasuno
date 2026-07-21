@@ -1053,14 +1053,15 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
 
 
 /* ============ SIDEBAR LAYOUT ============ */
-type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "socio" | "diretoria";
+type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "compras" | "socio" | "diretoria";
 
 function AtleticaSectionLayout({
-  primaryColor, isMember, isDirector, directorTabs, renderSection,
+  primaryColor, isMember, isDirector, hasUser, directorTabs, renderSection,
 }: {
   primaryColor: string;
   isMember: boolean;
   isDirector: boolean;
+  hasUser: boolean;
   directorTabs: string[] | null;
   renderSection: (s: SectionKey) => React.ReactNode;
 }) {
@@ -1070,6 +1071,7 @@ function AtleticaSectionLayout({
     { key: "produtos", label: "Produtos", icon: <Store className="size-4" />, show: true },
     { key: "eventos", label: "Eventos", icon: <PartyPopper className="size-4" />, show: true },
     { key: "esportes", label: "Esportes", icon: <Trophy className="size-4" />, show: true },
+    { key: "compras", label: "Histórico de Compras", icon: <Receipt className="size-4" />, show: hasUser },
     { key: "socio", label: "Painel do Sócio", icon: <IdCard className="size-4" />, show: isMember },
     { key: "diretoria", label: "Diretoria", icon: <Shield className="size-4" />, show: isDirector },
   ];
