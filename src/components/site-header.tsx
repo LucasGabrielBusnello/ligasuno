@@ -86,18 +86,6 @@ export function SiteHeader() {
                   </Link>
                 );
               })}
-              {isCoordination && (
-                <Link
-                  to="/coordenacao/cronograma"
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    pathname.startsWith("/coordenacao")
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }`}
-                >
-                  <Settings2 className="size-4" /> Coordenação
-                </Link>
-              )}
             </nav>
           </div>
 
@@ -129,6 +117,11 @@ export function SiteHeader() {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setProfileOpen(true)}>Editar dados</DropdownMenuItem>
+                  {isCoordination && (
+                    <DropdownMenuItem onClick={() => nav({ to: "/coordenacao/cronograma" })}>
+                      <Settings2 className="size-4" /> Painel da Coordenação
+                    </DropdownMenuItem>
+                  )}
                   {isCamedPresident && (
                     <DropdownMenuItem onClick={() => nav({ to: "/camed-painel" })}>
                       <Building2 className="size-4" /> Painel do CAMED
