@@ -1337,8 +1337,56 @@ function MemberPartners({ athletic }: { athletic: Athletic }) {
   );
 }
 
-/* --- Sócios: Esportes (inscrição) --- */
-function MemberSports({ athletic, userId }: { athletic: Athletic; userId: string }) {
+/* ============ ESPORTES (Público) ============ */
+function SportsList({ athletic }: { athletic: Athletic }) {
+  const [sports, setSports] = useState<Sport[]>([]);
+  const [loading, setLoading] = useState(true);
+  async function reload() {
+    setLoading(true);
+    const { data: s } = await supabase.from("athletic_sports" as any)
+      .select("*").eq("athletic_id", athletic.id).eq("active", true).order("display_order");
+    setSports((s as any) ?? []);
+    setLoading(false);
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+  if (loading) return <div className="flex justify-center py-8 opacity-60"><Loader2 className="size-6 animate-spin" /></div>;
+  if (sports.length === 0) return <EmptyDark icon={<Trophy className="size-12" />} title="Nenhum esporte disponível" />;
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {sports.map((s) => (
+        <Card key={s.id} className="bg-white/5 border-white/10 text-white overflow-hidden flex flex-col">
+          <div className="aspect-video bg-black/40 relative">
+            {s.image_url ? <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" /> :
+              <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${athletic.primary_color}, ${athletic.secondary_color})` }} />}
+            <div className="absolute top-2 right-2 flex gap-1">
+              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-full bg-black/70 border border-white/20">
+                {s.gender === "masculino" ? "♂ Masc." : s.gender === "feminino" ? "♀ Fem." : "⚧ Misto"}
+              </span>
+            </div>
+          </div>
+          <CardContent className="p-4 flex-1 flex flex-col gap-2">
+            <div className="font-black text-lg">{s.name}</div>
+            {s.coach && <div className="text-xs opacity-70">Treinador: {s.coach}</div>}
+            {s.schedule && <div className="text-xs opacity-70">🕒 {s.schedule}</div>}
+            {s.description && <p className="text-sm opacity-80 line-clamp-3">{s.description}</p>}
+            <div className="mt-auto pt-2">
+              {s.whatsapp_url ? (
+                <a href={s.whatsapp_url} target="_blank" rel="noopener noreferrer"
+                   className="inline-flex w-full items-center justify-center gap-1.5 h-10 px-3 rounded-md text-sm font-bold bg-[#25D366] hover:bg-[#1eb958] text-white transition-colors">
+                  <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden><path d="M20.52 3.48A11.86 11.86 0 0 0 12.02 0C5.39 0 .04 5.35.04 11.98c0 2.11.55 4.17 1.6 5.99L0 24l6.2-1.62a11.94 11.94 0 0 0 5.82 1.49h.01c6.63 0 11.98-5.35 11.98-11.98 0-3.2-1.25-6.21-3.49-8.41Z"/></svg>
+                  Entrar no grupo do WhatsApp
+                </a>
+              ) : (
+                <div className="text-xs opacity-50 text-center py-2">Grupo indisponível</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
   const [sports, setSports] = useState<Sport[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [mine, setMine] = useState<Set<string>>(new Set());
