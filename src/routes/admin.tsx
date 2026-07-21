@@ -44,7 +44,7 @@ function AdminPage() {
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         <h1 className="text-3xl md:text-4xl font-black mb-8">Painel ADMIN</h1>
         <Tabs defaultValue="ligas">
-          <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full h-auto">
+          <TabsList className="grid grid-cols-3 md:grid-cols-9 w-full h-auto">
             <TabsTrigger value="ligas"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
             <TabsTrigger value="camed"><Users className="size-4 mr-1.5" />CAMED</TabsTrigger>
             <TabsTrigger value="coord"><UserCog className="size-4 mr-1.5" />Coordenação</TabsTrigger>
@@ -52,6 +52,7 @@ function AdminPage() {
             <TabsTrigger value="ads"><Megaphone className="size-4 mr-1.5" />Anúncios</TabsTrigger>
             <TabsTrigger value="visitas"><BarChart3 className="size-4 mr-1.5" />Visitas</TabsTrigger>
             <TabsTrigger value="usuarios"><UserIcon className="size-4 mr-1.5" />Usuários</TabsTrigger>
+            <TabsTrigger value="manutencao"><Wrench className="size-4 mr-1.5" />Manutenção</TabsTrigger>
             <TabsTrigger value="config"><Settings className="size-4 mr-1.5" />Configurações</TabsTrigger>
           </TabsList>
           <TabsContent value="ligas" className="mt-6"><LeaguesAdmin /></TabsContent>
@@ -61,6 +62,7 @@ function AdminPage() {
           <TabsContent value="ads" className="mt-6"><AdsAdmin /></TabsContent>
           <TabsContent value="visitas" className="mt-6"><VisitsAdmin /></TabsContent>
           <TabsContent value="usuarios" className="mt-6"><UsersAdmin /></TabsContent>
+          <TabsContent value="manutencao" className="mt-6"><MaintenanceAdmin /></TabsContent>
           <TabsContent value="config" className="mt-6"><SettingsAdmin /></TabsContent>
         </Tabs>
       </main>
