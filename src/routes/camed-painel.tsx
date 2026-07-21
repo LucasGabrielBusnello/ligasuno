@@ -17,7 +17,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 
-export const Route = createFileRoute("/camed")({ component: CamedPage });
+export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
 
 function CamedPage() {
   const { user, profile, loading } = useAuth();
