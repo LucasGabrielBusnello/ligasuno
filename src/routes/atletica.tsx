@@ -2686,7 +2686,8 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
                 history_description: description || null,
                 history_images: images,
               } as any });
-              toast.success("História salva");
+              toast.success("História salva — recarregando…");
+              setTimeout(() => window.location.reload(), 600);
             } catch (e: any) { toast.error(e?.message ?? "Falha ao salvar"); }
           }}
         >Salvar história</Button>
