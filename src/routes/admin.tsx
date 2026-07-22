@@ -746,6 +746,24 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
   const chartData = Array.from(byAd.entries()).map(([, v]) => ({ name: v.title.slice(0, 20), Views: v.views, Cliques: v.clicks, "Views únicas": v.uniqueViews.size, "Cliques únicos": v.uniqueClicks.size }));
   const totals = chartData.reduce((acc, r) => ({ v: acc.v + r.Views, c: acc.c + r.Cliques, uv: acc.uv + r["Views únicas"], uc: acc.uc + r["Cliques únicos"] }), { v: 0, c: 0, uv: 0, uc: 0 });
 
+  // Per-day breakdown of clicks/views for the selected range
+  const days = Number(range);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const perDay = new Map<string, { label: string; Views: number; Cliques: number; ts: number }>();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const diff = Math.round((today.getTime() - d.getTime()) / 86400000);
+    const label = diff === 0 ? "Hoje" : diff === 1 ? "Ontem" : `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    perDay.set(key, { label, Views: 0, Cliques: 0, ts: d.getTime() });
+  }
+  rows.forEach((r) => {
+    const key = new Date(r.created_at).toISOString().slice(0, 10);
+    const b = perDay.get(key); if (!b) return;
+    if (r.action === "view") b.Views++; else if (r.action === "click") b.Cliques++;
+  });
+  const perDayData = Array.from(perDay.values()).sort((a, b) => a.ts - b.ts);
+
   return (
     <Card>
       <CardHeader>
