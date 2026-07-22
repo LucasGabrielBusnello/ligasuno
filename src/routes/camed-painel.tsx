@@ -419,7 +419,102 @@ function MembersTab({ canManageAccess = false }: { canManageAccess?: boolean }) 
           </form>
         </DialogContent>
       </Dialog>
+      {canManageAccess && <CamedPanelAccessSection />}
     </Card>
+  );
+}
+
+function CamedPanelAccessSection() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [email, setEmail] = useState("");
+  const [perms, setPerms] = useState<CamedTab[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function reload() {
+    const { data } = await (supabase as any).from("camed_panel_access").select("*").order("created_at", { ascending: false });
+    setRows(data ?? []);
+  }
+  useEffect(() => { reload(); }, []);
+
+  function toggle(k: CamedTab) {
+    setPerms((p) => p.includes(k) ? p.filter((x) => x !== k) : [...p, k]);
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const target = editing?.email?.trim() || email.trim();
+    if (!target) return toast.error("Informe o e-mail");
+    if (perms.length === 0) return toast.error("Selecione ao menos uma aba");
+    const { error } = await (supabase as any).from("camed_panel_access").upsert(
+      { email: target, permissions: perms, updated_at: new Date().toISOString() },
+      { onConflict: "email" }
+    );
+    if (error) return toast.error(error.message);
+    toast.success(editing ? "Permissões atualizadas" : "Acesso concedido");
+    setEmail(""); setPerms([]); setEditing(null);
+    reload();
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Revogar acesso ao painel?")) return;
+    const { error } = await (supabase as any).from("camed_panel_access").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    reload();
+  }
+
+  function beginEdit(r: any) {
+    setEditing(r); setEmail(r.email);
+    setPerms((r.permissions ?? []).filter((k: string): k is CamedTab => (ALL_CAMED_TABS_LIST as readonly string[]).includes(k)));
+  }
+
+  return (
+    <div className="border-t p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <KeyRound className="size-5 text-primary" />
+        <h3 className="font-black">Adicionar acesso ao Painel do CAMED</h3>
+      </div>
+      <p className="text-xs text-muted-foreground">Conceda acesso parcial ao painel para pessoas registradas no site. A pessoa verá apenas as abas selecionadas.</p>
+      <form onSubmit={save} className="space-y-3 p-4 rounded-lg border bg-muted/30">
+        <div>
+          <Label>E-mail cadastrado no site</Label>
+          <Input type="email" required disabled={!!editing} value={editing?.email ?? email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@exemplo.com" />
+        </div>
+        <div>
+          <Label>Abas liberadas</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+            {ALL_CAMED_TABS_LIST.map((k) => (
+              <label key={k} className="flex items-center gap-2 text-sm p-2 rounded border bg-background cursor-pointer">
+                <Checkbox checked={perms.includes(k)} onCheckedChange={() => toggle(k)} />
+                {CAMED_TAB_LABELS[k]}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit">{editing ? "Salvar alterações" : "Conceder acesso"}</Button>
+          {editing && <Button type="button" variant="ghost" onClick={() => { setEditing(null); setEmail(""); setPerms([]); }}>Cancelar</Button>}
+        </div>
+      </form>
+      <div className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground italic">Ninguém adicionado ainda.</p>}
+        {rows.map((r) => (
+          <div key={r.id} className="p-3 rounded border flex items-center justify-between gap-2 flex-wrap">
+            <div className="min-w-0">
+              <div className="font-bold truncate">{r.email}</div>
+              <div className="flex gap-1 flex-wrap mt-1">
+                {(r.permissions ?? []).map((k: string) => (
+                  <Badge key={k} variant="secondary" className="text-[10px]">{CAMED_TAB_LABELS[k as CamedTab] ?? k}</Badge>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={() => beginEdit(r)}><Edit className="size-3" /></Button>
+              <Button size="sm" variant="destructive" onClick={() => remove(r.id)}><Trash2 className="size-3" /></Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
