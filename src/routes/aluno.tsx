@@ -25,8 +25,32 @@ export const Route = createFileRoute("/aluno")({
       { property: "og:description", content: "Painel do estudante de Medicina da Unochapecó." },
     ],
   }),
-  component: AlunoPage,
+  component: AlunoGate,
 });
+
+function AlunoGate() {
+  const { isAdminMaster, loading } = useAuth();
+  if (loading) return null;
+  if (!isAdminMaster) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950">
+        <div className="max-w-md w-full text-center space-y-4">
+          <div className="size-16 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto ring-1 ring-emerald-500/30">
+            <Stethoscope className="size-8" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white">Aba em manutenção</h1>
+          <p className="text-sm text-neutral-400">
+            A área do Aluno está temporariamente em manutenção. Voltaremos em breve com novidades.
+          </p>
+          <Button asChild variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10">
+            <Link to="/">Voltar ao início</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  return <AlunoPage />;
+}
 
 type Subject = {
   id: string; name: string; class_codes: string[]; subdivisions: string[];

@@ -748,6 +748,7 @@ function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
 
 function AdsAnalytics({ ads }: { ads: any[] }) {
   const [range, setRange] = useState<"7" | "30" | "90">("30");
+  const [placementFilter, setPlacementFilter] = useState<"all" | "home" | "ligas">("all");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -761,9 +762,14 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
     })();
   }, [range]);
 
+  const allowedAdIds = new Set(
+    ads.filter((a) => placementFilter === "all" ? true : (a.placement ?? "home") === placementFilter).map((a) => a.id)
+  );
+  const filteredRows = rows.filter((r) => allowedAdIds.has(r.ad_id));
+
   const byAd = new Map<string, { title: string; views: number; clicks: number; uniqueViews: Set<string>; uniqueClicks: Set<string> }>();
-  ads.forEach((a) => byAd.set(a.id, { title: a.title || "(sem título)", views: 0, clicks: 0, uniqueViews: new Set(), uniqueClicks: new Set() }));
-  rows.forEach((r) => {
+  ads.filter((a) => allowedAdIds.has(a.id)).forEach((a) => byAd.set(a.id, { title: a.title || "(sem título)", views: 0, clicks: 0, uniqueViews: new Set(), uniqueClicks: new Set() }));
+  filteredRows.forEach((r) => {
     const b = byAd.get(r.ad_id); if (!b) return;
     if (r.action === "view") { b.views++; if (r.user_id) b.uniqueViews.add(r.user_id); }
     else if (r.action === "click") { b.clicks++; if (r.user_id) b.uniqueClicks.add(r.user_id); }
@@ -783,6 +789,7 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
     perDay.set(key, { label, Views: 0, Cliques: 0, ts: d.getTime() });
   }
   rows.forEach((r) => {
+    if (!allowedAdIds.has(r.ad_id)) return;
     const key = new Date(r.created_at).toISOString().slice(0, 10);
     const b = perDay.get(key); if (!b) return;
     if (r.action === "view") b.Views++; else if (r.action === "click") b.Cliques++;
@@ -799,6 +806,15 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
               <Button key={r} size="sm" variant={range === r ? "default" : "outline"} onClick={() => setRange(r)}>{r}d</Button>
             ))}
           </div>
+        </div>
+        <div className="flex gap-1 mt-2 flex-wrap">
+          {([
+            { k: "all", label: "Todos" },
+            { k: "home", label: "Hub Inicial" },
+            { k: "ligas", label: "Página Ligas" },
+          ] as const).map((o) => (
+            <Button key={o.k} size="sm" variant={placementFilter === o.k ? "default" : "outline"} onClick={() => setPlacementFilter(o.k)}>{o.label}</Button>
+          ))}
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -945,8 +961,8 @@ function VisitsAdmin() {
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="total" name="Visitas totais" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unique" name="Visitantes únicos" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total" name="Visitas totais" fill="#f97316" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="unique" name="Visitantes únicos" fill="#22c55e" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
