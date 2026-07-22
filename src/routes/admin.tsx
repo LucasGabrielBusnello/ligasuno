@@ -621,6 +621,7 @@ function AdsAdmin() {
   const [list, setList] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [placement, setPlacement] = useState<"home" | "ligas">("home");
   const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
@@ -639,51 +640,65 @@ function AdsAdmin() {
     if (row.image_url) { try { await deleteFiles({ data: { paths: [row.image_url] } }); } catch {} }
     toast.success("Removido"); reload();
   }
+  const filtered = list.filter((a) => (a.placement ?? "home") === placement);
+  const placementLabel = placement === "home" ? "Hub Inicial" : "Página Ligas";
   return (
     <div className="space-y-6">
       <AdsAnalytics ads={list} />
-      <div className="flex justify-between items-center">
-        <p className="text-muted-foreground">Banners exibidos no topo da página inicial. Cliques e visualizações são registrados automaticamente.</p>
-        <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
+      <Tabs value={placement} onValueChange={(v) => setPlacement(v as any)}>
+        <TabsList>
+          <TabsTrigger value="home">Hub Inicial</TabsTrigger>
+          <TabsTrigger value="ligas">Página Ligas</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <div className="flex justify-between items-center gap-3 flex-wrap">
+        <p className="text-muted-foreground text-sm">
+          Banners exibidos no topo do <strong>{placementLabel}</strong>. Cliques e visualizações são registrados automaticamente.
+        </p>
+        <Button onClick={() => { setEditing({ placement }); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {list.map((a) => {
-          const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
-          return (
-            <Card key={a.id}>
-              <div className="aspect-[3/1] bg-muted overflow-hidden">{a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-full object-cover" />}</div>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black flex-1">{a.title}</h3>
-                  {active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
-                </div>
-                {a.redirect_url && <p className="text-xs text-muted-foreground truncate mt-1">→ {a.redirect_url}</p>}
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(a.start_date).toLocaleDateString("pt-BR")} → {a.end_date ? new Date(a.end_date).toLocaleDateString("pt-BR") : "sem fim"}
-                </p>
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <div className="flex items-center gap-2"><Switch checked={a.active} onCheckedChange={() => toggle(a)} /><span className="text-xs">Ligado</span></div>
-                  <Button size="sm" variant="outline" onClick={() => { setEditing(a); setOpen(true); }}><Edit className="size-3" /></Button>
-                  <Button size="sm" variant="destructive" onClick={() => del(a)}><Trash2 className="size-3" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-      <AdDialog open={open} setOpen={setOpen} row={editing} onSaved={reload} />
+      {filtered.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground">Nenhum anúncio cadastrado para {placementLabel}.</Card>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {filtered.map((a) => {
+            const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
+            return (
+              <Card key={a.id}>
+                <div className="aspect-[3/1] bg-muted overflow-hidden">{a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-full object-cover" />}</div>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black flex-1">{a.title}</h3>
+                    {active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
+                  </div>
+                  {a.redirect_url && <p className="text-xs text-muted-foreground truncate mt-1">→ {a.redirect_url}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(a.start_date).toLocaleDateString("pt-BR")} → {a.end_date ? new Date(a.end_date).toLocaleDateString("pt-BR") : "sem fim"}
+                  </p>
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <div className="flex items-center gap-2"><Switch checked={a.active} onCheckedChange={() => toggle(a)} /><span className="text-xs">Ligado</span></div>
+                    <Button size="sm" variant="outline" onClick={() => { setEditing(a); setOpen(true); }}><Edit className="size-3" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => del(a)}><Trash2 className="size-3" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      <AdDialog open={open} setOpen={setOpen} row={editing} defaultPlacement={placement} onSaved={reload} />
     </div>
   );
 }
 
-function AdDialog({ open, setOpen, row, onSaved }: any) {
-  const [f, setF] = useState({ title: "", image_url: "", redirect_url: "", active: true, start_date: "", end_date: "" });
+function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
+  const [f, setF] = useState({ title: "", image_url: "", redirect_url: "", active: true, start_date: "", end_date: "", placement: "home" as "home" | "ligas" });
   useEffect(() => {
     const iso = (v: string | null | undefined) => v ? v.slice(0, 10) : "";
-    if (row) setF({ title: row.title, image_url: row.image_url ?? "", redirect_url: row.redirect_url ?? "", active: !!row.active, start_date: iso(row.start_date), end_date: iso(row.end_date) });
-    else setF({ title: "", image_url: "", redirect_url: "", active: true, start_date: new Date().toISOString().slice(0, 10), end_date: "" });
-  }, [row, open]);
+    if (row && row.id) setF({ title: row.title, image_url: row.image_url ?? "", redirect_url: row.redirect_url ?? "", active: !!row.active, start_date: iso(row.start_date), end_date: iso(row.end_date), placement: (row.placement ?? "home") as any });
+    else setF({ title: "", image_url: "", redirect_url: "", active: true, start_date: new Date().toISOString().slice(0, 10), end_date: "", placement: (row?.placement ?? defaultPlacement ?? "home") as any });
+  }, [row, open, defaultPlacement]);
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!f.image_url) return toast.error("Envie uma imagem para o anúncio.");
@@ -692,11 +707,12 @@ function AdDialog({ open, setOpen, row, onSaved }: any) {
       image_url: f.image_url,
       redirect_url: f.redirect_url || null,
       active: f.active,
+      placement: f.placement,
       start_date: f.start_date ? new Date(f.start_date).toISOString() : new Date().toISOString(),
       end_date: f.end_date ? new Date(f.end_date).toISOString() : null,
     };
     let err;
-    if (row) ({ error: err } = await supabase.from("ads").update(payload).eq("id", row.id));
+    if (row && row.id) ({ error: err } = await supabase.from("ads").update(payload).eq("id", row.id));
     else ({ error: err } = await supabase.from("ads").insert(payload));
     if (err) return toast.error(err.message);
     toast.success("Salvo"); setOpen(false); onSaved();
@@ -704,8 +720,17 @@ function AdDialog({ open, setOpen, row, onSaved }: any) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{row ? "Editar anúncio" : "Novo anúncio"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{row && row.id ? "Editar anúncio" : "Novo anúncio"}</DialogTitle></DialogHeader>
         <form onSubmit={save} className="space-y-3">
+          <div>
+            <Label>Local de exibição</Label>
+            <Tabs value={f.placement} onValueChange={(v) => setF({ ...f, placement: v as any })} className="mt-1.5">
+              <TabsList className="grid grid-cols-2 w-full">
+                <TabsTrigger value="home">Hub Inicial</TabsTrigger>
+                <TabsTrigger value="ligas">Página Ligas</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
           <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
           <div><ImageUpload label="Imagem (proporção 3:1 recomendada)" folder="ads" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
           <div><Label>URL de redirecionamento (opcional)</Label><Input type="url" value={f.redirect_url} onChange={(e) => setF({ ...f, redirect_url: e.target.value })} placeholder="https://..." /></div>
