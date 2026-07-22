@@ -99,12 +99,13 @@ function PresidentePage() {
         </div>
 
         <Tabs defaultValue="config">
-          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
+          <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full h-auto">
             <TabsTrigger value="config"><Settings className="size-4 mr-1" />Config</TabsTrigger>
             <TabsTrigger value="about"><BookOpen className="size-4 mr-1" />Sobre</TabsTrigger>
             <TabsTrigger value="eventos"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
             <TabsTrigger value="news"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
             <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
+            <TabsTrigger value="scoring"><Award className="size-4 mr-1" />Pontuação</TabsTrigger>
             <TabsTrigger value="atividades"><ImageIcon className="size-4 mr-1" />Atividades</TabsTrigger>
             <TabsTrigger value="membros"><Users className="size-4 mr-1" />Membros</TabsTrigger>
           </TabsList>
@@ -113,6 +114,7 @@ function PresidentePage() {
           <TabsContent value="eventos" className="mt-6"><EventsTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
           <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
+          <TabsContent value="scoring" className="mt-6"><LeagueScoringTab league={league} /></TabsContent>
           <TabsContent value="atividades" className="mt-6"><ActivitiesTab league={league} /></TabsContent>
           <TabsContent value="membros" className="mt-6"><MembersTab league={league} /></TabsContent>
         </Tabs>
