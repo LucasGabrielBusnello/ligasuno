@@ -748,6 +748,7 @@ function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
 
 function AdsAnalytics({ ads }: { ads: any[] }) {
   const [range, setRange] = useState<"7" | "30" | "90">("30");
+  const [placementFilter, setPlacementFilter] = useState<"all" | "home" | "ligas">("all");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -761,9 +762,14 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
     })();
   }, [range]);
 
+  const allowedAdIds = new Set(
+    ads.filter((a) => placementFilter === "all" ? true : (a.placement ?? "home") === placementFilter).map((a) => a.id)
+  );
+  const filteredRows = rows.filter((r) => allowedAdIds.has(r.ad_id));
+
   const byAd = new Map<string, { title: string; views: number; clicks: number; uniqueViews: Set<string>; uniqueClicks: Set<string> }>();
-  ads.forEach((a) => byAd.set(a.id, { title: a.title || "(sem título)", views: 0, clicks: 0, uniqueViews: new Set(), uniqueClicks: new Set() }));
-  rows.forEach((r) => {
+  ads.filter((a) => allowedAdIds.has(a.id)).forEach((a) => byAd.set(a.id, { title: a.title || "(sem título)", views: 0, clicks: 0, uniqueViews: new Set(), uniqueClicks: new Set() }));
+  filteredRows.forEach((r) => {
     const b = byAd.get(r.ad_id); if (!b) return;
     if (r.action === "view") { b.views++; if (r.user_id) b.uniqueViews.add(r.user_id); }
     else if (r.action === "click") { b.clicks++; if (r.user_id) b.uniqueClicks.add(r.user_id); }
