@@ -1757,26 +1757,38 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          description: string | null
           display_order: number
           id: string
           image_url: string
+          is_open: boolean
           league_id: string
+          participating_league_ids: string[]
+          title: string | null
         }
         Insert: {
           caption?: string | null
           created_at?: string
+          description?: string | null
           display_order?: number
           id?: string
           image_url: string
+          is_open?: boolean
           league_id: string
+          participating_league_ids?: string[]
+          title?: string | null
         }
         Update: {
           caption?: string | null
           created_at?: string
+          description?: string | null
           display_order?: number
           id?: string
           image_url?: string
+          is_open?: boolean
           league_id?: string
+          participating_league_ids?: string[]
+          title?: string | null
         }
         Relationships: [
           {
