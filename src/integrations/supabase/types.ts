@@ -89,6 +89,7 @@ export type Database = {
           end_date: string | null
           id: string
           image_url: string
+          placement: string
           redirect_url: string
           start_date: string
           title: string | null
@@ -100,6 +101,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           image_url: string
+          placement?: string
           redirect_url: string
           start_date?: string
           title?: string | null
@@ -111,6 +113,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           image_url?: string
+          placement?: string
           redirect_url?: string
           start_date?: string
           title?: string | null
