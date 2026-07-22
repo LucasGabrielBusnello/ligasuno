@@ -1427,6 +1427,9 @@ function MembersTab({ league }: any) {
                     <option value="ligante">Ligante</option>
                     <option value="diretor">Diretor</option>
                   </select>
+                  {m.role === "diretor" && (
+                    <DirectorPermissionsButton membership={m} onSaved={reload} />
+                  )}
                   <Button size="sm" variant="destructive" onClick={() => remove(m.id)} title="Excluir membro"><Trash2 className="size-3" /></Button>
                 </>
               )}
