@@ -13,7 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award, Download, FileSpreadsheet, QrCode, Copy } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Calendar, Settings, Users, Bell, DollarSign, BookOpen, Newspaper, HelpCircle, Image as ImageIcon, CheckCircle2, ClipboardCheck, Award, Download, FileSpreadsheet, QrCode, Copy, KeyRound } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { LeagueScoringTab } from "@/components/league-scoring-tab";
 import { CertificatesDialog } from "@/components/certificates-dialog";
 import { CheckinDialog } from "@/components/event-checkin-dialog";
 import { EventCertificatesDialog } from "@/components/event-certificates-dialog";
@@ -97,12 +99,13 @@ function PresidentePage() {
         </div>
 
         <Tabs defaultValue="config">
-          <TabsList className="grid grid-cols-3 md:grid-cols-7 w-full h-auto">
+          <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full h-auto">
             <TabsTrigger value="config"><Settings className="size-4 mr-1" />Config</TabsTrigger>
             <TabsTrigger value="about"><BookOpen className="size-4 mr-1" />Sobre</TabsTrigger>
             <TabsTrigger value="eventos"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
             <TabsTrigger value="news"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
             <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
+            <TabsTrigger value="scoring"><Award className="size-4 mr-1" />Pontuação</TabsTrigger>
             <TabsTrigger value="atividades"><ImageIcon className="size-4 mr-1" />Atividades</TabsTrigger>
             <TabsTrigger value="membros"><Users className="size-4 mr-1" />Membros</TabsTrigger>
           </TabsList>
@@ -111,6 +114,7 @@ function PresidentePage() {
           <TabsContent value="eventos" className="mt-6"><EventsTab league={league} /></TabsContent>
           <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
           <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
+          <TabsContent value="scoring" className="mt-6"><LeagueScoringTab league={league} /></TabsContent>
           <TabsContent value="atividades" className="mt-6"><ActivitiesTab league={league} /></TabsContent>
           <TabsContent value="membros" className="mt-6"><MembersTab league={league} /></TabsContent>
         </Tabs>
@@ -1297,7 +1301,7 @@ function MembersTab({ league }: any) {
   const reload = async () => {
     const { data: memberships, error: membershipsError } = await supabase
       .from("league_memberships")
-      .select("id, league_id, user_id, role, created_at")
+      .select("id, league_id, user_id, role, permissions, created_at")
       .eq("league_id", league.id)
       .order("created_at", { ascending: true });
 
@@ -1341,6 +1345,7 @@ function MembersTab({ league }: any) {
           user_id: league.president_id,
           role: "presidente",
           created_at: new Date(0).toISOString(),
+          permissions: null,
           profiles: presidentProfile,
         });
       }
@@ -1422,6 +1427,9 @@ function MembersTab({ league }: any) {
                     <option value="ligante">Ligante</option>
                     <option value="diretor">Diretor</option>
                   </select>
+                  {m.role === "diretor" && (
+                    <DirectorPermissionsButton membership={m} onSaved={reload} />
+                  )}
                   <Button size="sm" variant="destructive" onClick={() => remove(m.id)} title="Excluir membro"><Trash2 className="size-3" /></Button>
                 </>
               )}
@@ -1435,6 +1443,50 @@ function MembersTab({ league }: any) {
     </CardContent></Card>
   );
 }
+export const DIRECTOR_TAB_KEYS = ["config", "about", "eventos", "news", "quiz", "scoring", "atividades", "membros"] as const;
+export type DirectorTab = typeof DIRECTOR_TAB_KEYS[number];
+export const DIRECTOR_TAB_LABELS: Record<DirectorTab, string> = {
+  config: "Config", about: "Sobre", eventos: "Eventos", news: "Notícias", quiz: "Quizzes", scoring: "Pontuação", atividades: "Atividades", membros: "Membros",
+};
+
+function DirectorPermissionsButton({ membership, onSaved }: { membership: any; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const initial: DirectorTab[] = ((membership.permissions ?? DIRECTOR_TAB_KEYS) as string[])
+    .filter((k): k is DirectorTab => (DIRECTOR_TAB_KEYS as readonly string[]).includes(k));
+  const [perms, setPerms] = useState<DirectorTab[]>(initial);
+
+  function toggle(k: DirectorTab) {
+    setPerms((p) => p.includes(k) ? p.filter((x) => x !== k) : [...p, k]);
+  }
+  async function save() {
+    const { error } = await (supabase as any).from("league_memberships").update({ permissions: perms }).eq("id", membership.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Permissões atualizadas");
+    setOpen(false);
+    onSaved();
+  }
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} title="Permissões"><KeyRound className="size-3" /></Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Abas do Painel do Diretor</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">Selecione quais abas este diretor pode acessar.</p>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {DIRECTOR_TAB_KEYS.map((k) => (
+              <label key={k} className="flex items-center gap-2 text-sm p-2 rounded border bg-background cursor-pointer">
+                <Checkbox checked={perms.includes(k)} onCheckedChange={() => toggle(k)} />
+                {DIRECTOR_TAB_LABELS[k]}
+              </label>
+            ))}
+          </div>
+          <DialogFooter><Button onClick={save}>Salvar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 
 function LeaveRequestsPanel({ league, onProcessed }: { league: any; onProcessed: () => void }) {
   const listFn = useServerFn(listLeagueLeaveRequests);

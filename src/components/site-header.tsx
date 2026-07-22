@@ -35,7 +35,7 @@ const NAV = [
 ] as const;
 
 export function SiteHeader() {
-  const { user, profile, isCoordination, isAdminMaster, isCamedPresident, loading } = useAuth();
+  const { user, profile, isCoordination, isAdminMaster, isCamedPresident, camedPanelTabs, loading } = useAuth();
   const nav = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
@@ -122,7 +122,7 @@ export function SiteHeader() {
                       <Settings2 className="size-4" /> Painel da Coordenação
                     </DropdownMenuItem>
                   )}
-                  {isCamedPresident && (
+                  {(isCamedPresident || camedPanelTabs.length > 0) && (
                     <DropdownMenuItem onClick={() => nav({ to: "/camed-painel" })}>
                       <Building2 className="size-4" /> Painel do CAMED
                     </DropdownMenuItem>

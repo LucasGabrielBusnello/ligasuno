@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, CAMED_TAB_LABELS, ALL_CAMED_TABS_LIST, type CamedTab } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,35 +11,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle, Mail, MessageSquare, Calendar as CalIcon, Clock, Eye, Phone, Video, MapPin, History, Trophy, Medal, Crown, ChevronDown, ChevronUp, Newspaper } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle, Mail, MessageSquare, Calendar as CalIcon, Clock, Eye, Phone, Video, MapPin, History, Trophy, Medal, Crown, ChevronDown, ChevronUp, Newspaper, KeyRound } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageUpload } from "@/components/image-upload";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
+import { CamedScoringApprovals } from "@/components/camed-scoring-approvals";
 
 export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
 
 function CamedPage() {
-  const { user, profile, loading } = useAuth();
+  const { user, camedPanelTabs, isCamedPresident, isAdminMaster, loading } = useAuth();
   const nav = useNavigate();
-  const [isPresident, setIsPresident] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user) { nav({ to: "/auth" }); return; }
-    if (!profile?.email) return;
-    supabase.from("camed_presidents").select("id").ilike("email", profile.email).maybeSingle()
-      .then(({ data }) => setIsPresident(!!data));
-  }, [loading, user, profile]);
+  }, [loading, user]);
 
-  if (loading || isPresident === null) return <div className="p-12 text-center">Carregando...</div>;
-  if (!isPresident) return (
+  const allowed = isCamedPresident || isAdminMaster || camedPanelTabs.length > 0;
+
+  if (loading) return <div className="p-12 text-center">Carregando...</div>;
+  if (!allowed) return (
     <div className="p-12 text-center max-w-md mx-auto">
       <h1 className="text-2xl font-black">Acesso negado</h1>
-      <p className="text-muted-foreground mt-2">Apenas presidentes do CAMED têm acesso a esta área.</p>
+      <p className="text-muted-foreground mt-2">Apenas presidentes do CAMED ou pessoas autorizadas têm acesso a esta área.</p>
       <Button asChild className="mt-4"><Link to="/">Voltar</Link></Button>
     </div>
   );
+
+  const visible = camedPanelTabs;
+  const first = visible[0] ?? "info";
+
+  const tabDefs: { key: CamedTab; icon: React.ReactNode }[] = [
+    { key: "info", icon: <SettingsIcon className="size-4 mr-1.5" /> },
+    { key: "membros", icon: <UsersIcon className="size-4 mr-1.5" /> },
+    { key: "noticias", icon: <Newspaper className="size-4 mr-1.5" /> },
+    { key: "ligas", icon: <Building2 className="size-4 mr-1.5" /> },
+    { key: "mensagens", icon: <MessageSquare className="size-4 mr-1.5" /> },
+    { key: "horarios", icon: <CalIcon className="size-4 mr-1.5" /> },
+  ];
+  const shown = tabDefs.filter((t) => visible.includes(t.key));
 
   return (
     <div className="min-h-screen">
@@ -53,21 +65,18 @@ function CamedPage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do CAMED</h1>
         <p className="text-muted-foreground mb-6">Gerencie informações, membros e configurações de ligas.</p>
         <MultiLeagueAlert />
-        <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-2 md:grid-cols-6 w-full h-auto">
-            <TabsTrigger value="info" className="py-2"><SettingsIcon className="size-4 mr-1.5" />Info</TabsTrigger>
-            <TabsTrigger value="membros" className="py-2"><UsersIcon className="size-4 mr-1.5" />Membros</TabsTrigger>
-            <TabsTrigger value="noticias" className="py-2"><Newspaper className="size-4 mr-1.5" />Notícias</TabsTrigger>
-            <TabsTrigger value="ligas" className="py-2"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
-            <TabsTrigger value="mensagens" className="py-2"><MessageSquare className="size-4 mr-1.5" />Mensagens</TabsTrigger>
-            <TabsTrigger value="horarios" className="py-2"><CalIcon className="size-4 mr-1.5" />Horários</TabsTrigger>
+        <Tabs defaultValue={first}>
+          <TabsList className="grid w-full h-auto" style={{ gridTemplateColumns: `repeat(${Math.max(shown.length, 1)}, minmax(0, 1fr))` }}>
+            {shown.map((t) => (
+              <TabsTrigger key={t.key} value={t.key} className="py-2">{t.icon}{CAMED_TAB_LABELS[t.key]}</TabsTrigger>
+            ))}
           </TabsList>
-          <TabsContent value="info" className="mt-6"><InfoTab /></TabsContent>
-          <TabsContent value="membros" className="mt-6"><MembersTab /></TabsContent>
-          <TabsContent value="noticias" className="mt-6"><NewsTab /></TabsContent>
-          <TabsContent value="ligas" className="mt-6"><LeaguesSettingsTab /></TabsContent>
-          <TabsContent value="mensagens" className="mt-6"><MessagesTab /></TabsContent>
-          <TabsContent value="horarios" className="mt-6"><SlotsTab /></TabsContent>
+          {visible.includes("info") && <TabsContent value="info" className="mt-6"><InfoTab /></TabsContent>}
+          {visible.includes("membros") && <TabsContent value="membros" className="mt-6"><MembersTab canManageAccess={isCamedPresident || isAdminMaster} /></TabsContent>}
+          {visible.includes("noticias") && <TabsContent value="noticias" className="mt-6"><NewsTab /></TabsContent>}
+          {visible.includes("ligas") && <TabsContent value="ligas" className="mt-6"><LeaguesSettingsTab /></TabsContent>}
+          {visible.includes("mensagens") && <TabsContent value="mensagens" className="mt-6"><MessagesTab /></TabsContent>}
+          {visible.includes("horarios") && <TabsContent value="horarios" className="mt-6"><SlotsTab /></TabsContent>}
         </Tabs>
       </main>
     </div>
@@ -341,7 +350,7 @@ function SlotsTab() {
   );
 }
 
-function MembersTab() {
+function MembersTab({ canManageAccess = false }: { canManageAccess?: boolean }) {
   const [members, setMembers] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
@@ -410,7 +419,102 @@ function MembersTab() {
           </form>
         </DialogContent>
       </Dialog>
+      {canManageAccess && <CamedPanelAccessSection />}
     </Card>
+  );
+}
+
+function CamedPanelAccessSection() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [email, setEmail] = useState("");
+  const [perms, setPerms] = useState<CamedTab[]>([]);
+  const [editing, setEditing] = useState<any | null>(null);
+
+  async function reload() {
+    const { data } = await (supabase as any).from("camed_panel_access").select("*").order("created_at", { ascending: false });
+    setRows(data ?? []);
+  }
+  useEffect(() => { reload(); }, []);
+
+  function toggle(k: CamedTab) {
+    setPerms((p) => p.includes(k) ? p.filter((x) => x !== k) : [...p, k]);
+  }
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    const target = editing?.email?.trim() || email.trim();
+    if (!target) return toast.error("Informe o e-mail");
+    if (perms.length === 0) return toast.error("Selecione ao menos uma aba");
+    const { error } = await (supabase as any).from("camed_panel_access").upsert(
+      { email: target, permissions: perms, updated_at: new Date().toISOString() },
+      { onConflict: "email" }
+    );
+    if (error) return toast.error(error.message);
+    toast.success(editing ? "Permissões atualizadas" : "Acesso concedido");
+    setEmail(""); setPerms([]); setEditing(null);
+    reload();
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Revogar acesso ao painel?")) return;
+    const { error } = await (supabase as any).from("camed_panel_access").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    reload();
+  }
+
+  function beginEdit(r: any) {
+    setEditing(r); setEmail(r.email);
+    setPerms((r.permissions ?? []).filter((k: string): k is CamedTab => (ALL_CAMED_TABS_LIST as readonly string[]).includes(k)));
+  }
+
+  return (
+    <div className="border-t p-6 space-y-4">
+      <div className="flex items-center gap-2">
+        <KeyRound className="size-5 text-primary" />
+        <h3 className="font-black">Adicionar acesso ao Painel do CAMED</h3>
+      </div>
+      <p className="text-xs text-muted-foreground">Conceda acesso parcial ao painel para pessoas registradas no site. A pessoa verá apenas as abas selecionadas.</p>
+      <form onSubmit={save} className="space-y-3 p-4 rounded-lg border bg-muted/30">
+        <div>
+          <Label>E-mail cadastrado no site</Label>
+          <Input type="email" required disabled={!!editing} value={editing?.email ?? email} onChange={(e) => setEmail(e.target.value)} placeholder="pessoa@exemplo.com" />
+        </div>
+        <div>
+          <Label>Abas liberadas</Label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-1">
+            {ALL_CAMED_TABS_LIST.map((k) => (
+              <label key={k} className="flex items-center gap-2 text-sm p-2 rounded border bg-background cursor-pointer">
+                <Checkbox checked={perms.includes(k)} onCheckedChange={() => toggle(k)} />
+                {CAMED_TAB_LABELS[k]}
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button type="submit">{editing ? "Salvar alterações" : "Conceder acesso"}</Button>
+          {editing && <Button type="button" variant="ghost" onClick={() => { setEditing(null); setEmail(""); setPerms([]); }}>Cancelar</Button>}
+        </div>
+      </form>
+      <div className="space-y-2">
+        {rows.length === 0 && <p className="text-xs text-muted-foreground italic">Ninguém adicionado ainda.</p>}
+        {rows.map((r) => (
+          <div key={r.id} className="p-3 rounded border flex items-center justify-between gap-2 flex-wrap">
+            <div className="min-w-0">
+              <div className="font-bold truncate">{r.email}</div>
+              <div className="flex gap-1 flex-wrap mt-1">
+                {(r.permissions ?? []).map((k: string) => (
+                  <Badge key={k} variant="secondary" className="text-[10px]">{CAMED_TAB_LABELS[k as CamedTab] ?? k}</Badge>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={() => beginEdit(r)}><Edit className="size-3" /></Button>
+              <Button size="sm" variant="destructive" onClick={() => remove(r.id)}><Trash2 className="size-3" /></Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -561,6 +665,8 @@ function LeaguesSettingsTab() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <CamedScoringApprovals onChanged={loadLeagues} />
 
       <details className="rounded-xl border bg-card/50">
         <summary className="cursor-pointer p-4 text-sm font-semibold text-muted-foreground hover:text-foreground flex items-center gap-2">
