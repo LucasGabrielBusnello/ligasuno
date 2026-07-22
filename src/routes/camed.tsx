@@ -6,11 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send, BookOpen, Newspaper, ExternalLink } from "lucide-react";
+import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send, BookOpen, Newspaper, ExternalLink, ArrowRight, Images } from "lucide-react";
+
+type HistoryItem = { url: string; caption?: string | null; date?: string | null };
+function normalizeHistory(raw: any): HistoryItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v: any) => (typeof v === "string" ? { url: v } : v && typeof v === "object" && v.url ? v : null))
+    .filter(Boolean) as HistoryItem[];
+}
 
 export const Route = createFileRoute("/camed")({
   head: () => ({
@@ -32,6 +40,7 @@ function CamedPublicPage() {
 
   return (
     <div className="min-h-screen">
+      {/* HERO com ações principais integradas */}
       <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-900 text-white">
         <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
           <Badge className="bg-white/15 border-white/20 backdrop-blur"><Building2 className="size-3 mr-1" /> Centro Acadêmico</Badge>
@@ -40,15 +49,16 @@ function CamedPublicPage() {
           {info?.description && (
             <p className="mt-6 max-w-3xl text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{info.description}</p>
           )}
+
+          <div className="mt-8 flex flex-wrap gap-3">
+            <AnonymousMessageDialog />
+            <BookingDialog />
+          </div>
         </div>
       </section>
 
-      <main className="max-w-6xl mx-auto px-4 py-10 space-y-14">
+      <main className="max-w-6xl mx-auto px-4 py-12 space-y-16">
         <MembersSection />
-        <div className="grid md:grid-cols-2 gap-8">
-          <AnonymousMessageCard />
-          <BookingCard />
-        </div>
         <HistoryShowcase info={info} />
         <NewsSection />
       </main>
@@ -57,7 +67,7 @@ function CamedPublicPage() {
 }
 
 function HistoryShowcase({ info }: { info: any }) {
-  const images: string[] = Array.isArray(info?.history_images) ? info.history_images : [];
+  const images = useMemo<HistoryItem[]>(() => normalizeHistory(info?.history_images), [info]);
   const title: string = info?.history_title || "Conheça a Nossa História";
   const description: string | null = info?.history_description ?? null;
   if (!info) return null;
@@ -73,15 +83,22 @@ function HistoryShowcase({ info }: { info: any }) {
         {description && (
           <p className="text-sm md:text-base text-muted-foreground whitespace-pre-line leading-relaxed">{description}</p>
         )}
+        {images.length > 0 && (
+          <div className="mt-6">
+            <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Link to="/camed-galeria"><Images className="size-4 mr-1.5" /> Expandir galeria completa <ArrowRight className="size-4 ml-1" /></Link>
+            </Button>
+          </div>
+        )}
       </div>
       {images.length > 0 && (
         <div className="relative overflow-hidden pb-8">
           <div className="absolute inset-y-0 left-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to right, var(--background), transparent)" }} />
           <div className="absolute inset-y-0 right-0 w-16 z-10 pointer-events-none" style={{ background: "linear-gradient(to left, var(--background), transparent)" }} />
           <div className="flex gap-4 w-max" style={{ animation: `camed-history-marquee ${Math.max(20, images.length * 6)}s linear infinite` }}>
-            {track.map((src, i) => (
+            {track.map((it, i) => (
               <div key={i} className="relative shrink-0 w-72 md:w-96 aspect-[4/3] rounded-xl overflow-hidden border border-emerald-200/60 dark:border-emerald-900/40 bg-muted shadow-xl">
-                <img src={src} alt="História do CAMED" className="w-full h-full object-cover" />
+                <img src={it.url} alt={it.caption || "História do CAMED"} className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
@@ -168,7 +185,8 @@ function MembersSection() {
   );
 }
 
-function AnonymousMessageCard() {
+function AnonymousMessageDialog() {
+  const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [sending, setSending] = useState(false);
   async function send() {
@@ -180,26 +198,39 @@ function AnonymousMessageCard() {
     if (error) return toast.error(error.message);
     toast.success("Mensagem enviada anonimamente");
     setMsg("");
+    setOpen(false);
   }
   return (
-    <Card className="border-emerald-200/60 dark:border-emerald-900/40">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><MessageSquare className="size-5 text-emerald-600" /> Mensagem anônima</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="text-xs text-muted-foreground flex items-start gap-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40 p-3">
-          <Lock className="size-3.5 mt-0.5 shrink-0" />
-          <span>Sua mensagem é enviada de forma <b>totalmente anônima</b>. Nenhum dado pessoal é armazenado junto com ela.</span>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="lg" className="bg-white text-emerald-900 hover:bg-white/90">
+          <MessageSquare className="size-4 mr-1.5" /> Mensagem anônima
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><MessageSquare className="size-5 text-emerald-600" /> Mensagem anônima</DialogTitle>
+          <DialogDescription>Sua mensagem é enviada de forma <b>totalmente anônima</b>. Nenhum dado pessoal é armazenado junto com ela.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="text-xs text-muted-foreground flex items-start gap-2 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40 p-3">
+            <Lock className="size-3.5 mt-0.5 shrink-0" />
+            <span>Envie sugestões, elogios ou críticas sem se identificar.</span>
+          </div>
+          <Textarea rows={6} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Escreva o que quiser contar ao CAMED..." />
         </div>
-        <Textarea rows={5} value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Escreva o que quiser contar ao CAMED..." />
-        <Button onClick={send} disabled={sending} className="w-full"><Send className="size-4" /> Enviar mensagem</Button>
-      </CardContent>
-    </Card>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <Button onClick={send} disabled={sending}><Send className="size-4 mr-1.5" /> Enviar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function BookingCard() {
+function BookingDialog() {
   const { user, profile } = useAuth();
+  const [open, setOpen] = useState(false);
   const [slots, setSlots] = useState<any[]>([]);
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [picked, setPicked] = useState<any | null>(null);
@@ -212,7 +243,7 @@ function BookingCard() {
     const { data: b } = await supabase.from("camed_bookings").select("slot_id");
     setBusy(new Set((b ?? []).map((x: any) => x.slot_id)));
   }
-  useEffect(() => { reload(); }, []);
+  useEffect(() => { if (open) reload(); }, [open]);
 
   const available = useMemo(() => slots.filter((s) => !busy.has(s.id)), [slots, busy]);
 
@@ -236,44 +267,53 @@ function BookingCard() {
     toast.success("Agendamento confirmado");
     setPicked(null);
     setForm({ modality: "presencial", reason: "", phone: profile?.phone ?? "", extra: "" });
+    setOpen(false);
     reload();
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><CalIcon className="size-5 text-primary" /> Agendar horário</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {!user && (
-          <div className="text-xs rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-3">
-            <Lock className="size-3.5 inline mr-1" /> Faça <Link to="/auth" className="underline font-semibold">login</Link> para agendar um atendimento.
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button size="lg" variant="outline" className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white">
+            <CalIcon className="size-4 mr-1.5" /> Agendar horário
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><CalIcon className="size-5 text-primary" /> Agendar horário com o CAMED</DialogTitle>
+            <DialogDescription>Escolha um horário disponível abaixo.</DialogDescription>
+          </DialogHeader>
+          {!user && (
+            <div className="text-xs rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-3">
+              <Lock className="size-3.5 inline mr-1" /> Faça <Link to="/auth" className="underline font-semibold">login</Link> para agendar um atendimento.
+            </div>
+          )}
+          {available.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Nenhum horário disponível no momento.</p>}
+          <div className="grid sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto">
+            {available.map((s) => {
+              const dt = new Date(s.slot_at);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  disabled={!user}
+                  onClick={() => { setPicked(s); setForm((f) => ({ ...f, modality: s.allow_in_person ? "presencial" : "online", phone: profile?.phone ?? "" })); }}
+                  className="text-left rounded-xl border border-emerald-400/40 hover:border-emerald-500 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 p-3 transition disabled:opacity-50"
+                >
+                  <div className="text-xs opacity-70 capitalize">{dt.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "short" })}</div>
+                  <div className="font-black flex items-center gap-1.5"><Clock className="size-3.5" /> {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div>
+                  <div className="flex gap-1.5 mt-1.5">
+                    {s.allow_online && <Badge variant="outline" className="text-[10px]"><Video className="size-3 mr-1" />Online</Badge>}
+                    {s.allow_in_person && <Badge variant="outline" className="text-[10px]"><MapPin className="size-3 mr-1" />Presencial</Badge>}
+                  </div>
+                  {s.attendant_name && <div className="text-[11px] text-muted-foreground mt-1">Atendente: <b>{s.attendant_name}</b></div>}
+                </button>
+              );
+            })}
           </div>
-        )}
-        {available.length === 0 && <p className="text-sm text-muted-foreground">Nenhum horário disponível no momento.</p>}
-        <div className="grid sm:grid-cols-2 gap-3">
-          {available.map((s) => {
-            const dt = new Date(s.slot_at);
-            return (
-              <button
-                key={s.id}
-                type="button"
-                disabled={!user}
-                onClick={() => { setPicked(s); setForm((f) => ({ ...f, modality: s.allow_in_person ? "presencial" : "online", phone: profile?.phone ?? "" })); }}
-                className="text-left rounded-xl border border-emerald-400/40 hover:border-emerald-500 hover:bg-emerald-50/60 dark:hover:bg-emerald-950/20 p-3 transition disabled:opacity-50"
-              >
-                <div className="text-xs opacity-70 capitalize">{dt.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "short" })}</div>
-                <div className="font-black flex items-center gap-1.5"><Clock className="size-3.5" /> {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</div>
-                <div className="flex gap-1.5 mt-1.5">
-                  {s.allow_online && <Badge variant="outline" className="text-[10px]"><Video className="size-3 mr-1" />Online</Badge>}
-                  {s.allow_in_person && <Badge variant="outline" className="text-[10px]"><MapPin className="size-3 mr-1" />Presencial</Badge>}
-                </div>
-                {s.attendant_name && <div className="text-[11px] text-muted-foreground mt-1">Atendente: <b>{s.attendant_name}</b></div>}
-              </button>
-            );
-          })}
-        </div>
-      </CardContent>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!picked} onOpenChange={(o) => !o && setPicked(null)}>
         <DialogContent>
@@ -312,6 +352,6 @@ function BookingCard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </>
   );
 }
