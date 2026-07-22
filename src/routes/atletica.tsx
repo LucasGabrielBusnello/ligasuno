@@ -319,6 +319,7 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
       ...f, buyer_name: f.buyer_name || profile.full_name || "",
       buyer_email: f.buyer_email || profile.email || "",
       buyer_phone: f.buyer_phone || profile.phone || "",
+      buyer_cpf: f.buyer_cpf || (profile.cpf ? formatCpfMask(profile.cpf) : ""),
     }));
   }, [open, profile]);
   useEffect(() => {
