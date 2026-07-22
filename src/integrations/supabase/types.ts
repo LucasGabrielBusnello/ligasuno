@@ -491,6 +491,7 @@ export type Database = {
           created_at: string
           ends_at: string
           id: string
+          is_current: boolean
           name: string
           open: boolean
           price_new: number
@@ -503,6 +504,7 @@ export type Database = {
           created_at?: string
           ends_at: string
           id?: string
+          is_current?: boolean
           name: string
           open?: boolean
           price_new: number
@@ -515,6 +517,7 @@ export type Database = {
           created_at?: string
           ends_at?: string
           id?: string
+          is_current?: boolean
           name?: string
           open?: boolean
           price_new?: number
