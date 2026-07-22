@@ -961,8 +961,8 @@ function VisitsAdmin() {
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="total" name="Visitas totais" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unique" name="Visitantes únicos" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total" name="Visitas totais" fill="#f97316" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="unique" name="Visitantes únicos" fill="#22c55e" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
