@@ -666,6 +666,8 @@ function LeaguesSettingsTab() {
         </DialogContent>
       </Dialog>
 
+      <CamedScoringApprovals onChanged={loadLeagues} />
+
       <details className="rounded-xl border bg-card/50">
         <summary className="cursor-pointer p-4 text-sm font-semibold text-muted-foreground hover:text-foreground flex items-center gap-2">
           <SettingsIcon className="size-4" /> Valores padrão das ligas
