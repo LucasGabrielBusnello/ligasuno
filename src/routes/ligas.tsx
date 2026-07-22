@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { League } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Activity, ArrowRight, Users } from "lucide-react";
+import { AdsBanner } from "@/components/ads-banner";
 
 export const Route = createFileRoute("/ligas")({
   head: () => ({
