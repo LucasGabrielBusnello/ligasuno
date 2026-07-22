@@ -460,16 +460,34 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   const [open, setOpen] = useState(false);
   const { profile } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [currentCycle, setCurrentCycle] = useState<{ id: string; name: string; ends_at: string; price_new: number } | null>(null);
   const [form, setForm] = useState({
-    full_name: profile?.full_name ?? "", email: profile?.email ?? "", phone: profile?.phone ?? "",
+    full_name: "", email: "", phone: "",
     cpf: "", matricula: "", semestre: "",
   });
+  // Prefill do perfil (CPF, matrícula, turma/semestre)
   useEffect(() => {
-    if (profile) setForm((f) => ({
-      ...f, full_name: f.full_name || profile.full_name || "",
-      email: f.email || profile.email || "", phone: f.phone || profile.phone || "",
+    if (!profile) return;
+    setForm((f) => ({
+      full_name: f.full_name || profile.full_name || "",
+      email: f.email || profile.email || "",
+      phone: f.phone || profile.phone || "",
+      cpf: f.cpf || (profile.cpf ? formatCpfMask(profile.cpf) : ""),
+      matricula: f.matricula || profile.matricula || "",
+      semestre: f.semestre || (profile.current_semester != null ? String(profile.current_semester) : ""),
     }));
   }, [profile]);
+  // Busca ciclo atual da atlética
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("athletic_membership_cycles")
+      .select("id,name,ends_at,price_new,is_current,open")
+      .eq("athletic_id", athletic.id)
+      .eq("is_current", true)
+      .maybeSingle()
+      .then(({ data }) => setCurrentCycle(data ? (data as any) : null));
+  }, [open, athletic.id]);
   const request = useServerFn(requestSelfMembership);
   const createPix = useServerFn(createMembershipPixPayment);
   const createCard = useServerFn(createMembershipCardPayment);
@@ -477,12 +495,13 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   const [pixOpen, setPixOpen] = useState(false);
   const [method, setMethod] = useState<"pix" | "card">("pix");
   const { user } = useAuth();
+  const displayPrice = currentCycle ? Number(currentCycle.price_new) : Number(athletic.membership_price);
   if (!user) {
     return (
       <Button asChild size="lg"
         className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:opacity-95 transition"
         style={{ background: athletic.primary_color }}>
-        <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}</Link>
+        <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {displayPrice.toFixed(2)}</Link>
       </Button>
     );
   }
@@ -491,7 +510,7 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
       <Button size="lg" onClick={() => setOpen(true)}
         className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:opacity-95 transition text-white border-0"
         style={{ background: athletic.primary_color }}>
-        <Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}
+        <Crown className="size-5" /> Associar-se • R$ {displayPrice.toFixed(2)}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -499,7 +518,14 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
           <DialogHeader>
             <DialogTitle>Associar-se à {athletic.name}</DialogTitle>
             <DialogDescription>
-              Preencha seus dados. Após confirmar, a associação é liberada automaticamente por {athletic.membership_period_days} dias.
+              {currentCycle ? (
+                <>
+                  Ciclo vigente <strong>{currentCycle.name}</strong>. Após confirmar o pagamento, você será sócio(a) até{" "}
+                  <strong>{new Date(currentCycle.ends_at).toLocaleDateString("pt-BR")}</strong> (fim do ciclo atual).
+                </>
+              ) : (
+                <>Preencha seus dados. A liberação ocorre assim que o pagamento for confirmado.</>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -560,6 +586,14 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
       <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title="Pix — Associação AAAMD" />
     </>
   );
+}
+
+function formatCpfMask(v: string) {
+  const d = (v || "").replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
 
