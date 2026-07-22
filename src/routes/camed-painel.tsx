@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, CAMED_TAB_LABELS, ALL_CAMED_TABS_LIST, type CamedTab } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,35 +11,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle, Mail, MessageSquare, Calendar as CalIcon, Clock, Eye, Phone, Video, MapPin, History, Trophy, Medal, Crown, ChevronDown, ChevronUp, Newspaper } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Users as UsersIcon, Settings as SettingsIcon, Building2, AlertTriangle, Mail, MessageSquare, Calendar as CalIcon, Clock, Eye, Phone, Video, MapPin, History, Trophy, Medal, Crown, ChevronDown, ChevronUp, Newspaper, KeyRound } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageUpload } from "@/components/image-upload";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
+import { CamedScoringApprovals } from "@/components/camed-scoring-approvals";
 
 export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
 
 function CamedPage() {
-  const { user, profile, loading } = useAuth();
+  const { user, camedPanelTabs, isCamedPresident, isAdminMaster, loading } = useAuth();
   const nav = useNavigate();
-  const [isPresident, setIsPresident] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user) { nav({ to: "/auth" }); return; }
-    if (!profile?.email) return;
-    supabase.from("camed_presidents").select("id").ilike("email", profile.email).maybeSingle()
-      .then(({ data }) => setIsPresident(!!data));
-  }, [loading, user, profile]);
+  }, [loading, user]);
 
-  if (loading || isPresident === null) return <div className="p-12 text-center">Carregando...</div>;
-  if (!isPresident) return (
+  const allowed = isCamedPresident || isAdminMaster || camedPanelTabs.length > 0;
+
+  if (loading) return <div className="p-12 text-center">Carregando...</div>;
+  if (!allowed) return (
     <div className="p-12 text-center max-w-md mx-auto">
       <h1 className="text-2xl font-black">Acesso negado</h1>
-      <p className="text-muted-foreground mt-2">Apenas presidentes do CAMED têm acesso a esta área.</p>
+      <p className="text-muted-foreground mt-2">Apenas presidentes do CAMED ou pessoas autorizadas têm acesso a esta área.</p>
       <Button asChild className="mt-4"><Link to="/">Voltar</Link></Button>
     </div>
   );
+
+  const visible = camedPanelTabs;
+  const first = visible[0] ?? "info";
+
+  const tabDefs: { key: CamedTab; icon: JSX.Element }[] = [
+    { key: "info", icon: <SettingsIcon className="size-4 mr-1.5" /> },
+    { key: "membros", icon: <UsersIcon className="size-4 mr-1.5" /> },
+    { key: "noticias", icon: <Newspaper className="size-4 mr-1.5" /> },
+    { key: "ligas", icon: <Building2 className="size-4 mr-1.5" /> },
+    { key: "mensagens", icon: <MessageSquare className="size-4 mr-1.5" /> },
+    { key: "horarios", icon: <CalIcon className="size-4 mr-1.5" /> },
+  ];
+  const shown = tabDefs.filter((t) => visible.includes(t.key));
 
   return (
     <div className="min-h-screen">
@@ -53,21 +65,18 @@ function CamedPage() {
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do CAMED</h1>
         <p className="text-muted-foreground mb-6">Gerencie informações, membros e configurações de ligas.</p>
         <MultiLeagueAlert />
-        <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-2 md:grid-cols-6 w-full h-auto">
-            <TabsTrigger value="info" className="py-2"><SettingsIcon className="size-4 mr-1.5" />Info</TabsTrigger>
-            <TabsTrigger value="membros" className="py-2"><UsersIcon className="size-4 mr-1.5" />Membros</TabsTrigger>
-            <TabsTrigger value="noticias" className="py-2"><Newspaper className="size-4 mr-1.5" />Notícias</TabsTrigger>
-            <TabsTrigger value="ligas" className="py-2"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
-            <TabsTrigger value="mensagens" className="py-2"><MessageSquare className="size-4 mr-1.5" />Mensagens</TabsTrigger>
-            <TabsTrigger value="horarios" className="py-2"><CalIcon className="size-4 mr-1.5" />Horários</TabsTrigger>
+        <Tabs defaultValue={first}>
+          <TabsList className="grid w-full h-auto" style={{ gridTemplateColumns: `repeat(${Math.max(shown.length, 1)}, minmax(0, 1fr))` }}>
+            {shown.map((t) => (
+              <TabsTrigger key={t.key} value={t.key} className="py-2">{t.icon}{CAMED_TAB_LABELS[t.key]}</TabsTrigger>
+            ))}
           </TabsList>
-          <TabsContent value="info" className="mt-6"><InfoTab /></TabsContent>
-          <TabsContent value="membros" className="mt-6"><MembersTab /></TabsContent>
-          <TabsContent value="noticias" className="mt-6"><NewsTab /></TabsContent>
-          <TabsContent value="ligas" className="mt-6"><LeaguesSettingsTab /></TabsContent>
-          <TabsContent value="mensagens" className="mt-6"><MessagesTab /></TabsContent>
-          <TabsContent value="horarios" className="mt-6"><SlotsTab /></TabsContent>
+          {visible.includes("info") && <TabsContent value="info" className="mt-6"><InfoTab /></TabsContent>}
+          {visible.includes("membros") && <TabsContent value="membros" className="mt-6"><MembersTab canManageAccess={isCamedPresident || isAdminMaster} /></TabsContent>}
+          {visible.includes("noticias") && <TabsContent value="noticias" className="mt-6"><NewsTab /></TabsContent>}
+          {visible.includes("ligas") && <TabsContent value="ligas" className="mt-6"><LeaguesSettingsTab /></TabsContent>}
+          {visible.includes("mensagens") && <TabsContent value="mensagens" className="mt-6"><MessagesTab /></TabsContent>}
+          {visible.includes("horarios") && <TabsContent value="horarios" className="mt-6"><SlotsTab /></TabsContent>}
         </Tabs>
       </main>
     </div>
