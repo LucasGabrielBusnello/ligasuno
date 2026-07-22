@@ -35,7 +35,7 @@ const NAV = [
 ] as const;
 
 export function SiteHeader() {
-  const { user, profile, isCoordination, isAdminMaster, isCamedPresident, loading } = useAuth();
+  const { user, profile, isCoordination, isAdminMaster, isCamedPresident, camedPanelTabs, loading } = useAuth();
   const nav = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
