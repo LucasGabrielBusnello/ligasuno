@@ -692,13 +692,13 @@ function AdsAdmin() {
   );
 }
 
-function AdDialog({ open, setOpen, row, onSaved }: any) {
-  const [f, setF] = useState({ title: "", image_url: "", redirect_url: "", active: true, start_date: "", end_date: "" });
+function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
+  const [f, setF] = useState({ title: "", image_url: "", redirect_url: "", active: true, start_date: "", end_date: "", placement: "home" as "home" | "ligas" });
   useEffect(() => {
     const iso = (v: string | null | undefined) => v ? v.slice(0, 10) : "";
-    if (row) setF({ title: row.title, image_url: row.image_url ?? "", redirect_url: row.redirect_url ?? "", active: !!row.active, start_date: iso(row.start_date), end_date: iso(row.end_date) });
-    else setF({ title: "", image_url: "", redirect_url: "", active: true, start_date: new Date().toISOString().slice(0, 10), end_date: "" });
-  }, [row, open]);
+    if (row && row.id) setF({ title: row.title, image_url: row.image_url ?? "", redirect_url: row.redirect_url ?? "", active: !!row.active, start_date: iso(row.start_date), end_date: iso(row.end_date), placement: (row.placement ?? "home") as any });
+    else setF({ title: "", image_url: "", redirect_url: "", active: true, start_date: new Date().toISOString().slice(0, 10), end_date: "", placement: (row?.placement ?? defaultPlacement ?? "home") as any });
+  }, [row, open, defaultPlacement]);
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!f.image_url) return toast.error("Envie uma imagem para o anúncio.");
@@ -707,11 +707,12 @@ function AdDialog({ open, setOpen, row, onSaved }: any) {
       image_url: f.image_url,
       redirect_url: f.redirect_url || null,
       active: f.active,
+      placement: f.placement,
       start_date: f.start_date ? new Date(f.start_date).toISOString() : new Date().toISOString(),
       end_date: f.end_date ? new Date(f.end_date).toISOString() : null,
     };
     let err;
-    if (row) ({ error: err } = await supabase.from("ads").update(payload).eq("id", row.id));
+    if (row && row.id) ({ error: err } = await supabase.from("ads").update(payload).eq("id", row.id));
     else ({ error: err } = await supabase.from("ads").insert(payload));
     if (err) return toast.error(err.message);
     toast.success("Salvo"); setOpen(false); onSaved();
@@ -719,8 +720,17 @@ function AdDialog({ open, setOpen, row, onSaved }: any) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{row ? "Editar anúncio" : "Novo anúncio"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{row && row.id ? "Editar anúncio" : "Novo anúncio"}</DialogTitle></DialogHeader>
         <form onSubmit={save} className="space-y-3">
+          <div>
+            <Label>Local de exibição</Label>
+            <Tabs value={f.placement} onValueChange={(v) => setF({ ...f, placement: v as any })} className="mt-1.5">
+              <TabsList className="grid grid-cols-2 w-full">
+                <TabsTrigger value="home">Hub Inicial</TabsTrigger>
+                <TabsTrigger value="ligas">Página Ligas</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
           <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
           <div><ImageUpload label="Imagem (proporção 3:1 recomendada)" folder="ads" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
           <div><Label>URL de redirecionamento (opcional)</Label><Input type="url" value={f.redirect_url} onChange={(e) => setF({ ...f, redirect_url: e.target.value })} placeholder="https://..." /></div>
