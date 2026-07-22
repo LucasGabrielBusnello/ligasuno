@@ -35,6 +35,9 @@ export type Membership = {
   role: "admin_master" | "presidente" | "diretor" | "ligante" | "visitante";
 };
 
+const ALL_CAMED_TABS = ["info", "membros", "noticias", "ligas", "mensagens", "horarios"] as const;
+export type CamedTab = (typeof ALL_CAMED_TABS)[number];
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -42,6 +45,7 @@ export function useAuth() {
   const [isAdminMaster, setIsAdminMaster] = useState(false);
   const [isCoordination, setIsCoordination] = useState(false);
   const [isCamedPresident, setIsCamedPresident] = useState(false);
+  const [camedPanelTabs, setCamedPanelTabs] = useState<CamedTab[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -53,6 +57,7 @@ export function useAuth() {
         setIsAdminMaster(false);
         setIsCoordination(false);
         setIsCamedPresident(false);
+        setCamedPanelTabs([]);
         setLoading(false);
       } else {
         loadExtras(sess.user.id);
@@ -83,18 +88,40 @@ export function useAuth() {
       if (cs) coordFinal = true;
     }
     setIsCoordination(coordFinal);
+    let camedPres = false;
     if ((p as any)?.email) {
       const { data: cp } = await supabase
         .from("camed_presidents").select("id").ilike("email", (p as any).email).maybeSingle();
-      setIsCamedPresident(!!cp);
+      camedPres = !!cp;
+      setIsCamedPresident(camedPres);
     } else {
       setIsCamedPresident(false);
+    }
+    if (admin || camedPres) {
+      setCamedPanelTabs([...ALL_CAMED_TABS]);
+    } else if ((p as any)?.email) {
+      const { data: cpa } = await (supabase as any)
+        .from("camed_panel_access").select("permissions").ilike("email", (p as any).email).maybeSingle();
+      const arr = ((cpa as any)?.permissions ?? []) as string[];
+      setCamedPanelTabs(arr.filter((k): k is CamedTab => (ALL_CAMED_TABS as readonly string[]).includes(k)));
+    } else {
+      setCamedPanelTabs([]);
     }
     setLoading(false);
   }
 
-  return { user, session, profile, isAdminMaster, isCoordination, isCamedPresident, loading };
+  return { user, session, profile, isAdminMaster, isCoordination, isCamedPresident, camedPanelTabs, loading };
 }
+
+export const CAMED_TAB_LABELS: Record<CamedTab, string> = {
+  info: "Info",
+  membros: "Membros",
+  noticias: "Notícias",
+  ligas: "Ligas",
+  mensagens: "Mensagens",
+  horarios: "Horários",
+};
+export const ALL_CAMED_TABS_LIST = ALL_CAMED_TABS;
 
 export async function signOut() {
   await supabase.auth.signOut();
