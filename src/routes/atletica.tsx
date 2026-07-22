@@ -2600,7 +2600,7 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setEditing({
             athletic_id: athletic.id, name: "", starts_at: "", ends_at: "",
-            price_new: athletic.membership_price ?? 0, price_renewal: athletic.membership_price ?? 0, open: true,
+            price_new: athletic.membership_price ?? 0, price_renewal: athletic.membership_price ?? 0, open: true, is_current: false,
           })}><Plus className="size-4" /> Novo ciclo</Button>
         </div>
 
@@ -2609,7 +2609,12 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
           {cycles.map((c) => (
             <div key={c.id} className="flex flex-col md:flex-row md:items-center gap-2 p-3 rounded-lg bg-black/30 border border-white/10">
               <div className="flex-1">
-                <div className="font-bold">{c.name}</div>
+                <div className="font-bold flex items-center gap-2">
+                  {c.name}
+                  {c.is_current && (
+                    <Badge className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[10px]">Ciclo atual</Badge>
+                  )}
+                </div>
                 <div className="text-xs opacity-70">
                   {new Date(c.starts_at).toLocaleDateString("pt-BR")} → {new Date(c.ends_at).toLocaleDateString("pt-BR")}
                   {" · "}Novo R$ {Number(c.price_new).toFixed(2)} · Renovação R$ {Number(c.price_renewal).toFixed(2)}
@@ -2646,6 +2651,11 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
                   <input type="checkbox" checked={editing.open ?? true} onChange={(e) => setEditing({ ...editing, open: e.target.checked })} />
                   Ciclo aberto (aceita associações)
                 </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={!!editing.is_current} onChange={(e) => setEditing({ ...editing, is_current: e.target.checked })} />
+                  Definir como <strong>ciclo atual</strong> (novas associações usam este ciclo e a validade termina no fim dele)
+                </label>
+                <p className="text-[11px] opacity-60">Só pode haver um ciclo marcado como atual por atlética. Marcar este desmarca os demais.</p>
               </div>
             )}
             <DialogFooter>
@@ -2656,7 +2666,7 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
                     id: editing.id, athletic_id: athletic.id, name: editing.name,
                     starts_at: editing.starts_at, ends_at: editing.ends_at,
                     price_new: Number(editing.price_new) || 0, price_renewal: Number(editing.price_renewal) || 0,
-                    open: !!editing.open,
+                    open: !!editing.open, is_current: !!editing.is_current,
                   } });
                   toast.success("Salvo"); setEditing(null); reload();
                 } catch (err: any) { toast.error(err?.message); }
