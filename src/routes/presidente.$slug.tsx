@@ -1301,7 +1301,7 @@ function MembersTab({ league }: any) {
   const reload = async () => {
     const { data: memberships, error: membershipsError } = await supabase
       .from("league_memberships")
-      .select("id, league_id, user_id, role, created_at")
+      .select("id, league_id, user_id, role, permissions, created_at")
       .eq("league_id", league.id)
       .order("created_at", { ascending: true });
 
