@@ -1839,7 +1839,7 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                     onClick={() => setManualFor(p)}>
                     <Plus className="size-3.5 mr-1" /> Venda manual
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1 border-white/20"
+                  <Button size="sm" variant="outline" className="flex-1 bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"
                     onClick={() => setDeliveriesFor(deliveriesFor === p.id ? null : p.id)}>
                     <Paperclip className="size-3.5 mr-1" /> Entregas
                   </Button>
