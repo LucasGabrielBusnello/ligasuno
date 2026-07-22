@@ -27,6 +27,9 @@ function LigasPage() {
   }, []);
   return (
     <main className="max-w-7xl mx-auto px-4 py-12">
+      <div className="mb-10">
+        <AdsBanner placement="ligas" className="" />
+      </div>
       <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-3">
           <Users className="size-3.5" /> Ligas
