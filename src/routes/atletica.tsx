@@ -1567,9 +1567,11 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                   <div className="font-bold">{p.buyer_name} — R$ {Number(p.amount).toFixed(2)}</div>
                   <div className="opacity-70 text-xs">{p.buyer_email} • Matr {p.matricula} • {p.semestre}º sem • CPF {p.buyer_cpf}</div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {["pix", "dinheiro", "cartao"].map((m) => (
-                    <Button key={m} size="sm" variant="outline" onClick={async () => {
+                    <Button key={m} size="sm" variant="outline"
+                      className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white capitalize"
+                      onClick={async () => {
                       try { await confirm({ data: { athletic_id: athletic.id, payment_id: p.id, method: m as any } }); toast.success("Confirmado"); reload(); } catch (e: any) { toast.error(e?.message); }
                     }}>{m}</Button>
                   ))}
