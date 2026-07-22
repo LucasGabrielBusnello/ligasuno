@@ -59,10 +59,79 @@ function CamedPublicPage() {
 
       <main className="max-w-6xl mx-auto px-4 py-12 space-y-16">
         <MembersSection />
+        <OpenActivitiesSection />
         <HistoryShowcase info={info} />
         <NewsSection />
       </main>
     </div>
+  );
+}
+
+function OpenActivitiesSection() {
+  const [items, setItems] = useState<any[]>([]);
+  const [leaguesMap, setLeaguesMap] = useState<Record<string, { name: string; icon_url: string | null; slug: string }>>({});
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase.from("league_activities") as any)
+        .select("id, title, description, image_url, participating_league_ids, league_id, created_at")
+        .eq("is_open", true)
+        .order("created_at", { ascending: false })
+        .limit(12);
+      const acts = (data as any[]) ?? [];
+      setItems(acts);
+      const ids = new Set<string>();
+      acts.forEach((a) => { ids.add(a.league_id); (a.participating_league_ids ?? []).forEach((x: string) => ids.add(x)); });
+      if (ids.size > 0) {
+        const { data: ls } = await supabase.from("leagues").select("id,name,icon_url,slug").in("id", Array.from(ids));
+        const map: Record<string, any> = {};
+        (ls ?? []).forEach((l: any) => { map[l.id] = l; });
+        setLeaguesMap(map);
+      }
+    })();
+  }, []);
+  if (items.length === 0) return null;
+  return (
+    <section>
+      <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
+        <UsersIcon className="size-6 text-emerald-600" /> Atividades abertas das ligas
+      </h2>
+      <p className="text-sm text-muted-foreground mb-6">Atividades interligas abertas a toda comunidade acadêmica.</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {items.map((a) => {
+          const host = leaguesMap[a.league_id];
+          const partners = (a.participating_league_ids ?? []).map((id: string) => leaguesMap[id]).filter(Boolean);
+          const all = [host, ...partners].filter(Boolean);
+          return (
+            <Card key={a.id} className="overflow-hidden hover:shadow-md transition-shadow border-emerald-200/40 dark:border-emerald-900/30">
+              {a.image_url && (
+                <div className="aspect-video bg-muted overflow-hidden">
+                  <img src={a.image_url} alt={a.title} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <CardContent className="p-4">
+                {all.length > 0 && (
+                  <div className="flex items-center -space-x-2 mb-2">
+                    {all.slice(0, 6).map((l: any, i: number) => (
+                      l.icon_url
+                        ? <img key={i} src={l.icon_url} title={l.name} alt={l.name} className="size-7 rounded-full ring-2 ring-background object-cover bg-muted" />
+                        : <div key={i} title={l.name} className="size-7 rounded-full ring-2 ring-background bg-muted flex items-center justify-center text-[10px] font-bold">{l.name?.[0]}</div>
+                    ))}
+                    {all.length > 6 && <span className="ml-3 text-[10px] text-muted-foreground">+{all.length - 6}</span>}
+                  </div>
+                )}
+                <h4 className="font-black leading-tight">{a.title}</h4>
+                {a.description && <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3 whitespace-pre-line">{a.description}</p>}
+                {all.length > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-2 truncate">
+                    Ligas: {all.map((l: any) => l.name).join(" · ")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
