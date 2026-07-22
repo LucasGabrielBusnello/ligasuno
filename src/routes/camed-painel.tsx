@@ -350,7 +350,7 @@ function SlotsTab() {
   );
 }
 
-function MembersTab() {
+function MembersTab({ canManageAccess = false }: { canManageAccess?: boolean }) {
   const [members, setMembers] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
