@@ -1443,6 +1443,50 @@ function MembersTab({ league }: any) {
     </CardContent></Card>
   );
 }
+export const DIRECTOR_TAB_KEYS = ["config", "about", "eventos", "news", "quiz", "scoring", "atividades", "membros"] as const;
+export type DirectorTab = typeof DIRECTOR_TAB_KEYS[number];
+export const DIRECTOR_TAB_LABELS: Record<DirectorTab, string> = {
+  config: "Config", about: "Sobre", eventos: "Eventos", news: "Notícias", quiz: "Quizzes", scoring: "Pontuação", atividades: "Atividades", membros: "Membros",
+};
+
+function DirectorPermissionsButton({ membership, onSaved }: { membership: any; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const initial: DirectorTab[] = ((membership.permissions ?? DIRECTOR_TAB_KEYS) as string[])
+    .filter((k): k is DirectorTab => (DIRECTOR_TAB_KEYS as readonly string[]).includes(k));
+  const [perms, setPerms] = useState<DirectorTab[]>(initial);
+
+  function toggle(k: DirectorTab) {
+    setPerms((p) => p.includes(k) ? p.filter((x) => x !== k) : [...p, k]);
+  }
+  async function save() {
+    const { error } = await (supabase as any).from("league_memberships").update({ permissions: perms }).eq("id", membership.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Permissões atualizadas");
+    setOpen(false);
+    onSaved();
+  }
+  return (
+    <>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} title="Permissões"><KeyRound className="size-3" /></Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Abas do Painel do Diretor</DialogTitle></DialogHeader>
+          <p className="text-xs text-muted-foreground">Selecione quais abas este diretor pode acessar.</p>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {DIRECTOR_TAB_KEYS.map((k) => (
+              <label key={k} className="flex items-center gap-2 text-sm p-2 rounded border bg-background cursor-pointer">
+                <Checkbox checked={perms.includes(k)} onCheckedChange={() => toggle(k)} />
+                {DIRECTOR_TAB_LABELS[k]}
+              </label>
+            ))}
+          </div>
+          <DialogFooter><Button onClick={save}>Salvar</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 
 function LeaveRequestsPanel({ league, onProcessed }: { league: any; onProcessed: () => void }) {
   const listFn = useServerFn(listLeagueLeaveRequests);
