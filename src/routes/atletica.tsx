@@ -2911,6 +2911,13 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
         {description && (
           <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
         )}
+        {images.length > 0 && (
+          <div className="mt-5">
+            <Button asChild size="sm" variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10">
+              <Link to="/atletica-galeria"><Images className="size-4 mr-1.5" /> Expandir galeria completa <ArrowRight className="size-4 ml-1" /></Link>
+            </Button>
+          </div>
+        )}
       </div>
       {images.length > 0 && (
         <div className="relative overflow-hidden pb-8">
