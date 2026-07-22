@@ -1248,11 +1248,14 @@ function NewsTab({ league }: any) {
 export function ActivitiesTab({ league }: any) {
   const [list, setList] = useState<any[]>([]);
   const [otherLeagues, setOtherLeagues] = useState<any[]>([]);
-  const [f, setF] = useState({ image_url: "", caption: "" });
-  const [openDlg, setOpenDlg] = useState(false);
+  const emptyInternal = { image_url: "", caption: "" };
+  const [internalForm, setInternalForm] = useState(emptyInternal);
+  const [internalDlg, setInternalDlg] = useState(false);
   const emptyOpen = { image_url: "", title: "", description: "", participating_league_ids: [] as string[] };
   const [openForm, setOpenForm] = useState(emptyOpen);
+  const [openDlg, setOpenDlg] = useState(false);
   const deleteFiles = useServerFn(deleteStorageFiles);
+
   const reload = async () => {
     const { data } = await supabase.from("league_activities").select("*").eq("league_id", league.id).order("display_order");
     setList(data ?? []);
@@ -1262,12 +1265,19 @@ export function ActivitiesTab({ league }: any) {
     supabase.from("leagues").select("id,name,icon_url").eq("published", true).neq("id", league.id).order("name")
       .then(({ data }) => setOtherLeagues(data ?? []));
   }, [league.id]);
-  async function add(e: React.FormEvent) {
+
+  async function addInternal(e: React.FormEvent) {
     e.preventDefault();
-    if (!f.image_url) return toast.error("Imagem obrigatória");
-    const { error } = await supabase.from("league_activities").insert({ ...f, league_id: league.id, display_order: list.length });
+    if (!internalForm.image_url) return toast.error("Imagem obrigatória");
+    const { error } = await supabase.from("league_activities").insert({
+      league_id: league.id,
+      display_order: list.length,
+      image_url: internalForm.image_url,
+      caption: internalForm.caption.trim() || null,
+    });
     if (error) return toast.error(error.message);
-    setF({ image_url: "", caption: "" }); reload();
+    toast.success("Atividade adicionada");
+    setInternalForm(emptyInternal); setInternalDlg(false); reload();
   }
   async function addOpen(e: React.FormEvent) {
     e.preventDefault();
@@ -1302,40 +1312,86 @@ export function ActivitiesTab({ league }: any) {
     if (a?.image_url) { try { await deleteFiles({ data: { paths: [a.image_url] } }); } catch {} }
     reload();
   }
+
+  const internal = list.filter((a: any) => !a.is_open);
+  const opens = list.filter((a: any) => a.is_open);
+
   return (
-    <Card><CardContent className="p-6 space-y-4">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-sm text-muted-foreground">Registre momentos internos ou <b>atividades abertas</b> (interligas) visíveis no painel do CAMED.</p>
-        <Button type="button" variant="secondary" onClick={() => setOpenDlg(true)}>
-          <Plus className="size-4 mr-1" /> Registrar Atividade Aberta
-        </Button>
+    <Card><CardContent className="p-6 space-y-6">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="font-black text-lg">Atividades da liga</h3>
+          <p className="text-sm text-muted-foreground">Registre momentos internos da liga ou <b>atividades abertas</b> (interligas) exibidas no painel do CAMED.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={() => setInternalDlg(true)}>
+            <Plus className="size-4 mr-1" /> Adicionar atividade
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setOpenDlg(true)}>
+            <Plus className="size-4 mr-1" /> Registrar atividade aberta
+          </Button>
+        </div>
       </div>
-      <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-2 items-end">
-        <ImageUpload label="Imagem" folder="activities" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} />
-        <Input placeholder="Legenda (opcional)" value={f.caption} onChange={(e) => setF({ ...f, caption: e.target.value })} />
-        <Button type="submit"><Plus className="size-4" /> Adicionar</Button>
-      </form>
-      <div className="grid sm:grid-cols-3 gap-3">
-        {list.map((a: any) => (
-          <Card key={a.id} className="overflow-hidden relative group">
-            <img src={a.image_url} className="aspect-video w-full object-cover" />
-            {a.is_open && (
-              <Badge className="absolute top-2 left-2 bg-emerald-600 text-white border-0">Aberta</Badge>
-            )}
-            <div className="p-2 space-y-1">
-              {a.title && <p className="text-sm font-black leading-tight">{a.title}</p>}
-              {a.caption && !a.title && <p className="text-xs text-muted-foreground">{a.caption}</p>}
-              {a.description && <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{a.description}</p>}
+
+      <section className="space-y-3">
+        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Atividades internas</h4>
+        {internal.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma atividade interna registrada.</p>
+        ) : (
+          <div className="grid sm:grid-cols-3 gap-3">
+            {internal.map((a: any) => (
+              <Card key={a.id} className="overflow-hidden relative group">
+                <img src={a.image_url} className="aspect-video w-full object-cover" />
+                {a.caption && <div className="p-2"><p className="text-xs text-muted-foreground">{a.caption}</p></div>}
+                <Button size="sm" variant="destructive" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => del(a.id)}><Trash2 className="size-3" /></Button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Atividades abertas (interligas)</h4>
+        {opens.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma atividade aberta registrada.</p>
+        ) : (
+          <div className="grid sm:grid-cols-3 gap-3">
+            {opens.map((a: any) => (
+              <Card key={a.id} className="overflow-hidden relative group">
+                <img src={a.image_url} className="aspect-video w-full object-cover" />
+                <Badge className="absolute top-2 left-2 bg-emerald-600 text-white border-0">Aberta</Badge>
+                <div className="p-2 space-y-1">
+                  {a.title && <p className="text-sm font-black leading-tight">{a.title}</p>}
+                  {a.description && <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{a.description}</p>}
+                </div>
+                <Button size="sm" variant="destructive" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => del(a.id)}><Trash2 className="size-3" /></Button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <Dialog open={internalDlg} onOpenChange={setInternalDlg}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Adicionar atividade da liga</DialogTitle></DialogHeader>
+          <form onSubmit={addInternal} className="space-y-4">
+            <ImageUpload label="Imagem" folder="activities" value={internalForm.image_url} onChange={(url) => setInternalForm({ ...internalForm, image_url: url })} />
+            <div>
+              <Label>Legenda (opcional)</Label>
+              <Input value={internalForm.caption} onChange={(e) => setInternalForm({ ...internalForm, caption: e.target.value })} placeholder="Ex.: Encontro de segunda" />
             </div>
-            <Button size="sm" variant="destructive" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => del(a.id)}><Trash2 className="size-3" /></Button>
-          </Card>
-        ))}
-      </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setInternalDlg(false)}>Cancelar</Button>
+              <Button type="submit">Adicionar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={openDlg} onOpenChange={setOpenDlg}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Registrar Atividade Aberta</DialogTitle></DialogHeader>
-          <form onSubmit={addOpen} className="space-y-3">
+          <DialogHeader><DialogTitle>Registrar atividade aberta</DialogTitle></DialogHeader>
+          <form onSubmit={addOpen} className="space-y-4">
             <ImageUpload label="Imagem da atividade" folder="activities" value={openForm.image_url} onChange={(url) => setOpenForm({ ...openForm, image_url: url })} />
             <div>
               <Label>Título</Label>
@@ -1368,6 +1424,7 @@ export function ActivitiesTab({ league }: any) {
     </CardContent></Card>
   );
 }
+
 
 
 function MembersTab({ league }: any) {
