@@ -1345,6 +1345,7 @@ function MembersTab({ league }: any) {
           user_id: league.president_id,
           role: "presidente",
           created_at: new Date(0).toISOString(),
+          permissions: null,
           profiles: presidentProfile,
         });
       }
