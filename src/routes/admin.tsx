@@ -621,6 +621,7 @@ function AdsAdmin() {
   const [list, setList] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [placement, setPlacement] = useState<"home" | "ligas">("home");
   const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
@@ -639,40 +640,54 @@ function AdsAdmin() {
     if (row.image_url) { try { await deleteFiles({ data: { paths: [row.image_url] } }); } catch {} }
     toast.success("Removido"); reload();
   }
+  const filtered = list.filter((a) => (a.placement ?? "home") === placement);
+  const placementLabel = placement === "home" ? "Hub Inicial" : "Página Ligas";
   return (
     <div className="space-y-6">
       <AdsAnalytics ads={list} />
-      <div className="flex justify-between items-center">
-        <p className="text-muted-foreground">Banners exibidos no topo da página inicial. Cliques e visualizações são registrados automaticamente.</p>
-        <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
+      <Tabs value={placement} onValueChange={(v) => setPlacement(v as any)}>
+        <TabsList>
+          <TabsTrigger value="home">Hub Inicial</TabsTrigger>
+          <TabsTrigger value="ligas">Página Ligas</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <div className="flex justify-between items-center gap-3 flex-wrap">
+        <p className="text-muted-foreground text-sm">
+          Banners exibidos no topo do <strong>{placementLabel}</strong>. Cliques e visualizações são registrados automaticamente.
+        </p>
+        <Button onClick={() => { setEditing({ placement }); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {list.map((a) => {
-          const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
-          return (
-            <Card key={a.id}>
-              <div className="aspect-[3/1] bg-muted overflow-hidden">{a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-full object-cover" />}</div>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black flex-1">{a.title}</h3>
-                  {active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
-                </div>
-                {a.redirect_url && <p className="text-xs text-muted-foreground truncate mt-1">→ {a.redirect_url}</p>}
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(a.start_date).toLocaleDateString("pt-BR")} → {a.end_date ? new Date(a.end_date).toLocaleDateString("pt-BR") : "sem fim"}
-                </p>
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <div className="flex items-center gap-2"><Switch checked={a.active} onCheckedChange={() => toggle(a)} /><span className="text-xs">Ligado</span></div>
-                  <Button size="sm" variant="outline" onClick={() => { setEditing(a); setOpen(true); }}><Edit className="size-3" /></Button>
-                  <Button size="sm" variant="destructive" onClick={() => del(a)}><Trash2 className="size-3" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-      <AdDialog open={open} setOpen={setOpen} row={editing} onSaved={reload} />
+      {filtered.length === 0 ? (
+        <Card className="p-8 text-center text-muted-foreground">Nenhum anúncio cadastrado para {placementLabel}.</Card>
+      ) : (
+        <div className="grid md:grid-cols-2 gap-4">
+          {filtered.map((a) => {
+            const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
+            return (
+              <Card key={a.id}>
+                <div className="aspect-[3/1] bg-muted overflow-hidden">{a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-full object-cover" />}</div>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-black flex-1">{a.title}</h3>
+                    {active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
+                  </div>
+                  {a.redirect_url && <p className="text-xs text-muted-foreground truncate mt-1">→ {a.redirect_url}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {new Date(a.start_date).toLocaleDateString("pt-BR")} → {a.end_date ? new Date(a.end_date).toLocaleDateString("pt-BR") : "sem fim"}
+                  </p>
+                  <div className="flex items-center gap-2 mt-3 flex-wrap">
+                    <div className="flex items-center gap-2"><Switch checked={a.active} onCheckedChange={() => toggle(a)} /><span className="text-xs">Ligado</span></div>
+                    <Button size="sm" variant="outline" onClick={() => { setEditing(a); setOpen(true); }}><Edit className="size-3" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => del(a)}><Trash2 className="size-3" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+      <AdDialog open={open} setOpen={setOpen} row={editing} defaultPlacement={placement} onSaved={reload} />
     </div>
   );
 }
