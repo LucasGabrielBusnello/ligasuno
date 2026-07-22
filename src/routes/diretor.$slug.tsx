@@ -60,7 +60,7 @@ function DiretorPage() {
   const isPrivileged = isAdminMaster || league.president_id === user.id;
   const perms: string[] | null = isPrivileged ? null : myPerms;
   const can = (k: string) => perms === null || perms.includes(k);
-  const tabs: { key: string; perm: string; label: string; icon: JSX.Element; el: JSX.Element }[] = [
+  const tabs: { key: string; perm: string; label: string; icon: React.ReactNode; el: React.ReactNode }[] = [
     { key: "freq", perm: "atividades", label: "Frequência", icon: <CheckSquare className="size-4 mr-1" />, el: <FreqTab league={league} /> },
     { key: "agenda", perm: "eventos", label: "Eventos", icon: <Calendar className="size-4 mr-1" />, el: <EventsTab league={league} /> },
     { key: "news", perm: "news", label: "Notícias", icon: <Newspaper className="size-4 mr-1" />, el: <NewsTab league={league} /> },
