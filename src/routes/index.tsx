@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Sparkles } from "lucide-react";
+import { AdsBanner } from "@/components/ads-banner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,82 +16,41 @@ export const Route = createFileRoute("/")({
 
 function HomePage() {
   return (
-    <div className="min-h-screen overflow-x-hidden">
-      <section className="hub-hero text-white">
-        <div className="max-w-5xl mx-auto px-4 py-24 md:py-32 text-center animate-fade-up">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-6">
+    <div className="min-h-screen overflow-x-hidden relative">
+      {/* Blobs de fundo vivos */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-32 -left-24 size-[36rem] rounded-full bg-primary/25 blur-3xl animate-blob-1" />
+        <div className="absolute top-40 -right-32 size-[32rem] rounded-full bg-accent/25 blur-3xl animate-blob-2" />
+        <div className="absolute bottom-0 left-1/3 size-[28rem] rounded-full bg-primary/15 blur-3xl animate-blob-3" />
+      </div>
+
+      <section className="hub-hero text-white relative overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4 py-20 md:py-28 text-center animate-fade-up relative">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-6 backdrop-blur">
             <Sparkles className="size-3.5" /> Centro Integrado
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 bg-gradient-to-br from-white via-white to-white/70 bg-clip-text text-transparent drop-shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
             MEDUNO
           </h1>
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/85 font-medium">
             Plataforma integrada de Medicina da Unochapecó — cronograma, ligas acadêmicas,
             atlética e CAMED em um só lugar. Navegue pelas seções na barra acima.
           </p>
+          <div className="mt-8 flex items-center justify-center gap-2 text-white/70 text-xs uppercase tracking-widest">
+            <span className="h-px w-8 bg-white/40" />
+            Destaque da semana
+            <span className="h-px w-8 bg-white/40" />
+          </div>
         </div>
       </section>
 
-      <AdsBanner />
+      <div className="-mt-10 md:-mt-14 relative z-10">
+        <AdsBanner placement="home" />
+      </div>
 
-      <footer className="border-t border-border/50 mt-16 py-8 text-center text-sm text-muted-foreground">
+      <footer className="border-t border-border/50 mt-20 py-8 text-center text-sm text-muted-foreground relative">
         © {new Date().getFullYear()} MEDUNO · Medicina Unochapecó
       </footer>
     </div>
-  );
-}
-
-function AdsBanner() {
-  const [ads, setAds] = useState<any[]>([]);
-  const [idx, setIdx] = useState(0);
-  const trackedViews = React.useRef<Set<string>>(new Set());
-  useEffect(() => {
-    (async () => {
-      const nowIso = new Date().toISOString();
-      const { data } = await supabase
-        .from("ads")
-        .select("*")
-        .eq("active", true)
-        .lte("start_date", nowIso)
-        .order("created_at", { ascending: false });
-      const filtered = (data ?? []).filter((a: any) => !a.end_date || a.end_date >= nowIso);
-      setAds(filtered);
-    })();
-  }, []);
-  useEffect(() => {
-    if (ads.length <= 1) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % ads.length), 6000);
-    return () => clearInterval(t);
-  }, [ads.length]);
-  useEffect(() => {
-    const ad = ads[idx];
-    if (!ad || trackedViews.current.has(ad.id)) return;
-    trackedViews.current.add(ad.id);
-    supabase.auth.getUser().then(({ data }) => {
-      supabase.from("ad_analytics").insert({ ad_id: ad.id, action: "view", user_id: data.user?.id ?? null }).then(() => {});
-    });
-  }, [ads, idx]);
-  if (ads.length === 0) return null;
-  const ad = ads[idx];
-  function click() {
-    // Abre o link imediatamente para garantir o clique, mesmo se a analítica falhar
-    if (ad.redirect_url) window.open(ad.redirect_url, "_blank", "noopener");
-    supabase.auth.getUser().then(({ data }) => {
-      supabase.from("ad_analytics").insert({ ad_id: ad.id, action: "click", user_id: data.user?.id ?? null }).then(() => {});
-    }).catch(() => {});
-  }
-  return (
-    <section className="max-w-7xl mx-auto px-4 mt-8">
-      <button type="button" onClick={click} className="group relative w-full block rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-neutral-950">
-        <img src={ad.image_url} alt={ad.title} className="w-full aspect-[3/1] object-cover transition-transform duration-500 group-hover:scale-105" />
-        {ads.length > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-            {ads.map((_, i) => (
-              <span key={i} className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-white" : "w-1.5 bg-white/50"}`} />
-            ))}
-          </div>
-        )}
-      </button>
-    </section>
   );
 }
