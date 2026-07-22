@@ -256,9 +256,25 @@ export const confirmMembershipPayment = createServerFn({ method: "POST" })
     if (!pay) throw new Error("Pagamento não encontrado");
     if ((pay as any).status === "paid") return { ok: true, already: true };
 
-    const untilDate = new Date();
-    untilDate.setDate(untilDate.getDate() + (Number((pay as any).period_days) || 180));
-    const untilStr = untilDate.toISOString().slice(0, 10);
+    // Se a membership tiver ciclo vinculado, usa a data final do ciclo; senão fallback em period_days
+    let untilStr: string;
+    let cycleEndsAt: string | null = null;
+    if ((pay as any).membership_id) {
+      const { data: memRow } = await (supabaseAdmin as any)
+        .from("athletic_memberships").select("cycle_id").eq("id", (pay as any).membership_id).maybeSingle();
+      if (memRow && (memRow as any).cycle_id) {
+        const { data: cyc } = await (supabaseAdmin as any)
+          .from("athletic_membership_cycles").select("ends_at").eq("id", (memRow as any).cycle_id).maybeSingle();
+        if (cyc) cycleEndsAt = (cyc as any).ends_at;
+      }
+    }
+    if (cycleEndsAt) {
+      untilStr = String(cycleEndsAt).slice(0, 10);
+    } else {
+      const untilDate = new Date();
+      untilDate.setDate(untilDate.getDate() + (Number((pay as any).period_days) || 180));
+      untilStr = untilDate.toISOString().slice(0, 10);
+    }
 
     await supabaseAdmin.from("athletic_membership_payments").update({
       status: "paid",
