@@ -1247,19 +1247,54 @@ function NewsTab({ league }: any) {
 
 export function ActivitiesTab({ league }: any) {
   const [list, setList] = useState<any[]>([]);
+  const [otherLeagues, setOtherLeagues] = useState<any[]>([]);
   const [f, setF] = useState({ image_url: "", caption: "" });
+  const [openDlg, setOpenDlg] = useState(false);
+  const emptyOpen = { image_url: "", title: "", description: "", participating_league_ids: [] as string[] };
+  const [openForm, setOpenForm] = useState(emptyOpen);
   const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("league_activities").select("*").eq("league_id", league.id).order("display_order");
     setList(data ?? []);
   };
   useEffect(() => { reload(); }, [league.id]);
+  useEffect(() => {
+    supabase.from("leagues").select("id,name,icon_url").eq("published", true).neq("id", league.id).order("name")
+      .then(({ data }) => setOtherLeagues(data ?? []));
+  }, [league.id]);
   async function add(e: React.FormEvent) {
     e.preventDefault();
     if (!f.image_url) return toast.error("Imagem obrigatória");
     const { error } = await supabase.from("league_activities").insert({ ...f, league_id: league.id, display_order: list.length });
     if (error) return toast.error(error.message);
     setF({ image_url: "", caption: "" }); reload();
+  }
+  async function addOpen(e: React.FormEvent) {
+    e.preventDefault();
+    if (!openForm.image_url) return toast.error("Imagem obrigatória");
+    if (!openForm.title.trim()) return toast.error("Título obrigatório");
+    if (!openForm.description.trim()) return toast.error("Descrição obrigatória");
+    const { error } = await (supabase.from("league_activities") as any).insert({
+      league_id: league.id,
+      display_order: list.length,
+      image_url: openForm.image_url,
+      caption: openForm.title.trim(),
+      title: openForm.title.trim(),
+      description: openForm.description.trim(),
+      is_open: true,
+      participating_league_ids: openForm.participating_league_ids,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Atividade aberta registrada");
+    setOpenForm(emptyOpen); setOpenDlg(false); reload();
+  }
+  function toggleLeague(id: string) {
+    setOpenForm((s) => ({
+      ...s,
+      participating_league_ids: s.participating_league_ids.includes(id)
+        ? s.participating_league_ids.filter((x) => x !== id)
+        : [...s.participating_league_ids, id],
+    }));
   }
   async function del(id: string) {
     const a = list.find((x: any) => x.id === id);
@@ -1269,20 +1304,67 @@ export function ActivitiesTab({ league }: any) {
   }
   return (
     <Card><CardContent className="p-6 space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-sm text-muted-foreground">Registre momentos internos ou <b>atividades abertas</b> (interligas) visíveis no painel do CAMED.</p>
+        <Button type="button" variant="secondary" onClick={() => setOpenDlg(true)}>
+          <Plus className="size-4 mr-1" /> Registrar Atividade Aberta
+        </Button>
+      </div>
       <form onSubmit={add} className="grid sm:grid-cols-[1fr_auto] gap-2 items-end">
         <ImageUpload label="Imagem" folder="activities" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} />
         <Input placeholder="Legenda (opcional)" value={f.caption} onChange={(e) => setF({ ...f, caption: e.target.value })} />
         <Button type="submit"><Plus className="size-4" /> Adicionar</Button>
       </form>
       <div className="grid sm:grid-cols-3 gap-3">
-        {list.map((a) => (
+        {list.map((a: any) => (
           <Card key={a.id} className="overflow-hidden relative group">
             <img src={a.image_url} className="aspect-video w-full object-cover" />
-            {a.caption && <p className="text-xs p-2 text-muted-foreground">{a.caption}</p>}
+            {a.is_open && (
+              <Badge className="absolute top-2 left-2 bg-emerald-600 text-white border-0">Aberta</Badge>
+            )}
+            <div className="p-2 space-y-1">
+              {a.title && <p className="text-sm font-black leading-tight">{a.title}</p>}
+              {a.caption && !a.title && <p className="text-xs text-muted-foreground">{a.caption}</p>}
+              {a.description && <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{a.description}</p>}
+            </div>
             <Button size="sm" variant="destructive" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => del(a.id)}><Trash2 className="size-3" /></Button>
           </Card>
         ))}
       </div>
+
+      <Dialog open={openDlg} onOpenChange={setOpenDlg}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Registrar Atividade Aberta</DialogTitle></DialogHeader>
+          <form onSubmit={addOpen} className="space-y-3">
+            <ImageUpload label="Imagem da atividade" folder="activities" value={openForm.image_url} onChange={(url) => setOpenForm({ ...openForm, image_url: url })} />
+            <div>
+              <Label>Título</Label>
+              <Input value={openForm.title} onChange={(e) => setOpenForm({ ...openForm, title: e.target.value })} placeholder="Ex.: Simulação interligas" />
+            </div>
+            <div>
+              <Label>Descrição</Label>
+              <Textarea rows={4} value={openForm.description} onChange={(e) => setOpenForm({ ...openForm, description: e.target.value })} placeholder="Conte sobre a atividade, público-alvo e como participar" />
+            </div>
+            <div>
+              <Label>Ligas que participaram junto</Label>
+              <div className="mt-1.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto rounded-md border p-2">
+                {otherLeagues.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhuma outra liga publicada.</p>}
+                {otherLeagues.map((l) => (
+                  <label key={l.id} className="flex items-center gap-2 text-sm rounded hover:bg-muted p-1.5 cursor-pointer">
+                    <Checkbox checked={openForm.participating_league_ids.includes(l.id)} onCheckedChange={() => toggleLeague(l.id)} />
+                    {l.icon_url ? <img src={l.icon_url} className="size-5 rounded-full object-cover" alt="" /> : <div className="size-5 rounded-full bg-muted" />}
+                    <span className="truncate">{l.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpenDlg(false)}>Cancelar</Button>
+              <Button type="submit">Publicar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </CardContent></Card>
   );
 }
