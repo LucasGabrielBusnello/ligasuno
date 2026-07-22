@@ -789,6 +789,7 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
     perDay.set(key, { label, Views: 0, Cliques: 0, ts: d.getTime() });
   }
   rows.forEach((r) => {
+    if (!allowedAdIds.has(r.ad_id)) return;
     const key = new Date(r.created_at).toISOString().slice(0, 10);
     const b = perDay.get(key); if (!b) return;
     if (r.action === "view") b.Views++; else if (r.action === "click") b.Cliques++;
