@@ -31,6 +31,7 @@ function DiretorPage() {
   const nav = useNavigate();
   const [league, setLeague] = useState<League | null>(null);
   const [myRole, setMyRole] = useState<string | null>(null);
+  const [myPerms, setMyPerms] = useState<string[] | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -42,8 +43,8 @@ function DiretorPage() {
     if (loading) return;
     if (!user) { nav({ to: "/auth" }); return; }
     if (!league) return;
-    supabase.from("league_memberships").select("role").eq("league_id", league.id).eq("user_id", user.id).maybeSingle()
-      .then(({ data }) => setMyRole((data as any)?.role ?? null));
+    supabase.from("league_memberships").select("role, permissions").eq("league_id", league.id).eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { setMyRole((data as any)?.role ?? null); setMyPerms(((data as any)?.permissions ?? null) as string[] | null); });
   }, [loading, user, league]);
 
   if (!league || !user) return <div className="p-12 text-center">Carregando...</div>;
@@ -54,6 +55,22 @@ function DiretorPage() {
       <Button asChild className="mt-6"><Link to="/$slug" params={{ slug }}>Voltar</Link></Button>
     </div>
   );
+
+  const isPrivileged = isAdminMaster || league.president_id === user.id;
+  const perms: string[] | null = isPrivileged ? null : myPerms;
+  const can = (k: string) => perms === null || perms.includes(k);
+  const tabs: { key: string; perm: string; label: string; icon: JSX.Element; el: JSX.Element }[] = [
+    { key: "freq", perm: "atividades", label: "Frequência", icon: <CheckSquare className="size-4 mr-1" />, el: <FreqTab league={league} /> },
+    { key: "agenda", perm: "eventos", label: "Eventos", icon: <Calendar className="size-4 mr-1" />, el: <EventsTab league={league} /> },
+    { key: "news", perm: "news", label: "Notícias", icon: <Newspaper className="size-4 mr-1" />, el: <NewsTab league={league} /> },
+    { key: "atividades", perm: "atividades", label: "Atividades", icon: <ImageIcon className="size-4 mr-1" />, el: <ActivitiesTab league={league} /> },
+    { key: "quiz", perm: "quiz", label: "Quizzes", icon: <HelpCircle className="size-4 mr-1" />, el: <LeagueQuizManager league={league} /> },
+    { key: "scoring", perm: "scoring", label: "Pontuação", icon: <BarChart3 className="size-4 mr-1" />, el: <LeagueScoringTab league={league} /> },
+    { key: "perf", perm: "quiz", label: "Desempenho", icon: <BarChart3 className="size-4 mr-1" />, el: <LeaguePerformanceTab league={league} /> },
+    { key: "schedule", perm: "eventos", label: "Agenda", icon: <CalendarDays className="size-4 mr-1" />, el: <ScheduleTab league={league} /> },
+    { key: "caixa", perm: "config", label: "Caixa", icon: <Wallet className="size-4 mr-1" />, el: <CaixaTab league={league} /> },
+  ].filter((t) => can(t.perm));
+  const first = tabs[0]?.key ?? "freq";
 
   return (
     <div className="min-h-screen">
@@ -66,26 +83,16 @@ function DiretorPage() {
       <main className="max-w-5xl mx-auto p-4 md:p-8">
         <h1 className="text-3xl md:text-4xl font-black mb-2">Painel do Diretor</h1>
         <p className="text-muted-foreground mb-6">{league.name}</p>
-        <Tabs defaultValue="freq">
-          <TabsList className="grid grid-cols-3 md:grid-cols-8 w-full h-auto">
-            <TabsTrigger value="freq"><CheckSquare className="size-4 mr-1" />Frequência</TabsTrigger>
-            <TabsTrigger value="agenda"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
-            <TabsTrigger value="news"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
-            <TabsTrigger value="atividades"><ImageIcon className="size-4 mr-1" />Atividades</TabsTrigger>
-            <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
-            <TabsTrigger value="perf"><BarChart3 className="size-4 mr-1" />Desempenho</TabsTrigger>
-            <TabsTrigger value="schedule"><CalendarDays className="size-4 mr-1" />Agenda</TabsTrigger>
-            <TabsTrigger value="caixa"><Wallet className="size-4 mr-1" />Caixa</TabsTrigger>
-          </TabsList>
-          <TabsContent value="freq" className="mt-6"><FreqTab league={league} /></TabsContent>
-          <TabsContent value="agenda" className="mt-6"><EventsTab league={league} /></TabsContent>
-          <TabsContent value="news" className="mt-6"><NewsTab league={league} /></TabsContent>
-          <TabsContent value="atividades" className="mt-6"><ActivitiesTab league={league} /></TabsContent>
-          <TabsContent value="quiz" className="mt-6"><LeagueQuizManager league={league} /></TabsContent>
-          <TabsContent value="perf" className="mt-6"><LeaguePerformanceTab league={league} /></TabsContent>
-          <TabsContent value="schedule" className="mt-6"><ScheduleTab league={league} /></TabsContent>
-          <TabsContent value="caixa" className="mt-6"><CaixaTab league={league} /></TabsContent>
-        </Tabs>
+        {tabs.length === 0 ? (
+          <Card><CardContent className="p-8 text-center text-muted-foreground">Você não tem permissão para acessar nenhuma aba deste painel. Fale com o presidente da liga.</CardContent></Card>
+        ) : (
+          <Tabs defaultValue={first}>
+            <TabsList className="grid w-full h-auto" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+              {tabs.map((t) => (<TabsTrigger key={t.key} value={t.key}>{t.icon}{t.label}</TabsTrigger>))}
+            </TabsList>
+            {tabs.map((t) => (<TabsContent key={t.key} value={t.key} className="mt-6">{t.el}</TabsContent>))}
+          </Tabs>
+        )}
       </main>
     </div>
   );
