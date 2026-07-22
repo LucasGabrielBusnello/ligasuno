@@ -43,7 +43,7 @@ function CamedPage() {
   const visible = camedPanelTabs;
   const first = visible[0] ?? "info";
 
-  const tabDefs: { key: CamedTab; icon: JSX.Element }[] = [
+  const tabDefs: { key: CamedTab; icon: React.ReactNode }[] = [
     { key: "info", icon: <SettingsIcon className="size-4 mr-1.5" /> },
     { key: "membros", icon: <UsersIcon className="size-4 mr-1.5" /> },
     { key: "noticias", icon: <Newspaper className="size-4 mr-1.5" /> },
