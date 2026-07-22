@@ -1318,6 +1318,30 @@ export type Database = {
         }
         Relationships: []
       }
+      camed_panel_access: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          permissions: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          permissions?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          permissions?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       camed_presidents: {
         Row: {
           created_at: string
@@ -2136,6 +2160,7 @@ export type Database = {
           created_at: string
           id: string
           league_id: string
+          permissions: string[] | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -2143,6 +2168,7 @@ export type Database = {
           created_at?: string
           id?: string
           league_id: string
+          permissions?: string[] | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
@@ -2150,6 +2176,7 @@ export type Database = {
           created_at?: string
           id?: string
           league_id?: string
+          permissions?: string[] | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
@@ -2598,6 +2625,72 @@ export type Database = {
           scheduled_time?: string | null
         }
         Relationships: []
+      }
+      league_score_requests: {
+        Row: {
+          approved_points: number | null
+          created_at: string
+          description: string
+          id: string
+          league_id: string
+          points_requested: number
+          receipt_url: string | null
+          requested_by: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_points?: number | null
+          created_at?: string
+          description: string
+          id?: string
+          league_id: string
+          points_requested: number
+          receipt_url?: string | null
+          requested_by?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_points?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          league_id?: string
+          points_requested?: number
+          receipt_url?: string | null
+          requested_by?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_score_requests_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_score_requests_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       league_selection_exam_attempts: {
         Row: {
@@ -3766,11 +3859,13 @@ export type Database = {
     }
     Functions: {
       advance_semester: { Args: never; Returns: number }
+      camed_panel_permissions: { Args: { _user_id: string }; Returns: string[] }
       can_manage_league_cash: {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean
       }
       gen_checkin_code: { Args: never; Returns: string }
+      has_camed_panel_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
