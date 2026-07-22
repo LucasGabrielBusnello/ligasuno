@@ -801,6 +801,23 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
             </ResponsiveContainer>
           </div>
         )}
+        {!loading && perDayData.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-sm font-semibold">Cliques por dia</div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={perDayData}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} interval={Math.max(0, Math.floor(perDayData.length / 12) - 1)} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                  <Bar dataKey="Cliques" fill="#22c55e" />
+                  <Bar dataKey="Views" fill="#f97316" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
