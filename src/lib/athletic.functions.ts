@@ -169,6 +169,27 @@ export const requestSelfMembership = createServerFn({ method: "POST" })
       .from("athletics").select("membership_price, membership_period_days").eq("id", data.athletic_id).maybeSingle();
     if (!ath) throw new Error("Atlética não encontrada");
 
+    // Ciclo atual da atlética (se houver) — define preço e validade
+    const { data: cycle } = await (supabaseAdmin as any)
+      .from("athletic_membership_cycles")
+      .select("id, ends_at, price_new, price_renewal, open")
+      .eq("athletic_id", data.athletic_id)
+      .eq("is_current", true)
+      .maybeSingle();
+
+    // Detecta renovação (usuário já teve associação nesta atlética)
+    let isRenewal = false;
+    if (cycle) {
+      const { data: prev } = await (supabaseAdmin as any)
+        .from("athletic_memberships").select("id")
+        .eq("athletic_id", data.athletic_id).eq("user_id", userId).maybeSingle();
+      isRenewal = !!prev;
+    }
+
+    const amount = cycle
+      ? Number(isRenewal ? (cycle as any).price_renewal : (cycle as any).price_new) || 0
+      : Number((ath as any).membership_price) || 0;
+
     // Cria/atualiza membership como pending (active=false até pagamento)
     const { data: mem, error: mErr } = await supabaseAdmin
       .from("athletic_memberships").upsert({
@@ -183,7 +204,8 @@ export const requestSelfMembership = createServerFn({ method: "POST" })
         role: "socio",
         active: false,
         added_manually: false,
-      }, { onConflict: "athletic_id,email" }).select("id").single();
+        cycle_id: cycle ? (cycle as any).id : null,
+      } as any, { onConflict: "athletic_id,email" }).select("id").single();
     if (mErr) throw new Error(mErr.message);
 
     // Cria pagamento pendente
@@ -192,7 +214,7 @@ export const requestSelfMembership = createServerFn({ method: "POST" })
         athletic_id: data.athletic_id,
         membership_id: (mem as any).id,
         user_id: userId,
-        amount: Number((ath as any).membership_price) || 0,
+        amount,
         period_days: Number((ath as any).membership_period_days) || 180,
         buyer_name: data.full_name,
         buyer_email: data.email.toLowerCase(),
@@ -203,7 +225,12 @@ export const requestSelfMembership = createServerFn({ method: "POST" })
       }).select("id, amount").single();
     if (pErr) throw new Error(pErr.message);
 
-    return { membership_id: (mem as any).id, payment_id: (pay as any).id, amount: (pay as any).amount };
+    return {
+      membership_id: (mem as any).id,
+      payment_id: (pay as any).id,
+      amount: (pay as any).amount,
+      cycle_ends_at: cycle ? (cycle as any).ends_at : null,
+    };
   });
 
 /* Diretor confirma pagamento manual da associação → ativa sócio + cria entrada de caixa */
