@@ -319,6 +319,7 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
       ...f, buyer_name: f.buyer_name || profile.full_name || "",
       buyer_email: f.buyer_email || profile.email || "",
       buyer_phone: f.buyer_phone || profile.phone || "",
+      buyer_cpf: f.buyer_cpf || (profile.cpf ? formatCpfMask(profile.cpf) : ""),
     }));
   }, [open, profile]);
   useEffect(() => {
@@ -460,16 +461,34 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   const [open, setOpen] = useState(false);
   const { profile } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [currentCycle, setCurrentCycle] = useState<{ id: string; name: string; ends_at: string; price_new: number } | null>(null);
   const [form, setForm] = useState({
-    full_name: profile?.full_name ?? "", email: profile?.email ?? "", phone: profile?.phone ?? "",
+    full_name: "", email: "", phone: "",
     cpf: "", matricula: "", semestre: "",
   });
+  // Prefill do perfil (CPF, matrícula, turma/semestre)
   useEffect(() => {
-    if (profile) setForm((f) => ({
-      ...f, full_name: f.full_name || profile.full_name || "",
-      email: f.email || profile.email || "", phone: f.phone || profile.phone || "",
+    if (!profile) return;
+    setForm((f) => ({
+      full_name: f.full_name || profile.full_name || "",
+      email: f.email || profile.email || "",
+      phone: f.phone || profile.phone || "",
+      cpf: f.cpf || (profile.cpf ? formatCpfMask(profile.cpf) : ""),
+      matricula: f.matricula || profile.matricula || "",
+      semestre: f.semestre || (profile.current_semester != null ? String(profile.current_semester) : ""),
     }));
   }, [profile]);
+  // Busca ciclo atual da atlética
+  useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("athletic_membership_cycles")
+      .select("id,name,ends_at,price_new,is_current,open")
+      .eq("athletic_id", athletic.id)
+      .eq("is_current", true)
+      .maybeSingle()
+      .then(({ data }) => setCurrentCycle(data ? (data as any) : null));
+  }, [open, athletic.id]);
   const request = useServerFn(requestSelfMembership);
   const createPix = useServerFn(createMembershipPixPayment);
   const createCard = useServerFn(createMembershipCardPayment);
@@ -477,12 +496,13 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
   const [pixOpen, setPixOpen] = useState(false);
   const [method, setMethod] = useState<"pix" | "card">("pix");
   const { user } = useAuth();
+  const displayPrice = currentCycle ? Number(currentCycle.price_new) : Number(athletic.membership_price);
   if (!user) {
     return (
       <Button asChild size="lg"
         className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl text-white border-0 hover:opacity-95 transition"
         style={{ background: athletic.primary_color }}>
-        <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}</Link>
+        <Link to="/auth"><Crown className="size-5" /> Associar-se • R$ {displayPrice.toFixed(2)}</Link>
       </Button>
     );
   }
@@ -491,7 +511,7 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
       <Button size="lg" onClick={() => setOpen(true)}
         className="text-lg px-8 py-6 h-auto font-black uppercase tracking-wider shadow-2xl hover:opacity-95 transition text-white border-0"
         style={{ background: athletic.primary_color }}>
-        <Crown className="size-5" /> Associar-se • R$ {Number(athletic.membership_price).toFixed(2)}
+        <Crown className="size-5" /> Associar-se • R$ {displayPrice.toFixed(2)}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -499,7 +519,14 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
           <DialogHeader>
             <DialogTitle>Associar-se à {athletic.name}</DialogTitle>
             <DialogDescription>
-              Preencha seus dados. Após confirmar, a associação é liberada automaticamente por {athletic.membership_period_days} dias.
+              {currentCycle ? (
+                <>
+                  Ciclo vigente <strong>{currentCycle.name}</strong>. Após confirmar o pagamento, você será sócio(a) até{" "}
+                  <strong>{new Date(currentCycle.ends_at).toLocaleDateString("pt-BR")}</strong> (fim do ciclo atual).
+                </>
+              ) : (
+                <>Preencha seus dados. A liberação ocorre assim que o pagamento for confirmado.</>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -560,6 +587,14 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
       <PixDialog open={pixOpen} onClose={() => setPixOpen(false)} data={pixData} title="Pix — Associação AAAMD" />
     </>
   );
+}
+
+function formatCpfMask(v: string) {
+  const d = (v || "").replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
 }
 
 
@@ -1532,9 +1567,11 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                   <div className="font-bold">{p.buyer_name} — R$ {Number(p.amount).toFixed(2)}</div>
                   <div className="opacity-70 text-xs">{p.buyer_email} • Matr {p.matricula} • {p.semestre}º sem • CPF {p.buyer_cpf}</div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {["pix", "dinheiro", "cartao"].map((m) => (
-                    <Button key={m} size="sm" variant="outline" onClick={async () => {
+                    <Button key={m} size="sm" variant="outline"
+                      className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white capitalize"
+                      onClick={async () => {
                       try { await confirm({ data: { athletic_id: athletic.id, payment_id: p.id, method: m as any } }); toast.success("Confirmado"); reload(); } catch (e: any) { toast.error(e?.message); }
                     }}>{m}</Button>
                   ))}
@@ -1802,7 +1839,7 @@ function DirectorProducts({ athletic }: { athletic: Athletic }) {
                     onClick={() => setManualFor(p)}>
                     <Plus className="size-3.5 mr-1" /> Venda manual
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1 border-white/20"
+                  <Button size="sm" variant="outline" className="flex-1 bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"
                     onClick={() => setDeliveriesFor(deliveriesFor === p.id ? null : p.id)}>
                     <Paperclip className="size-3.5 mr-1" /> Entregas
                   </Button>
@@ -2565,7 +2602,7 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setEditing({
             athletic_id: athletic.id, name: "", starts_at: "", ends_at: "",
-            price_new: athletic.membership_price ?? 0, price_renewal: athletic.membership_price ?? 0, open: true,
+            price_new: athletic.membership_price ?? 0, price_renewal: athletic.membership_price ?? 0, open: true, is_current: false,
           })}><Plus className="size-4" /> Novo ciclo</Button>
         </div>
 
@@ -2574,7 +2611,12 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
           {cycles.map((c) => (
             <div key={c.id} className="flex flex-col md:flex-row md:items-center gap-2 p-3 rounded-lg bg-black/30 border border-white/10">
               <div className="flex-1">
-                <div className="font-bold">{c.name}</div>
+                <div className="font-bold flex items-center gap-2">
+                  {c.name}
+                  {c.is_current && (
+                    <Badge className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[10px]">Ciclo atual</Badge>
+                  )}
+                </div>
                 <div className="text-xs opacity-70">
                   {new Date(c.starts_at).toLocaleDateString("pt-BR")} → {new Date(c.ends_at).toLocaleDateString("pt-BR")}
                   {" · "}Novo R$ {Number(c.price_new).toFixed(2)} · Renovação R$ {Number(c.price_renewal).toFixed(2)}
@@ -2611,6 +2653,11 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
                   <input type="checkbox" checked={editing.open ?? true} onChange={(e) => setEditing({ ...editing, open: e.target.checked })} />
                   Ciclo aberto (aceita associações)
                 </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={!!editing.is_current} onChange={(e) => setEditing({ ...editing, is_current: e.target.checked })} />
+                  Definir como <strong>ciclo atual</strong> (novas associações usam este ciclo e a validade termina no fim dele)
+                </label>
+                <p className="text-[11px] opacity-60">Só pode haver um ciclo marcado como atual por atlética. Marcar este desmarca os demais.</p>
               </div>
             )}
             <DialogFooter>
@@ -2621,7 +2668,7 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
                     id: editing.id, athletic_id: athletic.id, name: editing.name,
                     starts_at: editing.starts_at, ends_at: editing.ends_at,
                     price_new: Number(editing.price_new) || 0, price_renewal: Number(editing.price_renewal) || 0,
-                    open: !!editing.open,
+                    open: !!editing.open, is_current: !!editing.is_current,
                   } });
                   toast.success("Salvo"); setEditing(null); reload();
                 } catch (err: any) { toast.error(err?.message); }

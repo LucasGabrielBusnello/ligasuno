@@ -24,11 +24,19 @@ export const upsertMembershipCycle = createServerFn({ method: "POST" })
       price_new: z.number().nonnegative(),
       price_renewal: z.number().nonnegative(),
       open: z.boolean().default(true),
+      is_current: z.boolean().default(false),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
     await assertDirector(context.supabase, context.userId, data.athletic_id);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Garante ciclo atual único por atlética
+    if (data.is_current) {
+      await (supabaseAdmin as any).from("athletic_membership_cycles")
+        .update({ is_current: false })
+        .eq("athletic_id", data.athletic_id)
+        .neq("id", data.id ?? "00000000-0000-0000-0000-000000000000");
+    }
     const payload = {
       athletic_id: data.athletic_id,
       name: data.name,
@@ -37,15 +45,16 @@ export const upsertMembershipCycle = createServerFn({ method: "POST" })
       price_new: data.price_new,
       price_renewal: data.price_renewal,
       open: data.open,
+      is_current: data.is_current,
     };
     if (data.id) {
       const { error } = await supabaseAdmin.from("athletic_membership_cycles")
-        .update(payload).eq("id", data.id);
+        .update(payload as any).eq("id", data.id);
       if (error) throw new Error(error.message);
       return { id: data.id };
     }
     const { data: row, error } = await supabaseAdmin.from("athletic_membership_cycles")
-      .insert(payload).select("id").single();
+      .insert(payload as any).select("id").single();
     if (error) throw new Error(error.message);
     return { id: (row as any).id };
   });

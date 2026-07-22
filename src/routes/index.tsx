@@ -75,11 +75,11 @@ function AdsBanner() {
   if (ads.length === 0) return null;
   const ad = ads[idx];
   function click() {
+    // Abre o link imediatamente para garantir o clique, mesmo se a analítica falhar
+    if (ad.redirect_url) window.open(ad.redirect_url, "_blank", "noopener");
     supabase.auth.getUser().then(({ data }) => {
-      supabase.from("ad_analytics").insert({ ad_id: ad.id, action: "click", user_id: data.user?.id ?? null }).then(() => {
-        if (ad.redirect_url) window.open(ad.redirect_url, "_blank", "noopener");
-      });
-    });
+      supabase.from("ad_analytics").insert({ ad_id: ad.id, action: "click", user_id: data.user?.id ?? null }).then(() => {});
+    }).catch(() => {});
   }
   return (
     <section className="max-w-7xl mx-auto px-4 mt-8">

@@ -9,6 +9,10 @@ export type Profile = {
   phone: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  cpf: string | null;
+  matricula: string | null;
+  current_semester: number | null;
+  class_code: string | null;
 };
 
 export type League = {
