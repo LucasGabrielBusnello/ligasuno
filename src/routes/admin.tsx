@@ -807,6 +807,15 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
             ))}
           </div>
         </div>
+        <div className="flex gap-1 mt-2 flex-wrap">
+          {([
+            { k: "all", label: "Todos" },
+            { k: "home", label: "Hub Inicial" },
+            { k: "ligas", label: "Página Ligas" },
+          ] as const).map((o) => (
+            <Button key={o.k} size="sm" variant={placementFilter === o.k ? "default" : "outline"} onClick={() => setPlacementFilter(o.k)}>{o.label}</Button>
+          ))}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
