@@ -16,6 +16,7 @@ import { Route as CamedPainelRouteImport } from './routes/camed-painel'
 import { Route as CamedGaleriaRouteImport } from './routes/camed-galeria'
 import { Route as CamedRouteImport } from './routes/camed'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AtleticaGaleriaRouteImport } from './routes/atletica-galeria'
 import { Route as AtleticaRouteImport } from './routes/atletica'
 import { Route as AlunoRouteImport } from './routes/aluno'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -70,6 +71,11 @@ const CamedRoute = CamedRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtleticaGaleriaRoute = AtleticaGaleriaRouteImport.update({
+  id: '/atletica-galeria',
+  path: '/atletica-galeria',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AtleticaRoute = AtleticaRouteImport.update({
@@ -187,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/aluno': typeof AlunoRoute
   '/atletica': typeof AtleticaRoute
+  '/atletica-galeria': typeof AtleticaGaleriaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
   '/camed-galeria': typeof CamedGaleriaRoute
@@ -216,6 +223,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/aluno': typeof AlunoRoute
   '/atletica': typeof AtleticaRoute
+  '/atletica-galeria': typeof AtleticaGaleriaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
   '/camed-galeria': typeof CamedGaleriaRoute
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/aluno': typeof AlunoRoute
   '/atletica': typeof AtleticaRoute
+  '/atletica-galeria': typeof AtleticaGaleriaRoute
   '/auth': typeof AuthRoute
   '/camed': typeof CamedRoute
   '/camed-galeria': typeof CamedGaleriaRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/aluno'
     | '/atletica'
+    | '/atletica-galeria'
     | '/auth'
     | '/camed'
     | '/camed-galeria'
@@ -306,6 +316,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/aluno'
     | '/atletica'
+    | '/atletica-galeria'
     | '/auth'
     | '/camed'
     | '/camed-galeria'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/aluno'
     | '/atletica'
+    | '/atletica-galeria'
     | '/auth'
     | '/camed'
     | '/camed-galeria'
@@ -365,6 +377,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   AlunoRoute: typeof AlunoRoute
   AtleticaRoute: typeof AtleticaRoute
+  AtleticaGaleriaRoute: typeof AtleticaGaleriaRoute
   AuthRoute: typeof AuthRoute
   CamedRoute: typeof CamedRoute
   CamedGaleriaRoute: typeof CamedGaleriaRoute
@@ -438,6 +451,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atletica-galeria': {
+      id: '/atletica-galeria'
+      path: '/atletica-galeria'
+      fullPath: '/atletica-galeria'
+      preLoaderRoute: typeof AtleticaGaleriaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/atletica': {
@@ -589,6 +609,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   AlunoRoute: AlunoRoute,
   AtleticaRoute: AtleticaRoute,
+  AtleticaGaleriaRoute: AtleticaGaleriaRoute,
   AuthRoute: AuthRoute,
   CamedRoute: CamedRoute,
   CamedGaleriaRoute: CamedGaleriaRoute,

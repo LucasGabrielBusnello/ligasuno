@@ -19,7 +19,7 @@ import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import {
   ArrowLeft, ShoppingBag, ShoppingCart, Ticket, Users, Shield, Sparkles, Plus, Minus, Trash2, QrCode, FileDown,
   Wallet, Settings, Trophy, Store, PartyPopper, Loader2, Camera, Crown, CheckCircle2, X, CreditCard, MapPin, Calendar, Clock, Flame,
-  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen, Eye, Paperclip, Receipt, TrendingUp,
+  Handshake, Tag, UserPlus, UserMinus, IdCard, LayoutDashboard, Info, Home, Link2, Power, BookOpen, Eye, Paperclip, Receipt, TrendingUp, Images, ArrowRight,
 } from "lucide-react";
 import {
   upsertAthleticMember, deleteAthleticMember, requestSelfMembership, confirmMembershipPayment,
@@ -2910,6 +2910,13 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
         <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
         {description && (
           <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
+        )}
+        {images.length > 0 && (
+          <div className="mt-5">
+            <Button asChild size="sm" variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10">
+              <Link to="/atletica-galeria"><Images className="size-4 mr-1.5" /> Expandir galeria completa <ArrowRight className="size-4 ml-1" /></Link>
+            </Button>
+          </div>
         )}
       </div>
       {images.length > 0 && (
