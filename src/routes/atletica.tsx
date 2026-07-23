@@ -964,16 +964,14 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
   const price = isMember ? e.price_member : e.price_visitor;
   const remaining = e.total_tickets - e.tickets_sold;
   const [open, setOpen] = useState(false);
-  const [method, setMethod] = useState<"pix" | "card">("pix");
   const [form, setForm] = useState({
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "",
   });
   const [saving, setSaving] = useState(false);
-  const [pixData, setPixData] = useState<any>(null);
+  const [pixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
-  const createPix = useServerFn(createEventTicketPixPayment);
-  const createCard = useServerFn(createEventTicketCardPayment);
+  const createIp = useServerFn(createEventTicketInfinitepayCheckout);
   const canBuy = e.online_sales_open && remaining > 0 && price > 0;
 
   return (
