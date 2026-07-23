@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { QrScanner } from "@/components/qr-scanner";
 import { ImageUpload } from "@/components/image-upload";
 import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
+import { generateReceiptPdf, downloadBlob } from "@/lib/athletic-receipt-pdf";
 import {
   ArrowLeft,
   ShoppingBag,
@@ -3479,7 +3480,10 @@ function ManualSaleDialog({
     notes: "",
   });
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSug, setShowSug] = useState(false);
   const register = useServerFn(registerManualProductSale);
+  const searchBuyer = useServerFn(searchBuyerSuggestions);
 
   useEffect(() => {
     if (product)
@@ -3495,6 +3499,30 @@ function ManualSaleDialog({
         notes: "",
       });
   }, [product?.id]);
+
+  useEffect(() => {
+    const q = form.buyer_email.trim();
+    if (q.length < 2) { setSuggestions([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res: any = await searchBuyer({ data: { athletic_id: athletic.id, query: q } });
+        setSuggestions(res?.items ?? []);
+      } catch {}
+    }, 250);
+    return () => clearTimeout(t);
+  }, [form.buyer_email, athletic.id]);
+
+  function pickSuggestion(s: any) {
+    setForm((f) => ({
+      ...f,
+      buyer_email: s.email ?? f.buyer_email,
+      buyer_name: s.full_name ?? f.buyer_name,
+      buyer_cpf: s.cpf ?? f.buyer_cpf,
+      buyer_registration: s.matricula ?? f.buyer_registration,
+      buyer_semester: s.semestre ?? f.buyer_semester,
+    }));
+    setShowSug(false);
+  }
 
   if (!product) return null;
 
@@ -3567,13 +3595,32 @@ function ManualSaleDialog({
             <Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="relative">
               <Label>E-mail *</Label>
               <Input
                 type="email"
+                autoComplete="off"
                 value={form.buyer_email}
-                onChange={(e) => setForm({ ...form, buyer_email: e.target.value })}
+                onChange={(e) => { setForm({ ...form, buyer_email: e.target.value }); setShowSug(true); }}
+                onFocus={() => setShowSug(true)}
+                onBlur={() => setTimeout(() => setShowSug(false), 150)}
               />
+              {showSug && suggestions.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1 rounded-lg border bg-popover text-popover-foreground shadow-lg max-h-56 overflow-auto">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.email}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-accent text-xs border-b last:border-b-0"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickSuggestion(s)}
+                    >
+                      <div className="font-bold">{s.full_name ?? s.email}</div>
+                      <div className="opacity-70">{s.email}{s.cpf ? ` • CPF ${s.cpf}` : ""}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <Label>CPF *</Label>
@@ -4266,7 +4313,15 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
     });
   }
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="movs" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="movs">Movimentações</TabsTrigger>
+        <TabsTrigger value="pending">Pagamentos Pendentes</TabsTrigger>
+      </TabsList>
+      <TabsContent value="pending" className="mt-4">
+        <PendingPaymentsPanel athletic={athletic} onResolved={reload} />
+      </TabsContent>
+      <TabsContent value="movs" className="mt-4 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-4">
           <div className="text-[10px] uppercase tracking-widest font-black opacity-70 flex items-center gap-1.5">
@@ -4448,6 +4503,179 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
       </Card>
 
       <InfinitepayCard athletic={athletic} />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function PendingPaymentsPanel({ athletic, onResolved }: { athletic: Athletic; onResolved?: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [pendingMemberships, setPendingMemberships] = useState<any[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [methodByRow, setMethodByRow] = useState<Record<string, "pix" | "dinheiro" | "cartao" | "outro">>({});
+  const listFn = useServerFn(listPendingProductAndTicketPayments);
+  const resolveOrder = useServerFn(resolveProductOrderPayment);
+  const resolveTicket = useServerFn(resolveTicketPayment);
+  const confirmMemb = useServerFn(confirmMembershipPayment);
+
+  async function reload() {
+    setLoading(true);
+    try {
+      const res: any = await listFn({ data: { athletic_id: athletic.id } });
+      setOrders(res.orders ?? []);
+      setTickets(res.tickets ?? []);
+    } catch (e: any) {
+      toast.error(e?.message);
+    }
+    const { data: mem } = await supabase
+      .from("athletic_membership_payments")
+      .select("id,amount,method,created_at,status,user_id,profiles:profiles!athletic_membership_payments_user_id_fkey(full_name,email,cpf,phone)")
+      .eq("athletic_id", athletic.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    setPendingMemberships((mem as any) ?? []);
+    setLoading(false);
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+
+  function getMethod(id: string) { return methodByRow[id] ?? "pix"; }
+
+  async function doApproveOrder(id: string) {
+    try { setBusy(id); await resolveOrder({ data: { athletic_id: athletic.id, order_id: id, approve: true, method: getMethod(id) as any } }); toast.success("Pedido aprovado"); await reload(); onResolved?.(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doRejectOrder(id: string) {
+    if (!confirm2("Reprovar este pedido?")) return;
+    try { setBusy(id); await resolveOrder({ data: { athletic_id: athletic.id, order_id: id, approve: false } }); toast.success("Reprovado"); await reload(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doApproveTicket(id: string) {
+    try { setBusy(id); await resolveTicket({ data: { athletic_id: athletic.id, ticket_id: id, approve: true, method: getMethod(id) as any } }); toast.success("Ingresso aprovado"); await reload(); onResolved?.(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doRejectTicket(id: string) {
+    if (!confirm2("Reprovar este ingresso?")) return;
+    try { setBusy(id); await resolveTicket({ data: { athletic_id: athletic.id, ticket_id: id, approve: false } }); toast.success("Reprovado"); await reload(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doApproveMembership(id: string) {
+    try { setBusy(id); await confirmMemb({ data: { athletic_id: athletic.id, payment_id: id } }); toast.success("Associação aprovada"); await reload(); onResolved?.(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+
+  if (loading) return <div className="py-10 text-center opacity-60"><Loader2 className="size-6 animate-spin mx-auto" /></div>;
+
+  const totalCount = orders.length + tickets.length + pendingMemberships.length;
+  if (totalCount === 0) {
+    return (
+      <Card className="bg-white/5 border-white/10 text-white">
+        <CardContent className="p-8 text-center opacity-70">
+          <CheckCircle2 className="size-8 mx-auto mb-2 text-emerald-400" />
+          <p className="font-bold">Nenhum pagamento pendente 🎉</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const MethodSelect = ({ id }: { id: string }) => (
+    <Select value={getMethod(id)} onValueChange={(v) => setMethodByRow((m) => ({ ...m, [id]: v as any }))}>
+      <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="pix">Pix</SelectItem>
+        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+        <SelectItem value="cartao">Cartão</SelectItem>
+        <SelectItem value="outro">Outro</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="text-xs opacity-70">{totalCount} pagamento(s) aguardando aprovação da diretoria.</div>
+
+      {orders.length > 0 && (
+        <div>
+          <h4 className="font-black text-sm mb-2 flex items-center gap-2"><ShoppingBag className="size-4" /> Produtos ({orders.length})</h4>
+          <div className="space-y-2">
+            {orders.map((o) => (
+              <Card key={o.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="font-bold text-sm">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
+                    <div className="text-xs opacity-70">{o.buyer_name} • {o.buyer_email}{o.buyer_cpf ? ` • CPF ${o.buyer_cpf}` : ""}</div>
+                    <div className="text-[11px] opacity-60 mt-0.5">{(o.athletic_product_order_items ?? []).map((i: any) => `${i.title} × ${i.quantity}`).join(" · ")}</div>
+                    <div className="text-[11px] opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")} • {o.payment_method ?? "—"}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-black text-lg">R$ {Number(o.total).toFixed(2)}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MethodSelect id={o.id} />
+                    <Button size="sm" onClick={() => doApproveOrder(o.id)} disabled={busy === o.id} className="bg-emerald-600 hover:bg-emerald-500">
+                      {busy === o.id ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                      <span className="ml-1">Aprovar</span>
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => doRejectOrder(o.id)} disabled={busy === o.id}>
+                      <X className="size-3.5" /><span className="ml-1">Reprovar</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tickets.length > 0 && (
+        <div>
+          <h4 className="font-black text-sm mb-2 flex items-center gap-2"><Ticket className="size-4" /> Ingressos ({tickets.length})</h4>
+          <div className="space-y-2">
+            {tickets.map((t) => (
+              <Card key={t.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="font-bold text-sm">{t.athletic_events?.title ?? "Evento"}</div>
+                    <div className="text-xs opacity-70">{t.buyer_name} • {t.buyer_email}{t.buyer_cpf ? ` • CPF ${t.buyer_cpf}` : ""}</div>
+                    <div className="text-[11px] opacity-60 mt-0.5">{t.sold_at ? new Date(t.sold_at).toLocaleString("pt-BR") : "—"}</div>
+                  </div>
+                  <div className="text-right"><div className="font-black text-lg">R$ {Number(t.price_paid).toFixed(2)}</div></div>
+                  <div className="flex items-center gap-2">
+                    <MethodSelect id={t.id} />
+                    <Button size="sm" onClick={() => doApproveTicket(t.id)} disabled={busy === t.id} className="bg-emerald-600 hover:bg-emerald-500">
+                      {busy === t.id ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                      <span className="ml-1">Aprovar</span>
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => doRejectTicket(t.id)} disabled={busy === t.id}>
+                      <X className="size-3.5" /><span className="ml-1">Reprovar</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pendingMemberships.length > 0 && (
+        <div>
+          <h4 className="font-black text-sm mb-2 flex items-center gap-2"><IdCard className="size-4" /> Associações ({pendingMemberships.length})</h4>
+          <div className="space-y-2">
+            {pendingMemberships.map((m: any) => (
+              <Card key={m.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="font-bold text-sm">{m.profiles?.full_name ?? "Sócio"}</div>
+                    <div className="text-xs opacity-70">{m.profiles?.email ?? "—"} • {m.method ?? "—"}</div>
+                    <div className="text-[11px] opacity-60">{new Date(m.created_at).toLocaleString("pt-BR")}</div>
+                  </div>
+                  <div className="text-right"><div className="font-black text-lg">R$ {Number(m.amount).toFixed(2)}</div></div>
+                  <Button size="sm" onClick={() => doApproveMembership(m.id)} disabled={busy === m.id} className="bg-emerald-600 hover:bg-emerald-500">
+                    {busy === m.id ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                    <span className="ml-1">Aprovar</span>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -5894,6 +6122,60 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
     }
   }
 
+  async function downloadOrderReceipt(o: any) {
+    const items = (o.athletic_product_order_items ?? []).map((it: any) => ({
+      description: it.title,
+      quantity: it.quantity,
+      unit_price: Number(it.line_total) / Math.max(1, Number(it.quantity)),
+      total: Number(it.line_total),
+    }));
+    const blob = await generateReceiptPdf({
+      athleticName: athletic.name,
+      primaryColor: athletic.primary_color ?? undefined,
+      logoUrl: (athletic as any).logo_url ?? null,
+      title: "Recibo de compra",
+      receiptNumber: o.id.slice(0, 8).toUpperCase(),
+      issuedAt: o.created_at,
+      paymentMethod: o.payment_method ?? "—",
+      buyer: { name: o.buyer_name ?? user.email, email: user.email, cpf: null, phone: null },
+      items,
+      total: Number(o.total),
+    });
+    downloadBlob(blob, `recibo-${o.id.slice(0, 8)}.pdf`);
+  }
+
+  async function downloadTicketReceipt(t: any) {
+    const blob = await generateReceiptPdf({
+      athleticName: athletic.name,
+      primaryColor: athletic.primary_color ?? undefined,
+      logoUrl: (athletic as any).logo_url ?? null,
+      title: "Recibo de ingresso",
+      receiptNumber: t.code ?? t.id.slice(0, 8),
+      issuedAt: t.sold_at ?? new Date().toISOString(),
+      paymentMethod: null,
+      buyer: { name: user.user_metadata?.full_name ?? user.email, email: user.email },
+      items: [{ description: `Ingresso — ${t.athletic_events?.title ?? "Evento"}`, quantity: 1, unit_price: Number(t.price_paid), total: Number(t.price_paid) }],
+      total: Number(t.price_paid),
+    });
+    downloadBlob(blob, `ingresso-${t.code ?? t.id.slice(0, 8)}.pdf`);
+  }
+
+  async function downloadMembershipReceipt(m: any) {
+    const blob = await generateReceiptPdf({
+      athleticName: athletic.name,
+      primaryColor: athletic.primary_color ?? undefined,
+      logoUrl: (athletic as any).logo_url ?? null,
+      title: "Recibo de associação",
+      receiptNumber: m.id.slice(0, 8).toUpperCase(),
+      issuedAt: m.created_at,
+      paymentMethod: m.method ?? "—",
+      buyer: { name: user.user_metadata?.full_name ?? user.email, email: user.email },
+      items: [{ description: "Associação da atlética", quantity: 1, unit_price: Number(m.amount), total: Number(m.amount) }],
+      total: Number(m.amount),
+    });
+    downloadBlob(blob, `associacao-${m.id.slice(0, 8)}.pdf`);
+  }
+
   if (loading) {
     return (
       <div className="text-center py-12 opacity-60">
@@ -5967,19 +6249,15 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
                       </div>
                     )}
                     {isPending && (
+                      <div className="mt-3 rounded-lg border border-yellow-400/40 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-200 flex items-center gap-2">
+                        <ClockAlert className="size-3.5" />
+                        Pagamento aguardando aprovação da diretoria.
+                      </div>
+                    )}
+                    {o.status === "paid" && (
                       <div className="mt-3 flex justify-end">
-                        <Button
-                          size="sm"
-                          onClick={() => finalize(o.id)}
-                          disabled={retrying === o.id}
-                          style={{ background: athletic.primary_color }}
-                        >
-                          {retrying === o.id ? (
-                            <Loader2 className="size-3.5 animate-spin mr-1" />
-                          ) : (
-                            <CreditCard className="size-3.5 mr-1" />
-                          )}
-                          Finalizar compra
+                        <Button size="sm" variant="outline" onClick={() => downloadOrderReceipt(o).catch((e) => toast.error(e?.message ?? "Falha ao gerar PDF"))}>
+                          <Download className="size-3.5 mr-1" /> Baixar recibo
                         </Button>
                       </div>
                     )}
@@ -6021,6 +6299,11 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
                       {t.status}
                     </Badge>
                   </div>
+                  {t.status === "sold" && (
+                    <Button size="sm" variant="outline" onClick={() => downloadTicketReceipt(t).catch((e) => toast.error(e?.message ?? "Falha ao gerar PDF"))}>
+                      <Download className="size-3.5 mr-1" /> Recibo
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -6050,6 +6333,11 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
                       {m.status}
                     </Badge>
                   </div>
+                  {(m.status === "paid" || m.status === "approved") && (
+                    <Button size="sm" variant="outline" onClick={() => downloadMembershipReceipt(m).catch((e) => toast.error(e?.message ?? "Falha ao gerar PDF"))}>
+                      <Download className="size-3.5 mr-1" /> Recibo
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
