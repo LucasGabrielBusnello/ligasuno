@@ -114,7 +114,7 @@ export async function generateReceiptPdf(input: ReceiptInput): Promise<Blob> {
   page.drawText(note, { x: 30, y: 50, size: 9, font: reg, color: rgb(0.4, 0.4, 0.4) });
 
   const bytes = await pdf.save();
-  return new Blob([bytes], { type: "application/pdf" });
+  return new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: "application/pdf" });
 }
 
 export function downloadBlob(blob: Blob, filename: string) {
