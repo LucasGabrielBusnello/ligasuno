@@ -372,7 +372,7 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
 
         <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
           <DialogDescription className="text-neutral-300 text-sm">
-            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>.
+            Você será redirecionado para o checkout da <strong className="text-white">InfinitePay</strong> para pagar com <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> ou <strong className="text-white">cartão de débito</strong>.
           </DialogDescription>
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1 text-sm">
