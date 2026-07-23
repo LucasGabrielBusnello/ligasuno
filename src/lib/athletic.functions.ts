@@ -992,7 +992,8 @@ export const retryProductOrderCheckout = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { createCheckoutPreference } = await import("@/lib/mp.server");
+    const { buildCheckoutUrl } = await import("@/lib/infinitepay.server");
+
     const { data: order } = await supabaseAdmin
       .from("athletic_product_orders").select("*").eq("id", data.order_id).maybeSingle();
     if (!order) throw new Error("Pedido não encontrado");
@@ -1000,25 +1001,31 @@ export const retryProductOrderCheckout = createServerFn({ method: "POST" })
     if ((order as any).status !== "pending") throw new Error("Pedido não está pendente");
 
     const { data: items } = await supabaseAdmin
-      .from("athletic_product_order_items").select("title,quantity").eq("order_id", data.order_id);
-    const totalQty = ((items as any[]) ?? []).reduce((s, i) => s + Number(i.quantity), 0);
-    const firstTitle = ((items as any[]) ?? [])[0]?.title ?? "Pedido AAAMD";
-    const title = totalQty <= 1 ? firstTitle : `Pedido AAAMD (${totalQty} itens)`;
+      .from("athletic_product_order_items").select("title,quantity,unit_price,line_total").eq("order_id", data.order_id);
+    const lines = ((items as any[]) ?? []);
+    if (lines.length === 0) throw new Error("Pedido sem itens");
 
-    const origin = (process.env.PUBLIC_APP_URL || "https://ligasuno.com.br").replace(/\/$/, "");
-    const pref = await createCheckoutPreference({
-      title,
-      unitPrice: Number((order as any).total),
-      payerEmail: (order as any).buyer_email,
-      payerName: (order as any).buyer_name,
-      payerCpf: (order as any).buyer_cpf,
-      externalReference: `ath_prod:${(order as any).id}`,
-      notificationUrl: `${origin}/api/public/payments/mp-webhook`,
-      successUrl: `${origin}/atletica?paid=1`,
-      failureUrl: `${origin}/atletica?paid=0`,
-      pendingUrl: `${origin}/atletica?paid=pending`,
-      metadata: { athletic_id: (order as any).athletic_id, user_id: userId },
+    const { data: acc } = await supabaseAdmin
+      .from("athletic_infinitepay_accounts").select("handle").eq("athletic_id", (order as any).athletic_id).maybeSingle();
+    const handle = (acc as any)?.handle;
+    if (!handle) throw new Error("InfinitePay não conectada para esta atlética");
+
+    const origin = (process.env.APP_URL || process.env.PUBLIC_APP_URL || "https://ligasuno.com.br").replace(/\/$/, "");
+    const nsu = `ath_prod:${(order as any).id}`;
+    const checkout_url = await buildCheckoutUrl({
+      handle,
+      orderNsu: nsu,
+      redirectUrl: `${origin}/atletica?paid=1&nsu=${encodeURIComponent(nsu)}`,
+      webhookUrl: `${origin}/api/public/payments/infinitepay-webhook`,
+      customerName: (order as any).buyer_name,
+      customerEmail: (order as any).buyer_email,
+      customerCellphone: (order as any).buyer_phone ?? undefined,
+      items: lines.map((l) => ({
+        name: l.title,
+        quantity: Number(l.quantity),
+        price: Math.round((Number(l.line_total) / Number(l.quantity)) * 100),
+      })),
     });
-    return { init_point: pref.init_point };
+    return { checkout_url };
   });
 
