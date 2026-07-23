@@ -2683,13 +2683,85 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
 
 /* --- InfinitePay integration card --- */
 function InfinitepayCard({ athletic }: { athletic: Athletic }) {
-  const [form, setForm] = useState({ handle: "", api_key: "", webhook_secret: "" });
+  const [form, setForm] = useState({ handle: "", webhook_secret: "" });
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ connected: boolean; handle: string | null } | null>(null);
+  const save = useServerFn(saveInfinitepayCredentials);
+  const disconnect = useServerFn(disconnectInfinitepay);
+  const getStatus = useServerFn(getInfinitepayStatus);
+
+  const reload = async () => {
+    try { const s = await getStatus({ data: { athletic_id: athletic.id } }); setStatus(s as any); }
+    catch { /* sem permissão */ }
+  };
+  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [athletic.id]);
+
+  return (
+    <Card className="bg-white/5 border-white/10 text-white">
+      <CardHeader>
+        <CardTitle className="text-white text-lg">InfinitePay da atlética</CardTitle>
+        <CardDescription className="text-white/60">
+          Conecte seu link de Checkout Integrado para receber Pix, débito e crédito direto na conta bancária da atlética.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {status?.connected ? (
+          <div className="space-y-3">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+              Conectada como <strong>@{status.handle}</strong>.
+            </div>
+            <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white"
+              disabled={busy}
+              onClick={async () => {
+                if (!confirm("Desconectar InfinitePay desta atlética?")) return;
+                setBusy(true);
+                try { await disconnect({ data: { athletic_id: athletic.id } }); toast.success("Desconectada"); await reload(); }
+                catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+              }}
+            >Desconectar</Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <Label>Handle InfinitePay (InfiniteTag, sem @)</Label>
+              <Input value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value.replace(/^@/, "") })} placeholder="aaamd-desbravadores" />
+              <p className="text-[11px] opacity-60 mt-1">
+                Este é o identificador que aparece no seu link. Ex.: em <code>checkout.infinitepay.io/aaamd-desbravadores</code>, o handle é <strong>aaamd-desbravadores</strong>.
+              </p>
+            </div>
+            <div>
+              <Label>Webhook Secret (opcional)</Label>
+              <Input type="password" value={form.webhook_secret} onChange={(e) => setForm({ ...form, webhook_secret: e.target.value })} placeholder="deixe em branco se não configurou" />
+              <p className="text-[11px] opacity-60 mt-1">
+                Se você configurou uma chave secreta no painel da InfinitePay para assinar webhooks, cole aqui para validarmos as notificações.
+              </p>
+            </div>
+            <Button disabled={busy || !form.handle} onClick={async () => {
+              setBusy(true);
+              try {
+                await save({ data: {
+                  athletic_id: athletic.id,
+                  handle: form.handle,
+                  api_key: null,
+                  webhook_secret: form.webhook_secret || null,
+                } });
+                toast.success("InfinitePay conectada");
+                setForm({ handle: "", webhook_secret: "" });
+                await reload();
+              } catch (e: any) { toast.error(e?.message); }
+              finally { setBusy(false); }
+            }}>Conectar InfinitePay</Button>
+            <p className="text-[11px] opacity-60">
+              URL de webhook para configurar no painel InfinitePay: <br />
+              <code className="break-all">https://ligasuno.com.br/api/public/payments/infinitepay-webhook</code>
+            </p>
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
+
 
 
 /* ============ helpers ============ */
