@@ -2752,6 +2752,7 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <BulkImportMembersDialog open={bulkOpen} onClose={() => setBulkOpen(false)} athleticId={athletic.id} onDone={reload} />
     </div>
   );
 }
