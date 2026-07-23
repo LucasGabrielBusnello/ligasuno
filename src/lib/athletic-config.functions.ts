@@ -94,22 +94,22 @@ export const saveInfinitepayCredentials = createServerFn({ method: "POST" })
     z.object({
       athletic_id: z.string().uuid(),
       handle: z.string().min(2).max(120),
-      api_key: z.string().min(10),
-      webhook_secret: z.string().min(6),
+      api_key: z.string().optional().nullable(),
+      webhook_secret: z.string().optional().nullable(),
     }).parse(i),
   )
   .handler(async ({ data, context }) => {
     await assertDirector(context.supabase, context.userId, data.athletic_id);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { encryptString } = await import("@/lib/crypto.server");
-    const api_key_encrypted = await encryptString(data.api_key);
-    const webhook_secret_encrypted = await encryptString(data.webhook_secret);
+    const api_key_encrypted = data.api_key ? await encryptString(data.api_key) : null;
+    const webhook_secret_encrypted = data.webhook_secret ? await encryptString(data.webhook_secret) : null;
     const { error } = await supabaseAdmin.from("athletic_infinitepay_accounts").upsert({
       athletic_id: data.athletic_id,
-      handle: data.handle,
+      handle: data.handle.replace(/^@/, "").trim(),
       api_key_encrypted,
       webhook_secret_encrypted,
-    }, { onConflict: "athletic_id" });
+    } as any, { onConflict: "athletic_id" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -136,3 +136,14 @@ export const getInfinitepayStatus = createServerFn({ method: "POST" })
       .select("handle, connected_at, updated_at").eq("athletic_id", data.athletic_id).maybeSingle();
     return { connected: !!row, handle: (row as any)?.handle ?? null, connected_at: (row as any)?.connected_at ?? null };
   });
+
+/* Público — só informa se a atlética tem InfinitePay conectada (sem revelar credenciais). */
+export const isInfinitepayEnabled = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) => z.object({ athletic_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin.from("athletic_infinitepay_accounts")
+      .select("id").eq("athletic_id", data.athletic_id).maybeSingle();
+    return { enabled: !!row };
+  });
+
