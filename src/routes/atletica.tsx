@@ -2418,10 +2418,17 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
       {pending.length > 0 && (
         <Card className="bg-yellow-500/10 border-yellow-500/40 text-white">
           <CardContent className="p-4 space-y-3">
-            <h4 className="font-black flex items-center gap-2">
-              <Sparkles className="size-4" /> Pagamentos pendentes ({pending.length})
-            </h4>
-            {pending.map((p) => (
+            <div className="flex items-center justify-between">
+              <h4 className="font-black flex items-center gap-2">
+                <Sparkles className="size-4" /> Pagamentos pendentes ({pending.length})
+              </h4>
+              {pending.length > 3 && (
+                <Button size="sm" variant="ghost" className="text-white hover:bg-white/10" onClick={() => setShowAllPending((v) => !v)}>
+                  {showAllPending ? "Recolher" : "Ver todos"}
+                </Button>
+              )}
+            </div>
+            {(showAllPending ? pending : pending.slice(0, 3)).map((p) => (
               <div
                 key={p.id}
                 className="flex flex-col md:flex-row md:items-center gap-3 p-3 bg-black/30 rounded border border-white/10"
@@ -2454,6 +2461,23 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                       {m}
                     </Button>
                   ))}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-300 hover:bg-red-500/10 hover:text-red-200"
+                    onClick={async () => {
+                      if (!window.confirm("Excluir esta pendência? Essa ação não pode ser desfeita.")) return;
+                      try {
+                        await delPending({ data: { athletic_id: athletic.id, payment_id: p.id } });
+                        toast.success("Pendência removida");
+                        reload();
+                      } catch (e: any) {
+                        toast.error(e?.message);
+                      }
+                    }}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
                 </div>
               </div>
             ))}
@@ -2461,11 +2485,21 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
         </Card>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2 flex-wrap">
         <h3 className="font-black text-lg">Sócios ({members.length})</h3>
+        <div className="flex gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white"
+          onClick={() => setBulkOpen(true)}
+        >
+          <Upload className="size-4 mr-1" /> Importar Excel
+        </Button>
         <Button
           size="sm"
           onClick={() =>
+
             setEditing({ athletic_id: athletic.id, role: "socio", active: true, member_until: null } as any)
           }
         >
