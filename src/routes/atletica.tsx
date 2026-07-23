@@ -2382,6 +2382,9 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
   const upsert = useServerFn(upsertAthleticMember);
   const del = useServerFn(deleteAthleticMember);
   const confirm = useServerFn(confirmMembershipPayment);
+  const delPending = useServerFn(deletePendingMembershipPayment);
+  const [showAllPending, setShowAllPending] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   async function reload() {
     const [{ data }, { data: p }, { data: cy }] = await Promise.all([
