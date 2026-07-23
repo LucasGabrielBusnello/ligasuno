@@ -317,8 +317,12 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
   });
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<null | "mp" | "ip">(null);
   const checkout = useServerFn(createCartCheckout);
+  const checkoutIp = useServerFn(createCartInfinitepayCheckout);
+  const checkIp = useServerFn(isInfinitepayEnabled);
+  const [ipEnabled, setIpEnabled] = useState(false);
+  const [athleticId, setAthleticId] = useState<string | null>(null);
   useEffect(() => {
     if (open && profile) setForm((f) => ({
       ...f, buyer_name: f.buyer_name || profile.full_name || "",
