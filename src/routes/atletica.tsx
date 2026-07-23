@@ -556,20 +556,8 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
               <div><Label>Matrícula *</Label><Input value={form.matricula} onChange={(e) => setForm({ ...form, matricula: e.target.value })} /></div>
               <div><Label>Semestre *</Label><Input value={form.semestre} onChange={(e) => setForm({ ...form, semestre: e.target.value })} /></div>
             </div>
-            <div className="pt-2">
-              <Label>Forma de pagamento</Label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <button type="button" onClick={() => setMethod("pix")}
-                  className={`p-3 rounded-lg border text-left transition ${method === "pix" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
-                  <div className="font-bold text-sm">Pix</div>
-                  <div className="text-xs opacity-70">Aprovação em segundos</div>
-                </button>
-                <button type="button" onClick={() => setMethod("card")}
-                  className={`p-3 rounded-lg border text-left transition ${method === "card" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
-                  <div className="font-bold text-sm">Cartão</div>
-                  <div className="text-xs opacity-70">Crédito ou débito</div>
-                </button>
-              </div>
+            <div className="pt-2 text-xs opacity-70">
+              Pagamento via <strong>InfinitePay</strong> — Pix, cartão de crédito ou débito.
             </div>
           </div>
           <DialogFooter>
@@ -579,23 +567,15 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
               style={{ background: athletic.primary_color, color: "white" }}
               className="border-0 hover:opacity-95"
               onClick={async () => {
-              setSaving(true);
-              try {
-                const r = await request({ data: { athletic_id: athletic.id, ...form } });
-                if (method === "pix") {
-                  const pix = await createPix({ data: { payment_id: r.payment_id } });
-                  setPixData(pix);
+                setSaving(true);
+                try {
+                  const r = await request({ data: { athletic_id: athletic.id, ...form } });
+                  const c = await createIp({ data: { payment_id: r.payment_id } });
                   setOpen(false);
-                  setPixOpen(true);
-                } else {
-                  const c = await createCard({ data: { payment_id: r.payment_id } });
-                  setOpen(false);
-                  window.location.href = c.init_point;
+                  window.location.href = (c as any).checkout_url;
                   return;
-                }
-                onDone();
-              } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Processando..." : method === "pix" ? "Continuar → gerar Pix" : "Continuar → cartão"}</Button>
+                } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
+              }}>{saving ? "Processando..." : "Pagar com InfinitePay"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
