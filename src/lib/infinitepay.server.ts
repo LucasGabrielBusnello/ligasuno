@@ -27,7 +27,13 @@ function b64(s: string): string {
 
 export function buildCheckoutUrl(o: BuildCheckoutOpts): string {
   const handle = o.handle.replace(/^@/, "").trim();
-  const items = b64(JSON.stringify(o.items));
+  // InfinitePay espera itens com { quantity, price (centavos), description }
+  const normalized = o.items.map((it) => ({
+    quantity: Math.max(1, Math.floor(it.quantity)),
+    price: Math.max(1, Math.floor(it.price)),
+    description: (it.description ?? it.name ?? "Item").slice(0, 120),
+  }));
+  const items = b64(JSON.stringify(normalized));
   const params = new URLSearchParams();
   params.set("items", items);
   params.set("order_nsu", o.orderNsu);
@@ -35,7 +41,11 @@ export function buildCheckoutUrl(o: BuildCheckoutOpts): string {
   params.set("webhook_url", o.webhookUrl);
   if (o.customerName) params.set("customer_name", o.customerName);
   if (o.customerEmail) params.set("customer_email", o.customerEmail);
-  if (o.customerCellphone) params.set("customer_cellphone", o.customerCellphone.replace(/\D/g, ""));
+  if (o.customerCellphone) {
+    let phone = o.customerCellphone.replace(/\D/g, "");
+    if (phone.length === 10 || phone.length === 11) phone = "55" + phone;
+    params.set("customer_cellphone", "+" + phone);
+  }
   return `https://checkout.infinitepay.io/${encodeURIComponent(handle)}?${params.toString()}`;
 }
 
