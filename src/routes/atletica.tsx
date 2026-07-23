@@ -1032,7 +1032,7 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
           <DialogHeader>
             <DialogTitle className="text-white">Ingresso — {e.title}</DialogTitle>
             <DialogDescription className="text-neutral-300">
-              Valor {isMember ? "sócio" : "visitante"}: <strong className="text-white">R$ {price.toFixed(2)}</strong>. Pagamento por <strong>{method === "pix" ? "Pix" : "cartão (crédito/débito)"}</strong>.
+              Valor {isMember ? "sócio" : "visitante"}: <strong className="text-white">R$ {price.toFixed(2)}</strong>. Pagamento via <strong>InfinitePay</strong> (Pix, crédito ou débito).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -1048,17 +1048,12 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
             <Button className="bg-emerald-600 hover:bg-emerald-500 border-0" disabled={saving} onClick={async () => {
               setSaving(true);
               try {
-                if (method === "pix") {
-                  const pix = await createPix({ data: { event_id: e.id, ...form } });
-                  setPixData(pix); setOpen(false); setPixOpen(true);
-                } else {
-                  const c = await createCard({ data: { event_id: e.id, ...form } });
-                  setOpen(false);
-                  window.location.href = c.init_point;
-                  return;
-                }
+                const c = await createIp({ data: { event_id: e.id, ...form } });
+                setOpen(false);
+                window.location.href = (c as any).checkout_url;
+                return;
               } catch (err: any) { toast.error(err?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Processando..." : method === "pix" ? "Gerar Pix" : "Ir ao cartão"}</Button>
+            }}>{saving ? "Processando..." : "Pagar com InfinitePay"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
