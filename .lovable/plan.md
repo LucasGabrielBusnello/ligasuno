@@ -1,42 +1,55 @@
+## Checklist para começar a receber pagamentos na atlética
 
-## Contexto
+Sem mexer em código — só configuração. Segue a ordem:
 
-O link que você me passou (`https://checkout.infinitepay.io/aaamd-desbravadores/...`) é do **Checkout Integrado** da InfinitePay — o modo mais simples, funciona só com o **handle** (`aaamd-desbravadores`). Não precisa de API key nem de OAuth. O pagamento redireciona pra página oficial da InfinitePay (Pix, débito, crédito com parcelamento) e volta pro nosso site.
+### 1. Salvar o handle no painel da atlética (2 min)
+- Entre no site logado como diretor(a) da AAAMD.
+- Vá em **Atlética → Diretoria → InfinitePay**.
+- Campo **Handle**: cole `aaamd-desbravadores` (é o que aparece na URL `checkout.infinitepay.io/aaamd-desbravadores/...`).
+- Deixe **Webhook Secret** em branco por enquanto.
+- Clique **Salvar**.
 
-Hoje o formulário no painel da atlética pede 3 campos (handle + api_key + webhook_secret), o que é excesso pra esse modo. Vou simplificar.
+### 2. Conferir se os botões de pagamento apareceram (1 min)
+Nos 3 lugares abaixo deve surgir o botão **Pagar com InfinitePay**:
+- Diálogo de **Associação** (virar sócio).
+- Diálogo de **Ingresso** de evento (quando venda online estiver aberta).
+- **Carrinho** de produtos da atlética.
 
-## O que vou entregar
+Se algum não aparecer, é sinal de que o handle não salvou — volte ao passo 1.
 
-1. **Simplificar o formulário "InfinitePay da atlética"** (`src/routes/atletica.tsx`)
-   - Deixar só: **Handle** (obrigatório) e **Webhook Secret** (opcional, pra validar retornos futuros).
-   - Remover o campo API key.
-   - Texto de ajuda: "Basta seu handle da InfinitePay (o que aparece na URL do seu checkout, ex.: `aaamd-desbravadores`)."
+### 3. Fazer uma compra de teste de R$ 1 (5 min)
+- Crie um produto qualquer com preço **R$ 1,00** e estoque 1.
+- Faça o fluxo completo como sócio: adiciona ao carrinho → **Pagar com InfinitePay** → cai no checkout da InfinitePay → paga no Pix.
+- Volta pro site com `?paid=1` na URL e toast de sucesso.
+- **Confirme no painel financeiro** da atlética que o pedido apareceu como **Pago**.
 
-2. **Ajustar o backend** (`src/lib/athletic-config.functions.ts`)
-   - `saveInfinitepayCredentials`: aceitar sem `api_key`; `webhook_secret` opcional.
+Se o pedido ficou como "Pendente" mesmo após pagar, o webhook não chegou — vá pro passo 4.
 
-3. **Criar o gerador de link de pagamento InfinitePay** (novo `src/lib/infinitepay.server.ts`)
-   - Função que monta a URL do Checkout Integrado com `items` (base64 do JSON), `redirect_url`, `webhook_url` e `order_nsu` (id interno do pedido) — padrão documentado da InfinitePay.
+### 4. (Opcional mas recomendado) Configurar o webhook na InfinitePay
+Isso garante que o site marca o pedido como pago automaticamente, sem depender do usuário voltar pela URL de retorno.
 
-4. **Novas server functions de checkout InfinitePay** (novo `src/lib/infinitepay-payments.functions.ts`), paralelas às de Mercado Pago já existentes:
-   - `createMembershipInfinitepayCheckout` — associação
-   - `createEventTicketInfinitepayCheckout` — ingresso online (mesmo fluxo de reserva de ticket que MP)
-   - `createCartInfinitepayCheckout` — carrinho de produtos
-   - Cada uma retorna `{ checkout_url }` pro frontend abrir em nova aba/redirect.
+- Entre em **infinitepay.io** com a conta da AAAMD.
+- Vá em **Loja Virtual → Webhooks** (ou **Integrações → Webhooks**).
+- Cadastre a URL: `https://ligasuno.com.br/api/public/payments/infinitepay-webhook`
+- Método: **POST**.
+- Eventos: **Pagamento aprovado / concluído** (marque tudo relacionado a pagamento).
+- Salve.
 
-5. **Webhook público** (`src/routes/api/public/payments/infinitepay-webhook.ts`)
-   - Recebe POST da InfinitePay, lê `order_nsu` pra localizar `athletic_membership_payments` / `athletic_event_tickets` / `athletic_product_orders` e marca como pago.
-   - Se a atlética tiver `webhook_secret` salvo, valida a assinatura antes de processar.
-   - URL fixa (uso na configuração da InfinitePay): `https://ligasuno.com.br/api/public/payments/infinitepay-webhook`.
+### 5. (Opcional) Ativar assinatura do webhook
+Só faça isso se a InfinitePay pedir/oferecer uma chave secreta:
+- Gere uma string aleatória (ex.: `openssl rand -hex 32` ou um gerador de senha).
+- Cole a **mesma string** nos dois lugares: no campo Secret da InfinitePay **e** no card InfinitePay do painel da atlética.
+- Salve nos dois lados.
 
-6. **Frontend de compra**: nos diálogos de associação, ingresso e checkout do carrinho, adicionar botão **"Pagar com InfinitePay"** ao lado dos botões de Pix/Cartão do MP. Só aparece se a atlética tiver InfinitePay conectada.
+### 6. Repetir o teste
+- Refaça uma compra de R$ 1.
+- Agora o pedido deve virar **Pago** sozinho, mesmo se você fechar a aba antes de voltar pro site.
+- Confirme o recibo por e-mail chegando.
 
-## Fora do escopo (posso fazer depois se quiser)
+---
 
-- Split automático entre atléticas via InfinitePay (a InfinitePay não expõe API pública de split; ficaria manual/centralizado como já discutimos).
-- Migrar tudo de Mercado Pago pra InfinitePay — vou deixar **os dois convivendo**, o comprador escolhe.
-
-## Confirme antes de eu executar
-
-- Handle a salvar: **`aaamd-desbravadores`** (posso já deixar pré-preenchido no form, você só clica salvar). OK?
-- Webhook secret: você configurou algum no painel da InfinitePay? Se sim, me diga que a gente salva; se não, deixo em branco e o webhook aceita sem verificar assinatura (o ideal é você gerar um depois).
+### Se algo der errado
+Me diga em qual passo travou e o que apareceu (mensagem de erro, print, ou "o botão não aparece"). Os problemas mais comuns:
+- **"InfinitePay não conectada"** → handle não salvou (passo 1).
+- **Pedido fica "Pendente" após pagar** → webhook não configurado (passo 4).
+- **Painel da InfinitePay não mostra webhook** → abrir chamado no suporte pedindo liberação de Checkout Integrado + Webhook para o handle `aaamd-desbravadores`.
