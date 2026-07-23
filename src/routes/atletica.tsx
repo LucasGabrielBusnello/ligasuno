@@ -1020,23 +1020,9 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
               <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
             </Button>
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setMethod("pix")}
-                  className={`p-2.5 rounded-lg border text-left transition ${method === "pix" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
-                  <div className="font-bold text-xs text-white">Pix</div>
-                  <div className="text-[10px] text-white/70">Aprovação em segundos</div>
-                </button>
-                <button type="button" onClick={() => setMethod("card")}
-                  className={`p-2.5 rounded-lg border text-left transition ${method === "card" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
-                  <div className="font-bold text-xs text-white">Cartão</div>
-                  <div className="text-[10px] text-white/70">Crédito ou débito</div>
-                </button>
-              </div>
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider shadow-lg" onClick={() => setOpen(true)}>
-                <Ticket className="size-4" /> Garantir ingresso
-              </Button>
-            </>
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider shadow-lg" onClick={() => setOpen(true)}>
+              <Ticket className="size-4" /> Garantir ingresso
+            </Button>
           )}
         </div>
       </div>
