@@ -220,7 +220,7 @@ export const createCartInfinitepayCheckout = createServerFn({ method: "POST" })
     const handle = await loadHandle(supabaseAdmin, data.athletic_id);
     const origin = appOrigin();
 
-    const url = buildCheckoutUrl({
+    const url = await buildCheckoutUrl({
       handle,
       orderNsu: `ath_prod:${(order as any).id}`,
       redirectUrl: `${origin}/atletica?paid=1`,
