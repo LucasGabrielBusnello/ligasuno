@@ -1,108 +1,42 @@
-# Reforma da aba Atlética
 
-## 1. Nova "Página Inicial" (substitui "Sobre")
-- Primeira aba do sidebar (topo), ícone Home.
-- Conteúdo (ordem vertical):
-  1. **Hero central** com logo grande + nome + tagline (o que já existe no topo, migra pra dentro dessa aba).
-  2. **Card de coleção vigente** (`FeaturedCollection` — reutilizar `CollectionsMarquee` em modo destaque).
-  3. **Bloco Sobre** (descrição, história, presidência) — o conteúdo atual de `SobrePanel`.
-- Remover o hero global e o marquee que hoje aparecem **acima** do sidebar; passam a viver dentro da aba.
-- Aba "Sobre" deixa de existir como item separado.
-- Aba **Produtos** vira segundo item; deixa de ser a inicial.
+## Contexto
 
-## 2. Sidebar corrigida
-- Buttons já são stateful, mas o hero e marquee gigantes acima empurram o conteúdo pra fora da viewport, dando a sensação de "não funciona". Ao mover hero/marquee pra dentro da Página Inicial (item 1), clicar em Produtos/Eventos abre a seção imediatamente.
-- Adicionar `scrollTo({ top: 0 })` no `setActive` para garantir feedback visual.
-- Header sticky continua; sidebar `fixed top-14`.
+O link que você me passou (`https://checkout.infinitepay.io/aaamd-desbravadores/...`) é do **Checkout Integrado** da InfinitePay — o modo mais simples, funciona só com o **handle** (`aaamd-desbravadores`). Não precisa de API key nem de OAuth. O pagamento redireciona pra página oficial da InfinitePay (Pix, débito, crédito com parcelamento) e volta pro nosso site.
 
-## 3. Ciclos de associação (Diretoria > Configurações)
-Nova tabela `athletic_membership_cycles`:
-- `athletic_id`, `name`, `starts_at`, `ends_at`, `price_new`, `price_renewal`, `open` (bool), `created_at`.
-Nova coluna em `athletics`: `memberships_open` (bool) — chave-mestra pra abrir/fechar novas associações.
-Nova coluna em `athletic_memberships`: `cycle_id` (FK opcional).
+Hoje o formulário no painel da atlética pede 3 campos (handle + api_key + webhook_secret), o que é excesso pra esse modo. Vou simplificar.
 
-Regras:
-- Se `memberships_open = false` **ou** não existe ciclo ativo (com `open=true` e data atual dentro do intervalo): botão "Associar-se" bloqueado com mensagem.
-- Se há ciclo ativo: usa `price_new` ou `price_renewal` (renovação = usuário tinha membership no ciclo anterior).
-- Ao pagar: `member_until = ciclo.ends_at`, `cycle_id = ciclo.id`.
+## O que vou entregar
 
-UI: em **Diretoria > Configurações**, novo bloco "Ciclos de associação":
-- Toggle "Aceitar novas associações".
-- Lista de ciclos com CRUD (nome, período, preço novo, preço renovação, ativo).
+1. **Simplificar o formulário "InfinitePay da atlética"** (`src/routes/atletica.tsx`)
+   - Deixar só: **Handle** (obrigatório) e **Webhook Secret** (opcional, pra validar retornos futuros).
+   - Remover o campo API key.
+   - Texto de ajuda: "Basta seu handle da InfinitePay (o que aparece na URL do seu checkout, ex.: `aaamd-desbravadores`)."
 
-## 4. Permissões granulares por membro
-Nova coluna em `athletic_memberships`: `director_tabs text[]` (default `NULL`).
-- `NULL` = comportamento atual (presidente + diretor têm tudo).
-- Array = restrição às abas listadas. Ignorado se `role='presidente'`.
-- Chaves: `produtos, eventos, esportes, socios, financeiro, parceiros, configuracoes`.
+2. **Ajustar o backend** (`src/lib/athletic-config.functions.ts`)
+   - `saveInfinitepayCredentials`: aceitar sem `api_key`; `webhook_secret` opcional.
 
-UI: no modal de adicionar/editar membro (Diretoria > Sócios), quando `role` for `diretor`, aparecem 7 checkboxes.
-Front-end filtra abas do `DirectorPanel` conforme `director_tabs`.
+3. **Criar o gerador de link de pagamento InfinitePay** (novo `src/lib/infinitepay.server.ts`)
+   - Função que monta a URL do Checkout Integrado com `items` (base64 do JSON), `redirect_url`, `webhook_url` e `order_nsu` (id interno do pedido) — padrão documentado da InfinitePay.
 
-## 5. InfinitePay no Financeiro (API completa)
-Nova tabela `athletic_infinitepay_accounts`:
-- `athletic_id` (unique), `handle`, `api_key_encrypted`, `webhook_secret_encrypted`, `connected_at`.
-Secret global `INFINITEPAY_API_URL` (base URL).
+4. **Novas server functions de checkout InfinitePay** (novo `src/lib/infinitepay-payments.functions.ts`), paralelas às de Mercado Pago já existentes:
+   - `createMembershipInfinitepayCheckout` — associação
+   - `createEventTicketInfinitepayCheckout` — ingresso online (mesmo fluxo de reserva de ticket que MP)
+   - `createCartInfinitepayCheckout` — carrinho de produtos
+   - Cada uma retorna `{ checkout_url }` pro frontend abrir em nova aba/redirect.
 
-UI: em **Diretoria > Financeiro**, novo card "InfinitePay":
-- Campo pra colar handle + API key + webhook secret; botão "Conectar".
-- Server function `saveInfinitepayCredentials` (guarda com Web Crypto AES-GCM, chave em `APP_ENCRYPTION_KEY` gerada via `generate_secret`).
-- Server function `disconnectInfinitepay`.
-- Server function `createInfinitepayCharge` (usada pela associação/produtos como método alternativo ao MP).
-- Route `src/routes/api/public/payments/infinitepay-webhook.ts` (verifica HMAC do webhook secret; marca `paid`).
+5. **Webhook público** (`src/routes/api/public/payments/infinitepay-webhook.ts`)
+   - Recebe POST da InfinitePay, lê `order_nsu` pra localizar `athletic_membership_payments` / `athletic_event_tickets` / `athletic_product_orders` e marca como pago.
+   - Se a atlética tiver `webhook_secret` salvo, valida a assinatura antes de processar.
+   - URL fixa (uso na configuração da InfinitePay): `https://ligasuno.com.br/api/public/payments/infinitepay-webhook`.
 
-Passo 1 desta entrega: só o skeleton (tabela, tela de conectar, secret de encryption). Pagamentos via InfinitePay ficam pra segundo turno assim que confirmar endpoints exatos da API (que variam por conta merchant/checkout).
+6. **Frontend de compra**: nos diálogos de associação, ingresso e checkout do carrinho, adicionar botão **"Pagar com InfinitePay"** ao lado dos botões de Pix/Cartão do MP. Só aparece se a atlética tiver InfinitePay conectada.
 
-## Detalhes técnicos
+## Fora do escopo (posso fazer depois se quiser)
 
-### Migração (1 arquivo)
-```sql
-alter table athletics add column if not exists memberships_open boolean not null default true;
+- Split automático entre atléticas via InfinitePay (a InfinitePay não expõe API pública de split; ficaria manual/centralizado como já discutimos).
+- Migrar tudo de Mercado Pago pra InfinitePay — vou deixar **os dois convivendo**, o comprador escolhe.
 
-create table public.athletic_membership_cycles (
-  id uuid primary key default gen_random_uuid(),
-  athletic_id uuid not null references athletics(id) on delete cascade,
-  name text not null,
-  starts_at date not null,
-  ends_at date not null,
-  price_new numeric(10,2) not null,
-  price_renewal numeric(10,2) not null,
-  open boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
--- grants, RLS (director read/write, anon read active), trigger updated_at
+## Confirme antes de eu executar
 
-alter table athletic_memberships
-  add column if not exists cycle_id uuid references athletic_membership_cycles(id) on delete set null,
-  add column if not exists director_tabs text[];
-
-create table public.athletic_infinitepay_accounts (
-  id uuid primary key default gen_random_uuid(),
-  athletic_id uuid not null unique references athletics(id) on delete cascade,
-  handle text not null,
-  api_key_encrypted text not null,
-  webhook_secret_encrypted text not null,
-  connected_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
--- grants, RLS (só diretoria)
-```
-
-### Server functions novas
-`src/lib/athletic.functions.ts`:
-- `upsertMembershipCycle`, `deleteMembershipCycle`, `toggleMembershipsOpen`
-- `saveInfinitepayCredentials`, `disconnectInfinitepay`, `getInfinitepayStatus`
-
-### Front-end
-- `src/routes/atletica.tsx`:
-  - Adiciona `SectionKey = "inicio" | ...`; remove `"sobre"`; `inicio` como default.
-  - Novo componente `InicioSection` (hero + coleção destaque + sobre).
-  - Remove hero e marquee do topo (fora de `<main>`).
-  - `DirectorPanel`: filtra abas por `director_tabs`; nova sub-aba "Ciclos" dentro de Configurações; novo card InfinitePay em Financeiro.
-  - Modal editar membro: checkboxes de abas.
-  - `AssociarButton`: consulta ciclo ativo; bloqueia se fechado; mostra preço apropriado (novo vs renovação).
-
-## Fora de escopo (próximos turnos)
-- Implementar de fato os endpoints de charge/webhook da InfinitePay (precisa das credenciais reais e do dashboard InfinitePay pra confirmar URLs e payload).
-- Migrar pagamentos MP existentes pro fluxo de escolha MP/InfinitePay no checkout.
+- Handle a salvar: **`aaamd-desbravadores`** (posso já deixar pré-preenchido no form, você só clica salvar). OK?
+- Webhook secret: você configurou algum no painel da InfinitePay? Se sim, me diga que a gente salva; se não, deixo em branco e o webhook aceita sem verificar assinatura (o ideal é você gerar um depois).
