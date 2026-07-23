@@ -6,6 +6,72 @@ function appOrigin() {
   return process.env.APP_URL || "https://ligasuno.com.br";
 }
 
+function redirectFor(origin: string, nsu: string) {
+  return `${origin}/atletica?paid=1&nsu=${encodeURIComponent(nsu)}`;
+}
+
+/**
+ * Verifica pagamento na InfinitePay via /payment_check e, se pago, marca o
+ * registro como concluído mesmo quando o webhook ainda não chegou.
+ */
+export const verifyInfinitepayCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ nsu: z.string().min(3) }).parse(i))
+  .handler(async ({ data, context }) => {
+    const nsu = data.nsu;
+    if (!nsu.includes(":")) return { ok: false, reason: "nsu inválido" };
+    const [category, refId] = nsu.split(":");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { checkPaymentByNsu } = await import("@/lib/infinitepay.server");
+    const { handleAthleticMembership, handleAthleticEventTicket, handleAthleticProductOrder } =
+      await import("@/routes/api/public/payments/mp-webhook");
+
+    let athleticId: string | null = null;
+    let alreadyPaid = false;
+
+    if (category === "ath_memb") {
+      const { data: p } = await supabaseAdmin
+        .from("athletic_membership_payments").select("athletic_id,status,user_id").eq("id", refId).maybeSingle();
+      athleticId = (p as any)?.athletic_id ?? null;
+      alreadyPaid = (p as any)?.status === "paid";
+      if ((p as any)?.user_id && (p as any).user_id !== context.userId) return { ok: false, reason: "sem permissão" };
+    } else if (category === "ath_event") {
+      const { data: t } = await supabaseAdmin
+        .from("athletic_event_tickets").select("event_id,status,buyer_user_id").eq("id", refId).maybeSingle();
+      if ((t as any)?.buyer_user_id && (t as any).buyer_user_id !== context.userId) return { ok: false, reason: "sem permissão" };
+      alreadyPaid = (t as any)?.status === "sold";
+      const evId = (t as any)?.event_id;
+      if (evId) {
+        const { data: ev } = await supabaseAdmin.from("athletic_events").select("athletic_id").eq("id", evId).maybeSingle();
+        athleticId = (ev as any)?.athletic_id ?? null;
+      }
+    } else if (category === "ath_prod") {
+      const { data: o } = await supabaseAdmin
+        .from("athletic_product_orders").select("athletic_id,status,user_id").eq("id", refId).maybeSingle();
+      athleticId = (o as any)?.athletic_id ?? null;
+      alreadyPaid = (o as any)?.status === "paid";
+      if ((o as any)?.user_id && (o as any).user_id !== context.userId) return { ok: false, reason: "sem permissão" };
+    }
+    if (alreadyPaid) return { ok: true, paid: true, alreadyPaid: true };
+    if (!athleticId) return { ok: false, reason: "registro não encontrado" };
+
+    const { data: acc } = await supabaseAdmin
+      .from("athletic_infinitepay_accounts").select("handle").eq("athletic_id", athleticId).maybeSingle();
+    const handle = (acc as any)?.handle;
+    if (!handle) return { ok: false, reason: "atlética sem handle" };
+
+    try {
+      const r = await checkPaymentByNsu(handle, nsu);
+      if (!r.paid) return { ok: true, paid: false };
+      if (category === "ath_memb") await handleAthleticMembership(refId, true, r.providerId, r.amount);
+      else if (category === "ath_event") await handleAthleticEventTicket(refId, true, r.providerId, r.amount);
+      else if (category === "ath_prod") await handleAthleticProductOrder(refId, true, r.providerId, r.amount);
+      return { ok: true, paid: true };
+    } catch (e: any) {
+      return { ok: false, reason: e?.message ?? "erro na verificação" };
+    }
+  });
+
 async function loadHandle(supabaseAdmin: any, athletic_id: string): Promise<string> {
   const { data: acc } = await supabaseAdmin
     .from("athletic_infinitepay_accounts")
@@ -38,7 +104,7 @@ export const createMembershipInfinitepayCheckout = createServerFn({ method: "POS
     const url = await buildCheckoutUrl({
       handle,
       orderNsu: `ath_memb:${(pay as any).id}`,
-      redirectUrl: `${origin}/atletica?paid=1`,
+      redirectUrl: redirectFor(origin, `ath_memb:${(pay as any).id}`),
       webhookUrl: `${origin}/api/public/payments/infinitepay-webhook`,
       customerName: (pay as any).buyer_name ?? undefined,
       customerEmail: (pay as any).buyer_email ?? undefined,
@@ -104,7 +170,7 @@ export const createEventTicketInfinitepayCheckout = createServerFn({ method: "PO
       const url = await buildCheckoutUrl({
         handle,
         orderNsu: `ath_event:${(ticket as any).id}`,
-        redirectUrl: `${origin}/atletica?paid=1`,
+        redirectUrl: redirectFor(origin, `ath_event:${(ticket as any).id}`),
         webhookUrl: `${origin}/api/public/payments/infinitepay-webhook`,
         customerName: data.buyer_name,
         customerEmail: data.buyer_email,
@@ -223,7 +289,7 @@ export const createCartInfinitepayCheckout = createServerFn({ method: "POST" })
     const url = await buildCheckoutUrl({
       handle,
       orderNsu: `ath_prod:${(order as any).id}`,
-      redirectUrl: `${origin}/atletica?paid=1`,
+      redirectUrl: redirectFor(origin, `ath_prod:${(order as any).id}`),
       webhookUrl: `${origin}/api/public/payments/infinitepay-webhook`,
       customerName: data.buyer_name,
       customerEmail: data.buyer_email,
