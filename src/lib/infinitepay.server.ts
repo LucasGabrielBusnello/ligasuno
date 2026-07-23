@@ -77,6 +77,36 @@ export async function buildCheckoutUrl(o: BuildCheckoutOpts): Promise<string> {
   return url;
 }
 
+/**
+ * Consulta status de pagamento por order_nsu via API oficial.
+ * Retorna { paid, amount (em reais), providerId } — mesmo formato usado no webhook.
+ */
+export async function checkPaymentByNsu(handle: string, orderNsu: string): Promise<{
+  paid: boolean; amount: number; providerId: string; raw: any;
+}> {
+  const res = await fetch("https://api.checkout.infinitepay.io/payment_check", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({ handle: handle.replace(/^@/, "").trim(), order_nsu: orderNsu }),
+  });
+  const text = await res.text();
+  let json: any = null;
+  try { json = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+  if (!res.ok) {
+    const msg = json?.message || json?.error || text || `HTTP ${res.status}`;
+    throw new Error(`InfinitePay payment_check: ${msg}`);
+  }
+  const paid: boolean =
+    json?.paid === true ||
+    json?.success === true ||
+    json?.status === "paid" ||
+    json?.status === "approved" ||
+    json?.transaction?.status === "paid";
+  const amountCents = Number(json?.amount ?? json?.paid_amount ?? json?.transaction?.amount ?? 0);
+  const providerId = String(json?.transaction_nsu ?? json?.receipt?.transaction_nsu ?? json?.id ?? orderNsu);
+  return { paid, amount: amountCents / 100, providerId, raw: json };
+}
+
 /** HMAC-SHA256 helper para validar assinatura de webhook (se configurada). */
 export async function hmacSha256Hex(secret: string, payload: string): Promise<string> {
   const key = await crypto.subtle.importKey(
