@@ -3595,13 +3595,32 @@ function ManualSaleDialog({
             <Input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="relative">
               <Label>E-mail *</Label>
               <Input
                 type="email"
+                autoComplete="off"
                 value={form.buyer_email}
-                onChange={(e) => setForm({ ...form, buyer_email: e.target.value })}
+                onChange={(e) => { setForm({ ...form, buyer_email: e.target.value }); setShowSug(true); }}
+                onFocus={() => setShowSug(true)}
+                onBlur={() => setTimeout(() => setShowSug(false), 150)}
               />
+              {showSug && suggestions.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1 rounded-lg border bg-popover text-popover-foreground shadow-lg max-h-56 overflow-auto">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.email}
+                      type="button"
+                      className="w-full text-left px-3 py-2 hover:bg-accent text-xs border-b last:border-b-0"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickSuggestion(s)}
+                    >
+                      <div className="font-bold">{s.full_name ?? s.email}</div>
+                      <div className="opacity-70">{s.email}{s.cpf ? ` • CPF ${s.cpf}` : ""}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <Label>CPF *</Label>
