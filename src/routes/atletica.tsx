@@ -508,11 +508,9 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
       .then(({ data }) => setCurrentCycle(data ? (data as any) : null));
   }, [open, athletic.id]);
   const request = useServerFn(requestSelfMembership);
-  const createPix = useServerFn(createMembershipPixPayment);
-  const createCard = useServerFn(createMembershipCardPayment);
+  const createIp = useServerFn(createMembershipInfinitepayCheckout);
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
-  const [method, setMethod] = useState<"pix" | "card">("pix");
   const { user } = useAuth();
   const displayPrice = currentCycle ? Number(currentCycle.price_new) : Number(athletic.membership_price);
   if (!user) {
