@@ -4313,7 +4313,15 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
     });
   }
   return (
-    <div className="space-y-4">
+    <Tabs defaultValue="movs" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="movs">Movimentações</TabsTrigger>
+        <TabsTrigger value="pending">Pagamentos Pendentes</TabsTrigger>
+      </TabsList>
+      <TabsContent value="pending" className="mt-4">
+        <PendingPaymentsPanel athletic={athletic} onResolved={reload} />
+      </TabsContent>
+      <TabsContent value="movs" className="mt-4 space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 p-4">
           <div className="text-[10px] uppercase tracking-widest font-black opacity-70 flex items-center gap-1.5">
