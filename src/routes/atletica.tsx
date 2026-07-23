@@ -68,6 +68,10 @@ import {
   TrendingUp,
   Images,
   ArrowRight,
+  Wrench,
+  Download,
+  Upload,
+  ClockAlert,
 } from "lucide-react";
 import {
   upsertAthleticMember,
@@ -95,6 +99,16 @@ import {
   registerManualProductSale,
   retryProductOrderCheckout,
 } from "@/lib/athletic.functions";
+
+import {
+  setAthleticMaintenance,
+  deletePendingMembershipPayment,
+  searchBuyerSuggestions,
+  listPendingProductAndTicketPayments,
+  resolveProductOrderPayment,
+  resolveTicketPayment,
+  bulkImportMembers,
+} from "@/lib/athletic-extras.functions";
 
 import {
   createMembershipPixPayment,
@@ -275,6 +289,25 @@ function AtleticaPage() {
     !!myMembership &&
     myMembership.active &&
     (!myMembership.member_until || new Date(myMembership.member_until) >= new Date());
+
+  const inMaintenance = !!(ath as any).maintenance_enabled;
+  if (inMaintenance && !isDirector) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center px-4">
+        <div className="max-w-md text-center space-y-4">
+          <div className="size-16 rounded-2xl bg-orange-500/15 text-orange-400 flex items-center justify-center mx-auto ring-1 ring-orange-500/30">
+            <Wrench className="size-8" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight">Atlética em Manutenção</h1>
+          <p className="text-sm text-neutral-400">A diretoria está atualizando esta área. Voltaremos em breve.</p>
+          <Button asChild variant="outline" className="border-white/20 text-white hover:bg-white/10">
+            <Link to="/">Voltar ao início</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <AtleticaCartProvider>
@@ -4260,9 +4293,41 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
 /* --- Config --- */
 function DirectorConfig({ athletic }: { athletic: Athletic }) {
   const [s, setS] = useState({ ...athletic });
+  const [maint, setMaint] = useState<boolean>(!!(athletic as any).maintenance_enabled);
   const upd = useServerFn(updateAthletic);
+  const toggleMaint = useServerFn(setAthleticMaintenance);
   return (
     <div className="space-y-4">
+      <Card className={maint ? "border-orange-400/50 bg-orange-500/10 text-white" : "bg-white/5 border-white/10 text-white"}>
+        <CardContent className="p-4 flex items-center gap-3">
+          <div className={`size-10 rounded-xl flex items-center justify-center ${maint ? "bg-orange-500/25 text-orange-300" : "bg-white/10"}`}>
+            <Wrench className="size-5" />
+          </div>
+          <div className="flex-1">
+            <div className="font-black text-sm">Modo manutenção da atlética</div>
+            <div className="text-xs opacity-70">
+              {maint
+                ? "A aba AAAMD está bloqueada — só diretores e presidentes acessam."
+                : "A página da atlética está aberta ao público."}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant={maint ? "destructive" : "default"}
+            onClick={async () => {
+              try {
+                const next = !maint;
+                await toggleMaint({ data: { athletic_id: athletic.id, enabled: next } });
+                setMaint(next);
+                toast.success(next ? "Atlética em manutenção" : "Atlética reaberta");
+              } catch (e: any) { toast.error(e?.message); }
+            }}
+          >
+            {maint ? "Desativar manutenção" : "Ativar manutenção"}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="bg-white/5 border-white/10 text-white">
         <CardContent className="p-6 space-y-4">
           <div>

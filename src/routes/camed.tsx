@@ -34,9 +34,33 @@ export const Route = createFileRoute("/camed")({
 
 function CamedPublicPage() {
   const [info, setInfo] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
+  const { camedPanelTabs, isAdminMaster, isCamedPresident, loading: authLoading } = useAuth();
   useEffect(() => {
     supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => setInfo(data));
+    supabase.from("camed_settings").select("*").eq("id", 1).maybeSingle().then(({ data }) => setSettings(data));
   }, []);
+
+  const inMaintenance = !!(settings as any)?.maintenance_enabled;
+  const hasCamedAccess = isAdminMaster || isCamedPresident || (camedPanelTabs?.length ?? 0) > 0;
+  const blocked = inMaintenance && !hasCamedAccess && !authLoading;
+
+  if (blocked) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-4">
+        <div className="max-w-md text-center space-y-4">
+          <div className="size-16 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto ring-1 ring-emerald-500/30">
+            <Building2 className="size-8" />
+          </div>
+          <h1 className="text-3xl font-black tracking-tight">CAMED em Manutenção</h1>
+          <p className="text-sm text-muted-foreground">
+            O Centro Acadêmico está atualizando esta área. Voltaremos em breve.
+          </p>
+          <Button asChild variant="outline"><Link to="/">Voltar ao início</Link></Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -58,14 +82,15 @@ function CamedPublicPage() {
       </section>
 
       <main className="max-w-6xl mx-auto px-4 py-12 space-y-16">
-        <MembersSection />
+        <NewsSection />
         <OpenActivitiesSection />
         <HistoryShowcase info={info} />
-        <NewsSection />
+        <MembersSection />
       </main>
     </div>
   );
 }
+
 
 function OpenActivitiesSection() {
   const [items, setItems] = useState<any[]>([]);

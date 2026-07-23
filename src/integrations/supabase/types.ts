@@ -625,6 +625,7 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          invite_sent_at: string | null
           matricula: string | null
           member_until: string | null
           phone: string | null
@@ -644,6 +645,7 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          invite_sent_at?: string | null
           matricula?: string | null
           member_until?: string | null
           phone?: string | null
@@ -663,6 +665,7 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          invite_sent_at?: string | null
           matricula?: string | null
           member_until?: string | null
           phone?: string | null
@@ -1110,6 +1113,7 @@ export type Database = {
           history_title: string | null
           id: string
           logo_url: string | null
+          maintenance_enabled: boolean
           membership_period_days: number
           membership_price: number
           memberships_open: boolean
@@ -1131,6 +1135,7 @@ export type Database = {
           history_title?: string | null
           id?: string
           logo_url?: string | null
+          maintenance_enabled?: boolean
           membership_period_days?: number
           membership_price?: number
           memberships_open?: boolean
@@ -1152,6 +1157,7 @@ export type Database = {
           history_title?: string | null
           id?: string
           logo_url?: string | null
+          maintenance_enabled?: boolean
           membership_period_days?: number
           membership_price?: number
           memberships_open?: boolean
@@ -1367,18 +1373,21 @@ export type Database = {
         Row: {
           id: number
           league_registration_fee: number
+          maintenance_enabled: boolean
           semestrality_fee: number
           updated_at: string
         }
         Insert: {
           id?: number
           league_registration_fee?: number
+          maintenance_enabled?: boolean
           semestrality_fee?: number
           updated_at?: string
         }
         Update: {
           id?: number
           league_registration_fee?: number
+          maintenance_enabled?: boolean
           semestrality_fee?: number
           updated_at?: string
         }
