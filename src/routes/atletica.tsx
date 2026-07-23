@@ -3480,7 +3480,10 @@ function ManualSaleDialog({
     notes: "",
   });
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSug, setShowSug] = useState(false);
   const register = useServerFn(registerManualProductSale);
+  const searchBuyer = useServerFn(searchBuyerSuggestions);
 
   useEffect(() => {
     if (product)
@@ -3496,6 +3499,30 @@ function ManualSaleDialog({
         notes: "",
       });
   }, [product?.id]);
+
+  useEffect(() => {
+    const q = form.buyer_email.trim();
+    if (q.length < 2) { setSuggestions([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res: any = await searchBuyer({ data: { athletic_id: athletic.id, query: q } });
+        setSuggestions(res?.items ?? []);
+      } catch {}
+    }, 250);
+    return () => clearTimeout(t);
+  }, [form.buyer_email, athletic.id]);
+
+  function pickSuggestion(s: any) {
+    setForm((f) => ({
+      ...f,
+      buyer_email: s.email ?? f.buyer_email,
+      buyer_name: s.full_name ?? f.buyer_name,
+      buyer_cpf: s.cpf ?? f.buyer_cpf,
+      buyer_registration: s.matricula ?? f.buyer_registration,
+      buyer_semester: s.semestre ?? f.buyer_semester,
+    }));
+    setShowSug(false);
+  }
 
   if (!product) return null;
 
