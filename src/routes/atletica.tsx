@@ -2505,6 +2505,7 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
         >
           <Plus className="size-4" /> Adicionar manualmente
         </Button>
+        </div>
       </div>
 
       <Card className="bg-white/5 border-white/10 text-white overflow-x-auto">
