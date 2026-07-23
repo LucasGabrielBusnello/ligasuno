@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { QrScanner } from "@/components/qr-scanner";
 import { ImageUpload } from "@/components/image-upload";
 import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
+import { generateReceiptPdf, downloadBlob } from "@/lib/athletic-receipt-pdf";
 import {
   ArrowLeft,
   ShoppingBag,
