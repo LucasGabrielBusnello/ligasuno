@@ -392,16 +392,13 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2">
-          <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
-          <Button
         <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2 flex-col sm:flex-row">
           <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
-          {ipEnabled && (
+          {ipEnabled ? (
             <Button
               disabled={!!saving}
-              variant="outline"
-              className="rounded-lg font-bold border-white/20 text-white hover:bg-white/10"
+              className="rounded-lg font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95 transition"
+              style={{ background: accentColor, boxShadow: `0 10px 30px -12px ${accentColor}` }}
               onClick={async () => {
                 if (!athleticId) return;
                 setSaving("ip");
@@ -418,31 +415,13 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
                 } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(null); }
               }}
             >
-              {saving === "ip" ? "Redirecionando..." : "Pagar com InfinitePay"}
+              <CreditCard className="size-4" /> {saving === "ip" ? "Redirecionando..." : "Pagar com InfinitePay"}
             </Button>
+          ) : (
+            <div className="text-xs text-white/60 italic">
+              Pagamentos indisponíveis: a atlética ainda não conectou a InfinitePay.
+            </div>
           )}
-          <Button
-            disabled={!!saving}
-            className="rounded-lg font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95 transition"
-            style={{ background: accentColor, boxShadow: `0 10px 30px -12px ${accentColor}` }}
-            onClick={async () => {
-              setSaving("mp");
-              try {
-                const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
-                if (!prod) throw new Error("Produto não encontrado");
-                const r = await checkout({
-                  data: {
-                    athletic_id: (prod as any).athletic_id,
-                    items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
-                    ...form,
-                  },
-                });
-                clear();
-                window.location.href = r.init_point;
-              } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(null); }
-            }}>
-            <CreditCard className="size-4" /> {saving === "mp" ? "Redirecionando..." : "Finalizar via Mercado Pago"}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
