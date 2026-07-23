@@ -42,8 +42,9 @@ import {
 } from "@/lib/athletic-config.functions";
 import {
   createMembershipInfinitepayCheckout, createEventTicketInfinitepayCheckout,
-  createCartInfinitepayCheckout,
+  createCartInfinitepayCheckout, verifyInfinitepayCheckout,
 } from "@/lib/infinitepay-payments.functions";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { AtleticaCartProvider, useAtleticaCart, type CartItem } from "@/hooks/use-atletica-cart";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -206,7 +207,7 @@ function PaidReturnToast() {
     if (paid === "1" && nsu) {
       let cancelled = false;
       const invalidate = () => {
-        queryClient.invalidateQueries({ predicate: (q) => {
+        queryClient.invalidateQueries({ predicate: (q: any) => {
           const k = q.queryKey?.[0];
           return typeof k === "string" && (k.includes("athletic") || k.includes("purchase") || k.includes("membership") || k.includes("orders") || k.includes("tickets"));
         } });
