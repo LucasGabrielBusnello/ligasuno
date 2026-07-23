@@ -101,7 +101,7 @@ export const createEventTicketInfinitepayCheckout = createServerFn({ method: "PO
     try {
       const handle = await loadHandle(supabaseAdmin, (ev as any).athletic_id);
       const origin = appOrigin();
-      const url = buildCheckoutUrl({
+      const url = await buildCheckoutUrl({
         handle,
         orderNsu: `ath_event:${(ticket as any).id}`,
         redirectUrl: `${origin}/atletica?paid=1`,
