@@ -4503,6 +4503,179 @@ function DirectorCash({ athletic }: { athletic: Athletic }) {
       </Card>
 
       <InfinitepayCard athletic={athletic} />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function PendingPaymentsPanel({ athletic, onResolved }: { athletic: Athletic; onResolved?: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [pendingMemberships, setPendingMemberships] = useState<any[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [methodByRow, setMethodByRow] = useState<Record<string, "pix" | "dinheiro" | "cartao" | "outro">>({});
+  const listFn = useServerFn(listPendingProductAndTicketPayments);
+  const resolveOrder = useServerFn(resolveProductOrderPayment);
+  const resolveTicket = useServerFn(resolveTicketPayment);
+  const confirmMemb = useServerFn(confirmMembershipPayment);
+
+  async function reload() {
+    setLoading(true);
+    try {
+      const res: any = await listFn({ data: { athletic_id: athletic.id } });
+      setOrders(res.orders ?? []);
+      setTickets(res.tickets ?? []);
+    } catch (e: any) {
+      toast.error(e?.message);
+    }
+    const { data: mem } = await supabase
+      .from("athletic_membership_payments")
+      .select("id,amount,method,created_at,status,user_id,profiles:profiles!athletic_membership_payments_user_id_fkey(full_name,email,cpf,phone)")
+      .eq("athletic_id", athletic.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    setPendingMemberships((mem as any) ?? []);
+    setLoading(false);
+  }
+  useEffect(() => { reload(); }, [athletic.id]);
+
+  function getMethod(id: string) { return methodByRow[id] ?? "pix"; }
+
+  async function doApproveOrder(id: string) {
+    try { setBusy(id); await resolveOrder({ data: { athletic_id: athletic.id, order_id: id, approve: true, method: getMethod(id) as any } }); toast.success("Pedido aprovado"); await reload(); onResolved?.(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doRejectOrder(id: string) {
+    if (!confirm2("Reprovar este pedido?")) return;
+    try { setBusy(id); await resolveOrder({ data: { athletic_id: athletic.id, order_id: id, approve: false } }); toast.success("Reprovado"); await reload(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doApproveTicket(id: string) {
+    try { setBusy(id); await resolveTicket({ data: { athletic_id: athletic.id, ticket_id: id, approve: true, method: getMethod(id) as any } }); toast.success("Ingresso aprovado"); await reload(); onResolved?.(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doRejectTicket(id: string) {
+    if (!confirm2("Reprovar este ingresso?")) return;
+    try { setBusy(id); await resolveTicket({ data: { athletic_id: athletic.id, ticket_id: id, approve: false } }); toast.success("Reprovado"); await reload(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+  async function doApproveMembership(id: string) {
+    try { setBusy(id); await confirmMemb({ data: { athletic_id: athletic.id, payment_id: id } }); toast.success("Associação aprovada"); await reload(); onResolved?.(); } catch (e: any) { toast.error(e?.message); } finally { setBusy(null); }
+  }
+
+  if (loading) return <div className="py-10 text-center opacity-60"><Loader2 className="size-6 animate-spin mx-auto" /></div>;
+
+  const totalCount = orders.length + tickets.length + pendingMemberships.length;
+  if (totalCount === 0) {
+    return (
+      <Card className="bg-white/5 border-white/10 text-white">
+        <CardContent className="p-8 text-center opacity-70">
+          <CheckCircle2 className="size-8 mx-auto mb-2 text-emerald-400" />
+          <p className="font-bold">Nenhum pagamento pendente 🎉</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const MethodSelect = ({ id }: { id: string }) => (
+    <Select value={getMethod(id)} onValueChange={(v) => setMethodByRow((m) => ({ ...m, [id]: v as any }))}>
+      <SelectTrigger className="h-8 w-32"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="pix">Pix</SelectItem>
+        <SelectItem value="dinheiro">Dinheiro</SelectItem>
+        <SelectItem value="cartao">Cartão</SelectItem>
+        <SelectItem value="outro">Outro</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  return (
+    <div className="space-y-5">
+      <div className="text-xs opacity-70">{totalCount} pagamento(s) aguardando aprovação da diretoria.</div>
+
+      {orders.length > 0 && (
+        <div>
+          <h4 className="font-black text-sm mb-2 flex items-center gap-2"><ShoppingBag className="size-4" /> Produtos ({orders.length})</h4>
+          <div className="space-y-2">
+            {orders.map((o) => (
+              <Card key={o.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="font-bold text-sm">Pedido #{o.id.slice(0, 8).toUpperCase()}</div>
+                    <div className="text-xs opacity-70">{o.buyer_name} • {o.buyer_email}{o.buyer_cpf ? ` • CPF ${o.buyer_cpf}` : ""}</div>
+                    <div className="text-[11px] opacity-60 mt-0.5">{(o.athletic_product_order_items ?? []).map((i: any) => `${i.title} × ${i.quantity}`).join(" · ")}</div>
+                    <div className="text-[11px] opacity-60">{new Date(o.created_at).toLocaleString("pt-BR")} • {o.payment_method ?? "—"}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-black text-lg">R$ {Number(o.total).toFixed(2)}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MethodSelect id={o.id} />
+                    <Button size="sm" onClick={() => doApproveOrder(o.id)} disabled={busy === o.id} className="bg-emerald-600 hover:bg-emerald-500">
+                      {busy === o.id ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                      <span className="ml-1">Aprovar</span>
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => doRejectOrder(o.id)} disabled={busy === o.id}>
+                      <X className="size-3.5" /><span className="ml-1">Reprovar</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tickets.length > 0 && (
+        <div>
+          <h4 className="font-black text-sm mb-2 flex items-center gap-2"><Ticket className="size-4" /> Ingressos ({tickets.length})</h4>
+          <div className="space-y-2">
+            {tickets.map((t) => (
+              <Card key={t.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="font-bold text-sm">{t.athletic_events?.title ?? "Evento"}</div>
+                    <div className="text-xs opacity-70">{t.buyer_name} • {t.buyer_email}{t.buyer_cpf ? ` • CPF ${t.buyer_cpf}` : ""}</div>
+                    <div className="text-[11px] opacity-60 mt-0.5">{t.sold_at ? new Date(t.sold_at).toLocaleString("pt-BR") : "—"}</div>
+                  </div>
+                  <div className="text-right"><div className="font-black text-lg">R$ {Number(t.price_paid).toFixed(2)}</div></div>
+                  <div className="flex items-center gap-2">
+                    <MethodSelect id={t.id} />
+                    <Button size="sm" onClick={() => doApproveTicket(t.id)} disabled={busy === t.id} className="bg-emerald-600 hover:bg-emerald-500">
+                      {busy === t.id ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                      <span className="ml-1">Aprovar</span>
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => doRejectTicket(t.id)} disabled={busy === t.id}>
+                      <X className="size-3.5" /><span className="ml-1">Reprovar</span>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pendingMemberships.length > 0 && (
+        <div>
+          <h4 className="font-black text-sm mb-2 flex items-center gap-2"><IdCard className="size-4" /> Associações ({pendingMemberships.length})</h4>
+          <div className="space-y-2">
+            {pendingMemberships.map((m: any) => (
+              <Card key={m.id} className="bg-white/5 border-white/10 text-white">
+                <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                  <div className="flex-1 min-w-[220px]">
+                    <div className="font-bold text-sm">{m.profiles?.full_name ?? "Sócio"}</div>
+                    <div className="text-xs opacity-70">{m.profiles?.email ?? "—"} • {m.method ?? "—"}</div>
+                    <div className="text-[11px] opacity-60">{new Date(m.created_at).toLocaleString("pt-BR")}</div>
+                  </div>
+                  <div className="text-right"><div className="font-black text-lg">R$ {Number(m.amount).toFixed(2)}</div></div>
+                  <Button size="sm" onClick={() => doApproveMembership(m.id)} disabled={busy === m.id} className="bg-emerald-600 hover:bg-emerald-500">
+                    {busy === m.id ? <Loader2 className="size-3.5 animate-spin" /> : <CheckCircle2 className="size-3.5" />}
+                    <span className="ml-1">Aprovar</span>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
