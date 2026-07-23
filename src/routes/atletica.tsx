@@ -2683,54 +2683,7 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
 
 /* --- InfinitePay integration card --- */
 function InfinitepayCard({ athletic }: { athletic: Athletic }) {
-  const [status, setStatus] = useState<{ connected: boolean; handle: string | null } | null>(null);
   const [form, setForm] = useState({ handle: "", api_key: "", webhook_secret: "" });
-  const [busy, setBusy] = useState(false);
-  const getStatus = useServerFn(getInfinitepayStatus);
-  const save = useServerFn(saveInfinitepayCredentials);
-  const disc = useServerFn(disconnectInfinitepay);
-  async function reload() {
-    try { const r = await getStatus({ data: { athletic_id: athletic.id } }); setStatus(r as any); }
-    catch { setStatus({ connected: false, handle: null }); }
-  }
-  useEffect(() => { reload(); }, [athletic.id]);
-  return (
-    <Card className="bg-white/5 border-white/10 text-white">
-      <CardContent className="p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-lime-500/20 border border-lime-400/40 flex items-center justify-center">
-            <Link2 className="size-5 text-lime-300" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-black">InfinitePay da atlética</h4>
-            <p className="text-xs opacity-70">Conecte a conta InfinitePay para receber pagamentos direto na sua conta bancária.</p>
-          </div>
-          {status?.connected && (
-            <Badge className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">Conectada</Badge>
-          )}
-        </div>
-
-        {status?.connected ? (
-          <div className="rounded-lg border border-white/10 p-3 bg-black/20 flex items-center justify-between gap-2">
-            <div className="text-sm">Handle: <b>@{status.handle}</b></div>
-            <Button size="sm" variant="outline" onClick={async () => {
-              if (!confirm2("Desconectar InfinitePay?")) return;
-              setBusy(true);
-              try { await disc({ data: { athletic_id: athletic.id } }); toast.success("Desconectada"); reload(); }
-              catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
-            }} disabled={busy}><Power className="size-3.5" /> Desconectar</Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div><Label>Handle InfinitePay (sem @)</Label><Input value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value.replace(/^@/, "") })} placeholder="sua-atletica" /></div>
-            <div><Label>API Key</Label><Input type="password" value={form.api_key} onChange={(e) => setForm({ ...form, api_key: e.target.value })} placeholder="ip_live_…" /></div>
-            <div><Label>Webhook Secret</Label><Input type="password" value={form.webhook_secret} onChange={(e) => setForm({ ...form, webhook_secret: e.target.value })} /></div>
-            <Button disabled={busy || !form.handle || !form.api_key || !form.webhook_secret} onClick={async () => {
-              setBusy(true);
-              try { await save({ data: { athletic_id: athletic.id, ...form } }); toast.success("Conectada"); setForm({ handle: "", api_key: "", webhook_secret: "" }); reload(); }
-              catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
-            }}>Conectar InfinitePay</Button>
-            <p className="text-[11px] opacity-60">Suas credenciais ficam criptografadas no servidor. Gere sua API key e webhook secret no painel InfinitePay &rarr; Integrações.</p>
           </div>
         )}
       </CardContent>
