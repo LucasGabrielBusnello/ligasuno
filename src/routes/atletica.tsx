@@ -3368,7 +3368,8 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
     try {
       setRetrying(orderId);
       const res: any = await retry({ data: { order_id: orderId } });
-      if (res?.init_point) window.location.href = res.init_point;
+      if (res?.checkout_url) window.location.href = res.checkout_url;
+      else if (res?.init_point) window.location.href = res.init_point;
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao gerar checkout");
       setRetrying(null);
