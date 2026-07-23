@@ -1,9 +1,8 @@
-// InfinitePay — Checkout Integrado (link de pagamento).
+// InfinitePay — Checkout Integrado via API (POST /links).
 // Docs: https://docs.infinitepay.io/checkout/link-de-pagamento
-// Formato: https://checkout.infinitepay.io/{handle}?items=<base64>&redirect_url=&webhook_url=&order_nsu=
 
 export type CheckoutItem = {
-  name: string;
+  name?: string;
   description?: string;
   quantity: number;
   price: number; // em centavos
@@ -20,33 +19,62 @@ export type BuildCheckoutOpts = {
   customerCellphone?: string;
 };
 
-function b64(s: string): string {
-  // Worker runtime tem btoa nativo
-  return btoa(unescape(encodeURIComponent(s)));
+function normalizePhone(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  let phone = raw.replace(/\D/g, "");
+  if (!phone) return undefined;
+  if (phone.length === 10 || phone.length === 11) phone = "55" + phone;
+  return "+" + phone;
 }
 
-export function buildCheckoutUrl(o: BuildCheckoutOpts): string {
+/**
+ * Cria um link de checkout na InfinitePay via API e retorna a URL para
+ * redirecionar o comprador.
+ */
+export async function buildCheckoutUrl(o: BuildCheckoutOpts): Promise<string> {
   const handle = o.handle.replace(/^@/, "").trim();
-  // InfinitePay espera itens com { quantity, price (centavos), description }
-  const normalized = o.items.map((it) => ({
+  const items = o.items.map((it) => ({
+    description: (it.description ?? it.name ?? "Item").slice(0, 120),
     quantity: Math.max(1, Math.floor(it.quantity)),
     price: Math.max(1, Math.floor(it.price)),
-    description: (it.description ?? it.name ?? "Item").slice(0, 120),
   }));
-  const items = b64(JSON.stringify(normalized));
-  const params = new URLSearchParams();
-  params.set("items", items);
-  params.set("order_nsu", o.orderNsu);
-  params.set("redirect_url", o.redirectUrl);
-  params.set("webhook_url", o.webhookUrl);
-  if (o.customerName) params.set("customer_name", o.customerName);
-  if (o.customerEmail) params.set("customer_email", o.customerEmail);
-  if (o.customerCellphone) {
-    let phone = o.customerCellphone.replace(/\D/g, "");
-    if (phone.length === 10 || phone.length === 11) phone = "55" + phone;
-    params.set("customer_cellphone", "+" + phone);
+
+  const payload: Record<string, unknown> = {
+    handle,
+    order_nsu: o.orderNsu,
+    items,
+    redirect_url: o.redirectUrl,
+    webhook_url: o.webhookUrl,
+  };
+
+  const customer: Record<string, string> = {};
+  if (o.customerName) customer.name = o.customerName;
+  if (o.customerEmail) customer.email = o.customerEmail;
+  const phone = normalizePhone(o.customerCellphone);
+  if (phone) customer.phone_number = phone;
+  if (Object.keys(customer).length > 0) payload.customer = customer;
+
+  const res = await fetch("https://api.checkout.infinitepay.io/links", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let json: any = null;
+  try { json = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+
+  if (!res.ok) {
+    const msg = json?.message || json?.error || text || `HTTP ${res.status}`;
+    throw new Error(`InfinitePay: ${msg}`);
   }
-  return `https://checkout.infinitepay.io/${encodeURIComponent(handle)}?${params.toString()}`;
+
+  const url: string | undefined = json?.url ?? json?.checkout_url ?? json?.data?.url;
+  if (!url) throw new Error("InfinitePay: resposta sem URL de checkout");
+  return url;
 }
 
 /** HMAC-SHA256 helper para validar assinatura de webhook (se configurada). */

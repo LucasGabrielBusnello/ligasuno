@@ -35,7 +35,7 @@ export const createMembershipInfinitepayCheckout = createServerFn({ method: "POS
     const handle = await loadHandle(supabaseAdmin, (pay as any).athletic_id);
     const origin = appOrigin();
 
-    const url = buildCheckoutUrl({
+    const url = await buildCheckoutUrl({
       handle,
       orderNsu: `ath_memb:${(pay as any).id}`,
       redirectUrl: `${origin}/atletica?paid=1`,
@@ -101,7 +101,7 @@ export const createEventTicketInfinitepayCheckout = createServerFn({ method: "PO
     try {
       const handle = await loadHandle(supabaseAdmin, (ev as any).athletic_id);
       const origin = appOrigin();
-      const url = buildCheckoutUrl({
+      const url = await buildCheckoutUrl({
         handle,
         orderNsu: `ath_event:${(ticket as any).id}`,
         redirectUrl: `${origin}/atletica?paid=1`,
@@ -220,7 +220,7 @@ export const createCartInfinitepayCheckout = createServerFn({ method: "POST" })
     const handle = await loadHandle(supabaseAdmin, data.athletic_id);
     const origin = appOrigin();
 
-    const url = buildCheckoutUrl({
+    const url = await buildCheckoutUrl({
       handle,
       orderNsu: `ath_prod:${(order as any).id}`,
       redirectUrl: `${origin}/atletica?paid=1`,
