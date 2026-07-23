@@ -189,16 +189,48 @@ function AtleticaPage() {
 
 /* ============ Toast de retorno do checkout ============ */
 function PaidReturnToast() {
+  const queryClient = useQueryClient();
+  const verifyFn = useServerFn(verifyInfinitepayCheckout);
   useEffect(() => {
     const url = new URL(window.location.href);
     const paid = url.searchParams.get("paid");
-    if (paid === "1") toast.success("Pagamento aprovado! A confirmação vai chegar em segundos.");
+    const nsu = url.searchParams.get("nsu");
+    if (paid === "1") toast.success("Pagamento aprovado! Confirmando…");
     else if (paid === "0") toast.error("Pagamento não concluído. Tente novamente.");
     else if (paid === "pending") toast.info("Pagamento pendente. Aguarde a confirmação.");
-    if (paid) { url.searchParams.delete("paid"); window.history.replaceState({}, "", url.toString()); }
+    if (paid) {
+      url.searchParams.delete("paid");
+      url.searchParams.delete("nsu");
+      window.history.replaceState({}, "", url.toString());
+    }
+    if (paid === "1" && nsu) {
+      let cancelled = false;
+      const invalidate = () => {
+        queryClient.invalidateQueries({ predicate: (q) => {
+          const k = q.queryKey?.[0];
+          return typeof k === "string" && (k.includes("athletic") || k.includes("purchase") || k.includes("membership") || k.includes("orders") || k.includes("tickets"));
+        } });
+      };
+      const attempts = [0, 2000, 5000, 10000];
+      attempts.forEach((delay) => {
+        setTimeout(async () => {
+          if (cancelled) return;
+          try {
+            const r = await verifyFn({ data: { nsu } });
+            if ((r as any)?.paid) {
+              toast.success("Pagamento confirmado!");
+              invalidate();
+              cancelled = true;
+            }
+          } catch { /* silencioso — webhook confirma depois */ }
+        }, delay);
+      });
+      return () => { cancelled = true; };
+    }
   }, []);
   return null;
 }
+
 
 /* ============ CARRINHO — botão do header + drawer ============ */
 function CartButton({ athleticName, primaryColor, accentColor }: { athleticName: string; primaryColor: string; accentColor: string }) {
