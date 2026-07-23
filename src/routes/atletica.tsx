@@ -2757,6 +2757,129 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
   );
 }
 
+function BulkImportMembersDialog({ open, onClose, athleticId, onDone }: { open: boolean; onClose: () => void; athleticId: string; onDone: () => void }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [map, setMap] = useState<{ full_name: string; email: string; matricula: string; cpf: string; semestre: string; phone: string }>({
+    full_name: "", email: "", matricula: "", cpf: "", semestre: "", phone: "",
+  });
+  const [sendInvite, setSendInvite] = useState(true);
+  const [memberUntil, setMemberUntil] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const runImport = useServerFn(bulkImportMembers);
+
+  useEffect(() => {
+    if (!open) { setRows([]); setHeaders([]); setMap({ full_name: "", email: "", matricula: "", cpf: "", semestre: "", phone: "" }); setResult(null); }
+  }, [open]);
+
+  async function onFile(f: File) {
+    setBusy(true);
+    try {
+      const XLSX = await import("xlsx");
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json<any>(ws, { defval: "" });
+      if (!json.length) { toast.error("Planilha vazia"); return; }
+      const hdrs = Object.keys(json[0]);
+      setHeaders(hdrs);
+      setRows(json);
+      // heurística
+      const guess = (patterns: RegExp[]) => hdrs.find((h) => patterns.some((p) => p.test(h))) ?? "";
+      setMap({
+        full_name: guess([/nome/i, /name/i]),
+        email: guess([/e-?mail/i]),
+        matricula: guess([/matr/i, /ra\b/i]),
+        cpf: guess([/cpf/i]),
+        semestre: guess([/sem/i, /fase/i, /per[ií]odo/i]),
+        phone: guess([/tel/i, /celular/i, /phone/i, /whats/i]),
+      });
+    } finally { setBusy(false); }
+  }
+
+  async function submit() {
+    if (!map.full_name || !map.email) return toast.error("Mapeie ao menos Nome e E-mail");
+    const payload = rows.map((r) => ({
+      full_name: String(r[map.full_name] ?? "").trim(),
+      email: String(r[map.email] ?? "").trim(),
+      matricula: map.matricula ? String(r[map.matricula] ?? "").trim() : null,
+      cpf: map.cpf ? String(r[map.cpf] ?? "").trim() : null,
+      semestre: map.semestre ? Number(String(r[map.semestre]).replace(/\D/g, "")) || null : null,
+      phone: map.phone ? String(r[map.phone] ?? "").trim() : null,
+    })).filter((r) => r.email && r.full_name);
+    if (!payload.length) return toast.error("Nenhuma linha válida");
+    setBusy(true);
+    try {
+      const res: any = await runImport({ data: { athletic_id: athleticId, member_until: memberUntil || null, send_invite: sendInvite, members: payload } });
+      setResult(res);
+      toast.success(`Importados: ${res.imported}${res.invited ? ` • Convites: ${res.invited}` : ""}`);
+      onDone();
+    } catch (e: any) { toast.error(e?.message); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Importar sócios em massa (Excel)</DialogTitle></DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-xs">Arquivo .xlsx</Label>
+            <Input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
+            <p className="text-xs text-muted-foreground mt-1">Detectamos as colunas automaticamente. Ajuste o mapeamento se necessário.</p>
+          </div>
+          {headers.length > 0 && (
+            <>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {(["full_name", "email", "matricula", "cpf", "semestre", "phone"] as const).map((k) => (
+                  <div key={k}>
+                    <Label className="text-xs capitalize">{k === "full_name" ? "Nome completo *" : k === "email" ? "E-mail *" : k}</Label>
+                    <select className="w-full border rounded h-9 px-2 text-sm bg-background" value={(map as any)[k]} onChange={(e) => setMap({ ...map, [k]: e.target.value })}>
+                      <option value="">— não usar —</option>
+                      {headers.map((h) => (<option key={h} value={h}>{h}</option>))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Válido até (opcional)</Label>
+                  <Input type="date" value={memberUntil} onChange={(e) => setMemberUntil(e.target.value)} />
+                </div>
+                <label className="flex items-end gap-2 text-sm">
+                  <Checkbox checked={sendInvite} onCheckedChange={(v) => setSendInvite(!!v)} />
+                  <span>Enviar convite por e-mail para criarem conta</span>
+                </label>
+              </div>
+              <div className="text-xs text-muted-foreground">{rows.length} linha(s) prontas para importar.</div>
+            </>
+          )}
+          {result && (
+            <div className="rounded border p-3 text-xs space-y-1">
+              <div>Importados/atualizados: <b>{result.imported}</b></div>
+              {typeof result.invited === "number" && <div>Convites enviados: <b>{result.invited}</b></div>}
+              {Array.isArray(result.errors) && result.errors.length > 0 && (
+                <details><summary className="cursor-pointer text-red-500">{result.errors.length} erro(s)</summary>
+                  <ul className="mt-1 space-y-0.5">{result.errors.slice(0, 20).map((e: any, i: number) => (<li key={i}>{e.email}: {e.error}</li>))}</ul>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
+          <Button onClick={submit} disabled={busy || !rows.length}>{busy ? "Processando..." : "Importar"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Checkbox({ checked, onCheckedChange }: { checked?: boolean; onCheckedChange?: (v: boolean) => void }) {
+  return <input type="checkbox" checked={!!checked} onChange={(e) => onCheckedChange?.(e.target.checked)} className="size-4" />;
+}
+
 function confirm2(msg: string): boolean {
   return typeof window !== "undefined" && window.confirm(msg);
 }
