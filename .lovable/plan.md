@@ -1,55 +1,75 @@
-## Checklist para começar a receber pagamentos na atlética
 
-Sem mexer em código — só configuração. Segue a ordem:
+## 1. Modo Manutenção por área (Atlética e CAMED)
 
-### 1. Salvar o handle no painel da atlética (2 min)
-- Entre no site logado como diretor(a) da AAAMD.
-- Vá em **Atlética → Diretoria → InfinitePay**.
-- Campo **Handle**: cole `aaamd-desbravadores` (é o que aparece na URL `checkout.infinitepay.io/aaamd-desbravadores/...`).
-- Deixe **Webhook Secret** em branco por enquanto.
-- Clique **Salvar**.
+- **DB (migração):**
+  - `athletics`: adicionar `maintenance_enabled boolean default false`.
+  - `camed_settings`: adicionar `maintenance_enabled boolean default false`.
+- **Backend:** server functions `setAthleticMaintenance` (só diretor/presidente) e `setCamedMaintenance` (só admin master + presidente CAMED + acesso ao painel).
+- **Frontend:**
+  - `atletica.tsx` → aba Diretoria › Config: switch "Modo Manutenção". Se ativado e usuário não for diretor/presidente/admin_master, renderiza tela de manutenção no lugar do conteúdo (mantém sidebar visível ou usa gate global da rota).
+  - `camed-painel.tsx` › aba Info: switch equivalente.
+  - `camed.tsx` (rota pública): quando `maintenance_enabled`, bloqueia acesso exceto para usuários com `camedPanelTabs.length > 0` ou `isAdminMaster/isCamedPresident`.
 
-### 2. Conferir se os botões de pagamento apareceram (1 min)
-Nos 3 lugares abaixo deve surgir o botão **Pagar com InfinitePay**:
-- Diálogo de **Associação** (virar sócio).
-- Diálogo de **Ingresso** de evento (quando venda online estiver aberta).
-- **Carrinho** de produtos da atlética.
+## 2. Vendas manuais → Histórico de Compras + autocomplete de e-mail
 
-Se algum não aparecer, é sinal de que o handle não salvou — volte ao passo 1.
+- **Backend:** ajustar `manualSell*` (produto/ingresso/associação) para:
+  - Vincular a `user_id` do perfil cujo `email = <email digitado>` (case-insensitive) quando existir; senão criar registro "convidado" ligado só por email.
+  - Garantir que o histórico do usuário (`athletic_product_orders`, `event_registrations`, `athletic_memberships`) receba a linha com `user_id` correto para aparecer em "Histórico de Compras".
+- **Nova server function:** `searchBuyerByEmail({ q })` → retorna até 4 perfis (`email ILIKE q%`) com `full_name, cpf, phone, current_semester, matricula, class_code, id`.
+- **Frontend (dialog Venda Manual):** input de e-mail com dropdown (Command/Popover) exibindo até 4 sugestões; ao clicar, preenche nome/CPF/telefone/etc. Debounce 250ms, só busca com ≥2 chars.
 
-### 3. Fazer uma compra de teste de R$ 1 (5 min)
-- Crie um produto qualquer com preço **R$ 1,00** e estoque 1.
-- Faça o fluxo completo como sócio: adiciona ao carrinho → **Pagar com InfinitePay** → cai no checkout da InfinitePay → paga no Pix.
-- Volta pro site com `?paid=1` na URL e toast de sucesso.
-- **Confirme no painel financeiro** da atlética que o pedido apareceu como **Pago**.
+## 3. Reordenação da aba CAMED pública
 
-Se o pedido ficou como "Pendente" mesmo após pagar, o webhook não chegou — vá pro passo 4.
+Em `camed.tsx`, reordenar seções para: **Notícias → Atividades Abertas → Conheça a nossa história → Membros do CAMED**. Apenas reorganização visual.
 
-### 4. (Opcional mas recomendado) Configurar o webhook na InfinitePay
-Isso garante que o site marca o pedido como pago automaticamente, sem depender do usuário voltar pela URL de retorno.
+## 4. Caixa da Atlética — pagamentos pendentes de associação
 
-- Entre em **infinitepay.io** com a conta da AAAMD.
-- Vá em **Loja Virtual → Webhooks** (ou **Integrações → Webhooks**).
-- Cadastre a URL: `https://ligasuno.com.br/api/public/payments/infinitepay-webhook`
-- Método: **POST**.
-- Eventos: **Pagamento aprovado / concluído** (marque tudo relacionado a pagamento).
-- Salve.
+- **UI:** na lista de pendentes de associação dentro de "Caixa":
+  - Mostrar só o mais recente + botão "Mostrar mais (N)" que expande o restante.
+  - Ícone lixeira em cada item → confirma e exclui `athletic_membership_payments` (status pending) via nova server function `deletePendingMembershipPayment` (checa `assertDirector`).
 
-### 5. (Opcional) Ativar assinatura do webhook
-Só faça isso se a InfinitePay pedir/oferecer uma chave secreta:
-- Gere uma string aleatória (ex.: `openssl rand -hex 32` ou um gerador de senha).
-- Cole a **mesma string** nos dois lugares: no campo Secret da InfinitePay **e** no card InfinitePay do painel da atlética.
-- Salve nos dois lados.
+## 5. Comprovante de compra em Histórico (com PDF)
 
-### 6. Repetir o teste
-- Refaça uma compra de R$ 1.
-- Agora o pedido deve virar **Pago** sozinho, mesmo se você fechar a aba antes de voltar pro site.
-- Confirme o recibo por e-mail chegando.
+- **UI Histórico de Compras (atlética):** em compras aprovadas (`status = paid`), botão "Ver comprovante" abre dialog com dados do pedido (itens, valores, forma de pagamento, NSU, data, comprador). Dentro do dialog, botão "Baixar PDF".
+- **PDF:** reutilizar padrão `athletic-tickets-pdf.ts` (jsPDF) para gerar recibo simples com logo/nome da atlética.
+- Aplicar a produtos, ingressos e associação.
 
----
+## 6. Nova aba "Pagamentos Pendentes" em Diretoria › Caixa
 
-### Se algo der errado
-Me diga em qual passo travou e o que apareceu (mensagem de erro, print, ou "o botão não aparece"). Os problemas mais comuns:
-- **"InfinitePay não conectada"** → handle não salvou (passo 1).
-- **Pedido fica "Pendente" após pagar** → webhook não configurado (passo 4).
-- **Painel da InfinitePay não mostra webhook** → abrir chamado no suporte pedindo liberação de Checkout Integrado + Webhook para o handle `aaamd-desbravadores`.
+- **UI:** nova sub-aba lista todos pedidos com `status = 'pending'` de:
+  - `athletic_product_orders`
+  - `athletic_event_tickets` (via `event_registrations` pendentes)
+  - `athletic_membership_payments`
+- Cada card: descrição, comprador (nome/email/CPF/telefone), forma de pagamento (pix/infinitepay/manual), valor, data.
+- Botões **Aprovar** (marca como `paid`, `paid_at = now()`, dispara mesmo pós-processamento do webhook: e-mail recibo + ativar associação/ingresso quando aplicável) e **Reprovar** (marca `cancelled`).
+- **Backend:** `approvePendingPayment({ kind, id })` e `rejectPendingPayment({ kind, id })`, ambas com `assertDirector`.
+- **Histórico de Compras do usuário:** quando `status = pending`, exibir badge/texto "Pagamento aguardando aprovação da diretoria" no lugar dos botões atuais.
+
+## 7. Import em massa de sócios via Excel
+
+- **UI:** botão "Adicionar em Massa" ao lado de "Adicionar Manualmente" na aba Sócios. Abre dialog com:
+  - Upload `.xlsx`
+  - Preview das primeiras linhas + validação de colunas
+  - Botão "Importar"
+- **Backend:** server function `bulkImportMembers({ athletic_id, rows[] })`:
+  - Para cada linha (mapa por header conforme planilha enviada — nome, e-mail, CPF, telefone, curso/semestre, etc.):
+    1. Faz `upsert` em `athletic_memberships` com `email`, `full_name`, `role='ligante'`, `active=true`, `member_until` = fim do ciclo atual (ou nulo conforme padrão da atlética).
+    2. Se existir `profiles.email` correspondente, vincula `user_id`.
+    3. Se **não existir** perfil, marca `pending_invite=true` (nova coluna boolean) e envia e-mail de convite.
+- **DB:** adicionar `athletic_memberships.pending_invite boolean default false` + colunas de dados adicionais que faltarem (curso/semestre já existem via profiles quando vinculado).
+- **E-mail:** usar `gmail.server.ts` (remetente `no-reply@ligasuno.com.br`) com novo template `sendMemberInviteEmail(email, athleticName, signupUrl)`:
+  - Assunto: "Você é sócio da {atlética} — crie sua conta no MEDUNO"
+  - Corpo HTML com brand verde/laranja, botão "Criar conta" apontando para `https://ligasuno.com.br/auth?email=<email>` (rota `/auth` já preenche e-mail via query).
+- **Formato aceito:** documentar no dialog os headers esperados (conforme planilha que você enviou — vou ler o arquivo antes de implementar para casar 1:1 com os nomes reais das colunas).
+
+## Observação
+
+Você mencionou que enviaria um Excel com o formato da planilha de sócios, mas não vejo o arquivo anexado nesta mensagem. **Reenvie o `.xlsx`** — vou usá-lo para mapear exatamente os headers/colunas no importador antes de codar.
+
+## Detalhes técnicos
+
+- Migrações separadas por assunto (manutenção, membership pending_invite).
+- Todas server functions novas usam `requireSupabaseAuth` + `assertDirector`/checks equivalentes.
+- Autocomplete usa `ilike 'q%'` com `limit 4` e RLS/policy que já permite diretor ler `profiles` — se não permitir, criar RPC `SECURITY DEFINER` `search_buyer_profiles(_q, _athletic_id)` restrito a diretores.
+- PDF do comprovante usa jsPDF já instalado; nada de dependência nova.
+- Import Excel: parser `xlsx` (SheetJS) client-side; envia JSON já normalizado ao backend (não faz upload do arquivo).

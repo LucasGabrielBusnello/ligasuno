@@ -17,6 +17,8 @@ import { ImageUpload } from "@/components/image-upload";
 import { useServerFn } from "@tanstack/react-start";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 import { CamedScoringApprovals } from "@/components/camed-scoring-approvals";
+import { setCamedMaintenance } from "@/lib/athletic-extras.functions";
+import { Wrench } from "lucide-react";
 
 export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
 
@@ -91,6 +93,46 @@ function normalizeHistory(raw: any): HistoryItem[] {
     .filter(Boolean) as HistoryItem[];
 }
 
+function CamedMaintenanceCard() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const toggle = useServerFn(setCamedMaintenance);
+  useEffect(() => {
+    supabase.from("camed_settings").select("maintenance_enabled").eq("id", 1).maybeSingle().then(({ data }) => {
+      setEnabled(!!(data as any)?.maintenance_enabled);
+    });
+  }, []);
+  if (enabled === null) return null;
+  return (
+    <Card className={enabled ? "border-orange-500/40 bg-orange-50 dark:bg-orange-950/20" : ""}>
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className={`size-10 rounded-xl flex items-center justify-center ${enabled ? "bg-orange-500/20 text-orange-600 dark:text-orange-400" : "bg-muted"}`}>
+          <Wrench className="size-5" />
+        </div>
+        <div className="flex-1">
+          <div className="font-black text-sm">Modo manutenção do CAMED</div>
+          <div className="text-xs text-muted-foreground">
+            {enabled ? "A página pública do CAMED está bloqueada — só membros do painel entram." : "A página pública do CAMED está aberta para todos."}
+          </div>
+        </div>
+        <Button
+          variant={enabled ? "destructive" : "default"}
+          size="sm"
+          onClick={async () => {
+            try {
+              const next = !enabled;
+              await toggle({ data: { enabled: next } });
+              setEnabled(next);
+              toast.success(next ? "CAMED em manutenção" : "CAMED reaberto ao público");
+            } catch (e: any) { toast.error(e?.message); }
+          }}
+        >
+          {enabled ? "Desativar manutenção" : "Ativar manutenção"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function InfoTab() {
   const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
   useEffect(() => {
@@ -128,6 +170,8 @@ function InfoTab() {
   }
   return (
     <div className="space-y-6">
+      <CamedMaintenanceCard />
+
       <Card><CardHeader><CardTitle>Informações do CAMED</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div><Label>Título</Label><Input value={info.title} onChange={(e) => setInfo({ ...info, title: e.target.value })} /></div>
