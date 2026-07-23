@@ -6333,6 +6333,11 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
                       {m.status}
                     </Badge>
                   </div>
+                  {(m.status === "paid" || m.status === "approved") && (
+                    <Button size="sm" variant="outline" onClick={() => downloadMembershipReceipt(m).catch((e) => toast.error(e?.message ?? "Falha ao gerar PDF"))}>
+                      <Download className="size-3.5 mr-1" /> Recibo
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
