@@ -336,8 +336,11 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
     (async () => {
       const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
       if (!prod) return;
-      const { data: ath } = await supabase.from("athletics").select("logo_url,name,short_name").eq("id", (prod as any).athletic_id).maybeSingle();
+      const aid = (prod as any).athletic_id as string;
+      setAthleticId(aid);
+      const { data: ath } = await supabase.from("athletics").select("logo_url,name,short_name").eq("id", aid).maybeSingle();
       if (ath) { setAthLogo((ath as any).logo_url); setAthName((ath as any).short_name ?? (ath as any).name); }
+      try { const r = await checkIp({ data: { athletic_id: aid } }); setIpEnabled(!!(r as any)?.enabled); } catch { setIpEnabled(false); }
     })();
   }, [open, items]);
   if (items.length === 0) return null;
