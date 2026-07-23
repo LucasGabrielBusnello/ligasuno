@@ -6122,6 +6122,60 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
     }
   }
 
+  async function downloadOrderReceipt(o: any) {
+    const items = (o.athletic_product_order_items ?? []).map((it: any) => ({
+      description: it.title,
+      quantity: it.quantity,
+      unit_price: Number(it.line_total) / Math.max(1, Number(it.quantity)),
+      total: Number(it.line_total),
+    }));
+    const blob = await generateReceiptPdf({
+      athleticName: athletic.name,
+      primaryColor: athletic.primary_color ?? undefined,
+      logoUrl: (athletic as any).logo_url ?? null,
+      title: "Recibo de compra",
+      receiptNumber: o.id.slice(0, 8).toUpperCase(),
+      issuedAt: o.created_at,
+      paymentMethod: o.payment_method ?? "—",
+      buyer: { name: o.buyer_name ?? user.email, email: user.email, cpf: null, phone: null },
+      items,
+      total: Number(o.total),
+    });
+    downloadBlob(blob, `recibo-${o.id.slice(0, 8)}.pdf`);
+  }
+
+  async function downloadTicketReceipt(t: any) {
+    const blob = await generateReceiptPdf({
+      athleticName: athletic.name,
+      primaryColor: athletic.primary_color ?? undefined,
+      logoUrl: (athletic as any).logo_url ?? null,
+      title: "Recibo de ingresso",
+      receiptNumber: t.code ?? t.id.slice(0, 8),
+      issuedAt: t.sold_at ?? new Date().toISOString(),
+      paymentMethod: null,
+      buyer: { name: user.user_metadata?.full_name ?? user.email, email: user.email },
+      items: [{ description: `Ingresso — ${t.athletic_events?.title ?? "Evento"}`, quantity: 1, unit_price: Number(t.price_paid), total: Number(t.price_paid) }],
+      total: Number(t.price_paid),
+    });
+    downloadBlob(blob, `ingresso-${t.code ?? t.id.slice(0, 8)}.pdf`);
+  }
+
+  async function downloadMembershipReceipt(m: any) {
+    const blob = await generateReceiptPdf({
+      athleticName: athletic.name,
+      primaryColor: athletic.primary_color ?? undefined,
+      logoUrl: (athletic as any).logo_url ?? null,
+      title: "Recibo de associação",
+      receiptNumber: m.id.slice(0, 8).toUpperCase(),
+      issuedAt: m.created_at,
+      paymentMethod: m.method ?? "—",
+      buyer: { name: user.user_metadata?.full_name ?? user.email, email: user.email },
+      items: [{ description: "Associação da atlética", quantity: 1, unit_price: Number(m.amount), total: Number(m.amount) }],
+      total: Number(m.amount),
+    });
+    downloadBlob(blob, `associacao-${m.id.slice(0, 8)}.pdf`);
+  }
+
   if (loading) {
     return (
       <div className="text-center py-12 opacity-60">
