@@ -104,7 +104,7 @@ export const createMembershipInfinitepayCheckout = createServerFn({ method: "POS
     const url = await buildCheckoutUrl({
       handle,
       orderNsu: `ath_memb:${(pay as any).id}`,
-      redirectUrl: `${origin}/atletica?paid=1`,
+      redirectUrl: redirectFor(origin, `ath_memb:${(pay as any).id}`),
       webhookUrl: `${origin}/api/public/payments/infinitepay-webhook`,
       customerName: (pay as any).buyer_name ?? undefined,
       customerEmail: (pay as any).buyer_email ?? undefined,
@@ -170,7 +170,7 @@ export const createEventTicketInfinitepayCheckout = createServerFn({ method: "PO
       const url = await buildCheckoutUrl({
         handle,
         orderNsu: `ath_event:${(ticket as any).id}`,
-        redirectUrl: `${origin}/atletica?paid=1`,
+        redirectUrl: redirectFor(origin, `ath_event:${(ticket as any).id}`),
         webhookUrl: `${origin}/api/public/payments/infinitepay-webhook`,
         customerName: data.buyer_name,
         customerEmail: data.buyer_email,
@@ -289,7 +289,7 @@ export const createCartInfinitepayCheckout = createServerFn({ method: "POST" })
     const url = await buildCheckoutUrl({
       handle,
       orderNsu: `ath_prod:${(order as any).id}`,
-      redirectUrl: `${origin}/atletica?paid=1`,
+      redirectUrl: redirectFor(origin, `ath_prod:${(order as any).id}`),
       webhookUrl: `${origin}/api/public/payments/infinitepay-webhook`,
       customerName: data.buyer_name,
       customerEmail: data.buyer_email,
