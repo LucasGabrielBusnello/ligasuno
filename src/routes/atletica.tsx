@@ -6249,19 +6249,15 @@ function PurchaseHistorySection({ athletic, user }: { athletic: Athletic; user: 
                       </div>
                     )}
                     {isPending && (
+                      <div className="mt-3 rounded-lg border border-yellow-400/40 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-200 flex items-center gap-2">
+                        <ClockAlert className="size-3.5" />
+                        Pagamento aguardando aprovação da diretoria.
+                      </div>
+                    )}
+                    {o.status === "paid" && (
                       <div className="mt-3 flex justify-end">
-                        <Button
-                          size="sm"
-                          onClick={() => finalize(o.id)}
-                          disabled={retrying === o.id}
-                          style={{ background: athletic.primary_color }}
-                        >
-                          {retrying === o.id ? (
-                            <Loader2 className="size-3.5 animate-spin mr-1" />
-                          ) : (
-                            <CreditCard className="size-3.5 mr-1" />
-                          )}
-                          Finalizar compra
+                        <Button size="sm" variant="outline" onClick={() => downloadOrderReceipt(o).catch((e) => toast.error(e?.message ?? "Falha ao gerar PDF"))}>
+                          <Download className="size-3.5 mr-1" /> Baixar recibo
                         </Button>
                       </div>
                     )}
