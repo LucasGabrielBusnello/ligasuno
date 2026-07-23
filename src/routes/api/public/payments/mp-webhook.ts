@@ -283,7 +283,7 @@ async function handlePreapproval(preapprovalId: string) {
 
 /* ============ ATLÉTICA ============ */
 
-async function handleAthleticMembership(paymentId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
+export async function handleAthleticMembership(paymentId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
   const { data: pay } = await supabaseAdmin
     .from("athletic_membership_payments").select("*").eq("id", paymentId).maybeSingle();
   if (!pay) return;
@@ -337,7 +337,7 @@ async function handleAthleticMembership(paymentId: string, approved: boolean, mp
   } catch (e) { console.warn("[ath_memb] e-mail falhou", e); }
 }
 
-async function handleAthleticEventTicket(ticketId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
+export async function handleAthleticEventTicket(ticketId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
   const { data: ticket } = await supabaseAdmin
     .from("athletic_event_tickets").select("*, athletic_events!inner(id, title, athletic_id, tickets_sold)").eq("id", ticketId).maybeSingle();
   if (!ticket) return;
@@ -395,7 +395,7 @@ async function handleAthleticEventTicket(ticketId: string, approved: boolean, mp
   } catch (e) { console.warn("[ath_event] e-mail falhou", e); }
 }
 
-async function handleAthleticProductOrder(orderId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
+export async function handleAthleticProductOrder(orderId: string, approved: boolean, mpPaymentId: string, grossAmount: number) {
   const { data: order } = await supabaseAdmin
     .from("athletic_product_orders").select("*").eq("id", orderId).maybeSingle();
   if (!order) return;
