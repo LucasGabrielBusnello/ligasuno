@@ -452,31 +452,31 @@ export type Database = {
       }
       athletic_infinitepay_accounts: {
         Row: {
-          api_key_encrypted: string
+          api_key_encrypted: string | null
           athletic_id: string
           connected_at: string
           handle: string
           id: string
           updated_at: string
-          webhook_secret_encrypted: string
+          webhook_secret_encrypted: string | null
         }
         Insert: {
-          api_key_encrypted: string
+          api_key_encrypted?: string | null
           athletic_id: string
           connected_at?: string
           handle: string
           id?: string
           updated_at?: string
-          webhook_secret_encrypted: string
+          webhook_secret_encrypted?: string | null
         }
         Update: {
-          api_key_encrypted?: string
+          api_key_encrypted?: string | null
           athletic_id?: string
           connected_at?: string
           handle?: string
           id?: string
           updated_at?: string
-          webhook_secret_encrypted?: string
+          webhook_secret_encrypted?: string | null
         }
         Relationships: [
           {
