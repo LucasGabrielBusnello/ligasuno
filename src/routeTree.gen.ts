@@ -33,6 +33,7 @@ import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/publi
 import { Route as ApiPublicPaymentsMpWebhookRouteImport } from './routes/api/public/payments/mp-webhook'
 import { Route as ApiPublicPaymentsMpOauthStartRouteImport } from './routes/api/public/payments/mp-oauth-start'
 import { Route as ApiPublicPaymentsMpOauthCallbackRouteImport } from './routes/api/public/payments/mp-oauth-callback'
+import { Route as ApiPublicPaymentsInfinitepayWebhookRouteImport } from './routes/api/public/payments/infinitepay-webhook'
 import { Route as ApiPublicHooksStorageCleanupRouteImport } from './routes/api/public/hooks/storage-cleanup'
 import { Route as ApiPublicCronMarkOverdueRouteImport } from './routes/api/public/cron/mark-overdue'
 import { Route as ApiPublicCronEventSnapshotRouteImport } from './routes/api/public/cron/event-snapshot'
@@ -162,6 +163,12 @@ const ApiPublicPaymentsMpOauthCallbackRoute =
     path: '/api/public/payments/mp-oauth-callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicPaymentsInfinitepayWebhookRoute =
+  ApiPublicPaymentsInfinitepayWebhookRouteImport.update({
+    id: '/api/public/payments/infinitepay-webhook',
+    path: '/api/public/payments/infinitepay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksStorageCleanupRoute =
   ApiPublicHooksStorageCleanupRouteImport.update({
     id: '/api/public/hooks/storage-cleanup',
@@ -212,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/api/public/cron/event-snapshot': typeof ApiPublicCronEventSnapshotRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/hooks/storage-cleanup': typeof ApiPublicHooksStorageCleanupRoute
+  '/api/public/payments/infinitepay-webhook': typeof ApiPublicPaymentsInfinitepayWebhookRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
@@ -242,6 +250,7 @@ export interface FileRoutesByTo {
   '/api/public/cron/event-snapshot': typeof ApiPublicCronEventSnapshotRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/hooks/storage-cleanup': typeof ApiPublicHooksStorageCleanupRoute
+  '/api/public/payments/infinitepay-webhook': typeof ApiPublicPaymentsInfinitepayWebhookRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
@@ -273,6 +282,7 @@ export interface FileRoutesById {
   '/api/public/cron/event-snapshot': typeof ApiPublicCronEventSnapshotRoute
   '/api/public/cron/mark-overdue': typeof ApiPublicCronMarkOverdueRoute
   '/api/public/hooks/storage-cleanup': typeof ApiPublicHooksStorageCleanupRoute
+  '/api/public/payments/infinitepay-webhook': typeof ApiPublicPaymentsInfinitepayWebhookRoute
   '/api/public/payments/mp-oauth-callback': typeof ApiPublicPaymentsMpOauthCallbackRoute
   '/api/public/payments/mp-oauth-start': typeof ApiPublicPaymentsMpOauthStartRoute
   '/api/public/payments/mp-webhook': typeof ApiPublicPaymentsMpWebhookRoute
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-snapshot'
     | '/api/public/cron/mark-overdue'
     | '/api/public/hooks/storage-cleanup'
+    | '/api/public/payments/infinitepay-webhook'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-snapshot'
     | '/api/public/cron/mark-overdue'
     | '/api/public/hooks/storage-cleanup'
+    | '/api/public/payments/infinitepay-webhook'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
@@ -365,6 +377,7 @@ export interface FileRouteTypes {
     | '/api/public/cron/event-snapshot'
     | '/api/public/cron/mark-overdue'
     | '/api/public/hooks/storage-cleanup'
+    | '/api/public/payments/infinitepay-webhook'
     | '/api/public/payments/mp-oauth-callback'
     | '/api/public/payments/mp-oauth-start'
     | '/api/public/payments/mp-webhook'
@@ -396,6 +409,7 @@ export interface RootRouteChildren {
   ApiPublicCronEventSnapshotRoute: typeof ApiPublicCronEventSnapshotRoute
   ApiPublicCronMarkOverdueRoute: typeof ApiPublicCronMarkOverdueRoute
   ApiPublicHooksStorageCleanupRoute: typeof ApiPublicHooksStorageCleanupRoute
+  ApiPublicPaymentsInfinitepayWebhookRoute: typeof ApiPublicPaymentsInfinitepayWebhookRoute
   ApiPublicPaymentsMpOauthCallbackRoute: typeof ApiPublicPaymentsMpOauthCallbackRoute
   ApiPublicPaymentsMpOauthStartRoute: typeof ApiPublicPaymentsMpOauthStartRoute
   ApiPublicPaymentsMpWebhookRoute: typeof ApiPublicPaymentsMpWebhookRoute
@@ -572,6 +586,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsMpOauthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/infinitepay-webhook': {
+      id: '/api/public/payments/infinitepay-webhook'
+      path: '/api/public/payments/infinitepay-webhook'
+      fullPath: '/api/public/payments/infinitepay-webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsInfinitepayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/storage-cleanup': {
       id: '/api/public/hooks/storage-cleanup'
       path: '/api/public/hooks/storage-cleanup'
@@ -628,6 +649,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCronEventSnapshotRoute: ApiPublicCronEventSnapshotRoute,
   ApiPublicCronMarkOverdueRoute: ApiPublicCronMarkOverdueRoute,
   ApiPublicHooksStorageCleanupRoute: ApiPublicHooksStorageCleanupRoute,
+  ApiPublicPaymentsInfinitepayWebhookRoute:
+    ApiPublicPaymentsInfinitepayWebhookRoute,
   ApiPublicPaymentsMpOauthCallbackRoute: ApiPublicPaymentsMpOauthCallbackRoute,
   ApiPublicPaymentsMpOauthStartRoute: ApiPublicPaymentsMpOauthStartRoute,
   ApiPublicPaymentsMpWebhookRoute: ApiPublicPaymentsMpWebhookRoute,
@@ -636,13 +659,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

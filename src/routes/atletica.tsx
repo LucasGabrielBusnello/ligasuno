@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,12 @@ import {
 import {
   setMembershipsOpen, upsertMembershipCycle, deleteMembershipCycle,
   getInfinitepayStatus, saveInfinitepayCredentials, disconnectInfinitepay,
+  isInfinitepayEnabled,
 } from "@/lib/athletic-config.functions";
+import {
+  createMembershipInfinitepayCheckout, createEventTicketInfinitepayCheckout,
+  createCartInfinitepayCheckout,
+} from "@/lib/infinitepay-payments.functions";
 
 import { AtleticaCartProvider, useAtleticaCart, type CartItem } from "@/hooks/use-atletica-cart";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -312,8 +317,12 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "", notes: "",
   });
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<null | "mp" | "ip">(null);
   const checkout = useServerFn(createCartCheckout);
+  const checkoutIp = useServerFn(createCartInfinitepayCheckout);
+  const checkIp = useServerFn(isInfinitepayEnabled);
+  const [ipEnabled, setIpEnabled] = useState(false);
+  const [athleticId, setAthleticId] = useState<string | null>(null);
   useEffect(() => {
     if (open && profile) setForm((f) => ({
       ...f, buyer_name: f.buyer_name || profile.full_name || "",
@@ -327,8 +336,11 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
     (async () => {
       const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
       if (!prod) return;
-      const { data: ath } = await supabase.from("athletics").select("logo_url,name,short_name").eq("id", (prod as any).athletic_id).maybeSingle();
+      const aid = (prod as any).athletic_id as string;
+      setAthleticId(aid);
+      const { data: ath } = await supabase.from("athletics").select("logo_url,name,short_name").eq("id", aid).maybeSingle();
       if (ath) { setAthLogo((ath as any).logo_url); setAthName((ath as any).short_name ?? (ath as any).name); }
+      try { const r = await checkIp({ data: { athletic_id: aid } }); setIpEnabled(!!(r as any)?.enabled); } catch { setIpEnabled(false); }
     })();
   }, [open, items]);
   if (items.length === 0) return null;
@@ -383,11 +395,38 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
         <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2">
           <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
           <Button
-            disabled={saving}
+        <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2 flex-col sm:flex-row">
+          <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
+          {ipEnabled && (
+            <Button
+              disabled={!!saving}
+              variant="outline"
+              className="rounded-lg font-bold border-white/20 text-white hover:bg-white/10"
+              onClick={async () => {
+                if (!athleticId) return;
+                setSaving("ip");
+                try {
+                  const r = await checkoutIp({
+                    data: {
+                      athletic_id: athleticId,
+                      items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+                      ...form,
+                    },
+                  });
+                  clear();
+                  window.location.href = (r as any).checkout_url;
+                } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(null); }
+              }}
+            >
+              {saving === "ip" ? "Redirecionando..." : "Pagar com InfinitePay"}
+            </Button>
+          )}
+          <Button
+            disabled={!!saving}
             className="rounded-lg font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95 transition"
             style={{ background: accentColor, boxShadow: `0 10px 30px -12px ${accentColor}` }}
             onClick={async () => {
-              setSaving(true);
+              setSaving("mp");
               try {
                 const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
                 if (!prod) throw new Error("Produto não encontrado");
@@ -400,9 +439,9 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
                 });
                 clear();
                 window.location.href = r.init_point;
-              } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(false); }
+              } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(null); }
             }}>
-            <CreditCard className="size-4" /> {saving ? "Redirecionando..." : "Finalizar Compra"}
+            <CreditCard className="size-4" /> {saving === "mp" ? "Redirecionando..." : "Finalizar via Mercado Pago"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -2683,60 +2722,85 @@ function MembershipCyclesCard({ athletic }: { athletic: Athletic }) {
 
 /* --- InfinitePay integration card --- */
 function InfinitepayCard({ athletic }: { athletic: Athletic }) {
-  const [status, setStatus] = useState<{ connected: boolean; handle: string | null } | null>(null);
-  const [form, setForm] = useState({ handle: "", api_key: "", webhook_secret: "" });
+  const [form, setForm] = useState({ handle: "", webhook_secret: "" });
   const [busy, setBusy] = useState(false);
-  const getStatus = useServerFn(getInfinitepayStatus);
+  const [status, setStatus] = useState<{ connected: boolean; handle: string | null } | null>(null);
   const save = useServerFn(saveInfinitepayCredentials);
-  const disc = useServerFn(disconnectInfinitepay);
-  async function reload() {
-    try { const r = await getStatus({ data: { athletic_id: athletic.id } }); setStatus(r as any); }
-    catch { setStatus({ connected: false, handle: null }); }
-  }
-  useEffect(() => { reload(); }, [athletic.id]);
+  const disconnect = useServerFn(disconnectInfinitepay);
+  const getStatus = useServerFn(getInfinitepayStatus);
+
+  const reload = async () => {
+    try { const s = await getStatus({ data: { athletic_id: athletic.id } }); setStatus(s as any); }
+    catch { /* sem permissão */ }
+  };
+  useEffect(() => { reload(); /* eslint-disable-next-line */ }, [athletic.id]);
+
   return (
     <Card className="bg-white/5 border-white/10 text-white">
-      <CardContent className="p-6 space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-lime-500/20 border border-lime-400/40 flex items-center justify-center">
-            <Link2 className="size-5 text-lime-300" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-black">InfinitePay da atlética</h4>
-            <p className="text-xs opacity-70">Conecte a conta InfinitePay para receber pagamentos direto na sua conta bancária.</p>
-          </div>
-          {status?.connected && (
-            <Badge className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">Conectada</Badge>
-          )}
-        </div>
-
+      <CardHeader>
+        <CardTitle className="text-white text-lg">InfinitePay da atlética</CardTitle>
+        <CardDescription className="text-white/60">
+          Conecte seu link de Checkout Integrado para receber Pix, débito e crédito direto na conta bancária da atlética.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
         {status?.connected ? (
-          <div className="rounded-lg border border-white/10 p-3 bg-black/20 flex items-center justify-between gap-2">
-            <div className="text-sm">Handle: <b>@{status.handle}</b></div>
-            <Button size="sm" variant="outline" onClick={async () => {
-              if (!confirm2("Desconectar InfinitePay?")) return;
-              setBusy(true);
-              try { await disc({ data: { athletic_id: athletic.id } }); toast.success("Desconectada"); reload(); }
-              catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
-            }} disabled={busy}><Power className="size-3.5" /> Desconectar</Button>
+          <div className="space-y-3">
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+              Conectada como <strong>@{status.handle}</strong>.
+            </div>
+            <Button variant="outline" className="bg-transparent text-white border-white/20 hover:bg-white/10 hover:text-white"
+              disabled={busy}
+              onClick={async () => {
+                if (!confirm("Desconectar InfinitePay desta atlética?")) return;
+                setBusy(true);
+                try { await disconnect({ data: { athletic_id: athletic.id } }); toast.success("Desconectada"); await reload(); }
+                catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+              }}
+            >Desconectar</Button>
           </div>
         ) : (
           <div className="space-y-3">
-            <div><Label>Handle InfinitePay (sem @)</Label><Input value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value.replace(/^@/, "") })} placeholder="sua-atletica" /></div>
-            <div><Label>API Key</Label><Input type="password" value={form.api_key} onChange={(e) => setForm({ ...form, api_key: e.target.value })} placeholder="ip_live_…" /></div>
-            <div><Label>Webhook Secret</Label><Input type="password" value={form.webhook_secret} onChange={(e) => setForm({ ...form, webhook_secret: e.target.value })} /></div>
-            <Button disabled={busy || !form.handle || !form.api_key || !form.webhook_secret} onClick={async () => {
+            <div>
+              <Label>Handle InfinitePay (InfiniteTag, sem @)</Label>
+              <Input value={form.handle} onChange={(e) => setForm({ ...form, handle: e.target.value.replace(/^@/, "") })} placeholder="aaamd-desbravadores" />
+              <p className="text-[11px] opacity-60 mt-1">
+                Este é o identificador que aparece no seu link. Ex.: em <code>checkout.infinitepay.io/aaamd-desbravadores</code>, o handle é <strong>aaamd-desbravadores</strong>.
+              </p>
+            </div>
+            <div>
+              <Label>Webhook Secret (opcional)</Label>
+              <Input type="password" value={form.webhook_secret} onChange={(e) => setForm({ ...form, webhook_secret: e.target.value })} placeholder="deixe em branco se não configurou" />
+              <p className="text-[11px] opacity-60 mt-1">
+                Se você configurou uma chave secreta no painel da InfinitePay para assinar webhooks, cole aqui para validarmos as notificações.
+              </p>
+            </div>
+            <Button disabled={busy || !form.handle} onClick={async () => {
               setBusy(true);
-              try { await save({ data: { athletic_id: athletic.id, ...form } }); toast.success("Conectada"); setForm({ handle: "", api_key: "", webhook_secret: "" }); reload(); }
-              catch (e: any) { toast.error(e?.message); } finally { setBusy(false); }
+              try {
+                await save({ data: {
+                  athletic_id: athletic.id,
+                  handle: form.handle,
+                  api_key: null,
+                  webhook_secret: form.webhook_secret || null,
+                } });
+                toast.success("InfinitePay conectada");
+                setForm({ handle: "", webhook_secret: "" });
+                await reload();
+              } catch (e: any) { toast.error(e?.message); }
+              finally { setBusy(false); }
             }}>Conectar InfinitePay</Button>
-            <p className="text-[11px] opacity-60">Suas credenciais ficam criptografadas no servidor. Gere sua API key e webhook secret no painel InfinitePay &rarr; Integrações.</p>
+            <p className="text-[11px] opacity-60">
+              URL de webhook para configurar no painel InfinitePay: <br />
+              <code className="break-all">https://ligasuno.com.br/api/public/payments/infinitepay-webhook</code>
+            </p>
           </div>
         )}
       </CardContent>
     </Card>
   );
 }
+
 
 
 /* ============ helpers ============ */
