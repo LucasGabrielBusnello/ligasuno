@@ -372,7 +372,7 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
 
         <div className="px-6 py-5 space-y-4 max-h-[60vh] overflow-y-auto">
           <DialogDescription className="text-neutral-300 text-sm">
-            Você será redirecionado para o Mercado Pago para escolher <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> (até 3x sem juros) ou <strong className="text-white">cartão de débito</strong>.
+            Você será redirecionado para o checkout da <strong className="text-white">InfinitePay</strong> para pagar com <strong className="text-white">Pix</strong>, <strong className="text-white">cartão de crédito</strong> ou <strong className="text-white">cartão de débito</strong>.
           </DialogDescription>
 
           <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-1 text-sm">
@@ -392,16 +392,13 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2">
-          <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
-          <Button
         <DialogFooter className="px-6 py-4 border-t border-white/10 bg-black/40 gap-2 flex-col sm:flex-row">
           <Button variant="ghost" className="text-white hover:bg-white/10 rounded-lg" onClick={onClose}>Cancelar</Button>
-          {ipEnabled && (
+          {ipEnabled ? (
             <Button
               disabled={!!saving}
-              variant="outline"
-              className="rounded-lg font-bold border-white/20 text-white hover:bg-white/10"
+              className="rounded-lg font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95 transition"
+              style={{ background: accentColor, boxShadow: `0 10px 30px -12px ${accentColor}` }}
               onClick={async () => {
                 if (!athleticId) return;
                 setSaving("ip");
@@ -418,31 +415,13 @@ function CartCheckoutDialog({ open, onClose, primaryColor, accentColor }: { open
                 } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(null); }
               }}
             >
-              {saving === "ip" ? "Redirecionando..." : "Pagar com InfinitePay"}
+              <CreditCard className="size-4" /> {saving === "ip" ? "Redirecionando..." : "Pagar com InfinitePay"}
             </Button>
+          ) : (
+            <div className="text-xs text-white/60 italic">
+              Pagamentos indisponíveis: a atlética ainda não conectou a InfinitePay.
+            </div>
           )}
-          <Button
-            disabled={!!saving}
-            className="rounded-lg font-black uppercase tracking-wider text-white border-0 shadow-lg hover:opacity-95 transition"
-            style={{ background: accentColor, boxShadow: `0 10px 30px -12px ${accentColor}` }}
-            onClick={async () => {
-              setSaving("mp");
-              try {
-                const { data: prod } = await supabase.from("athletic_products").select("athletic_id").eq("id", items[0].product_id).maybeSingle();
-                if (!prod) throw new Error("Produto não encontrado");
-                const r = await checkout({
-                  data: {
-                    athletic_id: (prod as any).athletic_id,
-                    items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
-                    ...form,
-                  },
-                });
-                clear();
-                window.location.href = r.init_point;
-              } catch (e: any) { toast.error(e?.message ?? "Erro"); setSaving(null); }
-            }}>
-            <CreditCard className="size-4" /> {saving === "mp" ? "Redirecionando..." : "Finalizar via Mercado Pago"}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -529,11 +508,9 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
       .then(({ data }) => setCurrentCycle(data ? (data as any) : null));
   }, [open, athletic.id]);
   const request = useServerFn(requestSelfMembership);
-  const createPix = useServerFn(createMembershipPixPayment);
-  const createCard = useServerFn(createMembershipCardPayment);
+  const createIp = useServerFn(createMembershipInfinitepayCheckout);
   const [pixData, setPixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
-  const [method, setMethod] = useState<"pix" | "card">("pix");
   const { user } = useAuth();
   const displayPrice = currentCycle ? Number(currentCycle.price_new) : Number(athletic.membership_price);
   if (!user) {
@@ -579,20 +556,8 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
               <div><Label>Matrícula *</Label><Input value={form.matricula} onChange={(e) => setForm({ ...form, matricula: e.target.value })} /></div>
               <div><Label>Semestre *</Label><Input value={form.semestre} onChange={(e) => setForm({ ...form, semestre: e.target.value })} /></div>
             </div>
-            <div className="pt-2">
-              <Label>Forma de pagamento</Label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                <button type="button" onClick={() => setMethod("pix")}
-                  className={`p-3 rounded-lg border text-left transition ${method === "pix" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
-                  <div className="font-bold text-sm">Pix</div>
-                  <div className="text-xs opacity-70">Aprovação em segundos</div>
-                </button>
-                <button type="button" onClick={() => setMethod("card")}
-                  className={`p-3 rounded-lg border text-left transition ${method === "card" ? "border-neutral-900 bg-neutral-100" : "border-neutral-200 hover:border-neutral-400"}`}>
-                  <div className="font-bold text-sm">Cartão</div>
-                  <div className="text-xs opacity-70">Crédito ou débito</div>
-                </button>
-              </div>
+            <div className="pt-2 text-xs opacity-70">
+              Pagamento via <strong>InfinitePay</strong> — Pix, cartão de crédito ou débito.
             </div>
           </div>
           <DialogFooter>
@@ -602,23 +567,15 @@ function AssociarButton({ athletic, onDone }: { athletic: Athletic; onDone: () =
               style={{ background: athletic.primary_color, color: "white" }}
               className="border-0 hover:opacity-95"
               onClick={async () => {
-              setSaving(true);
-              try {
-                const r = await request({ data: { athletic_id: athletic.id, ...form } });
-                if (method === "pix") {
-                  const pix = await createPix({ data: { payment_id: r.payment_id } });
-                  setPixData(pix);
+                setSaving(true);
+                try {
+                  const r = await request({ data: { athletic_id: athletic.id, ...form } });
+                  const c = await createIp({ data: { payment_id: r.payment_id } });
                   setOpen(false);
-                  setPixOpen(true);
-                } else {
-                  const c = await createCard({ data: { payment_id: r.payment_id } });
-                  setOpen(false);
-                  window.location.href = c.init_point;
+                  window.location.href = (c as any).checkout_url;
                   return;
-                }
-                onDone();
-              } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Processando..." : method === "pix" ? "Continuar → gerar Pix" : "Continuar → cartão"}</Button>
+                } catch (e: any) { toast.error(e?.message ?? "Erro"); } finally { setSaving(false); }
+              }}>{saving ? "Processando..." : "Pagar com InfinitePay"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1007,16 +964,14 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
   const price = isMember ? e.price_member : e.price_visitor;
   const remaining = e.total_tickets - e.tickets_sold;
   const [open, setOpen] = useState(false);
-  const [method, setMethod] = useState<"pix" | "card">("pix");
   const [form, setForm] = useState({
     buyer_name: profile?.full_name ?? "", buyer_email: profile?.email ?? "",
     buyer_phone: profile?.phone ?? "", buyer_cpf: "",
   });
   const [saving, setSaving] = useState(false);
-  const [pixData, setPixData] = useState<any>(null);
+  const [pixData] = useState<any>(null);
   const [pixOpen, setPixOpen] = useState(false);
-  const createPix = useServerFn(createEventTicketPixPayment);
-  const createCard = useServerFn(createEventTicketCardPayment);
+  const createIp = useServerFn(createEventTicketInfinitepayCheckout);
   const canBuy = e.online_sales_open && remaining > 0 && price > 0;
 
   return (
@@ -1065,23 +1020,9 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
               <Ticket className="size-4" /> {remaining <= 0 ? "Esgotado" : "Vendas fechadas"}
             </Button>
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setMethod("pix")}
-                  className={`p-2.5 rounded-lg border text-left transition ${method === "pix" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
-                  <div className="font-bold text-xs text-white">Pix</div>
-                  <div className="text-[10px] text-white/70">Aprovação em segundos</div>
-                </button>
-                <button type="button" onClick={() => setMethod("card")}
-                  className={`p-2.5 rounded-lg border text-left transition ${method === "card" ? "border-orange-500 bg-orange-500/10" : "border-white/20 hover:border-white/40 bg-black/30"}`}>
-                  <div className="font-bold text-xs text-white">Cartão</div>
-                  <div className="text-[10px] text-white/70">Crédito ou débito</div>
-                </button>
-              </div>
-              <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider shadow-lg" onClick={() => setOpen(true)}>
-                <Ticket className="size-4" /> Garantir ingresso
-              </Button>
-            </>
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-500 border-0 text-white font-black uppercase tracking-wider shadow-lg" onClick={() => setOpen(true)}>
+              <Ticket className="size-4" /> Garantir ingresso
+            </Button>
           )}
         </div>
       </div>
@@ -1091,7 +1032,7 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
           <DialogHeader>
             <DialogTitle className="text-white">Ingresso — {e.title}</DialogTitle>
             <DialogDescription className="text-neutral-300">
-              Valor {isMember ? "sócio" : "visitante"}: <strong className="text-white">R$ {price.toFixed(2)}</strong>. Pagamento por <strong>{method === "pix" ? "Pix" : "cartão (crédito/débito)"}</strong>.
+              Valor {isMember ? "sócio" : "visitante"}: <strong className="text-white">R$ {price.toFixed(2)}</strong>. Pagamento via <strong>InfinitePay</strong> (Pix, crédito ou débito).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -1107,17 +1048,12 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
             <Button className="bg-emerald-600 hover:bg-emerald-500 border-0" disabled={saving} onClick={async () => {
               setSaving(true);
               try {
-                if (method === "pix") {
-                  const pix = await createPix({ data: { event_id: e.id, ...form } });
-                  setPixData(pix); setOpen(false); setPixOpen(true);
-                } else {
-                  const c = await createCard({ data: { event_id: e.id, ...form } });
-                  setOpen(false);
-                  window.location.href = c.init_point;
-                  return;
-                }
+                const c = await createIp({ data: { event_id: e.id, ...form } });
+                setOpen(false);
+                window.location.href = (c as any).checkout_url;
+                return;
               } catch (err: any) { toast.error(err?.message ?? "Erro"); } finally { setSaving(false); }
-            }}>{saving ? "Processando..." : method === "pix" ? "Gerar Pix" : "Ir ao cartão"}</Button>
+            }}>{saving ? "Processando..." : "Pagar com InfinitePay"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
