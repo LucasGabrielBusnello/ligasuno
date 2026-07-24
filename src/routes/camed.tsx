@@ -161,11 +161,26 @@ function OpenActivitiesSection() {
 }
 
 function HistoryShowcase({ info }: { info: any }) {
-  const images = useMemo<HistoryItem[]>(() => normalizeHistory(info?.history_images), [info]);
+  const allImages = useMemo<HistoryItem[]>(() => normalizeHistory(info?.history_images), [info]);
   const title: string = info?.history_title || "Conheça a Nossa História";
   const description: string | null = info?.history_description ?? null;
+  const years = useMemo(() => {
+    const s = new Set<number>();
+    allImages.forEach((it) => {
+      if (it.date) {
+        const y = new Date(it.date).getFullYear();
+        if (!isNaN(y)) s.add(y);
+      }
+    });
+    return Array.from(s).sort((a, b) => a - b);
+  }, [allImages]);
+  const [year, setYear] = useState<number | "all">("all");
+  const images = useMemo(
+    () => (year === "all" ? allImages : allImages.filter((it) => it.date && new Date(it.date).getFullYear() === year)),
+    [allImages, year],
+  );
   if (!info) return null;
-  if (images.length === 0 && !description) return null;
+  if (allImages.length === 0 && !description) return null;
   const track = images.length > 0 ? [...images, ...images] : [];
   return (
     <section className="rounded-2xl overflow-hidden border border-emerald-200/60 dark:border-emerald-900/40 bg-gradient-to-b from-emerald-50/60 to-white dark:from-emerald-950/30 dark:to-background">
@@ -176,6 +191,27 @@ function HistoryShowcase({ info }: { info: any }) {
         <h2 className="text-2xl md:text-4xl font-black tracking-tight mb-4">{title}</h2>
         {description && (
           <p className="text-sm md:text-base text-muted-foreground whitespace-pre-line leading-relaxed">{description}</p>
+        )}
+        {years.length > 0 && (
+          <div className="mt-5 flex flex-wrap justify-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setYear("all")}
+              className={`px-3 h-8 rounded-full text-xs font-bold uppercase tracking-widest border transition ${year === "all" ? "bg-emerald-600 text-white border-emerald-600" : "bg-transparent text-muted-foreground border-emerald-600/30 hover:bg-emerald-600/10"}`}
+            >
+              Todos
+            </button>
+            {years.map((y) => (
+              <button
+                key={y}
+                type="button"
+                onClick={() => setYear(y)}
+                className={`px-3 h-8 rounded-full text-xs font-bold uppercase tracking-widest border transition ${year === y ? "bg-emerald-600 text-white border-emerald-600" : "bg-transparent text-muted-foreground border-emerald-600/30 hover:bg-emerald-600/10"}`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
         )}
         {images.length > 0 && (
           <div className="mt-6">
@@ -202,6 +238,7 @@ function HistoryShowcase({ info }: { info: any }) {
     </section>
   );
 }
+
 
 function NewsSection() {
   const [items, setItems] = useState<any[]>([]);

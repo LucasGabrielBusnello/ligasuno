@@ -26,6 +26,12 @@ function fmtDate(d?: string | null) {
   }
 }
 
+function yearOf(it: HistoryItem): number | null {
+  if (!it.date) return null;
+  const y = new Date(it.date).getFullYear();
+  return isNaN(y) ? null : y;
+}
+
 export const Route = createFileRoute("/camed-galeria")({
   head: () => ({
     meta: [
@@ -41,12 +47,19 @@ export const Route = createFileRoute("/camed-galeria")({
 function CamedGalleryPage() {
   const [info, setInfo] = useState<any>(null);
   const [open, setOpen] = useState<HistoryItem | null>(null);
+  const [year, setYear] = useState<number | "all">("all");
 
   useEffect(() => {
     supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => setInfo(data));
   }, []);
 
-  const items = useMemo<HistoryItem[]>(() => normalize(info?.history_images), [info]);
+  const all = useMemo<HistoryItem[]>(() => normalize(info?.history_images), [info]);
+  const years = useMemo(() => {
+    const s = new Set<number>();
+    all.forEach((it) => { const y = yearOf(it); if (y) s.add(y); });
+    return Array.from(s).sort((a, b) => a - b);
+  }, [all]);
+  const items = useMemo(() => (year === "all" ? all : all.filter((it) => yearOf(it) === year)), [all, year]);
 
   return (
     <div className="min-h-screen">
@@ -63,9 +76,33 @@ function CamedGalleryPage() {
         </div>
       </header>
 
+      {years.length > 0 && (
+        <div className="border-b border-border/60 bg-background/80 sticky top-0 z-20 backdrop-blur">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex gap-1.5 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setYear("all")}
+              className={`px-3 h-8 rounded-full text-xs font-bold uppercase tracking-widest border shrink-0 transition ${year === "all" ? "bg-emerald-600 text-white border-emerald-600" : "bg-transparent text-muted-foreground border-emerald-600/30 hover:bg-emerald-600/10"}`}
+            >
+              Todos
+            </button>
+            {years.map((y) => (
+              <button
+                key={y}
+                type="button"
+                onClick={() => setYear(y)}
+                className={`px-3 h-8 rounded-full text-xs font-bold uppercase tracking-widest border shrink-0 transition ${year === y ? "bg-emerald-600 text-white border-emerald-600" : "bg-transparent text-muted-foreground border-emerald-600/30 hover:bg-emerald-600/10"}`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
         {items.length === 0 ? (
-          <p className="text-center text-muted-foreground py-16">Nenhuma foto disponível ainda.</p>
+          <p className="text-center text-muted-foreground py-16">Nenhuma foto para {year === "all" ? "esta seção" : `o ano ${year}`}.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
             {items.map((it, i) => (
