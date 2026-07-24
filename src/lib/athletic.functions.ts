@@ -695,7 +695,18 @@ export const updateAthletic = createServerFn({ method: "POST" })
       published: z.boolean().optional(),
       history_title: z.string().max(200).optional().nullable(),
       history_description: z.string().max(3000).optional().nullable(),
-      history_images: z.array(z.string()).optional(),
+      history_images: z
+        .array(
+          z.union([
+            z.string(),
+            z.object({
+              url: z.string(),
+              year: z.number().int().nullable().optional(),
+              caption: z.string().nullable().optional(),
+            }),
+          ]),
+        )
+        .optional(),
     }).parse(i),
   )
 
