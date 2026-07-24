@@ -456,3 +456,87 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
     return { created, invited, failures, total: data.rows.length, imported: created + updated, updated };
   });
 
+/* ============ REENVIO DE CONVITES ============ */
+// Reenvia o convite para todos os sócios com e-mail que ainda NÃO criaram conta no site
+// (user_id null). Pode ser executado quantas vezes for necessário.
+export const resendMemberInvites = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      athletic_id: z.string().uuid(),
+      only_never_sent: z.boolean().default(false),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertDirector(context.supabase, context.userId, data.athletic_id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { sendGmail, emailLayout, emailInfoCard } = await import("./gmail.server");
+
+    const { data: ath } = await supabaseAdmin
+      .from("athletics")
+      .select("name,primary_color")
+      .eq("id", data.athletic_id)
+      .maybeSingle();
+    const athName: string = (ath as any)?.name ?? "AAAMD";
+    const brand: string = (ath as any)?.primary_color ?? "#1f5132";
+
+    let query = supabaseAdmin
+      .from("athletic_memberships")
+      .select("id,full_name,email,matricula,semestre,invite_sent_at,user_id")
+      .eq("athletic_id", data.athletic_id)
+      .is("user_id", null)
+      .not("email", "is", null);
+    const { data: rows, error } = await query;
+    if (error) throw new Error(error.message);
+
+    const list = ((rows as any[]) ?? []).filter((r) => {
+      if (!r.email) return false;
+      if (data.only_never_sent && r.invite_sent_at) return false;
+      return true;
+    });
+
+    let sent = 0;
+    const failures: Array<{ email: string; reason: string }> = [];
+
+    for (const m of list) {
+      const email = String(m.email).toLowerCase().trim();
+      try {
+        await sendGmail({
+          to: email,
+          subject: `Você foi cadastrado(a) como sócio(a) da ${athName}`,
+          html: emailLayout({
+            title: `Bem-vindo(a) à ${athName}, ${String(m.full_name).split(" ")[0]}!`,
+            brandColor: brand,
+            leagueName: athName,
+            bodyHtml: `<p>A diretoria da <strong>${athName}</strong> te cadastrou como sócio(a) da atlética.</p>
+              <p>Para acessar sua carteirinha digital, benefícios de sócio, comprar produtos e ingressos com desconto, crie sua conta no MEDUNO usando este e-mail (<strong>${email}</strong>). Seu vínculo de sócio será ativado automaticamente.</p>
+              ${emailInfoCard({
+                title: "Seu cadastro",
+                brandColor: brand,
+                rows: [
+                  { label: "Nome", value: String(m.full_name) },
+                  { label: "E-mail", value: email },
+                  ...(m.matricula ? [{ label: "Matrícula", value: String(m.matricula) }] : []),
+                  ...(m.semestre ? [{ label: "Semestre", value: String(m.semestre) }] : []),
+                ],
+              })}
+              <p>Se você já tem conta, é só entrar — o vínculo já aparece na aba <strong>Sócio</strong>.</p>`,
+            ctaLabel: "Criar minha conta",
+            ctaUrl: "https://ligasuno.com.br/auth",
+            signature: `— Diretoria da ${athName}`,
+          }),
+        });
+        sent++;
+        await supabaseAdmin
+          .from("athletic_memberships")
+          .update({ invite_sent_at: new Date().toISOString() } as any)
+          .eq("id", m.id);
+      } catch (e: any) {
+        failures.push({ email, reason: e?.message ?? "erro no envio" });
+        console.error("resendMemberInvites failed for", email, e?.message);
+      }
+    }
+
+    return { sent, failures, total: list.length };
+  });
+
