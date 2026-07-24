@@ -2509,8 +2509,54 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
         </div>
       </div>
 
-      <Card className="bg-white/5 border-white/10 text-white overflow-x-auto">
-        <table className="w-full text-sm">
+      {(() => {
+        const complete = members.filter((m) => !!m.email);
+        const incomplete = members.filter((m) => !m.email);
+        const renderRow = (m: Membership) => (
+          <tr key={m.id} className="border-t border-white/10">
+            <td className="p-2 font-medium">
+              {m.full_name}{" "}
+              {!m.active && (
+                <Badge variant="secondary" className="ml-1 text-[10px]">
+                  inativo
+                </Badge>
+              )}
+            </td>
+            <td className="p-2 opacity-80">{m.email ?? <span className="text-yellow-300/80 italic">sem e-mail</span>}</td>
+            <td className="p-2 opacity-80">{m.matricula ?? "—"}</td>
+            <td className="p-2 opacity-80">{m.semestre ?? "—"}</td>
+            <td className="p-2 opacity-80">{m.cpf ?? "—"}</td>
+            <td className="p-2">
+              <Badge style={m.role !== "socio" ? { background: athletic.primary_color } : {}}>{m.role}</Badge>
+            </td>
+            <td className="p-2 opacity-80">
+              {m.member_until ? new Date(m.member_until).toLocaleDateString("pt-BR") : "—"}
+            </td>
+            <td className="p-2 text-right">
+              <Button size="sm" variant="ghost" onClick={() => setEditing(m)}>
+                {m.email ? "Editar" : "Completar"}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-400"
+                onClick={async () => {
+                  if (!confirm2(`Remover ${m.full_name}?`)) return;
+                  try {
+                    await del({ data: { athletic_id: athletic.id, member_id: m.id } });
+                    toast.success("Removido");
+                    reload();
+                  } catch (e: any) {
+                    toast.error(e?.message);
+                  }
+                }}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </td>
+          </tr>
+        );
+        const TableHead = () => (
           <thead className="bg-white/5">
             <tr>
               <th className="text-left p-2">Nome</th>
@@ -2523,61 +2569,42 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
               <th></th>
             </tr>
           </thead>
-          <tbody>
-            {members.length === 0 && (
-              <tr>
-                <td colSpan={8} className="p-6 text-center opacity-60">
-                  Ninguém ainda
-                </td>
-              </tr>
-            )}
-            {members.map((m) => (
-              <tr key={m.id} className="border-t border-white/10">
-                <td className="p-2 font-medium">
-                  {m.full_name}{" "}
-                  {!m.active && (
-                    <Badge variant="secondary" className="ml-1 text-[10px]">
-                      inativo
-                    </Badge>
+        );
+        return (
+          <>
+            <Card className="bg-white/5 border-white/10 text-white overflow-x-auto">
+              <table className="w-full text-sm">
+                <TableHead />
+                <tbody>
+                  {complete.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center opacity-60">Ninguém ainda</td>
+                    </tr>
                   )}
-                </td>
-                <td className="p-2 opacity-80">{m.email}</td>
-                <td className="p-2 opacity-80">{m.matricula ?? "—"}</td>
-                <td className="p-2 opacity-80">{m.semestre ?? "—"}</td>
-                <td className="p-2 opacity-80">{m.cpf ?? "—"}</td>
-                <td className="p-2">
-                  <Badge style={m.role !== "socio" ? { background: athletic.primary_color } : {}}>{m.role}</Badge>
-                </td>
-                <td className="p-2 opacity-80">
-                  {m.member_until ? new Date(m.member_until).toLocaleDateString("pt-BR") : "—"}
-                </td>
-                <td className="p-2 text-right">
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(m)}>
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-400"
-                    onClick={async () => {
-                      if (!confirm2(`Remover ${m.full_name}?`)) return;
-                      try {
-                        await del({ data: { athletic_id: athletic.id, member_id: m.id } });
-                        toast.success("Removido");
-                        reload();
-                      } catch (e: any) {
-                        toast.error(e?.message);
-                      }
-                    }}
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+                  {complete.map(renderRow)}
+                </tbody>
+              </table>
+            </Card>
+
+            {incomplete.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <h4 className="font-black text-sm text-yellow-300">Cadastro incompleto ({incomplete.length})</h4>
+                  <Badge variant="secondary" className="text-[10px] bg-yellow-500/20 text-yellow-200 border border-yellow-500/40">Falta e-mail</Badge>
+                </div>
+                <p className="text-[11px] opacity-60 mb-2">Adicione o e-mail em "Completar" e o sócio passa para a lista principal e recebe o convite.</p>
+                <Card className="bg-yellow-500/5 border-yellow-500/30 text-white overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <TableHead />
+                    <tbody>{incomplete.map(renderRow)}</tbody>
+                  </table>
+                </Card>
+              </div>
+            )}
+          </>
+        );
+      })()}
+
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent className="max-w-lg">
@@ -2837,7 +2864,7 @@ function BulkImportMembersDialog({ open, onClose, athleticId, onDone }: { open: 
               <div className="grid sm:grid-cols-2 gap-3">
                 {(["full_name", "email", "matricula", "cpf", "semestre", "phone"] as const).map((k) => (
                   <div key={k}>
-                    <Label className="text-xs capitalize">{k === "full_name" ? "Nome completo *" : k === "email" ? "E-mail *" : k}</Label>
+                    <Label className="text-xs capitalize">{k === "full_name" ? "Nome completo *" : k === "email" ? "E-mail (opcional)" : k}</Label>
                     <select className="w-full border rounded h-9 px-2 text-sm bg-background" value={(map as any)[k]} onChange={(e) => setMap({ ...map, [k]: e.target.value })}>
                       <option value="">— não usar —</option>
                       {headers.map((h) => (<option key={h} value={h}>{h}</option>))}
@@ -2845,6 +2872,7 @@ function BulkImportMembersDialog({ open, onClose, athleticId, onDone }: { open: 
                   </div>
                 ))}
               </div>
+
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Válido até (opcional)</Label>
@@ -5381,14 +5409,38 @@ type Sport = {
 };
 
 /* ============ HISTÓRIA (Página Inicial) ============ */
+type AthHistoryItem = { url: string; year?: number | null; caption?: string | null };
+function normalizeAthHistory(raw: any): AthHistoryItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v: any) => {
+      if (typeof v === "string") return { url: v, year: null };
+      if (v && typeof v === "object" && v.url) {
+        const y = v.year != null && v.year !== "" ? Number(v.year) : null;
+        return { url: v.url, year: Number.isFinite(y as number) ? (y as number) : null, caption: v.caption ?? null };
+      }
+      return null;
+    })
+    .filter(Boolean) as AthHistoryItem[];
+}
+
 function HistoryShowcase({ ath }: { ath: Athletic }) {
-  const images: string[] = ((ath as any).history_images as string[] | null) ?? [];
+  const allImages = useMemo(() => normalizeAthHistory((ath as any).history_images), [ath]);
   const title: string = (ath as any).history_title || "Conheça a Nossa História";
   const description: string | null = (ath as any).history_description ?? null;
+  const years = useMemo(() => {
+    const s = new Set<number>();
+    allImages.forEach((it) => { if (it.year) s.add(it.year); });
+    return Array.from(s).sort((a, b) => a - b);
+  }, [allImages]);
+  const [year, setYear] = useState<number | "all">("all");
+  const images = useMemo(
+    () => (year === "all" ? allImages : allImages.filter((it) => it.year === year)),
+    [allImages, year],
+  );
 
-  if (images.length === 0 && !description) return null;
+  if (allImages.length === 0 && !description) return null;
 
-  // duplicamos as imagens para efeito de marquee infinito
   const track = images.length > 0 ? [...images, ...images] : [];
 
   return (
@@ -5403,6 +5455,27 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
         <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
         {description && (
           <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
+        )}
+        {years.length > 0 && (
+          <div className="mt-5 flex flex-wrap justify-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setYear("all")}
+              className={`px-3 h-8 rounded-full text-xs font-bold uppercase tracking-widest border transition ${year === "all" ? "bg-white text-neutral-900 border-white" : "bg-white/5 text-white/80 border-white/20 hover:bg-white/10"}`}
+            >
+              Todos
+            </button>
+            {years.map((y) => (
+              <button
+                key={y}
+                type="button"
+                onClick={() => setYear(y)}
+                className={`px-3 h-8 rounded-full text-xs font-bold uppercase tracking-widest border transition ${year === y ? "bg-white text-neutral-900 border-white" : "bg-white/5 text-white/80 border-white/20 hover:bg-white/10"}`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
         )}
         {images.length > 0 && (
           <div className="mt-5">
@@ -5435,12 +5508,12 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
               animation: `aaamd-history-marquee ${Math.max(20, images.length * 6)}s linear infinite`,
             }}
           >
-            {track.map((src, i) => (
+            {track.map((it, i) => (
               <div
                 key={i}
                 className="relative shrink-0 w-72 md:w-96 aspect-[4/3] rounded-xl overflow-hidden border border-white/10 bg-black shadow-xl"
               >
-                <img src={src} alt="História" className="w-full h-full object-cover" />
+                <img src={it.url} alt={it.caption ?? "História"} className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
@@ -5455,16 +5528,21 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
 function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
   const [title, setTitle] = useState<string>((athletic as any).history_title ?? "Conheça a Nossa História");
   const [description, setDescription] = useState<string>((athletic as any).history_description ?? "");
-  const [images, setImages] = useState<string[]>((((athletic as any).history_images as string[] | null) ?? []).slice());
+  const [images, setImages] = useState<AthHistoryItem[]>(normalizeAthHistory((athletic as any).history_images));
   const upd = useServerFn(updateAthletic);
+
+  function updateItem(i: number, patch: Partial<AthHistoryItem>) {
+    setImages(images.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  }
+
   return (
     <Card className="bg-white/5 border-white/10 text-white">
       <CardContent className="p-6 space-y-4">
         <div>
           <h4 className="font-black">Nossa história (página inicial)</h4>
           <p className="text-xs opacity-70">
-            Adicione um título, descrição e fotos para a seção "Conheça a Nossa História" na aba Página Inicial. As
-            imagens passam automaticamente.
+            Adicione um título, descrição e fotos para a seção "Conheça a Nossa História". Cada foto pode ter um
+            ano — quando definido, o público pode filtrar as fotos por ano.
           </p>
         </div>
         <div>
@@ -5482,55 +5560,71 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
         </div>
         <div className="space-y-2">
           <Label>Imagens</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {images.map((url, i) => (
-              <div
-                key={i}
-                className="relative group rounded-lg overflow-hidden border border-white/10 bg-black/40 aspect-square"
-              >
-                <img src={url} alt={`História ${i + 1}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setImages(images.filter((_, j) => j !== i))}
-                  className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                  aria-label="Remover imagem"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-                <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {images.map((it, i) => (
+              <div key={i} className="rounded-lg border border-white/10 bg-black/40 p-2 space-y-2">
+                <div className="relative aspect-square overflow-hidden rounded-md">
+                  <img src={it.url} alt={`História ${i + 1}`} className="w-full h-full object-cover" />
                   <button
                     type="button"
-                    disabled={i === 0}
-                    onClick={() => {
-                      const arr = images.slice();
-                      [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-                      setImages(arr);
-                    }}
-                    className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
+                    onClick={() => setImages(images.filter((_, j) => j !== i))}
+                    className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/70 text-white flex items-center justify-center"
+                    aria-label="Remover imagem"
                   >
-                    ←
+                    <Trash2 className="size-3.5" />
                   </button>
-                  <button
-                    type="button"
-                    disabled={i === images.length - 1}
-                    onClick={() => {
-                      const arr = images.slice();
-                      [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-                      setImages(arr);
-                    }}
-                    className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
-                  >
-                    →
-                  </button>
+                  <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+                    <button
+                      type="button"
+                      disabled={i === 0}
+                      onClick={() => {
+                        const arr = images.slice();
+                        [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+                        setImages(arr);
+                      }}
+                      className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      disabled={i === images.length - 1}
+                      onClick={() => {
+                        const arr = images.slice();
+                        [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+                        setImages(arr);
+                      }}
+                      className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
+                    >
+                      →
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest opacity-70">Ano</Label>
+                  <Input
+                    type="number"
+                    min={1900}
+                    max={2100}
+                    placeholder="Ex: 2024"
+                    value={it.year ?? ""}
+                    onChange={(e) => updateItem(i, { year: e.target.value ? Number(e.target.value) : null })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-widest opacity-70">Legenda (opcional)</Label>
+                  <Input
+                    value={it.caption ?? ""}
+                    onChange={(e) => updateItem(i, { caption: e.target.value })}
+                    placeholder="O que essa foto mostra?"
+                  />
                 </div>
               </div>
             ))}
-            <div className="aspect-square rounded-lg border border-dashed border-white/20 bg-black/20 p-2 flex items-center justify-center">
+            <div className="rounded-lg border border-dashed border-white/20 bg-black/20 p-2 flex items-center justify-center min-h-[220px]">
               <ImageUpload
                 value=""
-                onChange={(url) => {
-                  if (url) setImages([...images, url]);
-                }}
+                onChange={(url) => { if (url) setImages([...images, { url, year: null, caption: "" }]); }}
                 folder="atletica/history"
               />
             </div>
@@ -5560,6 +5654,7 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
     </Card>
   );
 }
+
 
 function SportsShowcase({ athletic }: { athletic: Athletic }) {
   const [sports, setSports] = useState<Sport[]>([]);
