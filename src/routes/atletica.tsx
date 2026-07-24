@@ -2800,25 +2800,27 @@ function BulkImportMembersDialog({ open, onClose, athleticId, onDone }: { open: 
   }
 
   async function submit() {
-    if (!map.full_name || !map.email) return toast.error("Mapeie ao menos Nome e E-mail");
+    if (!map.full_name) return toast.error("Mapeie ao menos o Nome");
     const payload = rows.map((r) => ({
       full_name: String(r[map.full_name] ?? "").trim(),
-      email: String(r[map.email] ?? "").trim(),
-      matricula: map.matricula ? String(r[map.matricula] ?? "").trim() : null,
-      cpf: map.cpf ? String(r[map.cpf] ?? "").trim() : null,
-      semestre: map.semestre ? Number(String(r[map.semestre]).replace(/\D/g, "")) || null : null,
-      phone: map.phone ? String(r[map.phone] ?? "").trim() : null,
-    })).filter((r) => r.email && r.full_name);
+      email: map.email ? String(r[map.email] ?? "").trim() || null : null,
+      matricula: map.matricula ? String(r[map.matricula] ?? "").trim() || null : null,
+      cpf: map.cpf ? String(r[map.cpf] ?? "").trim() || null : null,
+      semestre: map.semestre ? String(r[map.semestre] ?? "").trim() || null : null,
+      phone: map.phone ? String(r[map.phone] ?? "").trim() || null : null,
+    })).filter((r) => r.full_name);
     if (!payload.length) return toast.error("Nenhuma linha válida");
     setBusy(true);
     try {
-      const res: any = await runImport({ data: { athletic_id: athleticId, member_until: memberUntil || null, send_invite: sendInvite, members: payload } });
+      const res: any = await runImport({ data: { athletic_id: athleticId, send_invites: sendInvite, rows: payload } });
       setResult(res);
-      toast.success(`Importados: ${res.imported}${res.invited ? ` • Convites: ${res.invited}` : ""}`);
+      const incomplete = payload.filter((r) => !r.email).length;
+      toast.success(`Importados: ${res.imported}${res.invited ? ` • Convites: ${res.invited}` : ""}${incomplete ? ` • ${incomplete} sem e-mail` : ""}`);
       onDone();
     } catch (e: any) { toast.error(e?.message); }
     finally { setBusy(false); }
   }
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
