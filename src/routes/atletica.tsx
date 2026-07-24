@@ -2787,6 +2787,34 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
   );
 }
 
+function ResendInvitesButton({ athleticId }: { athleticId: string }) {
+  const [busy, setBusy] = useState(false);
+  const run = useServerFn(resendMemberInvites);
+  async function onClick() {
+    if (!window.confirm("Reenviar convite por e-mail para todos os sócios com e-mail que ainda não criaram conta no site?")) return;
+    setBusy(true);
+    try {
+      const res: any = await run({ data: { athletic_id: athleticId, only_never_sent: false } });
+      const failed = Array.isArray(res?.failures) ? res.failures.length : 0;
+      if (res.sent === 0 && res.total === 0) {
+        toast.info("Nenhum sócio pendente de convite encontrado.");
+      } else {
+        toast.success(`Convites enviados: ${res.sent}/${res.total}${failed ? ` • ${failed} falha(s)` : ""}`);
+        if (failed) console.warn("resend failures:", res.failures);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao reenviar convites");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Button size="sm" variant="outline" className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white" onClick={onClick} disabled={busy}>
+      <Mail className="size-4 mr-1" /> {busy ? "Enviando..." : "Reenviar convites"}
+    </Button>
+  );
+}
+
 function BulkImportMembersDialog({ open, onClose, athleticId, onDone }: { open: boolean; onClose: () => void; athleticId: string; onDone: () => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
