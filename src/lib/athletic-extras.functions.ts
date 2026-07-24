@@ -297,7 +297,7 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
       rows: z
         .array(
           z.object({
-            email: z.string().email(),
+            email: z.string().email().optional().nullable().or(z.literal("")),
             full_name: z.string().min(2).max(200),
             cpf: z.string().max(20).optional().nullable(),
             phone: z.string().max(40).optional().nullable(),
@@ -348,22 +348,37 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
     const failures: Array<{ email: string; reason: string }> = [];
 
     for (const raw of data.rows) {
-      const email = raw.email.toLowerCase().trim();
+      const email = raw.email ? raw.email.toLowerCase().trim() : null;
       try {
-        // vincula profile se existir
-        const { data: prof } = await supabaseAdmin
-          .from("profiles")
-          .select("id")
-          .ilike("email", email)
-          .maybeSingle();
-        const linkedUserId = (prof as any)?.id ?? null;
+        let linkedUserId: string | null = null;
+        if (email) {
+          const { data: prof } = await supabaseAdmin
+            .from("profiles")
+            .select("id")
+            .ilike("email", email)
+            .maybeSingle();
+          linkedUserId = (prof as any)?.id ?? null;
+        }
 
-        const { data: existing } = await supabaseAdmin
-          .from("athletic_memberships")
-          .select("id")
-          .eq("athletic_id", data.athletic_id)
-          .ilike("email", email)
-          .maybeSingle();
+        // Find existing: by email if present, else by (athletic_id + full_name + cpf) heuristic
+        let existingId: string | null = null;
+        if (email) {
+          const { data: existing } = await supabaseAdmin
+            .from("athletic_memberships")
+            .select("id")
+            .eq("athletic_id", data.athletic_id)
+            .ilike("email", email)
+            .maybeSingle();
+          existingId = (existing as any)?.id ?? null;
+        } else if (raw.cpf) {
+          const { data: existing } = await supabaseAdmin
+            .from("athletic_memberships")
+            .select("id")
+            .eq("athletic_id", data.athletic_id)
+            .eq("cpf", raw.cpf)
+            .maybeSingle();
+          existingId = (existing as any)?.id ?? null;
+        }
 
         const payload: any = {
           athletic_id: data.athletic_id,
@@ -381,11 +396,11 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
           cycle_id: data.cycle_id ?? null,
         };
 
-        if (existing) {
+        if (existingId) {
           await supabaseAdmin
             .from("athletic_memberships")
             .update(payload)
-            .eq("id", (existing as any).id);
+            .eq("id", existingId);
           updated++;
         } else {
           const { error } = await supabaseAdmin
@@ -395,8 +410,7 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
           created++;
         }
 
-        // Se não tem cadastro no site e ainda não convidado, envia convite
-        if (data.send_invites && !linkedUserId) {
+        if (data.send_invites && email && !linkedUserId) {
           try {
             const { sendGmail, emailLayout, emailInfoCard } = await import("./gmail.server");
             await sendGmail({
@@ -435,9 +449,10 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
           }
         }
       } catch (e: any) {
-        failures.push({ email, reason: e?.message ?? "erro" });
+        failures.push({ email: email ?? "(sem e-mail)", reason: e?.message ?? "erro" });
       }
     }
 
-    return { created, updated, invited, failures, total: data.rows.length };
+    return { created, invited, failures, total: data.rows.length, imported: created + updated, updated };
   });
+
