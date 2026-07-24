@@ -2489,7 +2489,7 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
 
       <div className="flex justify-between items-center gap-2 flex-wrap">
         <h3 className="font-black text-lg">Sócios ({members.length})</h3>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
         <Button
           size="sm"
           variant="outline"
@@ -2498,6 +2498,7 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
         >
           <Upload className="size-4 mr-1" /> Importar Excel
         </Button>
+        <ResendInvitesButton athleticId={athletic.id} />
         <Button
           size="sm"
           onClick={() =>
