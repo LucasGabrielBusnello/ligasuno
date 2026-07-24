@@ -223,7 +223,7 @@ export const resolveProductOrderPayment = createServerFn({ method: "POST" })
 
     await supabaseAdmin
       .from("athletic_product_orders")
-      .update({ status: "paid", payment_method: data.method } as any)
+      .update({ status: "paid", notes: `Aprovado manualmente (${data.method})` } as any)
       .eq("id", data.order_id);
 
     await supabaseAdmin.from("athletic_cash_entries").insert({
