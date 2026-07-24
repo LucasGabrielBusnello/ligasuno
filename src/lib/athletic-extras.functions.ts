@@ -169,7 +169,7 @@ export const listPendingProductAndTicketPayments = createServerFn({ method: "POS
       supabaseAdmin
         .from("athletic_product_orders")
         .select(
-          "id,total,created_at,buyer_name,buyer_email,buyer_cpf,buyer_phone,buyer_registration,buyer_semester,payment_method,user_id,athletic_product_order_items(title,quantity)",
+          "id,total,created_at,buyer_name,buyer_email,buyer_cpf,buyer_phone,buyer_registration,buyer_semester,user_id,source,athletic_product_order_items(title,quantity)",
         )
         .eq("athletic_id", data.athletic_id)
         .eq("status", "pending")
