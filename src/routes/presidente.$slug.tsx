@@ -1501,15 +1501,12 @@ function MembersTab({ league }: any) {
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [league.id]);
   async function add() {
     if (!query.trim()) return;
-    const q = query.trim().replace(/[%,]/g, "");
-    const { data: profs, error: pe } = await supabase
-      .from("profiles")
-      .select("id,email,username")
-      .or(`email.ilike.%${q}%,username.ilike.%${q}%`)
-      .limit(2);
+    const q = query.trim();
+    const { data: profs, error: pe } = await (supabase as any)
+      .rpc("find_profile_for_league", { _league_id: league.id, _query: q });
     if (pe) return toast.error(pe.message);
-    if (!profs || profs.length === 0) return toast.error("Usuário não existe");
-    if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — seja mais específico");
+    if (!profs || profs.length === 0) return toast.error("Nenhum usuário encontrado com esse e-mail/usuário. Confirme se a pessoa já criou uma conta no MEDUNO.");
+    if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — use o e-mail completo");
     const prof = profs[0];
     const { error } = await supabase.from("league_memberships").upsert({ league_id: league.id, user_id: prof.id, role }, { onConflict: "league_id,user_id" });
     if (error) return toast.error(error.message);
