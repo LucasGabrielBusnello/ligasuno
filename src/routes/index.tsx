@@ -16,44 +16,40 @@ export const Route = createFileRoute("/")({
 
 const QUICK_ACCESS = [
   {
-    to: "/painel",
+    to: "/aluno",
     label: "Portal do Aluno",
     description: "Cronograma, matérias, quizzes e desempenho.",
     icon: GraduationCap,
-    accent: "from-emerald-500/40 to-emerald-700/20",
-    border: "border-emerald-400/60",
-    iconClass: "bg-emerald-500/30 text-emerald-100",
-    descClass: "text-emerald-50/80",
+    gradient: "from-emerald-600 to-emerald-800",
+    ring: "ring-emerald-400/40",
+    iconClass: "bg-white/15 text-white",
   },
   {
     to: "/atletica",
     label: "AAAMD",
     description: "Atlética, produtos, eventos e carteirinha.",
     icon: Trophy,
-    accent: "from-orange-500/40 to-orange-700/20",
-    border: "border-orange-400/60",
-    iconClass: "bg-orange-500/30 text-orange-100",
-    descClass: "text-orange-50/80",
+    gradient: "from-orange-600 to-amber-800",
+    ring: "ring-orange-400/40",
+    iconClass: "bg-white/15 text-white",
   },
   {
     to: "/camed",
     label: "CAMED",
     description: "Centro acadêmico, notícias e agendamentos.",
     icon: Building2,
-    accent: "from-teal-500/40 to-teal-700/20",
-    border: "border-teal-400/60",
-    iconClass: "bg-teal-500/30 text-teal-100",
-    descClass: "text-teal-50/80",
+    gradient: "from-teal-600 to-teal-900",
+    ring: "ring-teal-400/40",
+    iconClass: "bg-white/15 text-white",
   },
   {
     to: "/ligas",
     label: "Ligas Acadêmicas",
     description: "Encontre ligas, entre em processos seletivos.",
     icon: BookOpen,
-    accent: "from-primary/40 to-primary/15",
-    border: "border-primary/60",
-    iconClass: "bg-primary/30 text-white",
-    descClass: "text-white/80",
+    gradient: "from-primary to-primary/70",
+    ring: "ring-primary/40",
+    iconClass: "bg-white/15 text-white",
   },
 ] as const;
 
@@ -82,8 +78,8 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Anúncio em destaque, logo abaixo do hero */}
-      <div className="pt-8 md:pt-12 relative z-10">
+      {/* Anúncio em destaque, logo abaixo do hero (subido levemente) */}
+      <div className="pt-4 md:pt-6 relative z-10">
         <AdsBanner placement="home" />
       </div>
 
@@ -97,18 +93,18 @@ function HomePage() {
           <p className="text-sm md:text-base text-muted-foreground mt-2">Escolha o setor que você quer acessar agora.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {QUICK_ACCESS.map(({ to, label, description, icon: Icon, accent, border, iconClass, descClass }) => (
+          {QUICK_ACCESS.map(({ to, label, description, icon: Icon, gradient, ring, iconClass }) => (
             <Link
               key={to}
               to={to}
-              className={`group relative overflow-hidden rounded-2xl border ${border} bg-gradient-to-br ${accent} p-6 transition-all hover:scale-[1.02] hover:shadow-2xl backdrop-blur`}
+              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} p-6 shadow-lg ring-1 ${ring} transition-all hover:scale-[1.02] hover:shadow-2xl`}
             >
-              <div className={`inline-flex items-center justify-center size-12 rounded-xl ${iconClass} mb-4`}>
+              <div className={`inline-flex items-center justify-center size-12 rounded-xl ${iconClass} mb-4 backdrop-blur`}>
                 <Icon className="size-6" />
               </div>
-              <h3 className="text-lg font-black tracking-tight text-white">{label}</h3>
-              <p className={`text-xs mt-1.5 leading-relaxed ${descClass}`}>{description}</p>
-              <div className="mt-4 flex items-center gap-1 text-xs font-bold text-white/90 group-hover:text-white group-hover:translate-x-1 transition-transform">
+              <h3 className="text-lg font-black tracking-tight text-white drop-shadow">{label}</h3>
+              <p className="text-xs mt-1.5 leading-relaxed text-white/90">{description}</p>
+              <div className="mt-4 flex items-center gap-1 text-xs font-bold text-white group-hover:translate-x-1 transition-transform">
                 Acessar <ArrowRight className="size-3.5" />
               </div>
             </Link>
