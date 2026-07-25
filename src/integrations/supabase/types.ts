@@ -3888,6 +3888,15 @@ export type Database = {
         Args: { _league_id: string; _user_id: string }
         Returns: boolean
       }
+      find_profile_for_league: {
+        Args: { _league_id: string; _query: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
+          username: string
+        }[]
+      }
       gen_checkin_code: { Args: never; Returns: string }
       has_camed_panel_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
