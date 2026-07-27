@@ -83,34 +83,35 @@ function LigasPage() {
             <h2 className="text-lg font-black tracking-tight">Minhas ligas</h2>
             <span className="text-xs text-muted-foreground">({myLeagues.length})</span>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {myLeagues.map((league) => {
               const meta = roleMeta[league.my_role];
               const Icon = meta.icon;
               return (
-                <Link key={league.id} to={rolePath[league.my_role]} params={{ slug: league.slug }}>
+                <Link key={league.id} to={rolePath[league.my_role]} params={{ slug: league.slug }} className="block min-w-0">
                   <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 h-full border-primary/20">
-                    <div className="flex items-center gap-3 p-4" style={{ background: `linear-gradient(135deg, ${league.theme_color}22, transparent)` }}>
+                    <div className="flex items-center gap-3 p-4 min-w-0" style={{ background: `linear-gradient(135deg, ${league.theme_color}22, transparent)` }}>
                       {league.icon_url ? (
-                        <img src={league.icon_url} className="size-14 rounded-xl border bg-background object-contain" alt={league.name} />
+                        <img src={league.icon_url} className="size-14 shrink-0 rounded-xl border bg-background object-contain" alt={league.name} />
                       ) : (
-                        <div className="size-14 rounded-xl flex items-center justify-center" style={{ background: league.theme_color }}>
+                        <div className="size-14 shrink-0 rounded-xl flex items-center justify-center" style={{ background: league.theme_color }}>
                           <Activity className="size-7 text-white/80" />
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
                         <h3 className="font-black text-base truncate">{league.name}</h3>
-                        <span className={`mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${meta.className}`}>
-                          <Icon className="size-3" /> {meta.label}
+                        <span className={`mt-1 inline-flex max-w-full items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${meta.className}`}>
+                          <Icon className="size-3 shrink-0" /> <span className="truncate">{meta.label}</span>
                         </span>
                       </div>
-                      <ArrowRight className="size-4 text-muted-foreground" />
+                      <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
                     </div>
                   </Card>
                 </Link>
               );
             })}
           </div>
+
         </section>
       )}
 
