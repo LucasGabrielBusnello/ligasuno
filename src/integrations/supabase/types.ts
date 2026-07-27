@@ -1111,6 +1111,7 @@ export type Database = {
           history_description: string | null
           history_images: Json
           history_title: string | null
+          history_years: Json
           id: string
           logo_url: string | null
           maintenance_enabled: boolean
@@ -1133,6 +1134,7 @@ export type Database = {
           history_description?: string | null
           history_images?: Json
           history_title?: string | null
+          history_years?: Json
           id?: string
           logo_url?: string | null
           maintenance_enabled?: boolean
@@ -1155,6 +1157,7 @@ export type Database = {
           history_description?: string | null
           history_images?: Json
           history_title?: string | null
+          history_years?: Json
           id?: string
           logo_url?: string | null
           maintenance_enabled?: boolean
