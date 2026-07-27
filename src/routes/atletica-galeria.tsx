@@ -101,6 +101,35 @@ function AtleticaGalleryPage() {
       )}
 
       <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+        {info?.description && (
+          <p className="mb-8 text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{info.description}</p>
+        )}
+
+        {board.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xs uppercase tracking-widest font-bold text-white/60 mb-3">Diretoria {year}</h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+              {board.map((m: any, i: number) => (
+                <div key={i} className="snap-start shrink-0 w-44 rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+                  <div className="aspect-square bg-white/5">
+                    {m.image_url ? (
+                      <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">Sem foto</div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <div className="font-bold text-sm">{m.name}</div>
+                    {m.role && <div className="text-[10px] uppercase tracking-widest" style={{ color: primary }}>{m.role}</div>}
+                    {m.description && <p className="mt-1 text-xs text-white/70 whitespace-pre-line">{m.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+
         {items.length === 0 ? (
           <p className="text-center text-white/60 py-16">Nenhuma foto para {year === "all" ? "esta seção" : `o ano ${year}`}.</p>
         ) : (
