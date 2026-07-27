@@ -5555,136 +5555,295 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
   );
 }
 
-/* ============ Config → Imagens da história ============ */
+/* ============ Config → História por ano ============ */
+export type AthBoardMember = { name: string; role?: string | null; image_url?: string | null; description?: string | null };
+export type AthYearInfo = { year: number; description?: string | null; board?: AthBoardMember[] };
+
+export function normalizeAthYears(raw: any): AthYearInfo[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v: any) => {
+      const y = Number(v?.year);
+      if (!Number.isFinite(y)) return null;
+      return {
+        year: y,
+        description: v?.description ?? null,
+        board: Array.isArray(v?.board)
+          ? v.board
+              .filter((m: any) => m && typeof m.name === "string")
+              .map((m: any) => ({
+                name: m.name,
+                role: m.role ?? null,
+                image_url: m.image_url ?? null,
+                description: m.description ?? null,
+              }))
+          : [],
+      } as AthYearInfo;
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => a.year - b.year) as AthYearInfo[];
+}
+
 function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
   const [title, setTitle] = useState<string>((athletic as any).history_title ?? "Conheça a Nossa História");
   const [description, setDescription] = useState<string>((athletic as any).history_description ?? "");
   const [images, setImages] = useState<AthHistoryItem[]>(normalizeAthHistory((athletic as any).history_images));
+  const [years, setYears] = useState<AthYearInfo[]>(() => {
+    const base = normalizeAthYears((athletic as any).history_years);
+    const known = new Set(base.map((y) => y.year));
+    normalizeAthHistory((athletic as any).history_images).forEach((it) => {
+      if (it.year && !known.has(it.year)) {
+        known.add(it.year);
+        base.push({ year: it.year, description: null, board: [] });
+      }
+    });
+    return base.sort((a, b) => a.year - b.year);
+  });
+  const [selected, setSelected] = useState<number | null>(null);
+  const [newYear, setNewYear] = useState<string>("");
+  const [saving, setSaving] = useState(false);
   const upd = useServerFn(updateAthletic);
 
-  function updateItem(i: number, patch: Partial<AthHistoryItem>) {
-    setImages(images.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  const current = years.find((y) => y.year === selected) ?? null;
+  const yearImages = images.map((it, idx) => ({ it, idx })).filter(({ it }) => it.year === selected);
+
+  function patchYear(patch: Partial<AthYearInfo>) {
+    setYears((prev) => prev.map((y) => (y.year === selected ? { ...y, ...patch } : y)));
+  }
+  function patchImage(idx: number, patch: Partial<AthHistoryItem>) {
+    setImages((prev) => prev.map((it, j) => (j === idx ? { ...it, ...patch } : it)));
+  }
+  function patchMember(i: number, patch: Partial<AthBoardMember>) {
+    patchYear({ board: (current?.board ?? []).map((m, j) => (j === i ? { ...m, ...patch } : m)) });
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      await upd({
+        data: {
+          id: athletic.id,
+          history_title: title,
+          history_description: description || null,
+          history_images: images,
+          history_years: years,
+        } as any,
+      });
+      toast.success("História salva — recarregando…");
+      setTimeout(() => window.location.reload(), 600);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <Card className="bg-white/5 border-white/10 text-white">
-      <CardContent className="p-6 space-y-4">
+      <CardContent className="p-6 space-y-5">
         <div>
-          <h4 className="font-black">Nossa história (página inicial)</h4>
+          <h4 className="font-black">Nossa história (por ano)</h4>
           <p className="text-xs opacity-70">
-            Adicione um título, descrição e fotos para a seção "Conheça a Nossa História". Cada foto pode ter um
-            ano — quando definido, o público pode filtrar as fotos por ano.
+            Selecione um ano para editar a descrição daquele ano, suas fotos e a diretoria que aparecerá na página do ano.
           </p>
         </div>
-        <div>
-          <Label>Título</Label>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Título geral</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label>Descrição geral</Label>
+            <Textarea
+              rows={2}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Conte um pouco sobre a trajetória da atlética..."
+            />
+          </div>
         </div>
-        <div>
-          <Label>Descrição</Label>
-          <Textarea
-            rows={4}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Conte um pouco sobre a trajetória da atlética..."
-          />
-        </div>
+
+        {/* Seleção de ano */}
         <div className="space-y-2">
-          <Label>Imagens</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {images.map((it, i) => (
-              <div key={i} className="rounded-lg border border-white/10 bg-black/40 p-2 space-y-2">
-                <div className="relative aspect-square overflow-hidden rounded-md">
-                  <img src={it.url} alt={`História ${i + 1}`} className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setImages(images.filter((_, j) => j !== i))}
-                    className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/70 text-white flex items-center justify-center"
-                    aria-label="Remover imagem"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
-                  <div className="absolute bottom-1.5 left-1.5 flex gap-1">
-                    <button
-                      type="button"
-                      disabled={i === 0}
-                      onClick={() => {
-                        const arr = images.slice();
-                        [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
-                        setImages(arr);
-                      }}
-                      className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
-                    >
-                      ←
-                    </button>
-                    <button
-                      type="button"
-                      disabled={i === images.length - 1}
-                      onClick={() => {
-                        const arr = images.slice();
-                        [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
-                        setImages(arr);
-                      }}
-                      className="size-6 rounded-full bg-black/70 text-white text-xs disabled:opacity-30"
-                    >
-                      →
-                    </button>
+          <Label>Anos</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {years.map((y) => (
+              <button
+                key={y.year}
+                type="button"
+                onClick={() => setSelected(y.year === selected ? null : y.year)}
+                className={`px-3 h-8 rounded-full text-xs font-bold tracking-widest border transition ${y.year === selected ? "bg-white text-neutral-900 border-white" : "bg-white/5 text-white/80 border-white/20 hover:bg-white/10"}`}
+              >
+                {y.year}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 items-center">
+            <Input
+              type="number"
+              min={1900}
+              max={2100}
+              placeholder="Novo ano (ex: 2025)"
+              value={newYear}
+              onChange={(e) => setNewYear(e.target.value)}
+              className="max-w-[200px]"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+              onClick={() => {
+                const y = Number(newYear);
+                if (!Number.isFinite(y) || y < 1900 || y > 2100) return toast.error("Ano inválido");
+                if (years.some((x) => x.year === y)) return setSelected(y);
+                setYears([...years, { year: y, description: null, board: [] }].sort((a, b) => a.year - b.year));
+                setSelected(y);
+                setNewYear("");
+              }}
+            >
+              <Plus className="size-4 mr-1" /> Adicionar ano
+            </Button>
+          </div>
+        </div>
+
+        {!current ? (
+          <div className="rounded-lg border border-dashed border-white/20 bg-black/20 p-6 text-center text-sm opacity-70">
+            Selecione um ano acima para adicionar fotos, descrição e diretoria.
+          </div>
+        ) : (
+          <div className="space-y-5 rounded-xl border border-white/10 bg-black/30 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h5 className="font-black text-lg">{current.year}</h5>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="text-red-300 hover:text-red-200 hover:bg-red-500/10"
+                onClick={() => {
+                  if (!confirm(`Remover o ano ${current.year}? As fotos desse ano também serão removidas.`)) return;
+                  setImages(images.filter((it) => it.year !== current.year));
+                  setYears(years.filter((y) => y.year !== current.year));
+                  setSelected(null);
+                }}
+              >
+                <Trash2 className="size-4 mr-1" /> Remover ano
+              </Button>
+            </div>
+
+            <div>
+              <Label>Descrição de {current.year}</Label>
+              <Textarea
+                rows={4}
+                value={current.description ?? ""}
+                onChange={(e) => patchYear({ description: e.target.value })}
+                placeholder={`O que marcou o ano de ${current.year}?`}
+              />
+            </div>
+
+            {/* Fotos do ano */}
+            <div className="space-y-2">
+              <Label>Fotos de {current.year}</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {yearImages.map(({ it, idx }) => (
+                  <div key={idx} className="rounded-lg border border-white/10 bg-black/40 p-2 space-y-2">
+                    <div className="relative aspect-square overflow-hidden rounded-md">
+                      <img src={it.url} alt={it.caption ?? `Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setImages(images.filter((_, j) => j !== idx))}
+                        className="absolute top-1.5 right-1.5 size-7 rounded-full bg-black/70 text-white flex items-center justify-center"
+                        aria-label="Remover imagem"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                    <Input
+                      value={it.caption ?? ""}
+                      onChange={(e) => patchImage(idx, { caption: e.target.value })}
+                      placeholder="Legenda (opcional)"
+                    />
                   </div>
-                </div>
-                <div>
-                  <Label className="text-[10px] uppercase tracking-widest opacity-70">Ano</Label>
-                  <Input
-                    type="number"
-                    min={1900}
-                    max={2100}
-                    placeholder="Ex: 2024"
-                    value={it.year ?? ""}
-                    onChange={(e) => updateItem(i, { year: e.target.value ? Number(e.target.value) : null })}
-                  />
-                </div>
-                <div>
-                  <Label className="text-[10px] uppercase tracking-widest opacity-70">Legenda (opcional)</Label>
-                  <Input
-                    value={it.caption ?? ""}
-                    onChange={(e) => updateItem(i, { caption: e.target.value })}
-                    placeholder="O que essa foto mostra?"
+                ))}
+                <div className="rounded-lg border border-dashed border-white/20 bg-black/20 p-2 flex items-center justify-center min-h-[200px]">
+                  <ImageUpload
+                    value=""
+                    onChange={(url) => {
+                      if (url) setImages((prev) => [...prev, { url, year: current.year, caption: "" }]);
+                    }}
+                    folder="atletica/history"
                   />
                 </div>
               </div>
-            ))}
-            <div className="rounded-lg border border-dashed border-white/20 bg-black/20 p-2 flex items-center justify-center min-h-[220px]">
-              <ImageUpload
-                value=""
-                onChange={(url) => { if (url) setImages([...images, { url, year: null, caption: "" }]); }}
-                folder="atletica/history"
-              />
+            </div>
+
+            {/* Diretoria do ano */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label>Diretoria de {current.year}</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="bg-white/5 border-white/20 text-white hover:bg-white/10"
+                  onClick={() =>
+                    patchYear({ board: [...(current.board ?? []), { name: "", role: "", image_url: null, description: "" }] })
+                  }
+                >
+                  <Plus className="size-4 mr-1" /> Adicionar membro
+                </Button>
+              </div>
+              {(current.board ?? []).length === 0 ? (
+                <p className="text-xs opacity-60">Nenhum membro adicionado para {current.year}.</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(current.board ?? []).map((m, i) => (
+                    <div key={i} className="rounded-lg border border-white/10 bg-black/40 p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-70">Membro {i + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => patchYear({ board: (current.board ?? []).filter((_, j) => j !== i) })}
+                          className="text-red-300 hover:text-red-200"
+                          aria-label="Remover membro"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                      <ImageUpload
+                        label="Foto"
+                        value={m.image_url ?? ""}
+                        onChange={(url) => patchMember(i, { image_url: url || null })}
+                        folder="atletica/board"
+                      />
+                      <Input value={m.name} onChange={(e) => patchMember(i, { name: e.target.value })} placeholder="Nome" />
+                      <Input
+                        value={m.role ?? ""}
+                        onChange={(e) => patchMember(i, { role: e.target.value })}
+                        placeholder="Cargo (ex: Presidente)"
+                      />
+                      <Textarea
+                        rows={2}
+                        value={m.description ?? ""}
+                        onChange={(e) => patchMember(i, { description: e.target.value })}
+                        placeholder="Descrição (opcional)"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-        <Button
-          onClick={async () => {
-            try {
-              await upd({
-                data: {
-                  id: athletic.id,
-                  history_title: title,
-                  history_description: description || null,
-                  history_images: images,
-                } as any,
-              });
-              toast.success("História salva — recarregando…");
-              setTimeout(() => window.location.reload(), 600);
-            } catch (e: any) {
-              toast.error(e?.message ?? "Falha ao salvar");
-            }
-          }}
-        >
-          Salvar história
+        )}
+
+        <Button onClick={save} disabled={saving}>
+          {saving ? "Salvando…" : "Salvar história"}
         </Button>
       </CardContent>
     </Card>
   );
 }
+
 
 
 function SportsShowcase({ athletic }: { athletic: Athletic }) {
