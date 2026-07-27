@@ -5514,6 +5514,46 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
             ))}
           </div>
         )}
+      </div>
+
+      {board.length > 0 && (
+        <div className="px-4 md:px-8 pb-6">
+          <div className="text-center text-[10px] uppercase tracking-widest font-bold text-white/60 mb-3">
+            Diretoria {year}
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+            {board.map((m, i) => (
+              <div
+                key={i}
+                className="snap-start shrink-0 w-44 rounded-xl border border-white/10 bg-black/40 overflow-hidden"
+              >
+                <div className="aspect-square bg-white/5">
+                  {m.image_url ? (
+                    <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white/30">
+                      <Users className="size-8" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <div className="font-bold text-sm text-white">{m.name}</div>
+                  {m.role && (
+                    <div className="text-[10px] uppercase tracking-widest" style={{ color: ath.primary_color }}>
+                      {m.role}
+                    </div>
+                  )}
+                  {m.description && (
+                    <p className="mt-1 text-xs text-white/70 whitespace-pre-line">{m.description}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="hidden">
+
         {images.length > 0 && (
           <div className="mt-5">
             <Button
