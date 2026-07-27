@@ -5552,7 +5552,8 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
           </div>
         </div>
       )}
-      <div className="hidden">
+      <div className="px-4 md:px-8 text-center">
+
 
         {images.length > 0 && (
           <div className="mt-5">
