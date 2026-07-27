@@ -44,13 +44,21 @@ function AtleticaGalleryPage() {
   }, []);
 
   const all = useMemo<HistoryItem[]>(() => normalize((ath as any)?.history_images), [ath]);
+  const yearInfos = useMemo<any[]>(() => {
+    const raw = (ath as any)?.history_years;
+    return Array.isArray(raw) ? raw.filter((v: any) => Number.isFinite(Number(v?.year))) : [];
+  }, [ath]);
   const years = useMemo(() => {
     const s = new Set<number>();
     all.forEach((it) => { if (it.year) s.add(it.year); });
+    yearInfos.forEach((y: any) => s.add(Number(y.year)));
     return Array.from(s).sort((a, b) => a - b);
-  }, [all]);
+  }, [all, yearInfos]);
   const items = useMemo(() => (year === "all" ? all : all.filter((it) => it.year === year)), [all, year]);
+  const info = year === "all" ? null : yearInfos.find((y: any) => Number(y.year) === year) ?? null;
+  const board: any[] = Array.isArray(info?.board) ? info.board : [];
   const primary = (ath as any)?.primary_color || "#f97316";
+
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
