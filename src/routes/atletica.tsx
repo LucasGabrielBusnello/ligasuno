@@ -1612,7 +1612,10 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
 
         {/* Glass painel lateral */}
         <div className="self-end md:self-center rounded-2xl backdrop-blur-md bg-black/40 border border-white/15 p-5 space-y-3 shadow-2xl">
-          {e.description && <p className="text-sm text-white/85 line-clamp-4">{e.description}</p>}
+          {e.description && (
+            <p className="text-sm text-white/85 whitespace-pre-line leading-relaxed break-words">{e.description}</p>
+          )}
+
           <div className="flex justify-between items-baseline pt-3 border-t border-white/10">
             <div>
               <div className="text-[10px] uppercase tracking-widest opacity-60">{isMember ? "Sócio" : "Visitante"}</div>
