@@ -707,7 +707,26 @@ export const updateAthletic = createServerFn({ method: "POST" })
           ]),
         )
         .optional(),
+      history_years: z
+        .array(
+          z.object({
+            year: z.number().int(),
+            description: z.string().nullable().optional(),
+            board: z
+              .array(
+                z.object({
+                  name: z.string(),
+                  role: z.string().nullable().optional(),
+                  image_url: z.string().nullable().optional(),
+                  description: z.string().nullable().optional(),
+                }),
+              )
+              .optional(),
+          }),
+        )
+        .optional(),
     }).parse(i),
+
   )
 
   .handler(async ({ data, context }) => {
