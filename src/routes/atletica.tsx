@@ -5459,18 +5459,23 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
   const allImages = useMemo(() => normalizeAthHistory((ath as any).history_images), [ath]);
   const title: string = (ath as any).history_title || "Conheça a Nossa História";
   const description: string | null = (ath as any).history_description ?? null;
+  const yearInfos = useMemo(() => normalizeAthYears((ath as any).history_years), [ath]);
   const years = useMemo(() => {
     const s = new Set<number>();
     allImages.forEach((it) => { if (it.year) s.add(it.year); });
+    yearInfos.forEach((y) => s.add(y.year));
     return Array.from(s).sort((a, b) => a - b);
-  }, [allImages]);
+  }, [allImages, yearInfos]);
   const [year, setYear] = useState<number | "all">("all");
   const images = useMemo(
     () => (year === "all" ? allImages : allImages.filter((it) => it.year === year)),
     [allImages, year],
   );
+  const yearInfo = year === "all" ? null : yearInfos.find((y) => y.year === year) ?? null;
+  const shownDescription = yearInfo?.description || (year === "all" ? description : null);
+  const board = yearInfo?.board ?? [];
 
-  if (allImages.length === 0 && !description) return null;
+  if (allImages.length === 0 && !description && yearInfos.length === 0) return null;
 
   const track = images.length > 0 ? [...images, ...images] : [];
 
@@ -5483,10 +5488,11 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
         >
           <BookOpen className="size-3.5" /> Nossa história
         </div>
-        <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{title}</h2>
-        {description && (
-          <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{description}</p>
+        <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white mb-4">{year === "all" ? title : year}</h2>
+        {shownDescription && (
+          <p className="text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{shownDescription}</p>
         )}
+
         {years.length > 0 && (
           <div className="mt-5 flex flex-wrap justify-center gap-1.5">
             <button
