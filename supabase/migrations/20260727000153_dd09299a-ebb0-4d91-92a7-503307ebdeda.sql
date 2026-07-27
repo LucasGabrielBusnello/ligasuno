@@ -1,0 +1,1 @@
+ALTER TABLE public.athletics ADD COLUMN IF NOT EXISTS history_years jsonb NOT NULL DEFAULT '[]'::jsonb;

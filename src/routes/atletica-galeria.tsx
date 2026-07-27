@@ -44,13 +44,21 @@ function AtleticaGalleryPage() {
   }, []);
 
   const all = useMemo<HistoryItem[]>(() => normalize((ath as any)?.history_images), [ath]);
+  const yearInfos = useMemo<any[]>(() => {
+    const raw = (ath as any)?.history_years;
+    return Array.isArray(raw) ? raw.filter((v: any) => Number.isFinite(Number(v?.year))) : [];
+  }, [ath]);
   const years = useMemo(() => {
     const s = new Set<number>();
     all.forEach((it) => { if (it.year) s.add(it.year); });
+    yearInfos.forEach((y: any) => s.add(Number(y.year)));
     return Array.from(s).sort((a, b) => a - b);
-  }, [all]);
+  }, [all, yearInfos]);
   const items = useMemo(() => (year === "all" ? all : all.filter((it) => it.year === year)), [all, year]);
+  const info = year === "all" ? null : yearInfos.find((y: any) => Number(y.year) === year) ?? null;
+  const board: any[] = Array.isArray(info?.board) ? info.board : [];
   const primary = (ath as any)?.primary_color || "#f97316";
+
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
@@ -93,6 +101,35 @@ function AtleticaGalleryPage() {
       )}
 
       <main className="max-w-6xl mx-auto px-4 py-8 md:py-12">
+        {info?.description && (
+          <p className="mb-8 text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{info.description}</p>
+        )}
+
+        {board.length > 0 && (
+          <section className="mb-10">
+            <h2 className="text-xs uppercase tracking-widest font-bold text-white/60 mb-3">Diretoria {year}</h2>
+            <div className="flex gap-3 overflow-x-auto pb-2 snap-x">
+              {board.map((m: any, i: number) => (
+                <div key={i} className="snap-start shrink-0 w-44 rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+                  <div className="aspect-square bg-white/5">
+                    {m.image_url ? (
+                      <img src={m.image_url} alt={m.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/30 text-xs">Sem foto</div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <div className="font-bold text-sm">{m.name}</div>
+                    {m.role && <div className="text-[10px] uppercase tracking-widest" style={{ color: primary }}>{m.role}</div>}
+                    {m.description && <p className="mt-1 text-xs text-white/70 whitespace-pre-line">{m.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+
         {items.length === 0 ? (
           <p className="text-center text-white/60 py-16">Nenhuma foto para {year === "all" ? "esta seção" : `o ano ${year}`}.</p>
         ) : (
