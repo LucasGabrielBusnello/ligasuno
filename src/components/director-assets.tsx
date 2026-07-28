@@ -81,7 +81,6 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
     reload();
   }, [athleticId]);
 
-  const filtered = useMemo(() => {
   const categories = useMemo(
     () =>
       Array.from(new Set(assets.map((a) => (a.category ?? "").trim()).filter(Boolean))).sort(),
