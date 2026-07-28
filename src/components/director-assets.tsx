@@ -348,6 +348,21 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
                 </div>
               </div>
               <div>
+                <Label>Categoria</Label>
+                <Input
+                  list="asset-categories"
+                  placeholder="Selecione ou digite para criar nova"
+                  value={editing.category ?? ""}
+                  onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+                <datalist id="asset-categories">
+                  {categories.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </div>
+              <div>
                 <Label>Quantidade</Label>
                 <Input
                   type="number"
