@@ -76,7 +76,11 @@ import {
   ClockAlert,
   Mail,
   Package,
+  Drum,
+  HeartHandshake,
 } from "lucide-react";
+import { BandSection, DirectorBand } from "@/components/athletic-band";
+import { SocialActionsSection, DirectorSocialActions } from "@/components/athletic-social-actions";
 import {
   upsertAthleticMember,
   deleteAthleticMember,
