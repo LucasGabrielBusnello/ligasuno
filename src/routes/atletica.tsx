@@ -2318,6 +2318,8 @@ function DirectorPanel({
     esportes: <Trophy className="size-4 mr-1.5" />,
     parceiros: <Handshake className="size-4 mr-1.5" />,
     patrimonio: <Package className="size-4 mr-1.5" />,
+    bateria: <Drum className="size-4 mr-1.5" />,
+    "acao-social": <HeartHandshake className="size-4 mr-1.5" />,
     caixa: <Wallet className="size-4 mr-1.5" />,
     config: <Settings className="size-4 mr-1.5" />,
   };
@@ -2328,6 +2330,8 @@ function DirectorPanel({
     esportes: "Esportes",
     parceiros: "Parceiros",
     patrimonio: "Patrimônio",
+    bateria: "Bateria",
+    "acao-social": "Ação Social",
     caixa: "Caixa",
     config: "Config",
   };
