@@ -30,6 +30,7 @@ type Asset = {
   name: string;
   description: string | null;
   code: string;
+  category: string | null;
   acquisition_date: string | null;
   quantity: number;
   available_quantity: number;
