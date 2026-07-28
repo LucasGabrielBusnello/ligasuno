@@ -187,6 +187,94 @@ export type Database = {
         }
         Relationships: []
       }
+      athletic_asset_loans: {
+        Row: {
+          asset_id: string
+          borrower_email: string | null
+          borrower_name: string
+          borrower_phone: string | null
+          created_at: string
+          id: string
+          return_date: string | null
+          returned_at: string | null
+        }
+        Insert: {
+          asset_id: string
+          borrower_email?: string | null
+          borrower_name: string
+          borrower_phone?: string | null
+          created_at?: string
+          id?: string
+          return_date?: string | null
+          returned_at?: string | null
+        }
+        Update: {
+          asset_id?: string
+          borrower_email?: string | null
+          borrower_name?: string
+          borrower_phone?: string | null
+          created_at?: string
+          id?: string
+          return_date?: string | null
+          returned_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_asset_loans_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "athletic_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_assets: {
+        Row: {
+          acquisition_date: string | null
+          athletic_id: string
+          available_quantity: number
+          code: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          quantity: number
+          updated_at: string
+        }
+        Insert: {
+          acquisition_date?: string | null
+          athletic_id: string
+          available_quantity?: number
+          code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          acquisition_date?: string | null
+          athletic_id?: string
+          available_quantity?: number
+          code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_assets_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athletic_cash_entries: {
         Row: {
           athletic_id: string
@@ -3901,6 +3989,31 @@ export type Database = {
         }[]
       }
       gen_checkin_code: { Args: never; Returns: string }
+      get_ad_analytics_summary: {
+        Args: { _since: string }
+        Returns: {
+          action: string
+          ad_id: string
+          cnt: number
+          day: string
+          unique_users: number
+        }[]
+      }
+      get_visits_summary: {
+        Args: { _granularity: string; _since: string }
+        Returns: {
+          label: string
+          total: number
+          unique_count: number
+        }[]
+      }
+      get_visits_totals: {
+        Args: { _since: string }
+        Returns: {
+          total_visits: number
+          unique_visitors: number
+        }[]
+      }
       has_camed_panel_access: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {

@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3, BookOpen, Wrench } from "lucide-react";
 import { CurriculumAdmin } from "@/components/curriculum-admin";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Legend } from "recharts";
 
 import { Switch } from "@/components/ui/switch";
 import { useServerFn } from "@tanstack/react-start";
@@ -44,17 +44,19 @@ function AdminPage() {
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         <h1 className="text-3xl md:text-4xl font-black mb-8">Painel ADMIN</h1>
         <Tabs defaultValue="ligas">
-          <TabsList className="grid grid-cols-3 md:grid-cols-9 w-full h-auto">
-            <TabsTrigger value="ligas"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
-            <TabsTrigger value="camed"><Users className="size-4 mr-1.5" />CAMED</TabsTrigger>
-            <TabsTrigger value="coord"><UserCog className="size-4 mr-1.5" />Coordenação</TabsTrigger>
-            <TabsTrigger value="curriculo"><BookOpen className="size-4 mr-1.5" />Currículo</TabsTrigger>
-            <TabsTrigger value="ads"><Megaphone className="size-4 mr-1.5" />Anúncios</TabsTrigger>
-            <TabsTrigger value="visitas"><BarChart3 className="size-4 mr-1.5" />Visitas</TabsTrigger>
-            <TabsTrigger value="usuarios"><UserIcon className="size-4 mr-1.5" />Usuários</TabsTrigger>
-            <TabsTrigger value="manutencao"><Wrench className="size-4 mr-1.5" />Manutenção</TabsTrigger>
-            <TabsTrigger value="config"><Settings className="size-4 mr-1.5" />Configurações</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+            <TabsList className="inline-flex md:grid md:grid-cols-9 w-max md:w-full h-auto gap-1">
+              <TabsTrigger value="ligas" className="whitespace-nowrap"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
+              <TabsTrigger value="camed" className="whitespace-nowrap"><Users className="size-4 mr-1.5" />CAMED</TabsTrigger>
+              <TabsTrigger value="coord" className="whitespace-nowrap"><UserCog className="size-4 mr-1.5" />Coordenação</TabsTrigger>
+              <TabsTrigger value="curriculo" className="whitespace-nowrap"><BookOpen className="size-4 mr-1.5" />Currículo</TabsTrigger>
+              <TabsTrigger value="ads" className="whitespace-nowrap"><Megaphone className="size-4 mr-1.5" />Anúncios</TabsTrigger>
+              <TabsTrigger value="visitas" className="whitespace-nowrap"><BarChart3 className="size-4 mr-1.5" />Visitas</TabsTrigger>
+              <TabsTrigger value="usuarios" className="whitespace-nowrap"><UserIcon className="size-4 mr-1.5" />Usuários</TabsTrigger>
+              <TabsTrigger value="manutencao" className="whitespace-nowrap"><Wrench className="size-4 mr-1.5" />Manutenção</TabsTrigger>
+              <TabsTrigger value="config" className="whitespace-nowrap"><Settings className="size-4 mr-1.5" />Configurações</TabsTrigger>
+            </TabsList>
+          </div>
           <TabsContent value="ligas" className="mt-6"><LeaguesAdmin /></TabsContent>
           <TabsContent value="camed" className="mt-6"><CamedAdmin /></TabsContent>
           <TabsContent value="coord" className="mt-6"><CoordinationAdmin /></TabsContent>
@@ -756,8 +758,8 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
     (async () => {
       setLoading(true);
       const since = new Date(Date.now() - Number(range) * 24 * 60 * 60 * 1000).toISOString();
-      const { data } = await supabase.from("ad_analytics").select("ad_id, action, user_id, created_at").gte("created_at", since);
-      setRows(data ?? []);
+      const { data } = await (supabase as any).rpc("get_ad_analytics_summary", { _since: since });
+      setRows((data as any[]) ?? []);
       setLoading(false);
     })();
   }, [range]);
@@ -767,17 +769,19 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
   );
   const filteredRows = rows.filter((r) => allowedAdIds.has(r.ad_id));
 
-  const byAd = new Map<string, { title: string; views: number; clicks: number; uniqueViews: Set<string>; uniqueClicks: Set<string> }>();
-  ads.filter((a) => allowedAdIds.has(a.id)).forEach((a) => byAd.set(a.id, { title: a.title || "(sem título)", views: 0, clicks: 0, uniqueViews: new Set(), uniqueClicks: new Set() }));
-  filteredRows.forEach((r) => {
+  const byAd = new Map<string, { title: string; views: number; clicks: number; uniqueViews: number; uniqueClicks: number }>();
+  ads.filter((a) => allowedAdIds.has(a.id)).forEach((a) => byAd.set(a.id, { title: a.title || "(sem título)", views: 0, clicks: 0, uniqueViews: 0, uniqueClicks: 0 }));
+  filteredRows.forEach((r: any) => {
     const b = byAd.get(r.ad_id); if (!b) return;
-    if (r.action === "view") { b.views++; if (r.user_id) b.uniqueViews.add(r.user_id); }
-    else if (r.action === "click") { b.clicks++; if (r.user_id) b.uniqueClicks.add(r.user_id); }
+    const cnt = Number(r.cnt ?? 0);
+    const uq = Number(r.unique_users ?? 0);
+    if (r.action === "view") { b.views += cnt; b.uniqueViews += uq; }
+    else if (r.action === "click") { b.clicks += cnt; b.uniqueClicks += uq; }
   });
-  const chartData = Array.from(byAd.entries()).map(([, v]) => ({ name: v.title.slice(0, 20), Views: v.views, Cliques: v.clicks, "Views únicas": v.uniqueViews.size, "Cliques únicos": v.uniqueClicks.size }));
+  const chartData = Array.from(byAd.entries()).map(([, v]) => ({ name: v.title.slice(0, 20), Views: v.views, Cliques: v.clicks, "Views únicas": v.uniqueViews, "Cliques únicos": v.uniqueClicks }));
   const totals = chartData.reduce((acc, r) => ({ v: acc.v + r.Views, c: acc.c + r.Cliques, uv: acc.uv + r["Views únicas"], uc: acc.uc + r["Cliques únicos"] }), { v: 0, c: 0, uv: 0, uc: 0 });
 
-  // Per-day breakdown of clicks/views for the selected range
+  // Per-day breakdown for the selected range
   const days = Number(range);
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const perDay = new Map<string, { label: string; Views: number; Cliques: number; ts: number }>();
@@ -788,13 +792,15 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
     const label = diff === 0 ? "Hoje" : diff === 1 ? "Ontem" : `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
     perDay.set(key, { label, Views: 0, Cliques: 0, ts: d.getTime() });
   }
-  rows.forEach((r) => {
+  rows.forEach((r: any) => {
     if (!allowedAdIds.has(r.ad_id)) return;
-    const key = new Date(r.created_at).toISOString().slice(0, 10);
+    const key = String(r.day).slice(0, 10);
     const b = perDay.get(key); if (!b) return;
-    if (r.action === "view") b.Views++; else if (r.action === "click") b.Cliques++;
+    const cnt = Number(r.cnt ?? 0);
+    if (r.action === "view") b.Views += cnt; else if (r.action === "click") b.Cliques += cnt;
   });
   const perDayData = Array.from(perDay.values()).sort((a, b) => a.ts - b.ts);
+
 
   return (
     <Card>
@@ -877,45 +883,29 @@ function VisitsAdmin() {
       setLoading(true);
       const now = new Date();
       const since = new Date(now.getTime() - range * 24 * 60 * 60 * 1000).toISOString();
-      const [{ data: visits }, { count: userCount }, { count: adClicks }] = await Promise.all([
-        supabase.from("site_visits" as any).select("visitor_id, created_at").gte("created_at", since).order("created_at"),
+      const [{ data: summary }, { data: tot }, { count: userCount }, { count: adClicks }] = await Promise.all([
+        (supabase as any).rpc("get_visits_summary", { _since: since, _granularity: granularity }),
+        (supabase as any).rpc("get_visits_totals", { _since: since }),
         supabase.from("profiles").select("*", { count: "exact", head: true }),
         supabase.from("ad_analytics").select("*", { count: "exact", head: true }).eq("action", "click").gte("created_at", since),
       ]);
-      const list = (visits as any[]) ?? [];
-      const uniqueSet = new Set(list.map((v) => v.visitor_id));
+      const totalsRow = (tot as any[])?.[0] ?? { unique_visitors: 0, total_visits: 0 };
       setTotals({
         users: userCount ?? 0,
-        uniqueVisitors: uniqueSet.size,
-        totalVisits: list.length,
+        uniqueVisitors: Number(totalsRow.unique_visitors ?? 0),
+        totalVisits: Number(totalsRow.total_visits ?? 0),
         adClicks: adClicks ?? 0,
       });
-      // Bucket
-      const buckets: Record<string, { unique: Set<string>; total: number }> = {};
-      const bucketKey = (d: Date) => {
-        if (granularity === "hour") return d.toISOString().slice(0, 13) + ":00";
-        if (granularity === "day") return d.toISOString().slice(0, 10);
-        if (granularity === "week") {
-          const day = new Date(d);
-          const dayIdx = (day.getDay() + 6) % 7;
-          day.setDate(day.getDate() - dayIdx);
-          return day.toISOString().slice(0, 10);
-        }
-        return d.toISOString().slice(0, 7);
-      };
-      list.forEach((v) => {
-        const k = bucketKey(new Date(v.created_at));
-        if (!buckets[k]) buckets[k] = { unique: new Set(), total: 0 };
-        buckets[k].unique.add(v.visitor_id);
-        buckets[k].total += 1;
-      });
-      const chart = Object.entries(buckets)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([label, v]) => ({ label, unique: v.unique.size, total: v.total }));
+      const chart = ((summary as any[]) ?? []).map((r) => ({
+        label: r.label,
+        unique: Number(r.unique_count ?? 0),
+        total: Number(r.total ?? 0),
+      }));
       setData(chart);
       setLoading(false);
     })();
   }, [granularity, range]);
+
 
   return (
     <div className="space-y-6">
@@ -956,14 +946,25 @@ function VisitsAdmin() {
           ) : (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip />
-                  <Bar dataKey="total" name="Visitas totais" fill="#f97316" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="unique" name="Visitantes únicos" fill="#22c55e" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                <AreaChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: -10 }}>
+                  <defs>
+                    <linearGradient id="gTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="#f97316" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="gUnique" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#22c55e" stopOpacity={0.55} />
+                      <stop offset="100%" stopColor="#22c55e" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} allowDecimals={false} axisLine={false} tickLine={false} width={40} />
+                  <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12 }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Area type="monotone" dataKey="total" name="Visitas totais" stroke="#f97316" strokeWidth={2.5} fill="url(#gTotal)" />
+                  <Area type="monotone" dataKey="unique" name="Visitantes únicos" stroke="#22c55e" strokeWidth={2.5} fill="url(#gUnique)" />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           )}

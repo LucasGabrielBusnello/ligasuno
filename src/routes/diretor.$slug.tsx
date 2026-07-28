@@ -88,9 +88,11 @@ function DiretorPage() {
           <Card><CardContent className="p-8 text-center text-muted-foreground">Você não tem permissão para acessar nenhuma aba deste painel. Fale com o presidente da liga.</CardContent></Card>
         ) : (
           <Tabs defaultValue={first}>
-            <TabsList className="grid w-full h-auto" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
-              {tabs.map((t) => (<TabsTrigger key={t.key} value={t.key}>{t.icon}{t.label}</TabsTrigger>))}
-            </TabsList>
+            <div className="w-full overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+              <TabsList className="inline-flex md:grid w-max md:w-full h-auto gap-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+                {tabs.map((t) => (<TabsTrigger key={t.key} value={t.key} className="whitespace-nowrap">{t.icon}{t.label}</TabsTrigger>))}
+              </TabsList>
+            </div>
             {tabs.map((t) => (<TabsContent key={t.key} value={t.key} className="mt-6">{t.el}</TabsContent>))}
           </Tabs>
         )}
