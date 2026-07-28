@@ -2307,7 +2307,7 @@ function DirectorPanel({
   allowedTabs: string[] | null;
   isPresident: boolean;
 }) {
-  const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "patrimonio", "caixa", "config"] as const;
+  const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "patrimonio", "bateria", "acao-social", "caixa", "config"] as const;
   const canSee = (t: string) => isPresident || !allowedTabs || allowedTabs.length === 0 || allowedTabs.includes(t);
   const tabs = ALL.filter(canSee);
   const initial = tabs[0] ?? "socios";
