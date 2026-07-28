@@ -117,6 +117,7 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
       athletic_id: athleticId,
       name,
       description: editing.description ?? null,
+      category: (editing.category ?? "").trim() || null,
       code,
       acquisition_date: editing.acquisition_date || null,
       quantity: qty,
