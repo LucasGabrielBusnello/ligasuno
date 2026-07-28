@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Sparkles, GraduationCap, Trophy, Building2, BookOpen, ArrowRight } from "lucide-react";
 import { AdsBanner } from "@/components/ads-banner";
+import { InstallPrompt } from "@/components/install-prompt";
 
 export const Route = createFileRoute("/")({
   head: () => ({
