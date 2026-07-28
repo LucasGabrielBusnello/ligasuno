@@ -99,16 +99,18 @@ function PresidentePage() {
         </div>
 
         <Tabs defaultValue="config">
-          <TabsList className="grid grid-cols-4 md:grid-cols-8 w-full h-auto">
-            <TabsTrigger value="config"><Settings className="size-4 mr-1" />Config</TabsTrigger>
-            <TabsTrigger value="about"><BookOpen className="size-4 mr-1" />Sobre</TabsTrigger>
-            <TabsTrigger value="eventos"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
-            <TabsTrigger value="news"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
-            <TabsTrigger value="quiz"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
-            <TabsTrigger value="scoring"><Award className="size-4 mr-1" />Pontuação</TabsTrigger>
-            <TabsTrigger value="atividades"><ImageIcon className="size-4 mr-1" />Atividades</TabsTrigger>
-            <TabsTrigger value="membros"><Users className="size-4 mr-1" />Membros</TabsTrigger>
-          </TabsList>
+          <div className="w-full overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
+            <TabsList className="inline-flex md:grid md:grid-cols-8 w-max md:w-full h-auto gap-1">
+              <TabsTrigger value="config" className="whitespace-nowrap"><Settings className="size-4 mr-1" />Config</TabsTrigger>
+              <TabsTrigger value="about" className="whitespace-nowrap"><BookOpen className="size-4 mr-1" />Sobre</TabsTrigger>
+              <TabsTrigger value="eventos" className="whitespace-nowrap"><Calendar className="size-4 mr-1" />Eventos</TabsTrigger>
+              <TabsTrigger value="news" className="whitespace-nowrap"><Newspaper className="size-4 mr-1" />Notícias</TabsTrigger>
+              <TabsTrigger value="quiz" className="whitespace-nowrap"><HelpCircle className="size-4 mr-1" />Quizzes</TabsTrigger>
+              <TabsTrigger value="scoring" className="whitespace-nowrap"><Award className="size-4 mr-1" />Pontuação</TabsTrigger>
+              <TabsTrigger value="atividades" className="whitespace-nowrap"><ImageIcon className="size-4 mr-1" />Atividades</TabsTrigger>
+              <TabsTrigger value="membros" className="whitespace-nowrap"><Users className="size-4 mr-1" />Membros</TabsTrigger>
+            </TabsList>
+          </div>
           <TabsContent value="config" className="mt-6"><ConfigTab league={league} setLeague={setLeague} paid={paid} /></TabsContent>
           <TabsContent value="about" className="mt-6"><AboutTab league={league} /></TabsContent>
           <TabsContent value="eventos" className="mt-6"><EventsTab league={league} /></TabsContent>

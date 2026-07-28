@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { QrScanner } from "@/components/qr-scanner";
 import { ImageUpload } from "@/components/image-upload";
+import { DirectorAssets } from "@/components/director-assets";
 import { generateTicketsPdf } from "@/lib/athletic-tickets-pdf";
 import { generateReceiptPdf, downloadBlob } from "@/lib/athletic-receipt-pdf";
 import {
@@ -74,6 +75,7 @@ import {
   Upload,
   ClockAlert,
   Mail,
+  Package,
 } from "lucide-react";
 import {
   upsertAthleticMember,
@@ -2296,7 +2298,7 @@ function DirectorPanel({
   allowedTabs: string[] | null;
   isPresident: boolean;
 }) {
-  const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "caixa", "config"] as const;
+  const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "patrimonio", "caixa", "config"] as const;
   const canSee = (t: string) => isPresident || !allowedTabs || allowedTabs.length === 0 || allowedTabs.includes(t);
   const tabs = ALL.filter(canSee);
   const initial = tabs[0] ?? "socios";
@@ -2306,6 +2308,7 @@ function DirectorPanel({
     eventos: <PartyPopper className="size-4 mr-1.5" />,
     esportes: <Trophy className="size-4 mr-1.5" />,
     parceiros: <Handshake className="size-4 mr-1.5" />,
+    patrimonio: <Package className="size-4 mr-1.5" />,
     caixa: <Wallet className="size-4 mr-1.5" />,
     config: <Settings className="size-4 mr-1.5" />,
   };
@@ -2315,6 +2318,7 @@ function DirectorPanel({
     eventos: "Eventos",
     esportes: "Esportes",
     parceiros: "Parceiros",
+    patrimonio: "Patrimônio",
     caixa: "Caixa",
     config: "Config",
   };
@@ -2329,17 +2333,17 @@ function DirectorPanel({
   }
   return (
     <Tabs defaultValue={initial}>
-      <TabsList
-        className="w-full grid h-auto bg-white/5 border border-white/10"
-        style={{ gridTemplateColumns: `repeat(${Math.min(tabs.length, 7)}, minmax(0, 1fr))` }}
-      >
-        {tabs.map((t) => (
-          <TabsTrigger key={t} value={t} className="data-[state=active]:bg-white data-[state=active]:text-black">
-            {icons[t]}
-            {labels[t]}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+      <div className="w-full overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 scrollbar-thin">
+        <TabsList className="inline-flex md:grid w-max md:w-full h-auto gap-1 bg-white/5 border border-white/10" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+          {tabs.map((t) => (
+            <TabsTrigger key={t} value={t} className="whitespace-nowrap data-[state=active]:bg-white data-[state=active]:text-black">
+              {icons[t]}
+              {labels[t]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </div>
+
       {canSee("socios") && (
         <TabsContent value="socios" className="mt-4">
           <DirectorMembers athletic={athletic} />
@@ -2363,6 +2367,11 @@ function DirectorPanel({
       {canSee("parceiros") && (
         <TabsContent value="parceiros" className="mt-4">
           <DirectorPartners athletic={athletic} />
+        </TabsContent>
+      )}
+      {canSee("patrimonio") && (
+        <TabsContent value="patrimonio" className="mt-4">
+          <DirectorAssets athleticId={athletic.id} />
         </TabsContent>
       )}
       {canSee("caixa") && (
@@ -2733,6 +2742,7 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                       ["eventos", "Eventos"],
                       ["esportes", "Esportes"],
                       ["parceiros", "Parceiros"],
+                      ["patrimonio", "Patrimônio"],
                       ["caixa", "Caixa"],
                       ["config", "Config"],
                     ].map(([k, lbl]) => {
