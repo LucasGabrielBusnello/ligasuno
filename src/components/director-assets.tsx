@@ -183,14 +183,28 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-60" />
-          <Input
-            placeholder="Pesquisar por nome ou código"
-            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+        <div className="flex flex-1 gap-2 max-w-xl">
+          <div className="relative flex-1">
+            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-60" />
+            <Input
+              placeholder="Pesquisar por nome ou código"
+              className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-md border border-white/10 bg-white/5 px-3 text-sm text-white"
+          >
+            <option value="">Todas as categorias</option>
+            {categories.map((c) => (
+              <option key={c} value={c} className="text-black">
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
         <Button
           onClick={() =>
