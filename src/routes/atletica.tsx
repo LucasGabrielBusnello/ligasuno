@@ -1724,7 +1724,7 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
 }
 
 /* ============ SIDEBAR LAYOUT ============ */
-type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "compras" | "socio" | "diretoria";
+type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "bateria" | "acao-social" | "compras" | "socio" | "diretoria";
 
 function AtleticaSectionLayout({
   primaryColor,
