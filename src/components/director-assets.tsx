@@ -82,15 +82,25 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
   }, [athleticId]);
 
   const filtered = useMemo(() => {
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(assets.map((a) => (a.category ?? "").trim()).filter(Boolean))).sort(),
+    [assets],
+  );
+
+  const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return assets;
-    return assets.filter(
-      (a) =>
+    return assets.filter((a) => {
+      if (categoryFilter && (a.category ?? "") !== categoryFilter) return false;
+      if (!q) return true;
+      return (
         a.name.toLowerCase().includes(q) ||
         a.code.toLowerCase().includes(q) ||
-        (a.description ?? "").toLowerCase().includes(q),
-    );
-  }, [assets, query]);
+        (a.category ?? "").toLowerCase().includes(q) ||
+        (a.description ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [assets, query, categoryFilter]);
 
   const openLoansByAsset = useMemo(() => {
     const m = new Map<string, number>();
