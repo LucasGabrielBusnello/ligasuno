@@ -30,6 +30,7 @@ type Asset = {
   name: string;
   description: string | null;
   code: string;
+  category: string | null;
   acquisition_date: string | null;
   quantity: number;
   available_quantity: number;
@@ -54,6 +55,7 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [editing, setEditing] = useState<Partial<Asset> | null>(null);
   const [loanFor, setLoanFor] = useState<Asset | null>(null);
   const [viewLoansFor, setViewLoansFor] = useState<Asset | null>(null);
@@ -79,16 +81,25 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
     reload();
   }, [athleticId]);
 
+  const categories = useMemo(
+    () =>
+      Array.from(new Set(assets.map((a) => (a.category ?? "").trim()).filter(Boolean))).sort(),
+    [assets],
+  );
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return assets;
-    return assets.filter(
-      (a) =>
+    return assets.filter((a) => {
+      if (categoryFilter && (a.category ?? "") !== categoryFilter) return false;
+      if (!q) return true;
+      return (
         a.name.toLowerCase().includes(q) ||
         a.code.toLowerCase().includes(q) ||
-        (a.description ?? "").toLowerCase().includes(q),
-    );
-  }, [assets, query]);
+        (a.category ?? "").toLowerCase().includes(q) ||
+        (a.description ?? "").toLowerCase().includes(q)
+      );
+    });
+  }, [assets, query, categoryFilter]);
 
   const openLoansByAsset = useMemo(() => {
     const m = new Map<string, number>();
@@ -106,6 +117,7 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
       athletic_id: athleticId,
       name,
       description: editing.description ?? null,
+      category: (editing.category ?? "").trim() || null,
       code,
       acquisition_date: editing.acquisition_date || null,
       quantity: qty,
@@ -182,14 +194,28 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row gap-2 md:items-center md:justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-60" />
-          <Input
-            placeholder="Pesquisar por nome ou código"
-            className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+        <div className="flex flex-1 gap-2 max-w-xl">
+          <div className="relative flex-1">
+            <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 opacity-60" />
+            <Input
+              placeholder="Pesquisar por nome ou código"
+              className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-white/40"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-md border border-white/10 bg-white/5 px-3 text-sm text-white"
+          >
+            <option value="">Todas as categorias</option>
+            {categories.map((c) => (
+              <option key={c} value={c} className="text-black">
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
         <Button
           onClick={() =>
@@ -346,6 +372,21 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
                     className="bg-white/5 border-white/10 text-white"
                   />
                 </div>
+              </div>
+              <div>
+                <Label>Categoria</Label>
+                <Input
+                  list="asset-categories"
+                  placeholder="Selecione ou digite para criar nova"
+                  value={editing.category ?? ""}
+                  onChange={(e) => setEditing({ ...editing, category: e.target.value })}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+                <datalist id="asset-categories">
+                  {categories.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
               </div>
               <div>
                 <Label>Quantidade</Label>

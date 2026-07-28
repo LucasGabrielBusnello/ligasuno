@@ -233,6 +233,7 @@ export type Database = {
           acquisition_date: string | null
           athletic_id: string
           available_quantity: number
+          category: string | null
           code: string
           created_at: string
           description: string | null
@@ -245,6 +246,7 @@ export type Database = {
           acquisition_date?: string | null
           athletic_id: string
           available_quantity?: number
+          category?: string | null
           code: string
           created_at?: string
           description?: string | null
@@ -257,6 +259,7 @@ export type Database = {
           acquisition_date?: string | null
           athletic_id?: string
           available_quantity?: number
+          category?: string | null
           code?: string
           created_at?: string
           description?: string | null
@@ -268,6 +271,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "athletic_assets_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      athletic_band_instruments: {
+        Row: {
+          athletic_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          athletic_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          athletic_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_band_instruments_athletic_id_fkey"
             columns: ["athletic_id"]
             isOneToOne: false
             referencedRelation: "athletics"
@@ -1100,6 +1144,50 @@ export type Database = {
           },
         ]
       }
+      athletic_social_actions: {
+        Row: {
+          athletic_id: string
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          sort_order: number
+          updated_at: string
+          whatsapp_url: string | null
+        }
+        Insert: {
+          athletic_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          sort_order?: number
+          updated_at?: string
+          whatsapp_url?: string | null
+        }
+        Update: {
+          athletic_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          sort_order?: number
+          updated_at?: string
+          whatsapp_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "athletic_social_actions_athletic_id_fkey"
+            columns: ["athletic_id"]
+            isOneToOne: false
+            referencedRelation: "athletics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       athletic_sport_enrollments: {
         Row: {
           created_at: string
@@ -1193,6 +1281,9 @@ export type Database = {
       }
       athletics: {
         Row: {
+          band_description: string | null
+          band_image_url: string | null
+          band_whatsapp_url: string | null
           cover_url: string | null
           created_at: string
           description: string | null
@@ -1216,6 +1307,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          band_description?: string | null
+          band_image_url?: string | null
+          band_whatsapp_url?: string | null
           cover_url?: string | null
           created_at?: string
           description?: string | null
@@ -1239,6 +1333,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          band_description?: string | null
+          band_image_url?: string | null
+          band_whatsapp_url?: string | null
           cover_url?: string | null
           created_at?: string
           description?: string | null

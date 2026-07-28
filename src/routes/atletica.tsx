@@ -76,7 +76,11 @@ import {
   ClockAlert,
   Mail,
   Package,
+  Drum,
+  HeartHandshake,
 } from "lucide-react";
+import { BandSection, DirectorBand } from "@/components/athletic-band";
+import { SocialActionsSection, DirectorSocialActions } from "@/components/athletic-social-actions";
 import {
   upsertAthleticMember,
   deleteAthleticMember,
@@ -368,6 +372,9 @@ function AtleticaPage() {
               if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
               if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
               if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
+              if (section === "bateria") return <BandSection athleticId={ath.id} primaryColor={ath.primary_color} />;
+              if (section === "acao-social")
+                return <SocialActionsSection athleticId={ath.id} primaryColor={ath.primary_color} />;
               if (section === "compras" && user) return <PurchaseHistorySection athletic={ath} user={user} />;
               if (section === "socio" && isActiveMember)
                 return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
@@ -1724,7 +1731,7 @@ function EventCard({ event: e, athletic, isMember }: { event: EventRow; athletic
 }
 
 /* ============ SIDEBAR LAYOUT ============ */
-type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "compras" | "socio" | "diretoria";
+type SectionKey = "inicio" | "produtos" | "eventos" | "esportes" | "bateria" | "acao-social" | "compras" | "socio" | "diretoria";
 
 function AtleticaSectionLayout({
   primaryColor,
@@ -1747,6 +1754,8 @@ function AtleticaSectionLayout({
     { key: "produtos", label: "Produtos", icon: <Store className="size-4" />, show: true },
     { key: "eventos", label: "Eventos", icon: <PartyPopper className="size-4" />, show: true },
     { key: "esportes", label: "Esportes", icon: <Trophy className="size-4" />, show: true },
+    { key: "bateria", label: "Bateria", icon: <Drum className="size-4" />, show: true },
+    { key: "acao-social", label: "Ação Social", icon: <HeartHandshake className="size-4" />, show: true },
     { key: "compras", label: "Histórico de Compras", icon: <Receipt className="size-4" />, show: hasUser },
     { key: "socio", label: "Painel do Sócio", icon: <IdCard className="size-4" />, show: isMember },
     { key: "diretoria", label: "Diretoria", icon: <Shield className="size-4" />, show: isDirector },
@@ -2298,7 +2307,7 @@ function DirectorPanel({
   allowedTabs: string[] | null;
   isPresident: boolean;
 }) {
-  const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "patrimonio", "caixa", "config"] as const;
+  const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "patrimonio", "bateria", "acao-social", "caixa", "config"] as const;
   const canSee = (t: string) => isPresident || !allowedTabs || allowedTabs.length === 0 || allowedTabs.includes(t);
   const tabs = ALL.filter(canSee);
   const initial = tabs[0] ?? "socios";
@@ -2309,6 +2318,8 @@ function DirectorPanel({
     esportes: <Trophy className="size-4 mr-1.5" />,
     parceiros: <Handshake className="size-4 mr-1.5" />,
     patrimonio: <Package className="size-4 mr-1.5" />,
+    bateria: <Drum className="size-4 mr-1.5" />,
+    "acao-social": <HeartHandshake className="size-4 mr-1.5" />,
     caixa: <Wallet className="size-4 mr-1.5" />,
     config: <Settings className="size-4 mr-1.5" />,
   };
@@ -2319,6 +2330,8 @@ function DirectorPanel({
     esportes: "Esportes",
     parceiros: "Parceiros",
     patrimonio: "Patrimônio",
+    bateria: "Bateria",
+    "acao-social": "Ação Social",
     caixa: "Caixa",
     config: "Config",
   };
@@ -2372,6 +2385,16 @@ function DirectorPanel({
       {canSee("patrimonio") && (
         <TabsContent value="patrimonio" className="mt-4">
           <DirectorAssets athleticId={athletic.id} />
+        </TabsContent>
+      )}
+      {canSee("bateria") && (
+        <TabsContent value="bateria" className="mt-4">
+          <DirectorBand athleticId={athletic.id} />
+        </TabsContent>
+      )}
+      {canSee("acao-social") && (
+        <TabsContent value="acao-social" className="mt-4">
+          <DirectorSocialActions athleticId={athletic.id} />
         </TabsContent>
       )}
       {canSee("caixa") && (
@@ -2743,6 +2766,8 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                       ["esportes", "Esportes"],
                       ["parceiros", "Parceiros"],
                       ["patrimonio", "Patrimônio"],
+                      ["bateria", "Bateria"],
+                      ["acao-social", "Ação Social"],
                       ["caixa", "Caixa"],
                       ["config", "Config"],
                     ].map(([k, lbl]) => {
