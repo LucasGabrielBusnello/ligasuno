@@ -55,6 +55,7 @@ export function DirectorAssets({ athleticId }: { athleticId: string }) {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [editing, setEditing] = useState<Partial<Asset> | null>(null);
   const [loanFor, setLoanFor] = useState<Asset | null>(null);
   const [viewLoansFor, setViewLoansFor] = useState<Asset | null>(null);
