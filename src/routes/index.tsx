@@ -56,6 +56,7 @@ const QUICK_ACCESS = [
 function HomePage() {
   return (
     <div className="min-h-screen overflow-x-hidden relative">
+      <InstallPrompt />
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-32 -left-24 size-[36rem] rounded-full bg-primary/25 blur-3xl animate-blob-1" />
         <div className="absolute top-40 -right-32 size-[32rem] rounded-full bg-accent/25 blur-3xl animate-blob-2" />
