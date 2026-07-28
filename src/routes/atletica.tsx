@@ -2766,6 +2766,8 @@ function DirectorMembers({ athletic }: { athletic: Athletic }) {
                       ["esportes", "Esportes"],
                       ["parceiros", "Parceiros"],
                       ["patrimonio", "Patrimônio"],
+                      ["bateria", "Bateria"],
+                      ["acao-social", "Ação Social"],
                       ["caixa", "Caixa"],
                       ["config", "Config"],
                     ].map(([k, lbl]) => {
