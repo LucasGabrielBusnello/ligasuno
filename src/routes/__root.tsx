@@ -91,6 +91,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/app-icon-512.png" },
       { rel: "canonical", href: "https://ligasuno.com.br/" },
     ],
   }),
