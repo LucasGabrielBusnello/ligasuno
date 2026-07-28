@@ -372,6 +372,9 @@ function AtleticaPage() {
               if (section === "produtos") return <PublicProducts athletic={ath} isMember={isActiveMember} />;
               if (section === "eventos") return <PublicEvents athletic={ath} isMember={isActiveMember} />;
               if (section === "esportes") return <SportsSection athletic={ath} user={user} isMember={isActiveMember} />;
+              if (section === "bateria") return <BandSection athleticId={ath.id} primaryColor={ath.primary_color} />;
+              if (section === "acao-social")
+                return <SocialActionsSection athleticId={ath.id} primaryColor={ath.primary_color} />;
               if (section === "compras" && user) return <PurchaseHistorySection athletic={ath} user={user} />;
               if (section === "socio" && isActiveMember)
                 return <MemberDashboard athletic={ath} user={user} profile={profile} membership={myMembership} />;
