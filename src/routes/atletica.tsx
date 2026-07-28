@@ -2387,6 +2387,16 @@ function DirectorPanel({
           <DirectorAssets athleticId={athletic.id} />
         </TabsContent>
       )}
+      {canSee("bateria") && (
+        <TabsContent value="bateria" className="mt-4">
+          <DirectorBand athleticId={athletic.id} />
+        </TabsContent>
+      )}
+      {canSee("acao-social") && (
+        <TabsContent value="acao-social" className="mt-4">
+          <DirectorSocialActions athleticId={athletic.id} />
+        </TabsContent>
+      )}
       {canSee("caixa") && (
         <TabsContent value="caixa" className="mt-4">
           <DirectorCash athletic={athletic} />
