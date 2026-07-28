@@ -1747,6 +1747,8 @@ function AtleticaSectionLayout({
     { key: "produtos", label: "Produtos", icon: <Store className="size-4" />, show: true },
     { key: "eventos", label: "Eventos", icon: <PartyPopper className="size-4" />, show: true },
     { key: "esportes", label: "Esportes", icon: <Trophy className="size-4" />, show: true },
+    { key: "bateria", label: "Bateria", icon: <Drum className="size-4" />, show: true },
+    { key: "acao-social", label: "Ação Social", icon: <HeartHandshake className="size-4" />, show: true },
     { key: "compras", label: "Histórico de Compras", icon: <Receipt className="size-4" />, show: hasUser },
     { key: "socio", label: "Painel do Sócio", icon: <IdCard className="size-4" />, show: isMember },
     { key: "diretoria", label: "Diretoria", icon: <Shield className="size-4" />, show: isDirector },
