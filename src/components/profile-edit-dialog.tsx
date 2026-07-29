@@ -50,7 +50,7 @@ export function ProfileEditDialog({ open, onOpenChange, userId }: { open: boolea
   async function save() {
     const uname = username.trim();
     if (uname.length < 2 || uname.length > 30) return toast.error("Usuário deve ter entre 2 e 30 caracteres");
-    if (!/^[a-zA-Z0-9_.]+$/.test(uname)) return toast.error("Usuário só pode conter letras, números, ponto e underline");
+    if (!/^[\p{L}\p{N}_.\- ]+$/u.test(uname)) return toast.error("Usuário só pode conter letras, números, espaço, ponto, hífen e underline");
     const cpfDigits = normalizeCpf(cpf);
     if (cpfDigits && !isValidCPF(cpfDigits)) return toast.error("CPF inválido");
     const phoneDigits = phone.replace(/\D/g, "");
