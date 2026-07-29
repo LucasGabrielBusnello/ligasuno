@@ -241,7 +241,7 @@ type EventRow = {
 };
 
 function AtleticaPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdminMaster } = useAuth();
   const [ath, setAth] = useState<Athletic | null>(null);
   const [myMembership, setMyMembership] = useState<Membership | null>(null);
   const [isDirector, setIsDirector] = useState(false);
