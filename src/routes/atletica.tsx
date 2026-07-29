@@ -390,7 +390,7 @@ function AtleticaPage() {
                   <DirectorPanel
                     athletic={ath}
                     allowedTabs={(myMembership as any)?.director_tabs ?? null}
-                    isPresident={myMembership?.role === "presidente"}
+                    isPresident={isPresidentUser || isAdminMaster}
                   />
                 );
               return null;
