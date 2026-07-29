@@ -241,7 +241,7 @@ type EventRow = {
 };
 
 function AtleticaPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdminMaster } = useAuth();
   const [ath, setAth] = useState<Athletic | null>(null);
   const [myMembership, setMyMembership] = useState<Membership | null>(null);
   const [isDirector, setIsDirector] = useState(false);
@@ -299,8 +299,15 @@ function AtleticaPage() {
     myMembership.active &&
     (!myMembership.member_until || new Date(myMembership.member_until) >= new Date());
 
+  // Somente presidência/diretoria com permissões (ou admin) acessam durante manutenção.
+  const myDirectorTabs: string[] = ((myMembership as any)?.director_tabs ?? []) as string[];
+  const isPresidentUser =
+    myMembership?.role === "presidente" || (!!user && (ath as any).president_id === user.id);
+  const canBypassMaintenance =
+    isAdminMaster || isPresidentUser || (isDirector && myDirectorTabs.length > 0);
+
   const inMaintenance = !!(ath as any).maintenance_enabled;
-  if (inMaintenance && !isDirector) {
+  if (inMaintenance && !canBypassMaintenance) {
     return (
       <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center px-4">
         <div className="max-w-md text-center space-y-4">
@@ -383,7 +390,7 @@ function AtleticaPage() {
                   <DirectorPanel
                     athletic={ath}
                     allowedTabs={(myMembership as any)?.director_tabs ?? null}
-                    isPresident={myMembership?.role === "presidente"}
+                    isPresident={isPresidentUser || isAdminMaster}
                   />
                 );
               return null;
@@ -2308,7 +2315,8 @@ function DirectorPanel({
   isPresident: boolean;
 }) {
   const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "patrimonio", "bateria", "acao-social", "caixa", "config"] as const;
-  const canSee = (t: string) => isPresident || !allowedTabs || allowedTabs.length === 0 || allowedTabs.includes(t);
+  // Presidente vê tudo; diretores veem SOMENTE as abas liberadas.
+  const canSee = (t: string) => isPresident || (!!allowedTabs && allowedTabs.includes(t));
   const tabs = ALL.filter(canSee);
   const initial = tabs[0] ?? "socios";
   const icons: Record<string, React.ReactNode> = {
