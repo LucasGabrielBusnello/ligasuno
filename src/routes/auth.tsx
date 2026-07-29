@@ -344,7 +344,7 @@ function AuthPage() {
                     </>
                   )}
                   <div className="space-y-1.5">
-                    <Label htmlFor="su-pass">Senha (mín. 8 caracteres)</Label>
+                    <Label htmlFor="su-pass">Senha (mín. 6 caracteres)</Label>
                     <PasswordInput
                       id="su-pass"
                       autoComplete="new-password"
