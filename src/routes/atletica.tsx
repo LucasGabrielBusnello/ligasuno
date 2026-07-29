@@ -2315,7 +2315,8 @@ function DirectorPanel({
   isPresident: boolean;
 }) {
   const ALL = ["socios", "produtos", "eventos", "esportes", "parceiros", "patrimonio", "bateria", "acao-social", "caixa", "config"] as const;
-  const canSee = (t: string) => isPresident || !allowedTabs || allowedTabs.length === 0 || allowedTabs.includes(t);
+  // Presidente vê tudo; diretores veem SOMENTE as abas liberadas.
+  const canSee = (t: string) => isPresident || (!!allowedTabs && allowedTabs.includes(t));
   const tabs = ALL.filter(canSee);
   const initial = tabs[0] ?? "socios";
   const icons: Record<string, React.ReactNode> = {
