@@ -29,7 +29,7 @@ if (typeof window !== "undefined" && !(window as any).__meduno_bip_hook) {
 export function InstallPrompt() {
   const [open, setOpen] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(capturedEvent);
-  const [iosHelp, setIosHelp] = useState(false);
+  const [help, setHelp] = useState<null | "ios" | "android" | "desktop">(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -57,16 +57,8 @@ export function InstallPrompt() {
     };
     listeners.add(onEvent);
 
-    // iOS/Safari não dispara beforeinstallprompt — mostramos instruções.
-    const ua = window.navigator.userAgent;
-    const isIos = /iPad|iPhone|iPod/.test(ua);
-    const isSafari = isIos && !/CriOS|FxiOS|EdgiOS/.test(ua);
-    const t = window.setTimeout(() => {
-      if (isSafari) {
-        setIosHelp(true);
-        setOpen(true);
-      }
-    }, 1200);
+    // Se o navegador não disparar o evento nativo, ainda mostramos o aviso com instruções.
+    const t = window.setTimeout(() => setOpen(true), 1500);
 
     return () => {
       listeners.delete(onEvent);
@@ -87,26 +79,40 @@ export function InstallPrompt() {
     setOpen(false);
   }
 
+  function detectPlatform(): "ios" | "android" | "desktop" {
+    const ua = window.navigator.userAgent;
+    if (/iPad|iPhone|iPod/.test(ua)) return "ios";
+    if (/Android/.test(ua)) return "android";
+    return "desktop";
+  }
+
   async function accept() {
     const evt = deferred ?? capturedEvent;
     if (evt) {
       try {
         await evt.prompt();
-        const choice = await evt.userChoice;
-        if (choice.outcome === "accepted") remember();
+        await evt.userChoice;
       } catch {
         /* ignore */
       }
       capturedEvent = null;
       setDeferred(null);
+      remember();
       setOpen(false);
       return;
     }
-    // Sem API nativa (iOS/Safari): mantém as instruções visíveis.
-    setIosHelp(true);
+    // Sem API nativa: mostra o passo a passo do dispositivo.
+    setHelp(detectPlatform());
   }
 
   if (!open) return null;
+
+  const helpText =
+    help === "ios"
+      ? "No Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”."
+      : help === "android"
+        ? "No Chrome, toque no menu ⋮ e escolha “Adicionar à tela inicial” / “Instalar app”."
+        : "No navegador, abra o menu e escolha “Instalar MEDUNO” (ou o ícone de instalar na barra de endereço).";
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[60] p-3 sm:p-4 pointer-events-none">
@@ -120,18 +126,18 @@ export function InstallPrompt() {
               Adicionar um Atalho na Tela inicial
             </h2>
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              {iosHelp
-                ? "No Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início” para criar o ícone do MEDUNO."
+              {help
+                ? helpText
                 : "Crie um ícone do MEDUNO na tela inicial do seu aparelho e acesse o hub com um toque."}
             </p>
-            {iosHelp && (
+            {help === "ios" && (
               <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary">
                 <Share className="size-3.5" /> Compartilhar → Adicionar à Tela de Início
               </p>
             )}
             <div className="mt-3 flex gap-2">
-              <Button size="sm" className="font-bold" onClick={accept}>
-                {iosHelp ? "Entendi" : "Adicionar"}
+              <Button size="sm" className="font-bold" onClick={help ? decline : accept}>
+                {help ? "Entendi" : "Adicionar"}
               </Button>
               <Button size="sm" variant="ghost" onClick={decline}>
                 Agora não
