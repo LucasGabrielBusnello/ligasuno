@@ -49,7 +49,7 @@ const signupSchema = z.object({
     .regex(usernameRegex, "Usuário deve ter de 2 a 30 caracteres (letras, números, ponto, hífen ou underline)"),
   email: z.string().email("Email inválido").max(255),
   phone: z.string().refine((v) => isValidBRPhone(v), "Telefone inválido. Use o formato (DDD) 9XXXX-XXXX para celular ou (DDD) XXXX-XXXX para fixo."),
-  password: z.string().min(8, "A senha deve ter no mínimo 8 caracteres").max(72),
+  password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres").max(72),
 });
 
 function translateError(msg: string): string {
@@ -58,11 +58,9 @@ function translateError(msg: string): string {
   if (m.includes("email not confirmed")) return "Confirme seu email antes de entrar.";
   if (m.includes("user already registered") || m.includes("already been registered"))
     return "Já existe uma conta com este email. Faça login.";
-  if (m.includes("password should be at least")) return "A senha deve ter no mínimo 8 caracteres.";
+  if (m.includes("password should be at least")) return "A senha deve ter no mínimo 6 caracteres.";
   if (m.includes("unable to validate email") || m.includes("invalid format") || m.includes("email address") && m.includes("invalid"))
     return "Email inválido. Verifique se está correto.";
-  if (m.includes("weak password") || m.includes("pwned") || m.includes("compromised"))
-    return "Essa senha é muito comum. Escolha uma mais forte.";
   if (m.includes("rate limit") || m.includes("too many"))
     return "Muitas tentativas. Aguarde alguns segundos e tente novamente.";
   if (m.includes("network")) return "Falha de conexão. Verifique sua internet.";
@@ -188,7 +186,8 @@ function AuthPage() {
         patch.class_code = null;
       }
       try { await supabase.from("profiles").update(patch).eq("id", data.user.id); } catch {}
-      try { await welcome({ data: { user_id: data.user.id } }); } catch (e) { console.warn("welcome email failed", e); }
+      // não bloqueia o login: e-mail de boas-vindas é enviado em segundo plano
+      void welcome({ data: { user_id: data.user.id } }).catch((e) => console.warn("welcome email failed", e));
     }
 
     // Como auto-confirm está ativo, a sessão já vem pronta
