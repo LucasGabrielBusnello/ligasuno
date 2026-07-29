@@ -88,6 +88,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "MEDUNO — Medicina Unochapecó" },
       { name: "twitter:description", content: "Plataforma integrada para estudantes, ligas, atlética e CAMED de Medicina da Unochapecó." },
+      { name: "theme-color", content: "#1f5132" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "MEDUNO" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
