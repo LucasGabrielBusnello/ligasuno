@@ -9,14 +9,26 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+// Captura o evento o mais cedo possível (o browser costuma dispará-lo antes do React montar).
+let capturedEvent: BeforeInstallPromptEvent | null = null;
+const listeners = new Set<(e: BeforeInstallPromptEvent) => void>();
+
+if (typeof window !== "undefined" && !(window as any).__meduno_bip_hook) {
+  (window as any).__meduno_bip_hook = true;
+  window.addEventListener("beforeinstallprompt", (e: Event) => {
+    e.preventDefault();
+    capturedEvent = e as BeforeInstallPromptEvent;
+    listeners.forEach((fn) => fn(capturedEvent!));
+  });
+}
+
 /**
  * Aviso "Adicionar atalho na tela inicial".
- * Aparece uma única vez por usuário/dispositivo — após aceitar ou negar,
- * a escolha é gravada no localStorage e o aviso não volta a aparecer.
+ * Aparece uma única vez por usuário/dispositivo.
  */
 export function InstallPrompt() {
   const [open, setOpen] = useState(false);
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(capturedEvent);
   const [iosHelp, setIosHelp] = useState(false);
 
   useEffect(() => {
@@ -34,12 +46,16 @@ export function InstallPrompt() {
       (window.navigator as any).standalone === true;
     if (standalone) return;
 
-    const onBip = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
+    if (capturedEvent) {
+      setDeferred(capturedEvent);
+      setOpen(true);
+    }
+
+    const onEvent = (e: BeforeInstallPromptEvent) => {
+      setDeferred(e);
       setOpen(true);
     };
-    window.addEventListener("beforeinstallprompt", onBip);
+    listeners.add(onEvent);
 
     // iOS/Safari não dispara beforeinstallprompt — mostramos instruções.
     const ua = window.navigator.userAgent;
@@ -53,7 +69,7 @@ export function InstallPrompt() {
     }, 1200);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBip);
+      listeners.delete(onEvent);
       window.clearTimeout(t);
     };
   }, []);
@@ -72,18 +88,21 @@ export function InstallPrompt() {
   }
 
   async function accept() {
-    remember();
-    if (deferred) {
+    const evt = deferred ?? capturedEvent;
+    if (evt) {
       try {
-        await deferred.prompt();
-        await deferred.userChoice;
+        await evt.prompt();
+        const choice = await evt.userChoice;
+        if (choice.outcome === "accepted") remember();
       } catch {
         /* ignore */
       }
+      capturedEvent = null;
+      setDeferred(null);
       setOpen(false);
       return;
     }
-    // Sem API nativa: mantém as instruções visíveis por alguns segundos.
+    // Sem API nativa (iOS/Safari): mantém as instruções visíveis.
     setIosHelp(true);
   }
 
