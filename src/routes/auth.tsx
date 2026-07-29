@@ -42,11 +42,11 @@ function PasswordInput({ id, value, onChange, autoComplete, required }: { id: st
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
 
-const usernameRegex = /^[a-zA-Z0-9_.-]{2,30}$/;
+const usernameRegex = /^[\p{L}\p{N}_.\- ]{2,30}$/u;
 const signupSchema = z.object({
   username: z
     .string()
-    .regex(usernameRegex, "Usuário deve ter de 2 a 30 caracteres (letras, números, ponto, hífen ou underline)"),
+    .regex(usernameRegex, "Usuário deve ter de 2 a 30 caracteres (letras, números, espaço, ponto, hífen ou underline)"),
   email: z.string().email("Email inválido").max(255),
   phone: z.string().refine((v) => isValidBRPhone(v), "Telefone inválido. Use o formato (DDD) 9XXXX-XXXX para celular ou (DDD) XXXX-XXXX para fixo."),
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres").max(72),
