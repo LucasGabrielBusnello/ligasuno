@@ -1410,6 +1410,53 @@ export type Database = {
           },
         ]
       }
+      camed_documents: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          mime_type: string | null
+          name: string
+          parent_id: string | null
+          size_bytes: number | null
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          mime_type?: string | null
+          name: string
+          parent_id?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          mime_type?: string | null
+          name?: string
+          parent_id?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camed_documents_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "camed_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       camed_info: {
         Row: {
           description: string

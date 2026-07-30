@@ -18,7 +18,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 import { CamedScoringApprovals } from "@/components/camed-scoring-approvals";
 import { setCamedMaintenance } from "@/lib/athletic-extras.functions";
-import { Wrench } from "lucide-react";
+import { Wrench, FolderOpen } from "lucide-react";
+import { CamedDocumentsTab } from "@/components/camed-documents";
 
 export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
 
@@ -52,6 +53,7 @@ function CamedPage() {
     { key: "ligas", icon: <Building2 className="size-4 mr-1.5" /> },
     { key: "mensagens", icon: <MessageSquare className="size-4 mr-1.5" /> },
     { key: "horarios", icon: <CalIcon className="size-4 mr-1.5" /> },
+    { key: "documentos", icon: <FolderOpen className="size-4 mr-1.5" /> },
   ];
   const shown = tabDefs.filter((t) => visible.includes(t.key));
 
@@ -79,6 +81,7 @@ function CamedPage() {
           {visible.includes("ligas") && <TabsContent value="ligas" className="mt-6"><LeaguesSettingsTab /></TabsContent>}
           {visible.includes("mensagens") && <TabsContent value="mensagens" className="mt-6"><MessagesTab /></TabsContent>}
           {visible.includes("horarios") && <TabsContent value="horarios" className="mt-6"><SlotsTab /></TabsContent>}
+          {visible.includes("documentos") && <TabsContent value="documentos" className="mt-6"><CamedDocumentsTab /></TabsContent>}
         </Tabs>
       </main>
     </div>
