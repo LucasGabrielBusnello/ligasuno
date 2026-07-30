@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PerfilRouteImport } from './routes/perfil'
+import { Route as ParceirosRouteImport } from './routes/parceiros'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as LigasRouteImport } from './routes/ligas'
 import { Route as CamedPainelRouteImport } from './routes/camed-painel'
@@ -42,6 +43,11 @@ import { Route as ApiPublicCronEventRemindersRouteImport } from './routes/api/pu
 const PerfilRoute = PerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParceirosRoute = ParceirosRouteImport.update({
+  id: '/parceiros',
+  path: '/parceiros',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PainelRoute = PainelRouteImport.update({
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/camed-painel': typeof CamedPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
+  '/parceiros': typeof ParceirosRoute
   '/perfil': typeof PerfilRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
   '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/camed-painel': typeof CamedPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
+  '/parceiros': typeof ParceirosRoute
   '/perfil': typeof PerfilRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
   '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/camed-painel': typeof CamedPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
+  '/parceiros': typeof ParceirosRoute
   '/perfil': typeof PerfilRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
   '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/camed-painel'
     | '/ligas'
     | '/painel'
+    | '/parceiros'
     | '/perfil'
     | '/coordenacao/cronograma'
     | '/coordenacao/curriculo'
@@ -334,6 +344,7 @@ export interface FileRouteTypes {
     | '/camed-painel'
     | '/ligas'
     | '/painel'
+    | '/parceiros'
     | '/perfil'
     | '/coordenacao/cronograma'
     | '/coordenacao/curriculo'
@@ -365,6 +376,7 @@ export interface FileRouteTypes {
     | '/camed-painel'
     | '/ligas'
     | '/painel'
+    | '/parceiros'
     | '/perfil'
     | '/coordenacao/cronograma'
     | '/coordenacao/curriculo'
@@ -397,6 +409,7 @@ export interface RootRouteChildren {
   CamedPainelRoute: typeof CamedPainelRoute
   LigasRoute: typeof LigasRoute
   PainelRoute: typeof PainelRoute
+  ParceirosRoute: typeof ParceirosRoute
   PerfilRoute: typeof PerfilRoute
   CoordenacaoCronogramaRoute: typeof CoordenacaoCronogramaRoute
   CoordenacaoCurriculoRoute: typeof CoordenacaoCurriculoRoute
@@ -423,6 +436,13 @@ declare module '@tanstack/react-router' {
       path: '/perfil'
       fullPath: '/perfil'
       preLoaderRoute: typeof PerfilRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parceiros': {
+      id: '/parceiros'
+      path: '/parceiros'
+      fullPath: '/parceiros'
+      preLoaderRoute: typeof ParceirosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/painel': {
@@ -637,6 +657,7 @@ const rootRouteChildren: RootRouteChildren = {
   CamedPainelRoute: CamedPainelRoute,
   LigasRoute: LigasRoute,
   PainelRoute: PainelRoute,
+  ParceirosRoute: ParceirosRoute,
   PerfilRoute: PerfilRoute,
   CoordenacaoCronogramaRoute: CoordenacaoCronogramaRoute,
   CoordenacaoCurriculoRoute: CoordenacaoCurriculoRoute,
