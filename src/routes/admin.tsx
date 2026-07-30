@@ -623,7 +623,7 @@ function AdsAdmin() {
   const [list, setList] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
-  const [placement, setPlacement] = useState<"home" | "ligas">("home");
+  const [placement, setPlacement] = useState<AdPlacement>("home");
   const deleteFiles = useServerFn(deleteStorageFiles);
   const reload = async () => {
     const { data } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
