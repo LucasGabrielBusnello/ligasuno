@@ -13,6 +13,8 @@ import {
   X,
   Settings2,
   Shield,
+  Handshake,
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, signOut } from "@/hooks/use-auth";
