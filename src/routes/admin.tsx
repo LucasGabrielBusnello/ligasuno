@@ -673,22 +673,26 @@ function AdsAdmin() {
 
 
       {filtered.length === 0 ? (
-        <Card className="p-8 text-center text-muted-foreground">Nenhum anúncio cadastrado para {placementLabel}.</Card>
+        <Card className="p-8 text-center text-muted-foreground">Nada cadastrado em {meta.label}.</Card>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {filtered.map((a) => {
             const active = a.active && (!a.end_date || new Date(a.end_date) >= new Date()) && new Date(a.start_date) <= new Date();
             return (
               <Card key={a.id}>
-                <div className="aspect-[3/1] bg-muted overflow-hidden">{a.image_url && <img src={a.image_url} alt={a.title} className="w-full h-full object-cover" />}</div>
+                <div className={`${placement === "logos" ? "aspect-[3/1] flex items-center justify-center p-4" : "aspect-[3/1]"} bg-muted overflow-hidden`}>
+                  {a.image_url && <img src={a.image_url} alt={a.title} className={placement === "logos" ? "max-h-full max-w-full object-contain" : "w-full h-full object-cover"} />}
+                </div>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2">
                     <h3 className="font-black flex-1">{a.title}</h3>
                     {active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>}
                   </div>
+                  {a.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{a.description}</p>}
+                  {a.cta_label && <p className="text-xs text-muted-foreground mt-1">Botão: <strong>{a.cta_label}</strong></p>}
                   {a.redirect_url && <p className="text-xs text-muted-foreground truncate mt-1">→ {a.redirect_url}</p>}
                   <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(a.start_date).toLocaleDateString("pt-BR")} → {a.end_date ? new Date(a.end_date).toLocaleDateString("pt-BR") : "sem fim"}
+                    Ordem {a.display_order ?? 0} · {new Date(a.start_date).toLocaleDateString("pt-BR")} → {a.end_date ? new Date(a.end_date).toLocaleDateString("pt-BR") : "sem fim"}
                   </p>
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     <div className="flex items-center gap-2"><Switch checked={a.active} onCheckedChange={() => toggle(a)} /><span className="text-xs">Ligado</span></div>
@@ -707,19 +711,24 @@ function AdsAdmin() {
 }
 
 function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
-  const [f, setF] = useState({ title: "", image_url: "", redirect_url: "", active: true, start_date: "", end_date: "", placement: "home" as "home" | "ligas" });
+  const [f, setF] = useState({ title: "", image_url: "", redirect_url: "", description: "", cta_label: "", display_order: 0, active: true, start_date: "", end_date: "", placement: "home" as AdPlacement });
   useEffect(() => {
     const iso = (v: string | null | undefined) => v ? v.slice(0, 10) : "";
-    if (row && row.id) setF({ title: row.title, image_url: row.image_url ?? "", redirect_url: row.redirect_url ?? "", active: !!row.active, start_date: iso(row.start_date), end_date: iso(row.end_date), placement: (row.placement ?? "home") as any });
-    else setF({ title: "", image_url: "", redirect_url: "", active: true, start_date: new Date().toISOString().slice(0, 10), end_date: "", placement: (row?.placement ?? defaultPlacement ?? "home") as any });
+    if (row && row.id) setF({ title: row.title, image_url: row.image_url ?? "", redirect_url: row.redirect_url ?? "", description: row.description ?? "", cta_label: row.cta_label ?? "", display_order: row.display_order ?? 0, active: !!row.active, start_date: iso(row.start_date), end_date: iso(row.end_date), placement: (row.placement ?? "home") as AdPlacement });
+    else setF({ title: "", image_url: "", redirect_url: "", description: "", cta_label: "", display_order: 0, active: true, start_date: new Date().toISOString().slice(0, 10), end_date: "", placement: (row?.placement ?? defaultPlacement ?? "home") as AdPlacement });
   }, [row, open, defaultPlacement]);
+  const isPartner = f.placement === "parceiros";
+  const isLogo = f.placement === "logos";
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!f.image_url) return toast.error("Envie uma imagem para o anúncio.");
+    if (!f.image_url) return toast.error("Envie uma imagem.");
     const payload: any = {
       title: f.title,
       image_url: f.image_url,
       redirect_url: f.redirect_url || null,
+      description: isPartner ? (f.description || null) : null,
+      cta_label: isPartner ? (f.cta_label || null) : null,
+      display_order: f.display_order || 0,
       active: f.active,
       placement: f.placement,
       start_date: f.start_date ? new Date(f.start_date).toISOString() : new Date().toISOString(),
@@ -733,24 +742,39 @@ function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
   }
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>{row && row.id ? "Editar anúncio" : "Novo anúncio"}</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>{row && row.id ? "Editar" : "Novo"}</DialogTitle></DialogHeader>
         <form onSubmit={save} className="space-y-3">
           <div>
             <Label>Local de exibição</Label>
-            <Tabs value={f.placement} onValueChange={(v) => setF({ ...f, placement: v as any })} className="mt-1.5">
-              <TabsList className="grid grid-cols-2 w-full">
-                <TabsTrigger value="home">Hub Inicial</TabsTrigger>
-                <TabsTrigger value="ligas">Página Ligas</TabsTrigger>
+            <Tabs value={f.placement} onValueChange={(v) => setF({ ...f, placement: v as AdPlacement })} className="mt-1.5">
+              <TabsList className="grid grid-cols-4 w-full">
+                {AD_PLACEMENTS.map((p) => (
+                  <TabsTrigger key={p.key} value={p.key} className="text-[11px] px-1">{p.label}</TabsTrigger>
+                ))}
               </TabsList>
             </Tabs>
           </div>
-          <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-          <div><ImageUpload label="Imagem (proporção 3:1 recomendada)" folder="ads" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
-          <div><Label>URL de redirecionamento (opcional)</Label><Input type="url" value={f.redirect_url} onChange={(e) => setF({ ...f, redirect_url: e.target.value })} placeholder="https://..." /></div>
-          <div className="grid grid-cols-2 gap-3">
+          <div><Label>{isPartner ? "Nome do parceiro" : "Título"}</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+          <div>
+            <ImageUpload
+              label={isLogo ? "Logo (PNG com fundo transparente recomendado)" : isPartner ? "Imagem do card (16:9)" : "Imagem (proporção 3:1 recomendada)"}
+              folder="ads"
+              value={f.image_url}
+              onChange={(url) => setF({ ...f, image_url: url })}
+            />
+          </div>
+          {isPartner && (
+            <>
+              <div><Label>Descrição</Label><Textarea rows={4} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} placeholder="O que o parceiro oferece..." /></div>
+              <div><Label>Texto do botão</Label><Input value={f.cta_label} onChange={(e) => setF({ ...f, cta_label: e.target.value })} placeholder="Saiba mais!" /></div>
+            </>
+          )}
+          <div><Label>URL de redirecionamento {isPartner ? "(do botão)" : "(opcional)"}</Label><Input type="url" value={f.redirect_url} onChange={(e) => setF({ ...f, redirect_url: e.target.value })} placeholder="https://..." /></div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><Label>Ordem</Label><Input type="number" value={f.display_order} onChange={(e) => setF({ ...f, display_order: +e.target.value })} /></div>
             <div><Label>Início</Label><Input type="date" value={f.start_date} onChange={(e) => setF({ ...f, start_date: e.target.value })} /></div>
-            <div><Label>Término (opcional)</Label><Input type="date" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
+            <div><Label>Término</Label><Input type="date" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
           </div>
           <div className="flex items-center gap-2"><Switch checked={f.active} onCheckedChange={(v) => setF({ ...f, active: v })} /><Label>Ativo</Label></div>
           <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
@@ -758,6 +782,7 @@ function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
       </DialogContent>
     </Dialog>
   );
+
 }
 
 function AdsAnalytics({ ads }: { ads: any[] }) {
