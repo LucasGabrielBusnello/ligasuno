@@ -787,7 +787,7 @@ function AdDialog({ open, setOpen, row, defaultPlacement, onSaved }: any) {
 
 function AdsAnalytics({ ads }: { ads: any[] }) {
   const [range, setRange] = useState<"7" | "30" | "90">("30");
-  const [placementFilter, setPlacementFilter] = useState<"all" | "home" | "ligas">("all");
+  const [placementFilter, setPlacementFilter] = useState<"all" | AdPlacement>("all");
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -855,6 +855,8 @@ function AdsAnalytics({ ads }: { ads: any[] }) {
             { k: "all", label: "Todos" },
             { k: "home", label: "Hub Inicial" },
             { k: "ligas", label: "Página Ligas" },
+            { k: "logos", label: "Logos (Hub)" },
+            { k: "parceiros", label: "Parceiros" },
           ] as const).map((o) => (
             <Button key={o.k} size="sm" variant={placementFilter === o.k ? "default" : "outline"} onClick={() => setPlacementFilter(o.k)}>{o.label}</Button>
           ))}
