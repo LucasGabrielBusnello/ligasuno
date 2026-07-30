@@ -13,6 +13,8 @@ import {
   X,
   Settings2,
   Shield,
+  Handshake,
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth, signOut } from "@/hooks/use-auth";
@@ -32,7 +34,9 @@ const NAV = [
   { to: "/aaamd", label: "AAAMD", icon: Trophy },
   { to: "/ligas", label: "Ligas", icon: Users },
   { to: "/camed", label: "CAMED", icon: Building2 },
+  { to: "/parceiros", label: "Parceiros", icon: Handshake },
 ] as const;
+
 
 export function SiteHeader() {
   const { user, profile, isCoordination, isAdminMaster, isCamedPresident, camedPanelTabs, loading } = useAuth();

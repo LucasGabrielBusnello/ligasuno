@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Sparkles, GraduationCap, Trophy, Building2, BookOpen, ArrowRight } from "lucide-react";
 import { AdsBanner } from "@/components/ads-banner";
 import { InstallPrompt } from "@/components/install-prompt";
+import { HubLogos } from "@/components/hub-logos";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -77,7 +79,9 @@ function HomePage() {
             Plataforma integrada de Medicina da Unochapecó — cronograma, ligas acadêmicas,
             atlética e CAMED em um só lugar.
           </p>
+          <HubLogos />
         </div>
+
       </section>
 
       {/* Anúncio em destaque, logo abaixo do hero (subido levemente) */}

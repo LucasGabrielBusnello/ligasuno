@@ -86,6 +86,9 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          cta_label: string | null
+          description: string | null
+          display_order: number
           end_date: string | null
           id: string
           image_url: string
@@ -98,6 +101,9 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          cta_label?: string | null
+          description?: string | null
+          display_order?: number
           end_date?: string | null
           id?: string
           image_url: string
@@ -110,6 +116,9 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          cta_label?: string | null
+          description?: string | null
+          display_order?: number
           end_date?: string | null
           id?: string
           image_url?: string
@@ -4112,6 +4121,10 @@ export type Database = {
         }[]
       }
       has_camed_panel_access: { Args: { _user_id: string }; Returns: boolean }
+      has_camed_panel_tab: {
+        Args: { _tab: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
