@@ -120,22 +120,76 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    // Notify CAMED email
+    // Notify CAMED email + convite de agenda (.ics) com alarme 24h antes
     const { data: info } = await admin.from("camed_info").select("email").eq("id", 1).maybeSingle();
     const to = (info as any)?.email as string | undefined;
-    if (to) {
-      const { data: prof } = await admin.from("profiles").select("full_name,username,email").eq("id", userId).maybeSingle();
-      const userName = (prof as any)?.full_name || (prof as any)?.username || "Usuário";
-      const userEmail = (prof as any)?.email || "";
-      const slotAt = new Date((slot as any).slot_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "full", timeStyle: "short" });
+    const { data: prof } = await admin.from("profiles").select("full_name,username,email").eq("id", userId).maybeSingle();
+    const userName = (prof as any)?.full_name || (prof as any)?.username || "Usuário";
+    const userEmail = ((prof as any)?.email as string | undefined) || "";
+    const startsAt = new Date((slot as any).slot_at);
+    const slotAt = startsAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "full", timeStyle: "short" });
+    const ics = buildBookingIcs({
+      id: data.slot_id,
+      start: startsAt,
+      minutes: Number((slot as any).duration_minutes ?? 60) || 60,
+      modality: data.modality,
+      reason: data.reason,
+      userName,
+    });
+    const icsBase64 = Buffer.from(ics, "utf-8").toString("base64");
+    const html = buildBookingEmailHtml({ slotAt, modality: data.modality, reason: data.reason, extras: data.extra_participants, phone: data.phone, userName, userEmail });
+
+    const recipients = [to, userEmail].filter((e): e is string => !!e && e.includes("@"));
+    if (recipients.length) {
       try {
-        const { sendGmail } = await import("./gmail.server");
-        await sendGmail({
-          to,
-          subject: `📅 Novo horário marcado — ${slotAt}`,
-          html: buildBookingEmailHtml({ slotAt, modality: data.modality, reason: data.reason, extras: data.extra_participants, phone: data.phone, userName, userEmail }),
-        });
+        const { sendGmailWithAttachment } = await import("./gmail.server");
+        for (const rcpt of recipients) {
+          await sendGmailWithAttachment({
+            to: rcpt,
+            subject: `📅 Horário CAMED marcado — ${slotAt}`,
+            html: `${html}`,
+            attachment: { filename: "horario-camed.ics", mimeType: "text/calendar; charset=UTF-8; method=REQUEST", contentBase64: icsBase64 },
+          });
+        }
       } catch (e) { console.error(e); }
     }
     return { ok: true };
   });
+
+function icsDate(d: Date) {
+  return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+}
+
+function icsEscape(s: string) {
+  return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
+}
+
+function buildBookingIcs(args: { id: string; start: Date; minutes: number; modality: string; reason: string; userName: string }) {
+  const end = new Date(args.start.getTime() + args.minutes * 60 * 1000);
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//MEDUNO//CAMED//PT-BR",
+    "CALSCALE:GREGORIAN",
+    "METHOD:REQUEST",
+    "BEGIN:VEVENT",
+    `UID:camed-${args.id}@meduno`,
+    `DTSTAMP:${icsDate(new Date())}`,
+    `DTSTART:${icsDate(args.start)}`,
+    `DTEND:${icsDate(end)}`,
+    `SUMMARY:${icsEscape(`Atendimento CAMED (${args.modality}) — ${args.userName}`)}`,
+    `DESCRIPTION:${icsEscape(args.reason)}`,
+    "BEGIN:VALARM",
+    "TRIGGER:-PT24H",
+    "ACTION:DISPLAY",
+    "DESCRIPTION:Lembrete: horário do CAMED em 24 horas",
+    "END:VALARM",
+    "BEGIN:VALARM",
+    "TRIGGER:-PT1H",
+    "ACTION:DISPLAY",
+    "DESCRIPTION:Lembrete: horário do CAMED em 1 hora",
+    "END:VALARM",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
