@@ -650,23 +650,27 @@ function AdsAdmin() {
     if (row.image_url) { try { await deleteFiles({ data: { paths: [row.image_url] } }); } catch {} }
     toast.success("Removido"); reload();
   }
-  const filtered = list.filter((a) => (a.placement ?? "home") === placement);
-  const placementLabel = placement === "home" ? "Hub Inicial" : "Página Ligas";
+  const filtered = list
+    .filter((a) => (a.placement ?? "home") === placement)
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  const meta = AD_PLACEMENTS.find((p) => p.key === placement)!;
   return (
     <div className="space-y-6">
       <AdsAnalytics ads={list} />
-      <Tabs value={placement} onValueChange={(v) => setPlacement(v as any)}>
-        <TabsList>
-          <TabsTrigger value="home">Hub Inicial</TabsTrigger>
-          <TabsTrigger value="ligas">Página Ligas</TabsTrigger>
+      <Tabs value={placement} onValueChange={(v) => setPlacement(v as AdPlacement)}>
+        <TabsList className="flex overflow-x-auto">
+          {AD_PLACEMENTS.map((p) => (
+            <TabsTrigger key={p.key} value={p.key} className="whitespace-nowrap">{p.label}</TabsTrigger>
+          ))}
         </TabsList>
       </Tabs>
       <div className="flex justify-between items-center gap-3 flex-wrap">
         <p className="text-muted-foreground text-sm">
-          Banners exibidos no topo do <strong>{placementLabel}</strong>. Cliques e visualizações são registrados automaticamente.
+          <strong>{meta.label}</strong> — {meta.hint} Cliques e visualizações são registrados automaticamente.
         </p>
-        <Button onClick={() => { setEditing({ placement }); setOpen(true); }}><Plus className="size-4" /> Novo anúncio</Button>
+        <Button onClick={() => { setEditing({ placement }); setOpen(true); }}><Plus className="size-4" /> Novo</Button>
       </div>
+
 
       {filtered.length === 0 ? (
         <Card className="p-8 text-center text-muted-foreground">Nenhum anúncio cadastrado para {placementLabel}.</Card>
