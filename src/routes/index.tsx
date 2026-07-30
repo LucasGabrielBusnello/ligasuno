@@ -77,7 +77,9 @@ function HomePage() {
             Plataforma integrada de Medicina da Unochapecó — cronograma, ligas acadêmicas,
             atlética e CAMED em um só lugar.
           </p>
+          <HubLogos />
         </div>
+
       </section>
 
       {/* Anúncio em destaque, logo abaixo do hero (subido levemente) */}
