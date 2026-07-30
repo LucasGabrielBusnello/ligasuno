@@ -35,7 +35,7 @@ export type Membership = {
   role: "admin_master" | "presidente" | "diretor" | "ligante" | "visitante";
 };
 
-const ALL_CAMED_TABS = ["info", "membros", "noticias", "ligas", "mensagens", "horarios"] as const;
+const ALL_CAMED_TABS = ["info", "membros", "noticias", "ligas", "mensagens", "horarios", "documentos"] as const;
 export type CamedTab = (typeof ALL_CAMED_TABS)[number];
 
 export function useAuth() {
@@ -120,6 +120,7 @@ export const CAMED_TAB_LABELS: Record<CamedTab, string> = {
   ligas: "Ligas",
   mensagens: "Mensagens",
   horarios: "Horários",
+  documentos: "Atas e Documentos",
 };
 export const ALL_CAMED_TABS_LIST = ALL_CAMED_TABS;
 
