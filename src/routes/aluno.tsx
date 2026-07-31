@@ -256,33 +256,33 @@ function AlunoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50/40 via-background to-background dark:from-emerald-950/20">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950 text-neutral-100 dark">
       <section className="max-w-6xl mx-auto px-4 pt-10 pb-6">
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3">
             <div className="size-12 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-lg"><Stethoscope className="size-6" /></div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight">Painel do Aluno</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-3xl font-black tracking-tight text-white">Painel do Aluno</h1>
+              <p className="text-sm text-emerald-200/70">
                 Olá, {profile?.full_name ?? profile?.username}{classCode ? ` · Turma ${classCode}` : ""}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-full border border-border/60 p-0.5 bg-background">
-              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Dia</button>
-              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Semana</button>
+            <div className="inline-flex rounded-full border border-emerald-500/30 p-0.5 bg-neutral-900">
+              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-emerald-600 text-white" : "text-neutral-400"}`}>Dia</button>
+              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-emerald-600 text-white" : "text-neutral-400"}`}>Semana</button>
             </div>
-            {isCoordination && (
-              <Button asChild variant="outline" size="sm"><Link to="/coordenacao/cronograma"><Settings2 className="size-4" /> Coordenação</Link></Button>
-            )}
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setExportOpen(true)}>
+              <CalendarPlus className="size-4" /> Enviar cronograma para a agenda
+            </Button>
           </div>
         </div>
       </section>
 
       {view === "week" && (
         <section className="max-w-6xl mx-auto px-4 pb-6 space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" onClick={() => { const m = new Date(monday); m.setDate(m.getDate() - 7); setMonday(m); }}><ChevronLeft className="size-4" /></Button>
               <div className="text-sm font-semibold px-2">
@@ -302,8 +302,47 @@ function AlunoPage() {
             personalItems={weekPersonalItems as any}
             extraEvents={extraEvents}
           />
+
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" size="sm" onClick={() => setExpanded((v) => !v)} className="border-emerald-500/40">
+              {expanded ? <><ChevronUp className="size-4" /> Recolher</> : <><ChevronDown className="size-4" /> Expandir (+4 semanas)</>}
+            </Button>
+          </div>
+
+          {expanded && (
+            <div className="space-y-6 pt-2">
+              {extraWeeks.length === 0 && <p className="text-center text-sm text-neutral-400">Carregando semanas…</p>}
+              {extraWeeks.map((w) => (
+                <div key={w.monday.toISOString()} className="space-y-2">
+                  <div className="text-sm font-bold text-emerald-300">
+                    {w.monday.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — {new Date(w.monday.getTime() + 5 * 86400000).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                  </div>
+                  <ScheduleGrid
+                    monday={w.monday}
+                    entries={applySubFilter(w.entries) as any}
+                    holidays={w.holidays}
+                    classCode={classCode ?? undefined}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
+
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Enviar cronograma para a agenda</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Atente-se às turmas selecionadas, irá exportar apenas as aulas referentes às turmas selecionadas!
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportOpen(false)}>Cancelar</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" onClick={doExportAgenda}>Exportar agora</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
 
       <section className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-4 pb-16">
