@@ -14,6 +14,8 @@ export type ScheduleEntry = {
   is_abex?: boolean;
   color?: string | null;
   notes?: string | null;
+  practice_groups?: string[] | null;
+
   rescheduled_from_entry_id?: string | null;
   rescheduled_to_date?: string | null;
   subject?: { id: string; name: string; professor: string | null } | null;
