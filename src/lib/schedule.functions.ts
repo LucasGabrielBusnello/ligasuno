@@ -61,6 +61,7 @@ const entryInput = z.object({
   kind: z.enum(KINDS).default("class"),
   is_abex: z.boolean().default(false),
   color: z.string().nullish(),
+  practice_groups: z.array(z.string()).default([]),
   notes: z.string().nullish(),
 });
 
@@ -81,8 +82,10 @@ export const upsertScheduleEntry = createServerFn({ method: "POST" })
       kind: data.kind,
       is_abex: data.is_abex,
       color: data.color ?? null,
+      practice_groups: data.practice_groups ?? [],
       notes: data.notes ?? null,
     };
+
     if (data.id) {
       const { error } = await context.supabase.from("schedule_entries").update(payload).eq("id", data.id);
       if (error) throw error;
