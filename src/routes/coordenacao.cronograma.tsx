@@ -122,7 +122,7 @@ function CoordCronograma() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50/30 via-background to-background dark:from-emerald-950/10">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950 text-neutral-100 dark">
       <section className="max-w-7xl mx-auto px-4 pt-8 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
