@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { League } from "@/hooks/use-auth";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
-import { Activity, ArrowRight, Users, Star, ShieldCheck, GraduationCap } from "lucide-react";
+import { Activity, ArrowRight, Users, Star, ShieldCheck, GraduationCap, Trophy, Crown, Medal } from "lucide-react";
 import { AdsBanner } from "@/components/ads-banner";
 
 export const Route = createFileRoute("/ligas")({
@@ -25,10 +25,19 @@ function LigasPage() {
   const { user } = useAuth();
   const [leagues, setLeagues] = useState<League[]>([]);
   const [myLeagues, setMyLeagues] = useState<MyLeague[]>([]);
+  const [points, setPoints] = useState<Record<string, number>>({});
 
   useEffect(() => {
     supabase.from("public_leagues").select("*").order("name").then(({ data }) => {
       setLeagues((data as League[]) ?? []);
+    });
+  }, []);
+
+  useEffect(() => {
+    supabase.from("league_points").select("league_id, points").then(({ data }) => {
+      const map: Record<string, number> = {};
+      (data ?? []).forEach((p: any) => { map[p.league_id] = (map[p.league_id] ?? 0) + Number(p.points || 0); });
+      setPoints(map);
     });
   }, []);
 
@@ -143,6 +152,79 @@ function LigasPage() {
           </div>
         </>
       )}
+
+      <LeagueRanking leagues={leagues} points={points} />
     </main>
+  );
+}
+
+function LeagueRanking({ leagues, points }: { leagues: League[]; points: Record<string, number> }) {
+  if (leagues.length === 0) return null;
+  const ranked = leagues
+    .map((l) => ({ ...l, total: points[l.id] ?? 0 }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+
+  const podium = [
+    { icon: Crown, ring: "border-amber-400", badge: "bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950", glow: "shadow-[0_0_0_4px_rgba(251,191,36,.15)]" },
+    { icon: Medal, ring: "border-slate-300", badge: "bg-gradient-to-r from-slate-300 to-slate-400 text-slate-900", glow: "shadow-[0_0_0_4px_rgba(148,163,184,.15)]" },
+    { icon: Trophy, ring: "border-orange-400", badge: "bg-gradient-to-r from-orange-400 to-amber-600 text-orange-950", glow: "shadow-[0_0_0_4px_rgba(251,146,60,.15)]" },
+  ];
+
+  return (
+    <section className="mt-16">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-xs font-bold uppercase tracking-widest mb-3">
+          <Trophy className="size-3.5" /> Classificação
+        </div>
+        <h2 className="text-3xl md:text-4xl font-black tracking-tight">Ranking das Ligas</h2>
+        <p className="text-muted-foreground mt-2 text-sm">Pontuação acumulada atribuída pelo CAMED.</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+        {ranked.slice(0, 3).map((l, i) => {
+          const st = podium[i];
+          const Icon = st.icon;
+          return (
+            <Link key={l.id} to="/$slug" params={{ slug: l.slug }} className="block min-w-0">
+              <Card className={`h-full p-5 text-center border-2 ${st.ring} ${st.glow} hover:-translate-y-1 transition-all`}>
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black ${st.badge}`}>
+                  <Icon className="size-3.5" /> {i + 1}º lugar
+                </div>
+                <div className="mt-4 flex justify-center">
+                  {l.icon_url ? (
+                    <img src={l.icon_url} alt={l.name} className="size-16 rounded-2xl border bg-background object-contain" />
+                  ) : (
+                    <div className="size-16 rounded-2xl flex items-center justify-center" style={{ background: l.theme_color }}>
+                      <Activity className="size-8 text-white/80" />
+                    </div>
+                  )}
+                </div>
+                <h3 className="mt-3 font-black text-base truncate">{l.name}</h3>
+                <div className="mt-1 text-3xl font-black tabular-nums">{l.total}</div>
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">pontos</div>
+              </Card>
+            </Link>
+          );
+        })}
+      </div>
+
+      {ranked.length > 3 && (
+        <Card className="divide-y">
+          {ranked.slice(3).map((l, i) => (
+            <Link key={l.id} to="/$slug" params={{ slug: l.slug }} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
+              <span className="w-8 shrink-0 text-center font-black text-muted-foreground tabular-nums">{i + 4}º</span>
+              {l.icon_url ? (
+                <img src={l.icon_url} alt={l.name} className="size-9 rounded-lg border bg-background object-contain shrink-0" />
+              ) : (
+                <span className="size-9 rounded-lg shrink-0" style={{ background: l.theme_color }} />
+              )}
+              <span className="flex-1 min-w-0 font-semibold truncate">{l.name}</span>
+              <span className="font-black tabular-nums">{l.total}</span>
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">pts</span>
+            </Link>
+          ))}
+        </Card>
+      )}
+    </section>
   );
 }
