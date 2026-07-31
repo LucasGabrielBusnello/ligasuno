@@ -318,3 +318,44 @@ export const deleteHoliday = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+/* ---------- GRUPOS DE PRÁTICA (turmas A, B, C...) ---------- */
+
+export const listClassGroups = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ class_code: z.enum(ATM_CLASSES) }).parse(v))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("class_subdivisions")
+      .select("id, class_code, letter")
+      .eq("class_code", data.class_code)
+      .order("letter");
+    if (error) throw error;
+    return rows ?? [];
+  });
+
+export const addClassGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ class_code: z.enum(ATM_CLASSES), letter: z.string().min(1).max(4) }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const { data: ins, error } = await context.supabase
+      .from("class_subdivisions")
+      .insert({ class_code: data.class_code, letter: data.letter.trim().toUpperCase() })
+      .select("id, class_code, letter")
+      .single();
+    if (error) throw error;
+    return ins;
+  });
+
+export const deleteClassGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const { error } = await context.supabase.from("class_subdivisions").delete().eq("id", data.id);
+    if (error) throw error;
+    return { ok: true };
+  });
