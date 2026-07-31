@@ -231,7 +231,7 @@ export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule>
           kind,
           is_abex,
           subject_name: matchSubject(text, subjects),
-          notes: text,
+          notes: stripProfessor(text),
         });
       }
     }
