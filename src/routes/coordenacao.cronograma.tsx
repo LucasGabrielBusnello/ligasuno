@@ -294,6 +294,8 @@ function EntryDialog({
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
+  const [color, setColor] = useState<string>(DEFAULT_KIND_COLORS.class);
+  const [customColor, setCustomColor] = useState(false);
 
   useEffect(() => {
     if (!state.open) return;
