@@ -3750,6 +3750,7 @@ export type Database = {
       schedule_entries: {
         Row: {
           class_code: Database["public"]["Enums"]["atm_class"]
+          color: string | null
           created_at: string
           created_by: string | null
           date: string
@@ -3769,6 +3770,7 @@ export type Database = {
         }
         Insert: {
           class_code: Database["public"]["Enums"]["atm_class"]
+          color?: string | null
           created_at?: string
           created_by?: string | null
           date: string
@@ -3788,6 +3790,7 @@ export type Database = {
         }
         Update: {
           class_code?: Database["public"]["Enums"]["atm_class"]
+          color?: string | null
           created_at?: string
           created_by?: string | null
           date?: string
