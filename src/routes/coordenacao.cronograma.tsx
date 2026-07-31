@@ -18,6 +18,8 @@ import {
 import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
+  listClassGroups, addClassGroup, deleteClassGroup,
+
 } from "@/lib/schedule.functions";
 import { listSubjects, listTerms } from "@/lib/curriculum.functions";
 import { ScheduleImportButton } from "@/components/schedule-import-dialog";
