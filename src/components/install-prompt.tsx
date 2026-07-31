@@ -86,24 +86,45 @@ export function InstallPrompt() {
     return "desktop";
   }
 
+  async function fireNative(evt: BeforeInstallPromptEvent) {
+    try {
+      await evt.prompt();
+      await evt.userChoice;
+    } catch {
+      /* ignore */
+    }
+    capturedEvent = null;
+    setDeferred(null);
+    remember();
+    setOpen(false);
+  }
+
   async function accept() {
     const evt = deferred ?? capturedEvent;
     if (evt) {
-      try {
-        await evt.prompt();
-        await evt.userChoice;
-      } catch {
-        /* ignore */
-      }
-      capturedEvent = null;
-      setDeferred(null);
-      remember();
-      setOpen(false);
+      await fireNative(evt);
       return;
     }
-    // Sem API nativa: mostra o passo a passo do dispositivo.
+    // O evento nativo pode chegar com atraso: aguardamos brevemente antes de instruir.
+    const waited = await new Promise<BeforeInstallPromptEvent | null>((resolve) => {
+      const onLate = (e: BeforeInstallPromptEvent) => {
+        listeners.delete(onLate);
+        resolve(e);
+      };
+      listeners.add(onLate);
+      window.setTimeout(() => {
+        listeners.delete(onLate);
+        resolve(capturedEvent);
+      }, 1200);
+    });
+    if (waited) {
+      await fireNative(waited);
+      return;
+    }
+    // Sem API nativa (ex.: iOS/Safari): mostra o passo a passo do dispositivo.
     setHelp(detectPlatform());
   }
+
 
   if (!open) return null;
 
