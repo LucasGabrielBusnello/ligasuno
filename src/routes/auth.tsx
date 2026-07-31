@@ -86,7 +86,7 @@ function ForgotPasswordDialog({ defaultEmail }: { defaultEmail: string }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) setEmail(defaultEmail); }}>
+    <Dialog open={open} onOpenChange={(o: boolean) => { setOpen(o); if (o) setEmail(defaultEmail); }}>
       <DialogTrigger asChild>
         <button type="button" className="w-full text-center text-sm text-muted-foreground hover:text-foreground underline underline-offset-4">
           Esqueci minha senha
