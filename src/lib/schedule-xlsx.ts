@@ -75,28 +75,80 @@ function classify(text: string): { kind: ParsedEntry["kind"]; is_abex: boolean }
   return { kind: "class", is_abex: false };
 }
 
+/** Remove menções a professores do texto exibido no cronograma. */
+export function stripProfessor(text: string): string {
+  return String(text)
+    .replace(/\s*[-–—]?\s*\bprofa?\.?\b[^,;–—-]*/gi, " ")
+    .replace(/\s*[-–—]\s*$/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 const STOPWORDS = new Set([
   "medicina", "medica", "medicas", "medico", "saude", "curso", "ciencias", "atencao", "promocao",
   "desenvolvimento", "lideranca", "inovacao", "digital", "primaria", "geral", "clinica",
 ]);
 
+/** Nomes de professores citados na célula (ex.: "Abex - prof Liziane"). */
+function professorsIn(text: string): string[] {
+  const out: string[] = [];
+  const re = /\bprofa?\.?\s+([a-zà-ú]+)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) out.push(norm(m[1]));
+  return out;
+}
+
 /** Casa o texto da célula com um componente curricular do cabeçalho da planilha. */
 function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
   const n = norm(text);
+  const profs = professorsIn(text);
+
+  // 1) ABEX: existem dois componentes distintos (Atenção Primária x Saúde Digital/Liziane).
+  if (n.includes("abex")) {
+    const abexSubjects = catalog.filter((s) => norm(s.name).startsWith("abex"));
+    if (abexSubjects.length) {
+      // desempate pelo professor citado na célula
+      if (profs.length) {
+        for (const s of abexSubjects) {
+          const sp = norm(s.professor ?? "");
+          if (profs.some((p) => p.length >= 4 && sp.includes(p))) return s.name;
+        }
+      }
+      // padrões de prática de campo (grupos/duplas/coronel) → ABEX de Atenção Primária
+      const isField = /pratica|grupo|dupla|coronel|campo|ubs/.test(n);
+      const primary = abexSubjects.find((s) => /atencao primaria|promocao/.test(norm(s.name)));
+      const other = abexSubjects.find((s) => s !== primary);
+      if (isField && primary) return primary.name;
+      if (!isField && other) return other.name;
+      return (primary ?? abexSubjects[0]).name;
+    }
+  }
+
+  // 2) desempate direto por professor para as demais matérias
+  if (profs.length) {
+    for (const s of catalog) {
+      const sp = norm(s.professor ?? "");
+      if (!sp) continue;
+      const nameToken = norm(s.name).split(/[^a-z0-9]+/).find((t) => t.length >= 5 && !STOPWORDS.has(t));
+      if (nameToken && n.includes(nameToken) && profs.some((p) => p.length >= 4 && sp.includes(p))) return s.name;
+    }
+  }
+
   let best: { name: string; score: number } | null = null;
   for (const s of catalog) {
     const sn = norm(s.name);
+    if (sn.startsWith("abex")) continue;
     const tokens = sn.split(/[^a-z0-9]+/).filter((t) => t.length >= 5 && !STOPWORDS.has(t));
     let score = 0;
     for (const t of tokens) if (n.includes(t)) score += t.length;
     // abreviações e nomes compostos comuns
     if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 12;
     if (sn.startsWith("clinica cirurgica") && n.includes("cirurgica")) score += 12;
-    if (sn.startsWith("abex") && n.includes("abex")) score += 6;
     if (score >= 6 && (!best || score > best.score)) best = { name: s.name, score };
   }
   return best?.name ?? null;
 }
+
 
 export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule> {
   const XLSX = await import("xlsx");
