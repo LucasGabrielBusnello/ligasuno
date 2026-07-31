@@ -49,6 +49,7 @@ function FeriadosPage() {
   };
 
   return (
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950 text-neutral-100 dark">
     <div className="max-w-3xl mx-auto px-4 py-10 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black">Feriados</h1>
@@ -75,6 +76,7 @@ function FeriadosPage() {
           ))}
         </ul>
       </CardContent></Card>
+    </div>
     </div>
   );
 }

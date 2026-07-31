@@ -255,11 +255,15 @@ function HistoryShowcase({ info }: { info: any }) {
 
 function NewsSection() {
   const [items, setItems] = useState<any[]>([]);
+  const [visible, setVisible] = useState(3);
   useEffect(() => {
-    supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false }).limit(24)
+    supabase.from("camed_news" as any).select("*").order("created_at", { ascending: false }).limit(60)
       .then(({ data }) => setItems((data as any[]) ?? []));
   }, []);
   if (items.length === 0) return null;
+  const shown = items.slice(0, visible);
+  const canExpand = visible < items.length;
+  const canCollapse = visible > 3;
   return (
     <section>
       <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
@@ -267,7 +271,7 @@ function NewsSection() {
       </h2>
       <p className="text-sm text-muted-foreground mb-6">Últimas publicações do Centro Acadêmico.</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((n) => {
+        {shown.map((n) => {
           const body = (
             <Card className="overflow-hidden h-full hover:shadow-lg transition-shadow border-emerald-200/50 dark:border-emerald-900/40">
               {n.image_url && (
@@ -295,6 +299,20 @@ function NewsSection() {
           );
         })}
       </div>
+      {(canExpand || canCollapse) && (
+        <div className="flex justify-center gap-2 mt-6">
+          {canExpand && (
+            <Button variant="outline" onClick={() => setVisible((v) => Math.min(v + 6, items.length))}>
+              Ver mais
+            </Button>
+          )}
+          {canCollapse && (
+            <Button variant="ghost" onClick={() => setVisible((v) => Math.max(3, v - 6))}>
+              Esconder mais
+            </Button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

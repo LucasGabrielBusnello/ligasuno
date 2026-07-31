@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Stethoscope, LogIn, BookOpen, Mail, Plus, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
+import { Stethoscope, LogIn, BookOpen, Mail, Plus, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, CalendarPlus } from "lucide-react";
+import { buildIcs, downloadIcs, type IcsEvent } from "@/lib/ics";
 import { listSubjects, listPersonalItems, upsertPersonalItem, deletePersonalItem } from "@/lib/curriculum.functions";
 import { listScheduleWeek } from "@/lib/schedule.functions";
 import { ScheduleGrid, ScheduleLegend, getMonday, toISODate, type ExtraEvent } from "@/components/schedule-grid";
@@ -62,7 +63,7 @@ type PersonalItem = {
 };
 
 function AlunoPage() {
-  const { user, profile, isCoordination, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const listSubj = useServerFn(listSubjects);
   const listItems = useServerFn(listPersonalItems);
   const deleteItem = useServerFn(deletePersonalItem);
@@ -73,12 +74,15 @@ function AlunoPage() {
   const [mySub, setMySub] = useState<Record<string, string>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PersonalItem | null>(null);
-  const [view, setView] = useState<"day" | "week">("day");
+  const [view, setView] = useState<"day" | "week">("week");
   const [monday, setMonday] = useState<Date>(() => getMonday(new Date()));
   const [weekEntries, setWeekEntries] = useState<any[]>([]);
   const [weekHolidays, setWeekHolidays] = useState<any[]>([]);
   const [otherEntries, setOtherEntries] = useState<any[]>([]);
   const [extraEvents, setExtraEvents] = useState<ExtraEvent[]>([]);
+  const [expanded, setExpanded] = useState(false);
+  const [extraWeeks, setExtraWeeks] = useState<{ monday: Date; entries: any[]; holidays: any[] }[]>([]);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const classCode = (profile as any)?.class_code as string | null;
 
@@ -142,6 +146,23 @@ function AlunoPage() {
   useEffect(() => { if (user) reload(); }, [user]);
   useEffect(() => { if (user && view === "week") reloadWeek(); }, [user, view, monday, classCode]);
 
+  // Semanas extras (expandir: +4 semanas na vertical)
+  useEffect(() => {
+    if (!user || !expanded || view !== "week") { setExtraWeeks([]); return; }
+    let cancelled = false;
+    (async () => {
+      const weeks: { monday: Date; entries: any[]; holidays: any[] }[] = [];
+      for (let i = 1; i <= 4; i++) {
+        const m = new Date(monday); m.setDate(m.getDate() + i * 7);
+        const r: any = await loadWeek({ data: { weekStart: toISODate(m) } });
+        const all = (r.entries ?? []) as any[];
+        weeks.push({ monday: m, entries: classCode ? all.filter((e) => e.class_code === classCode) : [], holidays: r.holidays ?? [] });
+      }
+      if (!cancelled) setExtraWeeks(weeks);
+    })();
+    return () => { cancelled = true; };
+  }, [user, expanded, view, monday, classCode]);
+
 
   const mySubjects = useMemo(
     () => subjects.filter((s) => !classCode || s.class_codes?.includes(classCode)),
@@ -175,6 +196,42 @@ function AlunoPage() {
     catch (e: any) { toast.error(e.message); }
   };
 
+  const applySubFilter = (list: any[]) => list.filter((e) => {
+    if (!e.subject_id) return true;
+    const subj = subjects.find((s) => s.id === e.subject_id);
+    if (!subj || (subj.subdivisions?.length ?? 1) <= 1) return true;
+    return e.subdivision === (mySub[e.subject_id] ?? "A");
+  });
+
+  const doExportAgenda = () => {
+    const all = [{ entries: filteredWeekEntries }, ...extraWeeks.map((w) => ({ entries: applySubFilter(w.entries) }))];
+    const events: IcsEvent[] = [];
+    for (const w of all) {
+      for (const e of w.entries as any[]) {
+        if (e.rescheduled_to_date) continue;
+        events.push({
+          uid: `entry-${e.id}`,
+          title: e.kind === "green_zone" ? "Zona verde" : (e.subject?.name ?? "Aula"),
+          date: e.date,
+          start: e.start_time,
+          end: e.end_time,
+          description: [e.subject?.professor ? `Prof. ${e.subject.professor}` : null, `Turma ${e.class_code}`, e.notes].filter(Boolean).join(" · "),
+        });
+      }
+    }
+    for (const p of items) {
+      events.push({ uid: `personal-${p.id}`, title: p.title, date: p.date, start: p.start_time, end: p.end_time, description: p.notes });
+    }
+    for (const ev of extraEvents) {
+      events.push({ uid: `extra-${ev.id}`, title: ev.title, date: ev.date, start: ev.start_time, end: ev.end_time, description: ev.source === "atletica" ? "Atlética" : "Liga" });
+    }
+    if (events.length === 0) { toast.error("Nada para exportar nesse período."); setExportOpen(false); return; }
+    downloadIcs(buildIcs(events));
+    setExportOpen(false);
+    toast.success("Cronograma exportado! Importe o arquivo na sua agenda Google.");
+    window.open("https://calendar.google.com/calendar/u/0/r/settings/export", "_blank", "noopener");
+  };
+
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">Carregando…</div>;
 
   if (!user) {
@@ -199,33 +256,33 @@ function AlunoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50/40 via-background to-background dark:from-emerald-950/20">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950 text-neutral-100 dark">
       <section className="max-w-6xl mx-auto px-4 pt-10 pb-6">
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3">
             <div className="size-12 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-lg"><Stethoscope className="size-6" /></div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight">Painel do Aluno</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-3xl font-black tracking-tight text-white">Painel do Aluno</h1>
+              <p className="text-sm text-emerald-200/70">
                 Olá, {profile?.full_name ?? profile?.username}{classCode ? ` · Turma ${classCode}` : ""}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-full border border-border/60 p-0.5 bg-background">
-              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Dia</button>
-              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Semana</button>
+            <div className="inline-flex rounded-full border border-emerald-500/30 p-0.5 bg-neutral-900">
+              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-emerald-600 text-white" : "text-neutral-400"}`}>Dia</button>
+              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-emerald-600 text-white" : "text-neutral-400"}`}>Semana</button>
             </div>
-            {isCoordination && (
-              <Button asChild variant="outline" size="sm"><Link to="/coordenacao/cronograma"><Settings2 className="size-4" /> Coordenação</Link></Button>
-            )}
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setExportOpen(true)}>
+              <CalendarPlus className="size-4" /> Enviar cronograma para a agenda
+            </Button>
           </div>
         </div>
       </section>
 
       {view === "week" && (
         <section className="max-w-6xl mx-auto px-4 pb-6 space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" onClick={() => { const m = new Date(monday); m.setDate(m.getDate() - 7); setMonday(m); }}><ChevronLeft className="size-4" /></Button>
               <div className="text-sm font-semibold px-2">
@@ -245,8 +302,47 @@ function AlunoPage() {
             personalItems={weekPersonalItems as any}
             extraEvents={extraEvents}
           />
+
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" size="sm" onClick={() => setExpanded((v) => !v)} className="border-emerald-500/40">
+              {expanded ? <><ChevronUp className="size-4" /> Recolher</> : <><ChevronDown className="size-4" /> Expandir (+4 semanas)</>}
+            </Button>
+          </div>
+
+          {expanded && (
+            <div className="space-y-6 pt-2">
+              {extraWeeks.length === 0 && <p className="text-center text-sm text-neutral-400">Carregando semanas…</p>}
+              {extraWeeks.map((w) => (
+                <div key={w.monday.toISOString()} className="space-y-2">
+                  <div className="text-sm font-bold text-emerald-300">
+                    {w.monday.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — {new Date(w.monday.getTime() + 5 * 86400000).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                  </div>
+                  <ScheduleGrid
+                    monday={w.monday}
+                    entries={applySubFilter(w.entries) as any}
+                    holidays={w.holidays}
+                    classCode={classCode ?? undefined}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
+
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Enviar cronograma para a agenda</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Atente-se às turmas selecionadas, irá exportar apenas as aulas referentes às turmas selecionadas!
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportOpen(false)}>Cancelar</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" onClick={doExportAgenda}>Exportar agora</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
 
       <section className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-4 pb-16">
