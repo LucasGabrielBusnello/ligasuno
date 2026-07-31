@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Stethoscope, LogIn, BookOpen, Mail, Plus, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight, Settings2 } from "lucide-react";
+import { Stethoscope, LogIn, BookOpen, Mail, Plus, Trash2, Calendar as CalIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, CalendarPlus } from "lucide-react";
+import { buildIcs, downloadIcs, type IcsEvent } from "@/lib/ics";
 import { listSubjects, listPersonalItems, upsertPersonalItem, deletePersonalItem } from "@/lib/curriculum.functions";
 import { listScheduleWeek } from "@/lib/schedule.functions";
 import { ScheduleGrid, ScheduleLegend, getMonday, toISODate, type ExtraEvent } from "@/components/schedule-grid";
@@ -62,7 +63,7 @@ type PersonalItem = {
 };
 
 function AlunoPage() {
-  const { user, profile, isCoordination, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const listSubj = useServerFn(listSubjects);
   const listItems = useServerFn(listPersonalItems);
   const deleteItem = useServerFn(deletePersonalItem);
@@ -73,12 +74,15 @@ function AlunoPage() {
   const [mySub, setMySub] = useState<Record<string, string>>({});
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PersonalItem | null>(null);
-  const [view, setView] = useState<"day" | "week">("day");
+  const [view, setView] = useState<"day" | "week">("week");
   const [monday, setMonday] = useState<Date>(() => getMonday(new Date()));
   const [weekEntries, setWeekEntries] = useState<any[]>([]);
   const [weekHolidays, setWeekHolidays] = useState<any[]>([]);
   const [otherEntries, setOtherEntries] = useState<any[]>([]);
   const [extraEvents, setExtraEvents] = useState<ExtraEvent[]>([]);
+  const [expanded, setExpanded] = useState(false);
+  const [extraWeeks, setExtraWeeks] = useState<{ monday: Date; entries: any[]; holidays: any[] }[]>([]);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const classCode = (profile as any)?.class_code as string | null;
 
@@ -142,6 +146,23 @@ function AlunoPage() {
   useEffect(() => { if (user) reload(); }, [user]);
   useEffect(() => { if (user && view === "week") reloadWeek(); }, [user, view, monday, classCode]);
 
+  // Semanas extras (expandir: +4 semanas na vertical)
+  useEffect(() => {
+    if (!user || !expanded || view !== "week") { setExtraWeeks([]); return; }
+    let cancelled = false;
+    (async () => {
+      const weeks: { monday: Date; entries: any[]; holidays: any[] }[] = [];
+      for (let i = 1; i <= 4; i++) {
+        const m = new Date(monday); m.setDate(m.getDate() + i * 7);
+        const r: any = await loadWeek({ data: { weekStart: toISODate(m) } });
+        const all = (r.entries ?? []) as any[];
+        weeks.push({ monday: m, entries: classCode ? all.filter((e) => e.class_code === classCode) : [], holidays: r.holidays ?? [] });
+      }
+      if (!cancelled) setExtraWeeks(weeks);
+    })();
+    return () => { cancelled = true; };
+  }, [user, expanded, view, monday, classCode]);
+
 
   const mySubjects = useMemo(
     () => subjects.filter((s) => !classCode || s.class_codes?.includes(classCode)),
@@ -173,6 +194,42 @@ function AlunoPage() {
     if (!confirm("Excluir esse item?")) return;
     try { await deleteItem({ data: { id } }); toast.success("Excluído"); reload(); }
     catch (e: any) { toast.error(e.message); }
+  };
+
+  const applySubFilter = (list: any[]) => list.filter((e) => {
+    if (!e.subject_id) return true;
+    const subj = subjects.find((s) => s.id === e.subject_id);
+    if (!subj || (subj.subdivisions?.length ?? 1) <= 1) return true;
+    return e.subdivision === (mySub[e.subject_id] ?? "A");
+  });
+
+  const doExportAgenda = () => {
+    const all = [{ entries: filteredWeekEntries }, ...extraWeeks.map((w) => ({ entries: applySubFilter(w.entries) }))];
+    const events: IcsEvent[] = [];
+    for (const w of all) {
+      for (const e of w.entries as any[]) {
+        if (e.rescheduled_to_date) continue;
+        events.push({
+          uid: `entry-${e.id}`,
+          title: e.kind === "green_zone" ? "Zona verde" : (e.subject?.name ?? "Aula"),
+          date: e.date,
+          start: e.start_time,
+          end: e.end_time,
+          description: [e.subject?.professor ? `Prof. ${e.subject.professor}` : null, `Turma ${e.class_code}`, e.notes].filter(Boolean).join(" · "),
+        });
+      }
+    }
+    for (const p of items) {
+      events.push({ uid: `personal-${p.id}`, title: p.title, date: p.date, start: p.start_time, end: p.end_time, description: p.notes });
+    }
+    for (const ev of extraEvents) {
+      events.push({ uid: `extra-${ev.id}`, title: ev.title, date: ev.date, start: ev.start_time, end: ev.end_time, description: ev.source === "atletica" ? "Atlética" : "Liga" });
+    }
+    if (events.length === 0) { toast.error("Nada para exportar nesse período."); setExportOpen(false); return; }
+    downloadIcs(buildIcs(events));
+    setExportOpen(false);
+    toast.success("Cronograma exportado! Importe o arquivo na sua agenda Google.");
+    window.open("https://calendar.google.com/calendar/u/0/r/settings/export", "_blank", "noopener");
   };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">Carregando…</div>;
