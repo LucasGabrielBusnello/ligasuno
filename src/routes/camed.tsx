@@ -419,7 +419,7 @@ function BookingDialog() {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button size="lg" variant="outline" className="bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white">
+          <Button size="lg" className="bg-emerald-700 text-white hover:bg-emerald-800 shadow-md">
             <CalIcon className="size-4 mr-1.5" /> Agendar horário
           </Button>
         </DialogTrigger>
