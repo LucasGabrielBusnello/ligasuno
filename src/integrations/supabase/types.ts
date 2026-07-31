@@ -3759,6 +3759,7 @@ export type Database = {
           is_abex: boolean
           kind: Database["public"]["Enums"]["schedule_kind"]
           notes: string | null
+          practice_groups: string[]
           rescheduled_from_entry_id: string | null
           rescheduled_to_date: string | null
           shift: Database["public"]["Enums"]["shift_period"]
@@ -3779,6 +3780,7 @@ export type Database = {
           is_abex?: boolean
           kind?: Database["public"]["Enums"]["schedule_kind"]
           notes?: string | null
+          practice_groups?: string[]
           rescheduled_from_entry_id?: string | null
           rescheduled_to_date?: string | null
           shift: Database["public"]["Enums"]["shift_period"]
@@ -3799,6 +3801,7 @@ export type Database = {
           is_abex?: boolean
           kind?: Database["public"]["Enums"]["schedule_kind"]
           notes?: string | null
+          practice_groups?: string[]
           rescheduled_from_entry_id?: string | null
           rescheduled_to_date?: string | null
           shift?: Database["public"]["Enums"]["shift_period"]

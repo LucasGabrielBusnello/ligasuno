@@ -37,7 +37,7 @@ export const listScheduleWeek = createServerFn({ method: "GET" })
 
     const [entries, holidays] = await Promise.all([
       context.supabase.from("schedule_entries")
-        .select("id, term_id, subject_id, class_code, subdivision, date, shift, start_time, end_time, kind, is_abex, color, rescheduled_from_entry_id, rescheduled_to_date, notes, subject:subjects(id,name,professor)")
+        .select("id, term_id, subject_id, class_code, subdivision, date, shift, start_time, end_time, kind, is_abex, color, practice_groups, rescheduled_from_entry_id, rescheduled_to_date, notes, subject:subjects(id,name,professor)")
         .gte("date", data.weekStart).lte("date", endStr),
       context.supabase.from("holidays").select("id, date, label").gte("date", data.weekStart).lte("date", endStr),
     ]);
@@ -61,6 +61,7 @@ const entryInput = z.object({
   kind: z.enum(KINDS).default("class"),
   is_abex: z.boolean().default(false),
   color: z.string().nullish(),
+  practice_groups: z.array(z.string()).default([]),
   notes: z.string().nullish(),
 });
 
@@ -81,8 +82,10 @@ export const upsertScheduleEntry = createServerFn({ method: "POST" })
       kind: data.kind,
       is_abex: data.is_abex,
       color: data.color ?? null,
+      practice_groups: data.practice_groups ?? [],
       notes: data.notes ?? null,
     };
+
     if (data.id) {
       const { error } = await context.supabase.from("schedule_entries").update(payload).eq("id", data.id);
       if (error) throw error;
@@ -312,6 +315,47 @@ export const deleteHoliday = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCoord(context.supabase, context.userId);
     const { error } = await context.supabase.from("holidays").delete().eq("id", data.id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+/* ---------- GRUPOS DE PRÁTICA (turmas A, B, C...) ---------- */
+
+export const listClassGroups = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ class_code: z.enum(ATM_CLASSES) }).parse(v))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("class_subdivisions")
+      .select("id, class_code, letter")
+      .eq("class_code", data.class_code)
+      .order("letter");
+    if (error) throw error;
+    return rows ?? [];
+  });
+
+export const addClassGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ class_code: z.enum(ATM_CLASSES), letter: z.string().min(1).max(4) }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const { data: ins, error } = await context.supabase
+      .from("class_subdivisions")
+      .insert({ class_code: data.class_code, letter: data.letter.trim().toUpperCase() })
+      .select("id, class_code, letter")
+      .single();
+    if (error) throw error;
+    return ins;
+  });
+
+export const deleteClassGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const { error } = await context.supabase.from("class_subdivisions").delete().eq("id", data.id);
     if (error) throw error;
     return { ok: true };
   });

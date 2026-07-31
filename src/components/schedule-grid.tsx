@@ -14,6 +14,8 @@ export type ScheduleEntry = {
   is_abex?: boolean;
   color?: string | null;
   notes?: string | null;
+  practice_groups?: string[] | null;
+
   rescheduled_from_entry_id?: string | null;
   rescheduled_to_date?: string | null;
   subject?: { id: string; name: string; professor: string | null } | null;
@@ -248,12 +250,13 @@ export function ScheduleGrid({
                                 {e.kind === "green_zone" ? "Zona verde" : (e.subject?.name ?? "Aula")}
                                 {e.is_abex && <span className="ml-1 text-[9px] font-black">ABEX</span>}
                               </div>
-                              {e.kind !== "green_zone" && (
-                                <div className="opacity-90 truncate">
-                                  {e.subject?.professor ?? ""}
-                                  {e.subdivision === "*" ? " · Todas" : (e.subdivision && e.subdivision !== "A" ? ` · ${e.subdivision}` : "")}
-                                </div>
-                              )}
+                              {e.kind !== "green_zone" && (() => {
+                                const groups = (e.practice_groups ?? []).filter(Boolean);
+                                const sub = e.subdivision === "*" ? "Todas" : (e.subdivision && e.subdivision !== "A" ? e.subdivision : "");
+                                const parts = [groups.length ? `Grupos ${groups.join(", ")}` : "", sub].filter(Boolean);
+                                return parts.length ? <div className="opacity-90 truncate">{parts.join(" · ")}</div> : null;
+                              })()}
+
                               {e.rescheduled_from_entry_id && (
                                 <div className="text-[9px] font-semibold">Remarcada</div>
                               )}

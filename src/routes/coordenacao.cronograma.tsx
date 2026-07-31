@@ -18,6 +18,8 @@ import {
 import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
+  listClassGroups, addClassGroup, deleteClassGroup,
+
 } from "@/lib/schedule.functions";
 import { listSubjects, listTerms } from "@/lib/curriculum.functions";
 import { ScheduleImportButton } from "@/components/schedule-import-dialog";
@@ -290,6 +292,9 @@ function EntryDialog({
   onSaved: () => void;
 }) {
   const save = useServerFn(upsertScheduleEntry);
+  const loadGroups = useServerFn(listClassGroups);
+  const addGroup = useServerFn(addClassGroup);
+  const delGroup = useServerFn(deleteClassGroup);
   const editing = state.editing;
   const [subjectId, setSubjectId] = useState<string>("");
   const [subdivision, setSubdivision] = useState("A");
@@ -300,6 +305,9 @@ function EntryDialog({
   const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
   const [color, setColor] = useState<string>(DEFAULT_KIND_COLORS.class);
   const [customColor, setCustomColor] = useState(false);
+  const [groups, setGroups] = useState<{ id: string; letter: string }[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [newGroup, setNewGroup] = useState("");
 
   useEffect(() => {
     if (!state.open) return;
@@ -315,7 +323,14 @@ function EntryDialog({
     setKind((e?.kind && e.kind !== "green_zone" && e.kind !== "abex" ? e.kind : "class") as any);
     setColor((e?.color as string) ?? DEFAULT_KIND_COLORS[(e?.kind as string) ?? "class"] ?? DEFAULT_KIND_COLORS.class);
     setCustomColor(!!e?.color);
+    setSelectedGroups(Array.isArray(e?.practice_groups) ? e.practice_groups : []);
+    setNewGroup("");
   }, [state.open, editing, state.date, state.shift]);
+
+  const refreshGroups = async () => {
+    try { setGroups((await loadGroups({ data: { class_code: classCode as any } })) as any); } catch { /* noop */ }
+  };
+  useEffect(() => { if (state.open) refreshGroups(); }, [state.open, classCode]);
 
   const filteredSubjects = useMemo(
     () => subjects.filter((s) => s.class_codes?.includes(classCode)),
@@ -327,16 +342,21 @@ function EntryDialog({
     return Array.from(new Set([...list, "*"]));
   }, [currentSubj]);
 
+  const isAbexSubject = /abex/i.test(currentSubj?.name ?? "");
+  const showGroups = kind === "practice" || isAbexSubject;
+
   const submit = async () => {
     try {
       await save({ data: {
         id: editing?.id, class_code: classCode as any, subject_id: subjectId || null,
         subdivision: subdivision || "A", date, shift, start_time: start, end_time: end,
-        kind: kind as any, is_abex: false, color: customColor ? color : null, notes: null,
+        kind: kind as any, is_abex: isAbexSubject, color: customColor ? color : null,
+        practice_groups: showGroups ? selectedGroups : [], notes: null,
       }});
       toast.success("Salvo"); onSaved();
     } catch (e: any) { toast.error(e.message); }
   };
+
 
   return (
     <Dialog open={state.open} onOpenChange={(v) => !v && onClose()}>
@@ -395,6 +415,52 @@ function EntryDialog({
               </SelectContent>
             </Select>
           </div>
+          {showGroups && (
+            <div className="rounded-lg border border-border/60 p-3 space-y-2">
+              <Label className="mb-0">Turmas com prática neste turno</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {groups.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">Nenhuma turma cadastrada para {classCode}.</p>
+                )}
+                {groups.map((g) => {
+                  const on = selectedGroups.includes(g.letter);
+                  return (
+                    <span key={g.id} className="inline-flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedGroups((prev) => on ? prev.filter((l) => l !== g.letter) : [...prev, g.letter])}
+                        className={`rounded-l-md border px-2.5 py-1 text-xs font-bold ${on ? "bg-emerald-600 text-white border-emerald-600" : "border-border/60 text-muted-foreground"}`}
+                      >
+                        {g.letter}
+                      </button>
+                      <button
+                        type="button"
+                        title="Remover turma"
+                        onClick={async () => {
+                          await delGroup({ data: { id: g.id } });
+                          setSelectedGroups((prev) => prev.filter((l) => l !== g.letter));
+                          refreshGroups();
+                        }}
+                        className="rounded-r-md border border-l-0 border-border/60 px-1.5 py-1 text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <Input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Nova turma (ex.: A)" className="h-8" />
+                <Button size="sm" variant="outline" onClick={async () => {
+                  const letter = newGroup.trim().toUpperCase();
+                  if (!letter) return;
+                  try { await addGroup({ data: { class_code: classCode as any, letter } }); setNewGroup(""); refreshGroups(); }
+                  catch (e: any) { toast.error(e.message); }
+                }}>Adicionar</Button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-lg border border-border/60 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <Label className="mb-0">Cor no cronograma</Label>

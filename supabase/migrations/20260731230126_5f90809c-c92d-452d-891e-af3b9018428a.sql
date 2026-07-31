@@ -1,0 +1,1 @@
+ALTER TABLE public.schedule_entries ADD COLUMN IF NOT EXISTS practice_groups text[] NOT NULL DEFAULT '{}'::text[];
