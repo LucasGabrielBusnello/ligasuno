@@ -290,6 +290,9 @@ function EntryDialog({
   onSaved: () => void;
 }) {
   const save = useServerFn(upsertScheduleEntry);
+  const loadGroups = useServerFn(listClassGroups);
+  const addGroup = useServerFn(addClassGroup);
+  const delGroup = useServerFn(deleteClassGroup);
   const editing = state.editing;
   const [subjectId, setSubjectId] = useState<string>("");
   const [subdivision, setSubdivision] = useState("A");
@@ -300,6 +303,9 @@ function EntryDialog({
   const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
   const [color, setColor] = useState<string>(DEFAULT_KIND_COLORS.class);
   const [customColor, setCustomColor] = useState(false);
+  const [groups, setGroups] = useState<{ id: string; letter: string }[]>([]);
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [newGroup, setNewGroup] = useState("");
 
   useEffect(() => {
     if (!state.open) return;
@@ -315,7 +321,14 @@ function EntryDialog({
     setKind((e?.kind && e.kind !== "green_zone" && e.kind !== "abex" ? e.kind : "class") as any);
     setColor((e?.color as string) ?? DEFAULT_KIND_COLORS[(e?.kind as string) ?? "class"] ?? DEFAULT_KIND_COLORS.class);
     setCustomColor(!!e?.color);
+    setSelectedGroups(Array.isArray(e?.practice_groups) ? e.practice_groups : []);
+    setNewGroup("");
   }, [state.open, editing, state.date, state.shift]);
+
+  const refreshGroups = async () => {
+    try { setGroups((await loadGroups({ data: { class_code: classCode as any } })) as any); } catch { /* noop */ }
+  };
+  useEffect(() => { if (state.open) refreshGroups(); }, [state.open, classCode]);
 
   const filteredSubjects = useMemo(
     () => subjects.filter((s) => s.class_codes?.includes(classCode)),
@@ -327,16 +340,21 @@ function EntryDialog({
     return Array.from(new Set([...list, "*"]));
   }, [currentSubj]);
 
+  const isAbexSubject = /abex/i.test(currentSubj?.name ?? "");
+  const showGroups = kind === "practice" || isAbexSubject;
+
   const submit = async () => {
     try {
       await save({ data: {
         id: editing?.id, class_code: classCode as any, subject_id: subjectId || null,
         subdivision: subdivision || "A", date, shift, start_time: start, end_time: end,
-        kind: kind as any, is_abex: false, color: customColor ? color : null, notes: null,
+        kind: kind as any, is_abex: isAbexSubject, color: customColor ? color : null,
+        practice_groups: showGroups ? selectedGroups : [], notes: null,
       }});
       toast.success("Salvo"); onSaved();
     } catch (e: any) { toast.error(e.message); }
   };
+
 
   return (
     <Dialog open={state.open} onOpenChange={(v) => !v && onClose()}>
