@@ -77,5 +77,6 @@ function FeriadosPage() {
         </ul>
       </CardContent></Card>
     </div>
+    </div>
   );
 }
