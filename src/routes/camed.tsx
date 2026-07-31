@@ -86,15 +86,16 @@ function CamedPublicPage() {
             <p className="mt-6 max-w-3xl text-sm md:text-base text-white/80 whitespace-pre-line leading-relaxed">{info.description}</p>
           )}
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <AnonymousMessageDialog />
-            <BookingDialog />
-          </div>
         </div>
       </section>
 
       <main className="max-w-6xl mx-auto px-4 py-12 space-y-16">
+        <div className="flex flex-wrap gap-3">
+          <BookingDialog />
+          <AnonymousMessageDialog />
+        </div>
         <NewsSection />
+
         <OpenActivitiesSection />
         <HistoryShowcase info={info} />
         <MembersSection />
