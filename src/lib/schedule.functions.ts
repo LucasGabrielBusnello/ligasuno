@@ -37,7 +37,7 @@ export const listScheduleWeek = createServerFn({ method: "GET" })
 
     const [entries, holidays] = await Promise.all([
       context.supabase.from("schedule_entries")
-        .select("id, term_id, subject_id, class_code, subdivision, date, shift, start_time, end_time, kind, is_abex, color, rescheduled_from_entry_id, rescheduled_to_date, notes, subject:subjects(id,name,professor)")
+        .select("id, term_id, subject_id, class_code, subdivision, date, shift, start_time, end_time, kind, is_abex, color, practice_groups, rescheduled_from_entry_id, rescheduled_to_date, notes, subject:subjects(id,name,professor)")
         .gte("date", data.weekStart).lte("date", endStr),
       context.supabase.from("holidays").select("id, date, label").gte("date", data.weekStart).lte("date", endStr),
     ]);
