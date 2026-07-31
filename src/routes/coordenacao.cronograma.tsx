@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarPlus, Sparkles, Repeat, Copy, AlertTriangle } from "lucide-react";
 import {
-  ScheduleGrid, ScheduleLegend, DEFAULT_SHIFT_TIMES, SHIFT_LABEL, getMonday, toISODate, type Shift,, DEFAULT_KIND_COLORS } from "@/components/schedule-grid";
+  ScheduleGrid, ScheduleLegend, DEFAULT_SHIFT_TIMES, SHIFT_LABEL, getMonday, toISODate, type Shift, DEFAULT_KIND_COLORS } from "@/components/schedule-grid";
 import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
