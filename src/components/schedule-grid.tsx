@@ -55,14 +55,26 @@ export function toISODate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-function kindStyle(e: ScheduleEntry) {
-  if (e.kind === "green_zone") return "bg-lime-200/70 dark:bg-lime-900/40 border-lime-400 text-lime-900 dark:text-lime-100";
-  if (e.kind === "exam") return "bg-red-200/80 dark:bg-red-950/60 border-red-400 text-red-900 dark:text-red-100";
-  if (e.kind === "practice" || e.kind === "abex" || e.is_abex) return "bg-violet-200/80 dark:bg-violet-950/60 border-violet-400 text-violet-900 dark:text-violet-100";
-  if (e.rescheduled_from_entry_id) return "bg-sky-100 dark:bg-sky-950/40 border-sky-400 text-sky-900 dark:text-sky-100";
-  if (e.rescheduled_to_date) return "bg-muted border-dashed text-muted-foreground";
-  return "bg-background border-emerald-300 text-foreground";
+/** Cor padrão por tipo de aula (usada quando a coordenação não escolhe uma cor). */
+export const DEFAULT_KIND_COLORS: Record<string, string> = {
+  class: "#0f766e",
+  practice: "#7c3aed",
+  abex: "#7c3aed",
+  exam: "#dc2626",
+  green_zone: "#65a30d",
+};
+
+export function entryColor(e: ScheduleEntry) {
+  if (e.color) return e.color;
+  if (e.is_abex) return DEFAULT_KIND_COLORS.abex;
+  return DEFAULT_KIND_COLORS[e.kind] ?? DEFAULT_KIND_COLORS.class;
 }
+
+function kindStyle(e: ScheduleEntry) {
+  if (e.rescheduled_to_date) return "bg-muted border-dashed text-muted-foreground";
+  return "text-foreground";
+}
+
 
 export type PersonalItem = {
   id: string;
