@@ -20,6 +20,7 @@ import { CamedScoringApprovals } from "@/components/camed-scoring-approvals";
 import { setCamedMaintenance } from "@/lib/athletic-extras.functions";
 import { Wrench, FolderOpen } from "lucide-react";
 import { CamedDocumentsTab } from "@/components/camed-documents";
+import { CamedOpenActivities } from "@/components/camed-open-activities";
 
 export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
 
@@ -753,6 +754,8 @@ function LeaguesSettingsTab() {
       </Dialog>
 
       <CamedScoringApprovals onChanged={loadLeagues} />
+
+      <CamedOpenActivities />
 
       <details className="rounded-xl border bg-card/50">
         <summary className="cursor-pointer p-4 text-sm font-semibold text-muted-foreground hover:text-foreground flex items-center gap-2">
