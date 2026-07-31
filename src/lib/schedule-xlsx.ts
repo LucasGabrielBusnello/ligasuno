@@ -144,8 +144,9 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
     }
   }
 
-  // desempate direto por professor para as demais matérias
-  if (profs.length) {
+  // desempate direto por professor quando a pontuação não decidiu
+  if (!best && profs.length) {
+
     for (const s of catalog) {
       const sp = norm(s.professor ?? "");
       if (!sp) continue;
