@@ -292,21 +292,21 @@ export function ScheduleGrid({
 }
 
 export function ScheduleLegend() {
-  const chip = (cls: string, label: string) => (
+  const chip = (color: string, label: string) => (
     <div className="inline-flex items-center gap-1.5 text-xs">
-      <span className={cn("size-3 rounded", cls)} />
+      <span className="size-3 rounded" style={{ background: color }} />
       <span className="text-muted-foreground">{label}</span>
     </div>
   );
   return (
     <div className="flex flex-wrap gap-3 py-2">
-      {chip("bg-background border border-emerald-300", "Aula")}
-      {chip("bg-violet-400", "Prática / ABEX")}
-      {chip("bg-red-400", "Avaliação")}
-      {chip("bg-lime-300", "Zona verde")}
-      {chip("bg-cyan-200", "Feriado")}
-      {chip("bg-sky-200", "Remarcada")}
-      {chip("bg-fuchsia-300", "Evento inscrito")}
+      {chip(DEFAULT_KIND_COLORS.class, "Aula")}
+      {chip(DEFAULT_KIND_COLORS.practice, "Prática / ABEX")}
+      {chip(DEFAULT_KIND_COLORS.exam, "Avaliação")}
+      {chip(DEFAULT_KIND_COLORS.green_zone, "Zona verde")}
+      {chip("#0e7490", "Feriado")}
+      {chip("#a21caf", "Evento inscrito")}
     </div>
   );
 }
+
