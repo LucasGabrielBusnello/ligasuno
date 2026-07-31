@@ -138,7 +138,7 @@ function CamedMaintenanceCard() {
 }
 
 function InfoTab() {
-  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", hero_image_url: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
+  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", hero_image_url: "", whatsapp_phone: "", whatsapp_apikey: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
   useEffect(() => {
     supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
       const d = (data as any) ?? {};
@@ -148,6 +148,8 @@ function InfoTab() {
         description: d.description ?? "",
         email: d.email ?? "",
         hero_image_url: d.hero_image_url ?? "",
+        whatsapp_phone: d.whatsapp_phone ?? "",
+        whatsapp_apikey: d.whatsapp_apikey ?? "",
 
         history_title: d.history_title ?? "Conheça a Nossa História",
         history_description: d.history_description ?? "",
@@ -163,6 +165,8 @@ function InfoTab() {
       description: info.description,
       email,
       hero_image_url: info.hero_image_url?.trim() || null,
+      whatsapp_phone: info.whatsapp_phone?.trim() || null,
+      whatsapp_apikey: info.whatsapp_apikey?.trim() || null,
 
       history_title: info.history_title || "Conheça a Nossa História",
       history_description: info.history_description || null,
@@ -171,6 +175,7 @@ function InfoTab() {
     if (error) return toast.error(error.message);
     toast.success("Informações atualizadas");
   }
+
   const images: HistoryItem[] = info.history_images ?? [];
   function setImages(next: HistoryItem[]) { setInfo({ ...info, history_images: next }); }
   function updateItem(i: number, patch: Partial<HistoryItem>) {
@@ -199,6 +204,25 @@ function InfoTab() {
             />
             <p className="text-xs text-muted-foreground mt-1">Preenche toda a faixa verde atrás do título na página do CAMED. Use uma imagem horizontal (recomendado 1920×800).</p>
           </div>
+
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-3">
+            <div>
+              <Label className="font-bold">Aviso no WhatsApp do responsável (grátis via CallMeBot)</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Como ativar: no WhatsApp do responsável, envie <strong>“I allow callmebot to send me messages”</strong> para o número
+                <strong> +34 644 51 95 23</strong>. O bot responde com uma <strong>API key</strong>. Cole o número e a chave abaixo — a cada horário marcado, o responsável recebe a mensagem automaticamente.
+              </p>
+            </div>
+            <div>
+              <Label>Número do responsável (com DDI, ex: 5549999999999)</Label>
+              <Input inputMode="numeric" placeholder="5549999999999" value={info.whatsapp_phone} onChange={(e) => setInfo({ ...info, whatsapp_phone: e.target.value })} />
+            </div>
+            <div>
+              <Label>API key do CallMeBot</Label>
+              <Input placeholder="123456" value={info.whatsapp_apikey} onChange={(e) => setInfo({ ...info, whatsapp_apikey: e.target.value })} />
+            </div>
+          </div>
+
 
         </CardContent>
       </Card>

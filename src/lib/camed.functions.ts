@@ -121,8 +121,9 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Notify CAMED email + convite de agenda (.ics) com alarme 24h antes
-    const { data: info } = await admin.from("camed_info").select("email").eq("id", 1).maybeSingle();
+    const { data: info } = await admin.from("camed_info").select("email, whatsapp_phone, whatsapp_apikey").eq("id", 1).maybeSingle();
     const to = (info as any)?.email as string | undefined;
+
     const { data: prof } = await admin.from("profiles").select("full_name,username,email").eq("id", userId).maybeSingle();
     const userName = (prof as any)?.full_name || (prof as any)?.username || "Usuário";
     const userEmail = ((prof as any)?.email as string | undefined) || "";
@@ -153,8 +154,27 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
         }
       } catch (e) { console.error(e); }
     }
+
+    // Aviso gratuito no WhatsApp do responsável (via CallMeBot, se configurado no painel)
+    const waPhone = ((info as any)?.whatsapp_phone as string | undefined)?.replace(/\D/g, "");
+    const waKey = (info as any)?.whatsapp_apikey as string | undefined;
+    if (waPhone && waKey) {
+      const text =
+        `*Novo horário marcado no CAMED*\n\n` +
+        `🗓️ ${slotAt}\n` +
+        `📍 ${data.modality}\n` +
+        `👤 ${userName}${userEmail ? ` (${userEmail})` : ""}\n` +
+        `📞 ${data.phone}\n` +
+        `📝 ${data.reason}`;
+      try {
+        const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(waPhone)}&text=${encodeURIComponent(text)}&apikey=${encodeURIComponent(waKey)}`;
+        const res = await fetch(url);
+        if (!res.ok) console.error("CallMeBot WhatsApp falhou", res.status, await res.text());
+      } catch (e) { console.error("CallMeBot WhatsApp erro", e); }
+    }
     return { ok: true };
   });
+
 
 function icsDate(d: Date) {
   return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";

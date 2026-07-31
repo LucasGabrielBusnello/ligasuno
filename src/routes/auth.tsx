@@ -12,7 +12,10 @@ import { toast } from "sonner";
 import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 import { sendWelcomeEmailForUser } from "@/lib/registration.functions";
+import { requestPasswordResetCode, confirmPasswordResetCode } from "@/lib/password-reset.functions";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { formatBRPhone, isValidBRPhone, normalizePhone } from "@/lib/phone";
+
 
 function PasswordInput({ id, value, onChange, autoComplete, required }: { id: string; value: string; onChange: (v: string) => void; autoComplete?: string; required?: boolean }) {
   const [show, setShow] = useState(false);
@@ -41,6 +44,98 @@ function PasswordInput({ id, value, onChange, autoComplete, required }: { id: st
 }
 
 export const Route = createFileRoute("/auth")({ component: AuthPage });
+
+function ForgotPasswordDialog({ defaultEmail }: { defaultEmail: string }) {
+  const request = useServerFn(requestPasswordResetCode);
+  const confirm = useServerFn(confirmPasswordResetCode);
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
+  const [busy, setBusy] = useState(false);
+  const [email, setEmail] = useState(defaultEmail);
+  const [code, setCode] = useState("");
+  const [pass, setPass] = useState("");
+  const [pass2, setPass2] = useState("");
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return toast.error("Informe seu e-mail.");
+    setBusy(true);
+    try {
+      await request({ data: { email: email.trim() } });
+      toast.success("Se este e-mail estiver cadastrado, enviamos um código de 6 dígitos.");
+      setStep(2);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Falha ao enviar o código.");
+    } finally { setBusy(false); }
+  }
+
+  async function reset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(code.trim())) return toast.error("Digite o código de 6 dígitos.");
+    if (pass.length < 6) return toast.error("A senha deve ter no mínimo 6 caracteres.");
+    if (pass !== pass2) return toast.error("As senhas não coincidem.");
+    setBusy(true);
+    try {
+      await confirm({ data: { email: email.trim(), code: code.trim(), password: pass } });
+      toast.success("Senha redefinida! Faça login com a nova senha.");
+      setOpen(false);
+      setStep(1); setCode(""); setPass(""); setPass2("");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Não foi possível redefinir a senha.");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o: boolean) => { setOpen(o); if (o) setEmail(defaultEmail); }}>
+      <DialogTrigger asChild>
+        <button type="button" className="w-full text-center text-sm text-muted-foreground hover:text-foreground underline underline-offset-4">
+          Esqueci minha senha
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Redefinir senha</DialogTitle>
+          <DialogDescription>
+            {step === 1
+              ? "Informe seu e-mail e enviaremos um código de 6 dígitos."
+              : "Digite o código recebido por e-mail e escolha a nova senha."}
+          </DialogDescription>
+        </DialogHeader>
+        {step === 1 ? (
+          <form onSubmit={send} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="fp-email">E-mail</Label>
+              <Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" />
+            </div>
+            <Button type="submit" className="w-full" disabled={busy}>{busy ? "Enviando..." : "Enviar código"}</Button>
+          </form>
+        ) : (
+          <form onSubmit={reset} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="fp-code">Código de 6 dígitos</Label>
+              <Input id="fp-code" inputMode="numeric" maxLength={6} required value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="text-center text-2xl tracking-[0.4em] font-black" placeholder="000000" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="fp-pass">Nova senha</Label>
+              <PasswordInput id="fp-pass" autoComplete="new-password" required value={pass} onChange={setPass} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="fp-pass2">Confirmar nova senha</Label>
+              <PasswordInput id="fp-pass2" autoComplete="new-password" required value={pass2} onChange={setPass2} />
+            </div>
+            <Button type="submit" className="w-full" disabled={busy}>{busy ? "Salvando..." : "Redefinir senha"}</Button>
+            <button type="button" onClick={() => setStep(1)} className="w-full text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">
+              Não recebi o código — enviar novamente
+            </button>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 const usernameRegex = /^[\p{L}\p{N}_.\- ]{2,30}$/u;
 const signupSchema = z.object({
@@ -264,7 +359,9 @@ function AuthPage() {
                   <Button type="submit" disabled={loading} className="w-full">
                     {loading ? "Entrando..." : "Entrar"}
                   </Button>
+                  <ForgotPasswordDialog defaultEmail={li.email} />
                 </form>
+
               </TabsContent>
               <TabsContent value="signup" className="mt-4">
                 <form onSubmit={handleSignup} className="space-y-4" noValidate>
