@@ -66,8 +66,20 @@ function CamedPublicPage() {
     <div className="min-h-screen">
       {/* HERO com ações principais integradas */}
       <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-14 md:py-20">
+        {info?.hero_image_url && (
+          <>
+            <img
+              src={info.hero_image_url}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/90 via-emerald-900/80 to-teal-900/80" />
+          </>
+        )}
+        <div className="relative max-w-6xl mx-auto px-4 py-14 md:py-20">
           <Badge className="bg-white/15 border-white/20 backdrop-blur"><Building2 className="size-3 mr-1" /> Centro Acadêmico</Badge>
+
           <h1 className="mt-3 text-4xl md:text-6xl font-black tracking-tighter">{info?.title || "CAMED"}</h1>
           {info?.subtitle && <p className="mt-2 text-lg md:text-xl text-white/85 font-medium">{info.subtitle}</p>}
           {info?.description && (

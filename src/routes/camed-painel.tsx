@@ -70,11 +70,12 @@ function CamedPage() {
         <p className="text-muted-foreground mb-6">Gerencie informações, membros e configurações de ligas.</p>
         <MultiLeagueAlert />
         <Tabs defaultValue={first}>
-          <TabsList className="grid w-full h-auto" style={{ gridTemplateColumns: `repeat(${Math.max(shown.length, 1)}, minmax(0, 1fr))` }}>
+          <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 p-1">
             {shown.map((t) => (
-              <TabsTrigger key={t.key} value={t.key} className="py-2">{t.icon}{CAMED_TAB_LABELS[t.key]}</TabsTrigger>
+              <TabsTrigger key={t.key} value={t.key} className="py-2 flex-1 min-w-[7.5rem] whitespace-nowrap">{t.icon}{CAMED_TAB_LABELS[t.key]}</TabsTrigger>
             ))}
           </TabsList>
+
           {visible.includes("info") && <TabsContent value="info" className="mt-6"><InfoTab /></TabsContent>}
           {visible.includes("membros") && <TabsContent value="membros" className="mt-6"><MembersTab canManageAccess={isCamedPresident || isAdminMaster} /></TabsContent>}
           {visible.includes("noticias") && <TabsContent value="noticias" className="mt-6"><NewsTab /></TabsContent>}
@@ -137,7 +138,7 @@ function CamedMaintenanceCard() {
 }
 
 function InfoTab() {
-  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
+  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", hero_image_url: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
   useEffect(() => {
     supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
       const d = (data as any) ?? {};
@@ -146,6 +147,8 @@ function InfoTab() {
         subtitle: d.subtitle ?? "",
         description: d.description ?? "",
         email: d.email ?? "",
+        hero_image_url: d.hero_image_url ?? "",
+
         history_title: d.history_title ?? "Conheça a Nossa História",
         history_description: d.history_description ?? "",
         history_images: normalizeHistory(d.history_images),
@@ -159,6 +162,8 @@ function InfoTab() {
       subtitle: info.subtitle,
       description: info.description,
       email,
+      hero_image_url: info.hero_image_url?.trim() || null,
+
       history_title: info.history_title || "Conheça a Nossa História",
       history_description: info.history_description || null,
       history_images: info.history_images ?? [],
@@ -185,6 +190,16 @@ function InfoTab() {
             <Input type="email" placeholder="camed@exemplo.com" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} />
             <p className="text-xs text-muted-foreground mt-1">Para onde o MEDUNO envia mensagens anônimas e notificações de agendamento.</p>
           </div>
+          <div className="pt-2">
+            <ImageUpload
+              label="Imagem de fundo do cabeçalho"
+              folder="camed/hero"
+              value={info.hero_image_url ?? ""}
+              onChange={(url) => setInfo({ ...info, hero_image_url: url })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Preenche toda a faixa verde atrás do título na página do CAMED. Use uma imagem horizontal (recomendado 1920×800).</p>
+          </div>
+
         </CardContent>
       </Card>
 
