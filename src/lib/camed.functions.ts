@@ -121,8 +121,9 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Notify CAMED email + convite de agenda (.ics) com alarme 24h antes
-    const { data: info } = await admin.from("camed_info").select("email").eq("id", 1).maybeSingle();
+    const { data: info } = await admin.from("camed_info").select("email, whatsapp_phone, whatsapp_apikey").eq("id", 1).maybeSingle();
     const to = (info as any)?.email as string | undefined;
+
     const { data: prof } = await admin.from("profiles").select("full_name,username,email").eq("id", userId).maybeSingle();
     const userName = (prof as any)?.full_name || (prof as any)?.username || "Usuário";
     const userEmail = ((prof as any)?.email as string | undefined) || "";
