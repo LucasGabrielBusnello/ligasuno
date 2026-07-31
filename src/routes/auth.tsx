@@ -264,7 +264,9 @@ function AuthPage() {
                   <Button type="submit" disabled={loading} className="w-full">
                     {loading ? "Entrando..." : "Entrar"}
                   </Button>
+                  <ForgotPasswordDialog defaultEmail={li.email} />
                 </form>
+
               </TabsContent>
               <TabsContent value="signup" className="mt-4">
                 <form onSubmit={handleSignup} className="space-y-4" noValidate>
