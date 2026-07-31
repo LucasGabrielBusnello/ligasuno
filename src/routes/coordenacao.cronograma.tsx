@@ -132,6 +132,8 @@ function CoordCronograma() {
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/curriculo">Currículo</Link></Button>
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/feriados">Feriados</Link></Button>
+            <ScheduleImportButton defaultClass={classCode} termId={currentTerm?.id ?? null} onDone={reload} />
+
             <Popover open={copyOpen} onOpenChange={setCopyOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm"><Copy className="size-4" /> Copiar semana</Button>
