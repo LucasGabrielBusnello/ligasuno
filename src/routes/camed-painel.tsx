@@ -70,11 +70,12 @@ function CamedPage() {
         <p className="text-muted-foreground mb-6">Gerencie informações, membros e configurações de ligas.</p>
         <MultiLeagueAlert />
         <Tabs defaultValue={first}>
-          <TabsList className="grid w-full h-auto" style={{ gridTemplateColumns: `repeat(${Math.max(shown.length, 1)}, minmax(0, 1fr))` }}>
+          <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1 p-1">
             {shown.map((t) => (
-              <TabsTrigger key={t.key} value={t.key} className="py-2">{t.icon}{CAMED_TAB_LABELS[t.key]}</TabsTrigger>
+              <TabsTrigger key={t.key} value={t.key} className="py-2 flex-1 min-w-[7.5rem] whitespace-nowrap">{t.icon}{CAMED_TAB_LABELS[t.key]}</TabsTrigger>
             ))}
           </TabsList>
+
           {visible.includes("info") && <TabsContent value="info" className="mt-6"><InfoTab /></TabsContent>}
           {visible.includes("membros") && <TabsContent value="membros" className="mt-6"><MembersTab canManageAccess={isCamedPresident || isAdminMaster} /></TabsContent>}
           {visible.includes("noticias") && <TabsContent value="noticias" className="mt-6"><NewsTab /></TabsContent>}
