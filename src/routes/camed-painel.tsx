@@ -190,6 +190,16 @@ function InfoTab() {
             <Input type="email" placeholder="camed@exemplo.com" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} />
             <p className="text-xs text-muted-foreground mt-1">Para onde o MEDUNO envia mensagens anônimas e notificações de agendamento.</p>
           </div>
+          <div className="pt-2">
+            <ImageUpload
+              label="Imagem de fundo do cabeçalho"
+              folder="camed/hero"
+              value={info.hero_image_url ?? ""}
+              onChange={(url) => setInfo({ ...info, hero_image_url: url })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">Preenche toda a faixa verde atrás do título na página do CAMED. Use uma imagem horizontal (recomendado 1920×800).</p>
+          </div>
+
         </CardContent>
       </Card>
 
