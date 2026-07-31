@@ -80,6 +80,7 @@ export const upsertScheduleEntry = createServerFn({ method: "POST" })
       end_time: data.end_time,
       kind: data.kind,
       is_abex: data.is_abex,
+      color: data.color ?? null,
       notes: data.notes ?? null,
     };
     if (data.id) {
