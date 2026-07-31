@@ -1461,6 +1461,7 @@ export type Database = {
         Row: {
           description: string
           email: string | null
+          hero_image_url: string | null
           history_description: string | null
           history_images: Json
           history_title: string
@@ -1472,6 +1473,7 @@ export type Database = {
         Insert: {
           description?: string
           email?: string | null
+          hero_image_url?: string | null
           history_description?: string | null
           history_images?: Json
           history_title?: string
@@ -1483,6 +1485,7 @@ export type Database = {
         Update: {
           description?: string
           email?: string | null
+          hero_image_url?: string | null
           history_description?: string | null
           history_images?: Json
           history_title?: string
