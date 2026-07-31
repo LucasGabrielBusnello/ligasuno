@@ -4,15 +4,17 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { sendGmail } from "@/lib/gmail.server";
 import { hashResetCode, resetCodeEmailHtml } from "@/lib/password-reset.server";
 
-const emailSchema = z.object({ email: z.string().email().max(255) });
-
 export const requestPasswordResetCode = createServerFn({ method: "POST" })
-  .inputValidator((i: unknown) => emailSchema.parse(i))
+  .inputValidator((i: unknown) => z.object({ email: z.string().email().max(255) }).parse(i))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
 
-    const { data: prof } = await (supabaseAdmin as any)
+    const { data: prof, error: profileError } = await (supabaseAdmin as any)
       .from("profiles").select("id, email, full_name, username").ilike("email", email).maybeSingle();
+    if (profileError) {
+      console.error("password reset profile lookup failed", profileError);
+      throw new Error("Não foi possível enviar o código agora. Tente novamente.");
+    }
 
     // Resposta sempre neutra (não revela se o e-mail existe)
     if (!prof?.id) return { ok: true };
@@ -20,32 +22,36 @@ export const requestPasswordResetCode = createServerFn({ method: "POST" })
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expires = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-    await (supabaseAdmin as any).from("password_reset_codes").insert({
+    const { error: insertError } = await (supabaseAdmin as any).from("password_reset_codes").insert({
       email,
       code_hash: hashResetCode(email, code),
       expires_at: expires,
     });
+    if (insertError) {
+      console.error("password reset code insert failed", insertError);
+      throw new Error("Não foi possível gerar o código agora. Tente novamente.");
+    }
 
     try {
-      await sendGmail({
-        to: prof.email,
-        subject: `🔑 Seu código de redefinição de senha — MEDUNO`,
+      const delivery = await sendGmail({
+        to: email,
+        subject: "Seu código de redefinição de senha — MEDUNO",
         html: resetCodeEmailHtml(code, prof.full_name || prof.username || null),
       });
+      console.info("password reset email accepted", { messageId: delivery.id });
     } catch (e) {
       console.error("reset code email failed", e);
+      throw new Error("Não foi possível enviar o e-mail. Tente novamente em instantes.");
     }
     return { ok: true };
   });
 
-const confirmSchema = z.object({
-  email: z.string().email().max(255),
-  code: z.string().trim().regex(/^\d{6}$/, "Código inválido"),
-  password: z.string().min(6).max(72),
-});
-
 export const confirmPasswordResetCode = createServerFn({ method: "POST" })
-  .inputValidator((i: unknown) => confirmSchema.parse(i))
+  .inputValidator((i: unknown) => z.object({
+    email: z.string().email().max(255),
+    code: z.string().trim().regex(/^\d{6}$/, "Código inválido"),
+    password: z.string().min(6).max(72),
+  }).parse(i))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase();
     const { data: rows } = await (supabaseAdmin as any)

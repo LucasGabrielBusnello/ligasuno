@@ -40,12 +40,11 @@ export async function sendGmail(args: SendGmailArgs): Promise<{ id?: string; ski
   const lovableKey = process.env.LOVABLE_API_KEY;
   const gmailKey = process.env.GOOGLE_MAIL_API_KEY;
   if (!lovableKey || !gmailKey) {
-    console.warn("sendGmail: GOOGLE_MAIL_API_KEY ou LOVABLE_API_KEY ausentes — pulando envio");
-    return { skipped: true };
+    console.error("sendGmail: conexão do Gmail indisponível no servidor");
+    throw new Error("Serviço de e-mail indisponível. Tente novamente em instantes.");
   }
   if (!args.to || !args.to.includes("@")) {
-    console.warn("sendGmail: destinatário inválido", args.to);
-    return { skipped: true };
+    throw new Error("Destinatário de e-mail inválido.");
   }
 
   const raw = buildRawMime({ to: args.to, subject: args.subject, html: args.html });
@@ -62,11 +61,15 @@ export async function sendGmail(args: SendGmailArgs): Promise<{ id?: string; ski
   const text = await res.text();
   if (!res.ok) {
     console.error(`Gmail send failed [${res.status}]: ${text}`);
-    throw new Error(`Falha ao enviar e-mail (${res.status})`);
+    throw new Error(`Falha ao enviar e-mail (${res.status}): ${text.slice(0, 300)}`);
   }
   let json: any = {};
   try { json = JSON.parse(text); } catch {}
-  return { id: json?.id };
+  if (!json?.id) {
+    console.error(`Gmail send returned no message id: ${text}`);
+    throw new Error("O provedor não confirmou o envio do e-mail.");
+  }
+  return { id: json.id };
 }
 
 /** Envia em paralelo, ignorando falhas individuais (apenas registra). */
