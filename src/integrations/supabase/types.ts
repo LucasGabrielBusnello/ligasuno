@@ -1469,6 +1469,8 @@ export type Database = {
           subtitle: string
           title: string
           updated_at: string
+          whatsapp_apikey: string | null
+          whatsapp_phone: string | null
         }
         Insert: {
           description?: string
@@ -1481,6 +1483,8 @@ export type Database = {
           subtitle?: string
           title?: string
           updated_at?: string
+          whatsapp_apikey?: string | null
+          whatsapp_phone?: string | null
         }
         Update: {
           description?: string
@@ -1493,6 +1497,8 @@ export type Database = {
           subtitle?: string
           title?: string
           updated_at?: string
+          whatsapp_apikey?: string | null
+          whatsapp_phone?: string | null
         }
         Relationships: []
       }
@@ -3563,6 +3569,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      password_reset_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          used_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+        }
+        Relationships: []
       }
       payment_transactions: {
         Row: {
