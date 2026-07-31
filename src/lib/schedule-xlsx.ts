@@ -75,18 +75,25 @@ function classify(text: string): { kind: ParsedEntry["kind"]; is_abex: boolean }
   return { kind: "class", is_abex: false };
 }
 
+const STOPWORDS = new Set([
+  "medicina", "medica", "medicas", "medico", "saude", "curso", "ciencias", "atencao", "promocao",
+  "desenvolvimento", "lideranca", "inovacao", "digital", "primaria", "geral", "clinica",
+]);
+
 /** Casa o texto da célula com um componente curricular do cabeçalho da planilha. */
 function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
   const n = norm(text);
   let best: { name: string; score: number } | null = null;
   for (const s of catalog) {
     const sn = norm(s.name);
-    const tokens = sn.split(/[^a-z0-9]+/).filter((t) => t.length >= 4);
+    const tokens = sn.split(/[^a-z0-9]+/).filter((t) => t.length >= 5 && !STOPWORDS.has(t));
     let score = 0;
     for (const t of tokens) if (n.includes(t)) score += t.length;
-    // abreviações comuns
-    if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 10;
-    if (score > 0 && (!best || score > best.score)) best = { name: s.name, score };
+    // abreviações e nomes compostos comuns
+    if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 12;
+    if (sn.startsWith("clinica cirurgica") && n.includes("cirurgica")) score += 12;
+    if (sn.startsWith("abex") && n.includes("abex")) score += 6;
+    if (score >= 6 && (!best || score > best.score)) best = { name: s.name, score };
   }
   return best?.name ?? null;
 }
@@ -109,17 +116,26 @@ export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule>
 
   for (let i = 0; i < firstGrid; i++) {
     const r = rows[i] ?? [];
+    // datas do semestre podem estar em qualquer coluna
+    for (let c = 0; c < (r.length ?? 0); c++) {
+      const cn = norm(r[c]);
+      if (cn.includes("inicio semestre")) {
+        for (let k = c + 1; k <= c + 3; k++) { const d = toISODate(r[k]); if (d) { startDate = d; break; } }
+      }
+      if (cn.includes("termino semestre") || cn.includes("fim semestre")) {
+        for (let k = c + 1; k <= c + 3; k++) { const d = toISODate(r[k]); if (d) { endDate = d; break; } }
+      }
+    }
     const label = String(r[0] ?? "").trim();
     const n = norm(label);
-    if (n.includes("inicio semestre")) startDate = toISODate(r[2]) ?? startDate;
-    if (norm(r[4]).includes("termino semestre")) endDate = toISODate(r[6]) ?? endDate;
     if (!label || n.startsWith("codigo") || n.startsWith("cronograma") || n.startsWith("horario das aulas")) continue;
-    if (n === "janela verde") continue;
+    if (n === "janela verde" || n.includes("inicio semestre")) continue;
     const prof = r[4] ? String(r[4]).trim() : null;
     if (label.length > 3 && label === label.toUpperCase()) {
       subjects.push({ name: label.replace(/\s+/g, " "), professor: prof });
     }
   }
+
 
   // 2) blocos semanais
   const entries: ParsedEntry[] = [];
