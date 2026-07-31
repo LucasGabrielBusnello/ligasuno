@@ -243,7 +243,37 @@ export const copyScheduleWeek = createServerFn({ method: "POST" })
     return { count: rows.length };
   });
 
+/* ---------- IMPORTAÇÃO EXCEL ---------- */
+
+export const importScheduleFromSheet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({
+      class_code: z.enum(ATM_CLASSES),
+      subdivision: z.string().default("A"),
+      term_id: z.string().uuid().nullish(),
+      replace: z.boolean().default(true),
+      subjects: z.array(z.object({ name: z.string().min(1), professor: z.string().nullish() })).max(200).default([]),
+      entries: z.array(z.object({
+        date: z.string(),
+        shift: z.enum(SHIFTS),
+        start_time: z.string(),
+        end_time: z.string(),
+        kind: z.enum(KINDS),
+        is_abex: z.boolean(),
+        subject_name: z.string().nullish(),
+        notes: z.string().nullish(),
+      })).max(5000),
+    }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const { runScheduleImport } = await import("@/lib/schedule-import.server");
+    return runScheduleImport(context.supabase, context.userId, data as any);
+  });
+
 /* ---------- HOLIDAYS ---------- */
+
 
 export const listHolidays = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

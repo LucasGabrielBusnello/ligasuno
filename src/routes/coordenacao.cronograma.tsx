@@ -20,6 +20,8 @@ import {
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
 } from "@/lib/schedule.functions";
 import { listSubjects, listTerms } from "@/lib/curriculum.functions";
+import { ScheduleImportButton } from "@/components/schedule-import-dialog";
+
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 
@@ -132,6 +134,8 @@ function CoordCronograma() {
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/curriculo">Currículo</Link></Button>
             <Button asChild variant="outline" size="sm"><Link to="/coordenacao/feriados">Feriados</Link></Button>
+            <ScheduleImportButton defaultClass={classCode} termId={currentTerm?.id ?? null} onDone={reload} />
+
             <Popover open={copyOpen} onOpenChange={setCopyOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm"><Copy className="size-4" /> Copiar semana</Button>
