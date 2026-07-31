@@ -138,7 +138,7 @@ function CamedMaintenanceCard() {
 }
 
 function InfoTab() {
-  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", hero_image_url: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
+  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", hero_image_url: "", whatsapp_phone: "", whatsapp_apikey: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
   useEffect(() => {
     supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
       const d = (data as any) ?? {};
@@ -148,6 +148,8 @@ function InfoTab() {
         description: d.description ?? "",
         email: d.email ?? "",
         hero_image_url: d.hero_image_url ?? "",
+        whatsapp_phone: d.whatsapp_phone ?? "",
+        whatsapp_apikey: d.whatsapp_apikey ?? "",
 
         history_title: d.history_title ?? "Conheça a Nossa História",
         history_description: d.history_description ?? "",
@@ -163,6 +165,8 @@ function InfoTab() {
       description: info.description,
       email,
       hero_image_url: info.hero_image_url?.trim() || null,
+      whatsapp_phone: info.whatsapp_phone?.trim() || null,
+      whatsapp_apikey: info.whatsapp_apikey?.trim() || null,
 
       history_title: info.history_title || "Conheça a Nossa História",
       history_description: info.history_description || null,
@@ -171,6 +175,7 @@ function InfoTab() {
     if (error) return toast.error(error.message);
     toast.success("Informações atualizadas");
   }
+
   const images: HistoryItem[] = info.history_images ?? [];
   function setImages(next: HistoryItem[]) { setInfo({ ...info, history_images: next }); }
   function updateItem(i: number, patch: Partial<HistoryItem>) {
