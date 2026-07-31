@@ -112,7 +112,7 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
     let score = 0;
     for (const t of tokens) if (n.includes(t)) score += t.length;
     // abreviações e nomes compostos comuns
-    if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 18;
+    if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 26;
     if (sn.startsWith("clinica cirurgica") && n.includes("cirurgica")) score += 12;
     // posição no texto: o componente citado primeiro tem prioridade
     if (score > 0) {
