@@ -154,8 +154,27 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
         }
       } catch (e) { console.error(e); }
     }
+
+    // Aviso gratuito no WhatsApp do responsável (via CallMeBot, se configurado no painel)
+    const waPhone = ((info as any)?.whatsapp_phone as string | undefined)?.replace(/\D/g, "");
+    const waKey = (info as any)?.whatsapp_apikey as string | undefined;
+    if (waPhone && waKey) {
+      const text =
+        `*Novo horário marcado no CAMED*\n\n` +
+        `🗓️ ${slotAt}\n` +
+        `📍 ${data.modality}\n` +
+        `👤 ${userName}${userEmail ? ` (${userEmail})` : ""}\n` +
+        `📞 ${data.phone}\n` +
+        `📝 ${data.reason}`;
+      try {
+        const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(waPhone)}&text=${encodeURIComponent(text)}&apikey=${encodeURIComponent(waKey)}`;
+        const res = await fetch(url);
+        if (!res.ok) console.error("CallMeBot WhatsApp falhou", res.status, await res.text());
+      } catch (e) { console.error("CallMeBot WhatsApp erro", e); }
+    }
     return { ok: true };
   });
+
 
 function icsDate(d: Date) {
   return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
