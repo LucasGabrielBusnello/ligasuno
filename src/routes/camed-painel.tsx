@@ -205,6 +205,25 @@ function InfoTab() {
             <p className="text-xs text-muted-foreground mt-1">Preenche toda a faixa verde atrás do título na página do CAMED. Use uma imagem horizontal (recomendado 1920×800).</p>
           </div>
 
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-3">
+            <div>
+              <Label className="font-bold">Aviso no WhatsApp do responsável (grátis via CallMeBot)</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Como ativar: no WhatsApp do responsável, envie <strong>“I allow callmebot to send me messages”</strong> para o número
+                <strong> +34 644 51 95 23</strong>. O bot responde com uma <strong>API key</strong>. Cole o número e a chave abaixo — a cada horário marcado, o responsável recebe a mensagem automaticamente.
+              </p>
+            </div>
+            <div>
+              <Label>Número do responsável (com DDI, ex: 5549999999999)</Label>
+              <Input inputMode="numeric" placeholder="5549999999999" value={info.whatsapp_phone} onChange={(e) => setInfo({ ...info, whatsapp_phone: e.target.value })} />
+            </div>
+            <div>
+              <Label>API key do CallMeBot</Label>
+              <Input placeholder="123456" value={info.whatsapp_apikey} onChange={(e) => setInfo({ ...info, whatsapp_apikey: e.target.value })} />
+            </div>
+          </div>
+
+
         </CardContent>
       </Card>
 
