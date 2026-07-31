@@ -145,6 +145,7 @@ export const bulkCreateScheduleEntries = createServerFn({ method: "POST" })
       end_time: z.string(),
       kind: z.enum(KINDS).default("class"),
       is_abex: z.boolean().default(false),
+      color: z.string().nullish(),
       dates: z.array(z.string()).min(1),
       term_id: z.string().uuid().nullish(),
     }).parse(v)
@@ -162,6 +163,7 @@ export const bulkCreateScheduleEntries = createServerFn({ method: "POST" })
       end_time: data.end_time,
       kind: data.kind,
       is_abex: data.is_abex,
+      color: data.color ?? null,
       created_by: context.userId,
     }));
     const { error } = await context.supabase.from("schedule_entries").insert(rows);
