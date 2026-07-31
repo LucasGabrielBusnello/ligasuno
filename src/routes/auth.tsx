@@ -12,7 +12,10 @@ import { toast } from "sonner";
 import { ArrowLeft, GraduationCap, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { z } from "zod";
 import { sendWelcomeEmailForUser } from "@/lib/registration.functions";
+import { requestPasswordResetCode, confirmPasswordResetCode } from "@/lib/password-reset.functions";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { formatBRPhone, isValidBRPhone, normalizePhone } from "@/lib/phone";
+
 
 function PasswordInput({ id, value, onChange, autoComplete, required }: { id: string; value: string; onChange: (v: string) => void; autoComplete?: string; required?: boolean }) {
   const [show, setShow] = useState(false);
