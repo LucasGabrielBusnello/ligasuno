@@ -60,6 +60,7 @@ const entryInput = z.object({
   end_time: z.string(),
   kind: z.enum(KINDS).default("class"),
   is_abex: z.boolean().default(false),
+  color: z.string().nullish(),
   notes: z.string().nullish(),
 });
 
