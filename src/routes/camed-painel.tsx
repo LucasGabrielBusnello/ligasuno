@@ -147,6 +147,8 @@ function InfoTab() {
         subtitle: d.subtitle ?? "",
         description: d.description ?? "",
         email: d.email ?? "",
+        hero_image_url: d.hero_image_url ?? "",
+
         history_title: d.history_title ?? "Conheça a Nossa História",
         history_description: d.history_description ?? "",
         history_images: normalizeHistory(d.history_images),
