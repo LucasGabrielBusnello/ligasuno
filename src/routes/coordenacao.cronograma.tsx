@@ -20,6 +20,8 @@ import {
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
 } from "@/lib/schedule.functions";
 import { listSubjects, listTerms } from "@/lib/curriculum.functions";
+import { ScheduleImportButton } from "@/components/schedule-import-dialog";
+
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 
