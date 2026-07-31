@@ -138,7 +138,7 @@ function CamedMaintenanceCard() {
 }
 
 function InfoTab() {
-  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
+  const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", hero_image_url: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
   useEffect(() => {
     supabase.from("camed_info").select("*").eq("id", 1).maybeSingle().then(({ data }) => {
       const d = (data as any) ?? {};
