@@ -14,8 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarPlus, Sparkles, Repeat, Copy, AlertTriangle } from "lucide-react";
 import {
-  ScheduleGrid, ScheduleLegend, DEFAULT_SHIFT_TIMES, SHIFT_LABEL, getMonday, toISODate, type Shift,
-} from "@/components/schedule-grid";
+  ScheduleGrid, ScheduleLegend, DEFAULT_SHIFT_TIMES, SHIFT_LABEL, getMonday, toISODate, type Shift,, DEFAULT_KIND_COLORS } from "@/components/schedule-grid";
 import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
@@ -308,6 +307,8 @@ function EntryDialog({
     setStart((e?.start_time ?? ds).slice(0, 5));
     setEnd((e?.end_time ?? de).slice(0, 5));
     setKind((e?.kind && e.kind !== "green_zone" && e.kind !== "abex" ? e.kind : "class") as any);
+    setColor((e?.color as string) ?? DEFAULT_KIND_COLORS[(e?.kind as string) ?? "class"] ?? DEFAULT_KIND_COLORS.class);
+    setCustomColor(!!e?.color);
   }, [state.open, editing, state.date, state.shift]);
 
   const filteredSubjects = useMemo(
@@ -325,7 +326,7 @@ function EntryDialog({
       await save({ data: {
         id: editing?.id, class_code: classCode as any, subject_id: subjectId || null,
         subdivision: subdivision || "A", date, shift, start_time: start, end_time: end,
-        kind: kind as any, is_abex: false, notes: null,
+        kind: kind as any, is_abex: false, color: customColor ? color : null, notes: null,
       }});
       toast.success("Salvo"); onSaved();
     } catch (e: any) { toast.error(e.message); }
@@ -387,6 +388,30 @@ function EntryDialog({
                 <SelectItem value="exam">Avaliação</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="rounded-lg border border-border/60 p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="mb-0">Cor no cronograma</Label>
+              <label className="flex items-center gap-2 text-xs font-semibold">
+                <input type="checkbox" checked={customColor} onChange={(e) => {
+                  setCustomColor(e.target.checked);
+                  if (!e.target.checked) setColor(DEFAULT_KIND_COLORS[kind] ?? DEFAULT_KIND_COLORS.class);
+                }} />
+                Personalizar
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="color" disabled={!customColor} value={color} onChange={(e) => setColor(e.target.value)}
+                className="h-9 w-14 rounded border border-border/60 bg-transparent disabled:opacity-50" />
+              <div className="flex flex-wrap gap-1.5">
+                {["#0f766e", "#7c3aed", "#dc2626", "#65a30d", "#0284c7", "#d97706", "#db2777", "#475569"].map((c) => (
+                  <button key={c} type="button" disabled={!customColor} onClick={() => setColor(c)}
+                    className="size-6 rounded-full border-2 disabled:opacity-40"
+                    style={{ background: c, borderColor: color === c ? "#fff" : "transparent", outline: color === c ? `2px solid ${c}` : "none" }} />
+                ))}
+              </div>
+            </div>
+            {!customColor && <p className="text-[11px] text-muted-foreground">Usando a cor padrão do tipo selecionado.</p>}
           </div>
         </div>
         <DialogFooter>
