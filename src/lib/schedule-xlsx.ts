@@ -103,8 +103,28 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
   const n = norm(text);
   const profs = professorsIn(text);
 
-  // 1) ABEX: existem dois componentes distintos (Atenção Primária x Saúde Digital/Liziane).
-  if (n.includes("abex")) {
+  // pontuação genérica (ignorando ABEX, tratado à parte)
+  let best: { name: string; score: number } | null = null;
+  for (const s of catalog) {
+    const sn = norm(s.name);
+    if (sn.startsWith("abex")) continue;
+    const tokens = sn.split(/[^a-z0-9]+/).filter((t) => t.length >= 5 && !STOPWORDS.has(t));
+    let score = 0;
+    for (const t of tokens) if (n.includes(t)) score += t.length;
+    // abreviações e nomes compostos comuns
+    if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 18;
+    if (sn.startsWith("clinica cirurgica") && n.includes("cirurgica")) score += 12;
+    // posição no texto: o componente citado primeiro tem prioridade
+    if (score > 0) {
+      const first = tokens.map((t) => n.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 99;
+      score += Math.max(0, 10 - first / 4);
+    }
+    if (score >= 6 && (!best || score > best.score)) best = { name: s.name, score };
+  }
+
+  // ABEX: existem dois componentes distintos (Atenção Primária x Saúde Digital).
+  const abexLeads = /^(pratica\s+)?abex\b|^abex/.test(n);
+  if (n.includes("abex") && (abexLeads || !best)) {
     const abexSubjects = catalog.filter((s) => norm(s.name).startsWith("abex"));
     if (abexSubjects.length) {
       // desempate pelo professor citado na célula
@@ -124,7 +144,7 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
     }
   }
 
-  // 2) desempate direto por professor para as demais matérias
+  // desempate direto por professor para as demais matérias
   if (profs.length) {
     for (const s of catalog) {
       const sp = norm(s.professor ?? "");
@@ -134,20 +154,9 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
     }
   }
 
-  let best: { name: string; score: number } | null = null;
-  for (const s of catalog) {
-    const sn = norm(s.name);
-    if (sn.startsWith("abex")) continue;
-    const tokens = sn.split(/[^a-z0-9]+/).filter((t) => t.length >= 5 && !STOPWORDS.has(t));
-    let score = 0;
-    for (const t of tokens) if (n.includes(t)) score += t.length;
-    // abreviações e nomes compostos comuns
-    if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 12;
-    if (sn.startsWith("clinica cirurgica") && n.includes("cirurgica")) score += 12;
-    if (score >= 6 && (!best || score > best.score)) best = { name: s.name, score };
-  }
   return best?.name ?? null;
 }
+
 
 
 export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule> {
