@@ -12,6 +12,7 @@ export type ScheduleEntry = {
   end_time: string;
   kind: "class" | "practice" | "exam" | "green_zone" | "abex";
   is_abex?: boolean;
+  color?: string | null;
   notes?: string | null;
   rescheduled_from_entry_id?: string | null;
   rescheduled_to_date?: string | null;
