@@ -347,7 +347,7 @@ function AnonymousMessageDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg" className="bg-white text-emerald-900 hover:bg-white/90">
+        <Button size="lg" variant="outline" className="border-emerald-700/40 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40">
           <MessageSquare className="size-4 mr-1.5" /> Mensagem anônima
         </Button>
       </DialogTrigger>
