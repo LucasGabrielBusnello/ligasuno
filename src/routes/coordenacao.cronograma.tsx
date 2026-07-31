@@ -415,6 +415,52 @@ function EntryDialog({
               </SelectContent>
             </Select>
           </div>
+          {showGroups && (
+            <div className="rounded-lg border border-border/60 p-3 space-y-2">
+              <Label className="mb-0">Turmas com prática neste turno</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {groups.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">Nenhuma turma cadastrada para {classCode}.</p>
+                )}
+                {groups.map((g) => {
+                  const on = selectedGroups.includes(g.letter);
+                  return (
+                    <span key={g.id} className="inline-flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedGroups((prev) => on ? prev.filter((l) => l !== g.letter) : [...prev, g.letter])}
+                        className={`rounded-l-md border px-2.5 py-1 text-xs font-bold ${on ? "bg-emerald-600 text-white border-emerald-600" : "border-border/60 text-muted-foreground"}`}
+                      >
+                        {g.letter}
+                      </button>
+                      <button
+                        type="button"
+                        title="Remover turma"
+                        onClick={async () => {
+                          await delGroup({ data: { id: g.id } });
+                          setSelectedGroups((prev) => prev.filter((l) => l !== g.letter));
+                          refreshGroups();
+                        }}
+                        className="rounded-r-md border border-l-0 border-border/60 px-1.5 py-1 text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2">
+                <Input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Nova turma (ex.: A)" className="h-8" />
+                <Button size="sm" variant="outline" onClick={async () => {
+                  const letter = newGroup.trim().toUpperCase();
+                  if (!letter) return;
+                  try { await addGroup({ data: { class_code: classCode as any, letter } }); setNewGroup(""); refreshGroups(); }
+                  catch (e: any) { toast.error(e.message); }
+                }}>Adicionar</Button>
+              </div>
+            </div>
+          )}
+
           <div className="rounded-lg border border-border/60 p-3 space-y-2">
             <div className="flex items-center justify-between">
               <Label className="mb-0">Cor no cronograma</Label>
