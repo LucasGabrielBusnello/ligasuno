@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3, BookOpen, Wrench } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3, BookOpen, Wrench, ScrollText } from "lucide-react";
 import { CurriculumAdmin } from "@/components/curriculum-admin";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Legend } from "recharts";
 
@@ -20,6 +20,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscription.functions";
 import { ImageUpload } from "@/components/image-upload";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
+import { LOG_CATEGORY_LABEL } from "@/lib/activity-log";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -45,12 +46,13 @@ function AdminPage() {
         <h1 className="text-3xl md:text-4xl font-black mb-8">Painel ADMIN</h1>
         <Tabs defaultValue="ligas">
           <div className="w-full overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-            <TabsList className="inline-flex md:grid md:grid-cols-9 w-max md:w-full h-auto gap-1">
+            <TabsList className="inline-flex md:grid md:grid-cols-10 w-max md:w-full h-auto gap-1">
               <TabsTrigger value="ligas" className="whitespace-nowrap"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
               <TabsTrigger value="camed" className="whitespace-nowrap"><Users className="size-4 mr-1.5" />CAMED</TabsTrigger>
               <TabsTrigger value="coord" className="whitespace-nowrap"><UserCog className="size-4 mr-1.5" />Coordenação</TabsTrigger>
               <TabsTrigger value="curriculo" className="whitespace-nowrap"><BookOpen className="size-4 mr-1.5" />Currículo</TabsTrigger>
               <TabsTrigger value="ads" className="whitespace-nowrap"><Megaphone className="size-4 mr-1.5" />Anúncios</TabsTrigger>
+              <TabsTrigger value="logs" className="whitespace-nowrap"><ScrollText className="size-4 mr-1.5" />Logs</TabsTrigger>
               <TabsTrigger value="visitas" className="whitespace-nowrap"><BarChart3 className="size-4 mr-1.5" />Visitas</TabsTrigger>
               <TabsTrigger value="usuarios" className="whitespace-nowrap"><UserIcon className="size-4 mr-1.5" />Usuários</TabsTrigger>
               <TabsTrigger value="manutencao" className="whitespace-nowrap"><Wrench className="size-4 mr-1.5" />Manutenção</TabsTrigger>
@@ -62,6 +64,7 @@ function AdminPage() {
           <TabsContent value="coord" className="mt-6"><CoordinationAdmin /></TabsContent>
           <TabsContent value="curriculo" className="mt-6"><CurriculumAdmin /></TabsContent>
           <TabsContent value="ads" className="mt-6"><AdsAdmin /></TabsContent>
+          <TabsContent value="logs" className="mt-6"><LogsAdmin /></TabsContent>
           <TabsContent value="visitas" className="mt-6"><VisitsAdmin /></TabsContent>
           <TabsContent value="usuarios" className="mt-6"><UsersAdmin /></TabsContent>
           <TabsContent value="manutencao" className="mt-6"><MaintenanceAdmin /></TabsContent>
@@ -1111,3 +1114,107 @@ function MaintenanceAdmin() {
   );
 }
 
+
+/* ---------- LOGS ---------- */
+type LogRow = {
+  id: string;
+  created_at: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_name: string | null;
+  category: string;
+  action: string;
+  target: string | null;
+  details: any;
+  path: string | null;
+};
+
+function LogsAdmin() {
+  const [rows, setRows] = useState<LogRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<string>("todas");
+  const [q, setQ] = useState("");
+  const [limit, setLimit] = useState(200);
+
+  const load = async () => {
+    setLoading(true);
+    let query = (supabase as any)
+      .from("activity_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (category !== "todas") query = query.eq("category", category);
+    const { data, error } = await query;
+    if (error) toast.error(error.message);
+    setRows((data ?? []) as LogRow[]);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [category, limit]);
+
+  const filtered = rows.filter((r) => {
+    if (!q.trim()) return true;
+    const hay = [r.user_name, r.user_email, r.action, r.target, r.path, JSON.stringify(r.details)]
+      .join(" ").toLowerCase();
+    return hay.includes(q.trim().toLowerCase());
+  });
+
+  const cats = ["todas", ...Object.keys(LOG_CATEGORY_LABEL)];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><ScrollText className="size-5" /> Logs do site</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-2 items-center">
+          <Input
+            placeholder="Buscar por usuário, ação, página…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="max-w-xs"
+          />
+          <div className="flex flex-wrap gap-1">
+            {cats.map((c) => (
+              <Button
+                key={c}
+                size="sm"
+                variant={category === c ? "default" : "outline"}
+                onClick={() => setCategory(c)}
+              >
+                {c === "todas" ? "Todas" : LOG_CATEGORY_LABEL[c]}
+              </Button>
+            ))}
+          </div>
+          <Button size="sm" variant="ghost" onClick={load} className="ml-auto">Atualizar</Button>
+          <Button size="sm" variant="outline" onClick={() => setLimit((l) => l + 200)}>Carregar mais</Button>
+        </div>
+
+        {loading && <p className="text-sm text-muted-foreground">Carregando…</p>}
+        {!loading && filtered.length === 0 && <p className="text-sm text-muted-foreground">Nenhum log encontrado.</p>}
+
+        <div className="space-y-2 max-h-[70vh] overflow-y-auto">
+          {filtered.map((r) => (
+            <div key={r.id} className="rounded-lg border border-border/60 p-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{LOG_CATEGORY_LABEL[r.category] ?? r.category}</Badge>
+                <span className="font-semibold">
+                  {r.user_name || r.user_email || "Visitante não identificado"}
+                </span>
+                <span>{r.action}</span>
+                {r.target && <span className="text-muted-foreground truncate">· {r.target}</span>}
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {new Date(r.created_at).toLocaleString("pt-BR")}
+                </span>
+              </div>
+              <div className="mt-1 text-xs text-muted-foreground break-all">
+                {r.user_email && <>{r.user_email} · </>}
+                {r.path && <>página {r.path} · </>}
+                {r.details && Object.keys(r.details).length > 0 && JSON.stringify(r.details)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
