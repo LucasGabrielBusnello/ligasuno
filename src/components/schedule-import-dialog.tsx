@@ -28,15 +28,25 @@ export function ScheduleImportButton({
   const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
   const [subjects, setSubjects] = useState<ParsedSubject[]>([]);
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
-  const [groups, setGroups] = useState<string[]>([]);
-  const [newGroup, setNewGroup] = useState("");
+  const [groupDraft, setGroupDraft] = useState<Record<number, string>>({});
   const [step, setStep] = useState<1 | 2>(1);
   const [classCode, setClassCode] = useState(defaultClass);
   const [subdivision, setSubdivision] = useState("A");
   const [replace, setReplace] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  const reset = () => { setParsed(null); setStep(1); setNewGroup(""); };
+  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); };
+
+  const addGroupTo = (i: number) => {
+    const letter = (groupDraft[i] ?? "").trim().toUpperCase();
+    if (!letter) return;
+    setSubjects((prev) => prev.map((x, idx) => {
+      if (idx !== i) return x;
+      const cur = x.groups?.length ? x.groups : ["A"];
+      return { ...x, groups: [...new Set([...cur, letter])].sort() };
+    }));
+    setGroupDraft((p) => ({ ...p, [i]: "" }));
+  };
 
   const onFile = async (f: File) => {
     try {
@@ -47,9 +57,8 @@ export function ScheduleImportButton({
         return;
       }
       setClassCode(defaultClass);
-      setSubjects(p.subjects.map((s) => ({ ...s })));
+      setSubjects(p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] })));
       setEntries(p.entries.map((e) => ({ ...e })));
-      setGroups(p.groups.length ? p.groups : ["A", "B"]);
       setStep(1);
       setParsed(p);
     } catch (e: any) {
@@ -79,14 +88,18 @@ export function ScheduleImportButton({
   const confirm = async () => {
     try {
       setBusy(true);
-      const cleanGroups = [...new Set(groups.map((g) => g.trim().toUpperCase()).filter(Boolean))];
+      const cleanGroups = [...new Set(subjects.flatMap((s) => s.groups ?? ["A"]).map((g) => g.trim().toUpperCase()).filter(Boolean))];
       const r: any = await importFn({
         data: {
           class_code: classCode as any,
           subdivision,
           term_id: termId ?? null,
           replace,
-          subjects: subjects.filter((s) => s.name.trim()),
+          subjects: subjects.filter((s) => s.name.trim()).map((s) => ({
+            name: s.name,
+            professor: s.professor ?? null,
+            groups: s.groups?.length ? s.groups : ["A"],
+          })),
           groups: cleanGroups,
           entries: entries.map((e) => ({
             date: e.date,
@@ -243,7 +256,7 @@ export function ScheduleImportButton({
               </div>
 
               <div className="rounded-lg border p-3 space-y-1 text-muted-foreground">
-                <p><b className="text-foreground">{subjects.length}</b> componentes · <b className="text-foreground">{groups.join(", ") || "—"}</b> turmas · <b className="text-foreground">{entries.length}</b> atividades</p>
+                <p><b className="text-foreground">{subjects.length}</b> componentes · <b className="text-foreground">{[...new Set(subjects.flatMap((s) => s.groups ?? ["A"]))].sort().join(", ") || "—"}</b> turmas · <b className="text-foreground">{entries.length}</b> atividades</p>
                 {unresolved > 0 && (
                   <p className="text-amber-600 dark:text-amber-400">
                     {unresolved} prática(s)/ABEX ficarão pendentes de definição de turma.
