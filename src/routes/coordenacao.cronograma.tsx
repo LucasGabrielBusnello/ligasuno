@@ -268,6 +268,7 @@ function CoordCronograma() {
         subjects={subjects}
         classCode={classCode}
         onSaved={() => { setEntryDialog({ open: false }); reload(); }}
+        onSubjectsChanged={reload}
       />
       <BulkDialog
         open={bulkOpen}
