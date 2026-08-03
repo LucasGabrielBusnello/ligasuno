@@ -818,7 +818,7 @@ function UnlinkedSubjectPanel({ classCode, subjects, reloadKey, onChanged }: {
     for (const r of rows) {
       const label = (r.notes?.trim() || "").replace(/\s+/g, " ");
       const key = `${r.kind}|${r.is_abex ? 1 : 0}|${label.toLowerCase()}|${String(r.start_time).slice(0, 5)}`;
-      const g = map.get(key) ?? { key, label: label || (r.is_abex ? "ABEX" : r.kind), kind: r.kind, ids: [], dates: [] };
+      const g = map.get(key) ?? { key, label: label || (r.is_abex ? "ABEX" : r.kind), kind: r.kind, ids: [] as string[], dates: [] as string[] };
       g.ids.push(r.id);
       g.dates.push(r.date);
       map.set(key, g);
