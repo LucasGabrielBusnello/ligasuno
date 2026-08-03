@@ -293,3 +293,46 @@ export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule>
   const groups = [...new Set(entries.flatMap((e) => e.practice_groups ?? []))].sort();
   return { subjects, entries, groups, startDate, endDate, title };
 }
+
+/** Junta vários cronogramas lidos (Excel e/ou PDF) num único conjunto sem duplicar. */
+export function mergeParsedSchedules(parts: ParsedSchedule[]): ParsedSchedule {
+  const subjects: ParsedSubject[] = [];
+  const subjIdx = new Map<string, number>();
+  const entries: ParsedEntry[] = [];
+  const seen = new Set<string>();
+  let title: string | null = null;
+
+  for (const p of parts) {
+    if (!title && p.title) title = p.title;
+    for (const s of p.subjects) {
+      const key = s.name.trim().toLowerCase();
+      if (!key) continue;
+      const i = subjIdx.get(key);
+      if (i === undefined) {
+        subjIdx.set(key, subjects.length);
+        subjects.push({ ...s, groups: s.groups?.length ? [...s.groups] : ["A"] });
+      } else {
+        const cur = subjects[i];
+        if (!cur.professor && s.professor) cur.professor = s.professor;
+        cur.groups = [...new Set([...(cur.groups ?? ["A"]), ...(s.groups ?? [])])].sort();
+      }
+    }
+    for (const e of p.entries) {
+      const key = `${e.date}|${e.shift}|${(e.notes ?? "").trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      entries.push({ ...e });
+    }
+  }
+
+  entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  const groups = [...new Set(entries.flatMap((e) => e.practice_groups ?? []))].sort();
+  return {
+    subjects,
+    entries,
+    groups,
+    startDate: entries[0]?.date ?? null,
+    endDate: entries[entries.length - 1]?.date ?? null,
+    title,
+  };
+}

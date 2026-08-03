@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Upload, Loader2, Trash2, Plus, AlertTriangle, Sparkles } from "lucide-react";
-import { parseScheduleWorkbook, type ParsedSchedule, type ParsedEntry, type ParsedSubject } from "@/lib/schedule-xlsx";
+import { Upload, Loader2, Trash2, Plus, AlertTriangle, Sparkles, FileText, FileSpreadsheet } from "lucide-react";
+import { parseScheduleWorkbook, mergeParsedSchedules, type ParsedSchedule, type ParsedEntry, type ParsedSubject } from "@/lib/schedule-xlsx";
+import { extractPdfText } from "@/lib/schedule-pdf";
 import { importScheduleFromSheet } from "@/lib/schedule.functions";
 import { refineScheduleWithAI } from "@/lib/schedule-ai.functions";
+import { parseScheduleFromPdfText } from "@/lib/schedule-pdf-ai.functions";
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 const SHIFT_LABEL: Record<string, string> = { morning: "Manhã", afternoon: "Tarde", night: "Noite" };
@@ -27,7 +29,10 @@ export function ScheduleImportButton({
   const fileRef = useRef<HTMLInputElement>(null);
   const importFn = useServerFn(importScheduleFromSheet);
   const aiFn = useServerFn(refineScheduleWithAI);
+  const pdfFn = useServerFn(parseScheduleFromPdfText);
   const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
+  const [files, setFiles] = useState<{ name: string; type: "xlsx" | "pdf"; entries: number; warning?: string }[]>([]);
+  const [reading, setReading] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<ParsedSubject[]>([]);
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
   const [groupDraft, setGroupDraft] = useState<Record<number, string>>({});
@@ -39,7 +44,7 @@ export function ScheduleImportButton({
   const [aiBusy, setAiBusy] = useState(false);
   const [aiDone, setAiDone] = useState(false);
 
-  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); setAiDone(false); };
+  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); setAiDone(false); setFiles([]); setReading(null); };
 
   /** Envia as células ambíguas para a IA e aplica as correções. */
   const runAI = async (
@@ -114,30 +119,76 @@ export function ScheduleImportButton({
     setGroupDraft((p) => ({ ...p, [i]: "" }));
   };
 
-  const onFile = async (f: File) => {
+  const onFiles = async (list: File[]) => {
+    const parts: ParsedSchedule[] = [];
+    const info: { name: string; type: "xlsx" | "pdf"; entries: number; warning?: string }[] = [];
     try {
       setBusy(true);
-      const p = await parseScheduleWorkbook(f);
-      if (!p.entries.length) {
-        toast.error("Nenhuma aula encontrada na planilha.");
+      for (const f of list) {
+        const isPdf = /\.pdf$/i.test(f.name) || f.type === "application/pdf";
+        setReading(f.name);
+        try {
+          if (isPdf) {
+            const text = await extractPdfText(f);
+            if (text.replace(/\s/g, "").length < 40) {
+              info.push({ name: f.name, type: "pdf", entries: 0, warning: "PDF sem texto (provavelmente digitalizado). Envie o Excel." });
+              continue;
+            }
+            const r: any = await pdfFn({ data: { text: text.slice(0, 200000) } });
+            const p: ParsedSchedule = {
+              subjects: (r.subjects ?? []).map((s: any) => ({ name: s.name, professor: s.professor ?? null, groups: s.groups?.length ? s.groups : ["A"] })),
+              entries: r.entries ?? [],
+              groups: [],
+              startDate: null,
+              endDate: null,
+              title: r.title ?? null,
+            };
+            parts.push(p);
+            info.push({
+              name: f.name,
+              type: "pdf",
+              entries: p.entries.length,
+              warning: p.entries.length ? undefined : "Nenhuma atividade reconhecida no PDF.",
+            });
+          } else {
+            const p = await parseScheduleWorkbook(f);
+            parts.push(p);
+            info.push({
+              name: f.name,
+              type: "xlsx",
+              entries: p.entries.length,
+              warning: p.entries.length ? undefined : "Nenhuma aula encontrada na planilha.",
+            });
+          }
+        } catch (err: any) {
+          info.push({ name: f.name, type: isPdf ? "pdf" : "xlsx", entries: 0, warning: err?.message ?? "Falha ao ler o arquivo." });
+        }
+      }
+
+      setFiles(info);
+      const merged = mergeParsedSchedules(parts);
+      if (!merged.entries.length) {
+        toast.error("Nenhuma aula encontrada nos arquivos enviados.");
         return;
       }
       setClassCode(defaultClass);
-      const subs = p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] }));
-      const ents = p.entries.map((e) => ({ ...e }));
+      const subs = merged.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] }));
+      const ents = merged.entries.map((e) => ({ ...e }));
       setSubjects(subs);
       setEntries(ents);
       setStep(1);
-      setParsed(p);
+      setParsed(merged);
       setAiDone(false);
       void runAI(subs, ents);
     } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao ler a planilha");
+      toast.error(e?.message ?? "Falha ao ler os arquivos");
     } finally {
+      setReading(null);
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
 
   const renameSubject = (i: number, name: string) => {
     const old = subjects[i].name;
@@ -201,13 +252,16 @@ export function ScheduleImportButton({
       <input
         ref={fileRef}
         type="file"
-        accept=".xlsx,.xls"
+        multiple
+        accept=".xlsx,.xls,.pdf"
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+        onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) onFiles(fs); }}
       />
       <Button variant="outline" size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-        {busy && !parsed ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Importar Excel
+        {busy && !parsed ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+        {busy && !parsed ? (reading ? `Lendo ${reading}…` : "Lendo arquivos…") : "Importar cronograma"}
       </Button>
+
 
       <Dialog open={!!parsed} onOpenChange={(o) => !o && reset()}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -223,6 +277,24 @@ export function ScheduleImportButton({
               <p className="text-muted-foreground">
                 Revise e corrija o que o site identificou. A distribuição das aulas por turma só é feita depois que você confirmar.
               </p>
+
+              {files.length > 0 && (
+                <div className="rounded-lg border divide-y">
+                  {files.map((f) => (
+                    <div key={f.name} className="flex items-start gap-2 p-2">
+                      {f.type === "pdf" ? <FileText className="size-4 mt-0.5 shrink-0 text-muted-foreground" /> : <FileSpreadsheet className="size-4 mt-0.5 shrink-0 text-muted-foreground" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{f.name}</p>
+                        <p className={f.warning ? "text-amber-600 dark:text-amber-400 text-xs" : "text-muted-foreground text-xs"}>
+                          {f.warning ?? `${f.entries} atividade(s) lidas`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+
 
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
                 <Sparkles className="size-4 text-emerald-500" />
