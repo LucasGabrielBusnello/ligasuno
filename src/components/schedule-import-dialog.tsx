@@ -29,7 +29,10 @@ export function ScheduleImportButton({
   const fileRef = useRef<HTMLInputElement>(null);
   const importFn = useServerFn(importScheduleFromSheet);
   const aiFn = useServerFn(refineScheduleWithAI);
+  const pdfFn = useServerFn(parseScheduleFromPdfText);
   const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
+  const [files, setFiles] = useState<{ name: string; type: "xlsx" | "pdf"; entries: number; warning?: string }[]>([]);
+  const [reading, setReading] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<ParsedSubject[]>([]);
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
   const [groupDraft, setGroupDraft] = useState<Record<number, string>>({});
@@ -41,7 +44,7 @@ export function ScheduleImportButton({
   const [aiBusy, setAiBusy] = useState(false);
   const [aiDone, setAiDone] = useState(false);
 
-  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); setAiDone(false); };
+  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); setAiDone(false); setFiles([]); setReading(null); };
 
   /** Envia as células ambíguas para a IA e aplica as correções. */
   const runAI = async (
