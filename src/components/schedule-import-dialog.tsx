@@ -119,30 +119,76 @@ export function ScheduleImportButton({
     setGroupDraft((p) => ({ ...p, [i]: "" }));
   };
 
-  const onFile = async (f: File) => {
+  const onFiles = async (list: File[]) => {
+    const parts: ParsedSchedule[] = [];
+    const info: { name: string; type: "xlsx" | "pdf"; entries: number; warning?: string }[] = [];
     try {
       setBusy(true);
-      const p = await parseScheduleWorkbook(f);
-      if (!p.entries.length) {
-        toast.error("Nenhuma aula encontrada na planilha.");
+      for (const f of list) {
+        const isPdf = /\.pdf$/i.test(f.name) || f.type === "application/pdf";
+        setReading(f.name);
+        try {
+          if (isPdf) {
+            const text = await extractPdfText(f);
+            if (text.replace(/\s/g, "").length < 40) {
+              info.push({ name: f.name, type: "pdf", entries: 0, warning: "PDF sem texto (provavelmente digitalizado). Envie o Excel." });
+              continue;
+            }
+            const r: any = await pdfFn({ data: { text: text.slice(0, 200000) } });
+            const p: ParsedSchedule = {
+              subjects: (r.subjects ?? []).map((s: any) => ({ name: s.name, professor: s.professor ?? null, groups: s.groups?.length ? s.groups : ["A"] })),
+              entries: r.entries ?? [],
+              groups: [],
+              startDate: null,
+              endDate: null,
+              title: r.title ?? null,
+            };
+            parts.push(p);
+            info.push({
+              name: f.name,
+              type: "pdf",
+              entries: p.entries.length,
+              warning: p.entries.length ? undefined : "Nenhuma atividade reconhecida no PDF.",
+            });
+          } else {
+            const p = await parseScheduleWorkbook(f);
+            parts.push(p);
+            info.push({
+              name: f.name,
+              type: "xlsx",
+              entries: p.entries.length,
+              warning: p.entries.length ? undefined : "Nenhuma aula encontrada na planilha.",
+            });
+          }
+        } catch (err: any) {
+          info.push({ name: f.name, type: isPdf ? "pdf" : "xlsx", entries: 0, warning: err?.message ?? "Falha ao ler o arquivo." });
+        }
+      }
+
+      setFiles(info);
+      const merged = mergeParsedSchedules(parts);
+      if (!merged.entries.length) {
+        toast.error("Nenhuma aula encontrada nos arquivos enviados.");
         return;
       }
       setClassCode(defaultClass);
-      const subs = p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] }));
-      const ents = p.entries.map((e) => ({ ...e }));
+      const subs = merged.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] }));
+      const ents = merged.entries.map((e) => ({ ...e }));
       setSubjects(subs);
       setEntries(ents);
       setStep(1);
-      setParsed(p);
+      setParsed(merged);
       setAiDone(false);
       void runAI(subs, ents);
     } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao ler a planilha");
+      toast.error(e?.message ?? "Falha ao ler os arquivos");
     } finally {
+      setReading(null);
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
+
 
   const renameSubject = (i: number, name: string) => {
     const old = subjects[i].name;
