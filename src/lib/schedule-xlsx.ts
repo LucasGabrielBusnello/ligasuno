@@ -15,7 +15,7 @@ export type ParsedEntry = {
   practice_groups: string[] | null;
 };
 
-export type ParsedSubject = { name: string; professor: string | null };
+export type ParsedSubject = { name: string; professor: string | null; groups?: string[] };
 
 export type ParsedSchedule = {
   subjects: ParsedSubject[];
