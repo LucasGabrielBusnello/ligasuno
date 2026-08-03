@@ -98,13 +98,31 @@ function professorsIn(text: string): string[] {
   return out;
 }
 
+/** Escolhe entre os dois componentes ABEX por regras explícitas de padrão de texto. */
+function pickAbex(n: string, catalog: ParsedSubject[], profs: string[]): string | null {
+  const abexSubjects = catalog.filter((s) => norm(s.name).startsWith("abex"));
+  if (!abexSubjects.length) return null;
+  const digital = abexSubjects.find((s) => /digital|lideranca|inovacao/.test(norm(s.name)));
+  const primary = abexSubjects.find((s) => s !== digital) ?? abexSubjects[0];
+
+  // 1) professor citado na célula bate com a lista de professores do componente
+  for (const s of abexSubjects) {
+    const sp = norm(s.professor ?? "");
+    if (sp && profs.some((p) => p.length >= 4 && sp.includes(p))) return s.name;
+  }
+  // 2) padrões de campo (prática/grupos/duplas/Coronel/relatório) → Atenção Primária
+  if (/pratica|grupo|dupla|coronel|campo|ubs|relatorio|visita/.test(n)) return primary.name;
+  // 3) "Abex" sozinho, teórico/sala → Saúde Digital
+  return (digital ?? primary).name;
+}
+
 /** Casa o texto da célula com um componente curricular do cabeçalho da planilha. */
 function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
   const n = norm(text);
   const profs = professorsIn(text);
 
   // pontuação genérica (ignorando ABEX, tratado à parte)
-  let best: { name: string; score: number } | null = null;
+  let best: { name: string; score: number; first: number } | null = null;
   for (const s of catalog) {
     const sn = norm(s.name);
     if (sn.startsWith("abex")) continue;
@@ -114,39 +132,23 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
     // abreviações e nomes compostos comuns
     if (sn.startsWith("medicina de familia") && /\bmfc\b/.test(n)) score += 26;
     if (sn.startsWith("clinica cirurgica") && n.includes("cirurgica")) score += 12;
-    // posição no texto: o componente citado primeiro tem prioridade
+    let first = 99;
     if (score > 0) {
-      const first = tokens.map((t) => n.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 99;
+      first = tokens.map((t) => n.indexOf(t)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? 99;
       score += Math.max(0, 10 - first / 4);
     }
-    if (score >= 6 && (!best || score > best.score)) best = { name: s.name, score };
+    if (score >= 6 && (!best || score > best.score)) best = { name: s.name, score, first };
   }
 
-  // ABEX: existem dois componentes distintos (Atenção Primária x Saúde Digital).
-  const abexLeads = /^(pratica\s+)?abex\b|^abex/.test(n);
-  if (n.includes("abex") && (abexLeads || !best)) {
-    const abexSubjects = catalog.filter((s) => norm(s.name).startsWith("abex"));
-    if (abexSubjects.length) {
-      // desempate pelo professor citado na célula
-      if (profs.length) {
-        for (const s of abexSubjects) {
-          const sp = norm(s.professor ?? "");
-          if (profs.some((p) => p.length >= 4 && sp.includes(p))) return s.name;
-        }
-      }
-      // padrões de prática de campo (grupos/duplas/coronel) → ABEX de Atenção Primária
-      const isField = /pratica|grupo|dupla|coronel|campo|ubs/.test(n);
-      const primary = abexSubjects.find((s) => /atencao primaria|promocao/.test(norm(s.name)));
-      const other = abexSubjects.find((s) => s !== primary);
-      if (isField && primary) return primary.name;
-      if (!isField && other) return other.name;
-      return (primary ?? abexSubjects[0]).name;
-    }
+  // ABEX: dois componentes distintos. Vence quem é citado primeiro na célula.
+  const abexIdx = n.indexOf("abex");
+  if (abexIdx >= 0 && (!best || abexIdx < best.first)) {
+    const picked = pickAbex(n, catalog, profs);
+    if (picked) return picked;
   }
 
   // desempate direto por professor quando a pontuação não decidiu
   if (!best && profs.length) {
-
     for (const s of catalog) {
       const sp = norm(s.professor ?? "");
       if (!sp) continue;
@@ -157,6 +159,7 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
 
   return best?.name ?? null;
 }
+
 
 
 
