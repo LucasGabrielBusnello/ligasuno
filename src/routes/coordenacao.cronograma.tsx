@@ -289,18 +289,17 @@ function CoordCronograma() {
 
 /* ---------- ENTRY DIALOG ---------- */
 function EntryDialog({
-  state, onClose, subjects, classCode, onSaved,
+  state, onClose, subjects, classCode, onSaved, onSubjectsChanged,
 }: {
   state: { open: boolean; editing?: any; date?: string; shift?: Shift };
   onClose: () => void;
   subjects: Subject[];
   classCode: string;
   onSaved: () => void;
+  onSubjectsChanged?: () => void;
 }) {
   const save = useServerFn(upsertScheduleEntry);
-  const loadGroups = useServerFn(listClassGroups);
-  const addGroup = useServerFn(addClassGroup);
-  const delGroup = useServerFn(deleteClassGroup);
+  const saveSubjGroups = useServerFn(setSubjectGroups);
   const editing = state.editing;
   const [subjectId, setSubjectId] = useState<string>("");
   const [subdivision, setSubdivision] = useState("A");
