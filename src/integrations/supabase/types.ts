@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      activity_logs: {
+        Row: {
+          action: string
+          category: string
+          created_at: string
+          details: Json
+          id: string
+          path: string | null
+          target: string | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          category?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          path?: string | null
+          target?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          category?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          path?: string | null
+          target?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       ad_analytics: {
         Row: {
           action: string
