@@ -1,12 +1,14 @@
 import { useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Upload, Loader2 } from "lucide-react";
-import { parseScheduleWorkbook, type ParsedSchedule } from "@/lib/schedule-xlsx";
+import { Upload, Loader2, Trash2, Plus, AlertTriangle } from "lucide-react";
+import { parseScheduleWorkbook, type ParsedSchedule, type ParsedEntry, type ParsedSubject } from "@/lib/schedule-xlsx";
 import { importScheduleFromSheet } from "@/lib/schedule.functions";
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
@@ -24,10 +26,17 @@ export function ScheduleImportButton({
   const fileRef = useRef<HTMLInputElement>(null);
   const importFn = useServerFn(importScheduleFromSheet);
   const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
+  const [subjects, setSubjects] = useState<ParsedSubject[]>([]);
+  const [entries, setEntries] = useState<ParsedEntry[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
+  const [newGroup, setNewGroup] = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
   const [classCode, setClassCode] = useState(defaultClass);
   const [subdivision, setSubdivision] = useState("A");
   const [replace, setReplace] = useState(true);
   const [busy, setBusy] = useState(false);
+
+  const reset = () => { setParsed(null); setStep(1); setNewGroup(""); };
 
   const onFile = async (f: File) => {
     try {
@@ -38,6 +47,10 @@ export function ScheduleImportButton({
         return;
       }
       setClassCode(defaultClass);
+      setSubjects(p.subjects.map((s) => ({ ...s })));
+      setEntries(p.entries.map((e) => ({ ...e })));
+      setGroups(p.groups.length ? p.groups : ["A", "B"]);
+      setStep(1);
       setParsed(p);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao ler a planilha");
@@ -47,22 +60,49 @@ export function ScheduleImportButton({
     }
   };
 
+  const renameSubject = (i: number, name: string) => {
+    const old = subjects[i].name;
+    setSubjects((prev) => prev.map((s, idx) => (idx === i ? { ...s, name } : s)));
+    setEntries((prev) => prev.map((e) => (e.subject_name === old ? { ...e, subject_name: name } : e)));
+  };
+  const removeSubject = (i: number) => {
+    const old = subjects[i].name;
+    setSubjects((prev) => prev.filter((_, idx) => idx !== i));
+    setEntries((prev) => prev.map((e) => (e.subject_name === old ? { ...e, subject_name: null } : e)));
+  };
+
+  const unresolved = entries.filter(
+    (e) => (e.kind === "practice" || e.kind === "abex" || e.is_abex) && e.practice_groups === null,
+  ).length;
+  const noSubject = entries.filter((e) => !e.subject_name && e.kind !== "green_zone").length;
+
   const confirm = async () => {
-    if (!parsed) return;
     try {
       setBusy(true);
+      const cleanGroups = [...new Set(groups.map((g) => g.trim().toUpperCase()).filter(Boolean))];
       const r: any = await importFn({
         data: {
           class_code: classCode as any,
           subdivision,
           term_id: termId ?? null,
           replace,
-          subjects: parsed.subjects,
-          entries: parsed.entries,
+          subjects: subjects.filter((s) => s.name.trim()),
+          groups: cleanGroups,
+          entries: entries.map((e) => ({
+            date: e.date,
+            shift: e.shift,
+            start_time: e.start_time,
+            end_time: e.end_time,
+            kind: e.kind,
+            is_abex: e.is_abex,
+            subject_name: e.subject_name,
+            notes: e.notes,
+            practice_groups: e.practice_groups,
+          })),
         },
       });
       toast.success(`${r.entries} aulas importadas · ${r.subjects} componentes${r.replaced ? ` · ${r.replaced} substituídas` : ""}`);
-      setParsed(null);
+      reset();
       onDone?.();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao importar");
@@ -71,9 +111,7 @@ export function ScheduleImportButton({
     }
   };
 
-  const byShift = parsed
-    ? parsed.entries.reduce<Record<string, number>>((a, e) => ({ ...a, [e.shift]: (a[e.shift] ?? 0) + 1 }), {})
-    : {};
+  const byShift = entries.reduce<Record<string, number>>((a, e) => ({ ...a, [e.shift]: (a[e.shift] ?? 0) + 1 }), {});
 
   return (
     <>
@@ -88,20 +126,108 @@ export function ScheduleImportButton({
         {busy && !parsed ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Importar Excel
       </Button>
 
-      <Dialog open={!!parsed} onOpenChange={(o) => !o && setParsed(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Importar cronograma</DialogTitle></DialogHeader>
-          {parsed && (
+      <Dialog open={!!parsed} onOpenChange={(o) => !o && reset()}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {step === 1 ? "Confira matérias e turmas" : "Confirmar importação"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {parsed && step === 1 && (
             <div className="space-y-4 text-sm">
               {parsed.title && <p className="font-semibold">{parsed.title}</p>}
-              <div className="rounded-lg border p-3 space-y-1 text-muted-foreground">
-                <p><b className="text-foreground">{parsed.entries.length}</b> atividades encontradas
-                  {parsed.entries.length > 0 && <> · {parsed.entries[0].date} a {parsed.entries[parsed.entries.length - 1].date}</>}
-                </p>
-                <p>{Object.entries(byShift).map(([s, n]) => `${SHIFT_LABEL[s]}: ${n}`).join(" · ")}</p>
-                <p><b className="text-foreground">{parsed.subjects.length}</b> componentes curriculares: {parsed.subjects.map((s) => s.name).join(", ") || "—"}</p>
+              <p className="text-muted-foreground">
+                Revise e corrija o que o site identificou. A distribuição das aulas por turma só é feita depois que você confirmar.
+              </p>
+
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide">Componentes curriculares ({subjects.length})</Label>
+                <div className="space-y-2">
+                  {subjects.map((s, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        value={s.name}
+                        onChange={(e) => renameSubject(i, e.target.value)}
+                        placeholder="Nome da matéria"
+                      />
+                      <Input
+                        className="w-48"
+                        value={s.professor ?? ""}
+                        onChange={(e) =>
+                          setSubjects((prev) => prev.map((x, idx) => (idx === i ? { ...x, professor: e.target.value } : x)))
+                        }
+                        placeholder="Professor(a)"
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => removeSubject(i)}><Trash2 className="size-4" /></Button>
+                    </div>
+                  ))}
+                  {subjects.length === 0 && <p className="text-muted-foreground">Nenhuma matéria identificada.</p>}
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => setSubjects((prev) => [...prev, { name: "", professor: "" }])}
+                  >
+                    <Plus className="size-4" /> Adicionar matéria
+                  </Button>
+                </div>
               </div>
 
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-wide">Turmas de prática (A, B, C…)</Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {groups.map((g) => (
+                    <Badge key={g} variant="secondary" className="gap-1">
+                      {g}
+                      <button className="ml-1" onClick={() => setGroups((prev) => prev.filter((x) => x !== g))}>×</button>
+                    </Badge>
+                  ))}
+                  <Input
+                    className="w-24 h-8"
+                    value={newGroup}
+                    placeholder="Nova"
+                    onChange={(e) => setNewGroup(e.target.value.toUpperCase().slice(0, 4))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newGroup.trim()) {
+                        setGroups((prev) => [...new Set([...prev, newGroup.trim().toUpperCase()])].sort());
+                        setNewGroup("");
+                      }
+                    }}
+                  />
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => {
+                      if (!newGroup.trim()) return;
+                      setGroups((prev) => [...new Set([...prev, newGroup.trim().toUpperCase()])].sort());
+                      setNewGroup("");
+                    }}
+                  >Adicionar</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Aulas práticas/ABEX sem turma citada na planilha serão marcadas para <b>todas</b> essas turmas.
+                </p>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-1 text-muted-foreground">
+                <p><b className="text-foreground">{entries.length}</b> atividades
+                  {entries.length > 0 && <> · {entries[0].date} a {entries[entries.length - 1].date}</>}
+                </p>
+                <p>{Object.entries(byShift).map(([s, n]) => `${SHIFT_LABEL[s]}: ${n}`).join(" · ")}</p>
+                {(unresolved > 0 || noSubject > 0) && (
+                  <p className="flex items-start gap-2 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="size-4 mt-0.5 shrink-0" />
+                    <span>
+                      {unresolved > 0 && <>{unresolved} prática(s)/ABEX sem turma identificada. </>}
+                      {noSubject > 0 && <>{noSubject} atividade(s) sem matéria vinculada. </>}
+                      Você poderá ajustar no painel, abaixo do cronograma.
+                    </span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {parsed && step === 2 && (
+            <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Turma</Label>
@@ -111,12 +237,21 @@ export function ScheduleImportButton({
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Subdivisão</Label>
+                  <Label className="text-xs">Subdivisão padrão</Label>
                   <Select value={subdivision} onValueChange={setSubdivision}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>{["A", "B", "C", "D"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="rounded-lg border p-3 space-y-1 text-muted-foreground">
+                <p><b className="text-foreground">{subjects.length}</b> componentes · <b className="text-foreground">{groups.join(", ") || "—"}</b> turmas · <b className="text-foreground">{entries.length}</b> atividades</p>
+                {unresolved > 0 && (
+                  <p className="text-amber-600 dark:text-amber-400">
+                    {unresolved} prática(s)/ABEX ficarão pendentes de definição de turma.
+                  </p>
+                )}
               </div>
 
               <label className="flex items-center gap-2 text-sm">
@@ -125,11 +260,18 @@ export function ScheduleImportButton({
               </label>
             </div>
           )}
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setParsed(null)}>Cancelar</Button>
-            <Button onClick={confirm} disabled={busy}>
-              {busy && <Loader2 className="size-4 animate-spin" />} Importar
+            <Button variant="outline" onClick={() => (step === 2 ? setStep(1) : reset())}>
+              {step === 2 ? "Voltar" : "Cancelar"}
             </Button>
+            {step === 1 ? (
+              <Button onClick={() => setStep(2)}>Está correto, continuar</Button>
+            ) : (
+              <Button onClick={confirm} disabled={busy}>
+                {busy && <Loader2 className="size-4 animate-spin" />} Importar
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
