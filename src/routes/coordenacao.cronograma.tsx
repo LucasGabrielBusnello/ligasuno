@@ -703,12 +703,14 @@ function RescheduleDialog({ entry, classCode, onClose, onSaved }: { entry: any |
 }
 
 /* ---------- PENDÊNCIAS: práticas/ABEX sem turmas definidas ---------- */
-function PendingGroupsPanel({ classCode, reloadKey }: { classCode: string; reloadKey: number }) {
+function PendingGroupsPanel({ classCode, subjects, reloadKey, onChanged }: {
+  classCode: string; subjects: Subject[]; reloadKey: number; onChanged: () => void;
+}) {
   const listPending = useServerFn(listEntriesNeedingGroups);
   const saveGroups = useServerFn(setEntryGroups);
   const loadGroups = useServerFn(listClassGroups);
   const [rows, setRows] = useState<any[]>([]);
-  const [groups, setGroups] = useState<{ id: string; letter: string }[]>([]);
+  const [fallback, setFallback] = useState<string[]>([]);
   const [sel, setSel] = useState<Record<string, string[]>>({});
 
   const refresh = async () => {
@@ -718,13 +720,19 @@ function PendingGroupsPanel({ classCode, reloadKey }: { classCode: string; reloa
         loadGroups({ data: { class_code: classCode as any } }),
       ]);
       setRows((p as any[]) ?? []);
-      setGroups((g as any[]) ?? []);
+      setFallback(((g as any[]) ?? []).map((x) => x.letter));
       setSel({});
     } catch { /* noop */ }
   };
   useEffect(() => { refresh(); }, [classCode, reloadKey]);
 
   if (!rows.length) return null;
+
+  const groupsFor = (r: any) => {
+    const s = subjects.find((x) => x.id === r.subject?.id);
+    const list = s?.subdivisions?.length ? s.subdivisions : (fallback.length ? fallback : ["A"]);
+    return Array.from(new Set(list));
+  };
 
   const toggle = (id: string, letter: string) =>
     setSel((prev) => {
@@ -739,6 +747,7 @@ function PendingGroupsPanel({ classCode, reloadKey }: { classCode: string; reloa
       await saveGroups({ data: { id, practice_groups: letters } });
       toast.success("Turmas definidas");
       setRows((prev) => prev.filter((r) => r.id !== id));
+      onChanged();
     } catch (e: any) { toast.error(e.message); }
   };
 
@@ -750,46 +759,125 @@ function PendingGroupsPanel({ classCode, reloadKey }: { classCode: string; reloa
           <h2 className="font-black">Aulas sem turma definida ({rows.length})</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Não foi possível identificar quais turmas têm prática/ABEX nestes horários. Selecione as turmas e salve.
+          As turmas mostradas são as cadastradas em cada matéria. Selecione quais têm prática/ABEX neste horário e salve.
         </p>
-        {groups.length === 0 && (
-          <p className="text-xs text-amber-500">Cadastre as turmas (A, B, C…) ao editar uma aula prática antes de ajustar aqui.</p>
-        )}
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {rows.map((r) => (
-            <div key={r.id} className="rounded-lg border border-border/60 p-3 flex flex-wrap items-center gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold text-sm truncate">{r.subject?.name ?? r.notes ?? "Prática"}</div>
-                <div className="text-xs text-muted-foreground">
-                  {new Date(r.date + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}
-                  {" · "}{SHIFT_LABEL[r.shift as Shift]}{" · "}{String(r.start_time).slice(0, 5)}–{String(r.end_time).slice(0, 5)}
-                  {r.is_abex ? " · ABEX" : ""}
+          {rows.map((r) => {
+            const gs = groupsFor(r);
+            return (
+              <div key={r.id} className="rounded-lg border border-border/60 p-3 flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-sm truncate">{r.subject?.name ?? r.notes ?? "Prática"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(r.date + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}
+                    {" · "}{SHIFT_LABEL[r.shift as Shift]}{" · "}{String(r.start_time).slice(0, 5)}–{String(r.end_time).slice(0, 5)}
+                    {r.is_abex ? " · ABEX" : ""}
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  {gs.map((letter) => {
+                    const on = (sel[r.id] ?? []).includes(letter);
+                    return (
+                      <Button key={letter} type="button" size="sm" variant={on ? "default" : "outline"}
+                        onClick={() => toggle(r.id, letter)}>{letter}</Button>
+                    );
+                  })}
+                  <Button size="sm" variant="secondary" onClick={() => setSel((p) => ({ ...p, [r.id]: gs }))}>Todas</Button>
+                  <Button size="sm" onClick={() => save(r.id)}>Salvar</Button>
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-1">
-                {groups.map((g) => {
-                  const on = (sel[r.id] ?? []).includes(g.letter);
-                  return (
-                    <Button
-                      key={g.id}
-                      type="button"
-                      size="sm"
-                      variant={on ? "default" : "outline"}
-                      onClick={() => toggle(r.id, g.letter)}
-                    >{g.letter}</Button>
-                  );
-                })}
-                {groups.length > 0 && (
-                  <Button size="sm" variant="secondary" onClick={() => setSel((p) => ({ ...p, [r.id]: groups.map((g) => g.letter) }))}>
-                    Todas
-                  </Button>
-                )}
-                <Button size="sm" onClick={() => save(r.id)}>Salvar</Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>
   );
 }
+
+/* ---------- PENDÊNCIAS: aulas sem matéria vinculada (vínculo em massa) ---------- */
+function UnlinkedSubjectPanel({ classCode, subjects, reloadKey, onChanged }: {
+  classCode: string; subjects: Subject[]; reloadKey: number; onChanged: () => void;
+}) {
+  const listUnlinked = useServerFn(listEntriesWithoutSubject);
+  const assign = useServerFn(assignSubjectToEntries);
+  const [rows, setRows] = useState<any[]>([]);
+  const [pick, setPick] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const refresh = async () => {
+    try { setRows(((await listUnlinked({ data: { class_code: classCode as any } })) as any[]) ?? []); }
+    catch { /* noop */ }
+  };
+  useEffect(() => { refresh(); }, [classCode, reloadKey]);
+
+  const filtered = useMemo(() => subjects.filter((s) => s.class_codes?.includes(classCode)), [subjects, classCode]);
+
+  const groups = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; kind: string; ids: string[]; dates: string[] }>();
+    for (const r of rows) {
+      const label = (r.notes?.trim() || "").replace(/\s+/g, " ");
+      const key = `${r.kind}|${r.is_abex ? 1 : 0}|${label.toLowerCase()}|${String(r.start_time).slice(0, 5)}`;
+      const g = map.get(key) ?? { key, label: label || (r.is_abex ? "ABEX" : r.kind), kind: r.kind, ids: [], dates: [] };
+      g.ids.push(r.id);
+      g.dates.push(r.date);
+      map.set(key, g);
+    }
+    return [...map.values()].sort((a, b) => b.ids.length - a.ids.length);
+  }, [rows]);
+
+  if (!groups.length) return null;
+
+  const link = async (g: { key: string; ids: string[] }) => {
+    const subject_id = pick[g.key];
+    if (!subject_id) { toast.error("Selecione a matéria"); return; }
+    try {
+      setBusy(g.key);
+      await assign({ data: { ids: g.ids, subject_id } });
+      toast.success(`${g.ids.length} aula(s) vinculada(s)`);
+      setRows((prev) => prev.filter((r) => !g.ids.includes(r.id)));
+      onChanged();
+    } catch (e: any) { toast.error(e.message); } finally { setBusy(null); }
+  };
+
+  return (
+    <Card className="border-sky-500/40">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="size-4 text-sky-400" />
+          <h2 className="font-black">Aulas sem matéria vinculada ({rows.length})</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Aulas idênticas foram agrupadas: escolha a matéria uma vez e vincule todas de uma só vez.
+        </p>
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {groups.map((g) => {
+            const ds = [...g.dates].sort();
+            return (
+              <div key={g.key} className="rounded-lg border border-border/60 p-3 flex flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-sm truncate">{g.label}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {g.ids.length} aula(s) · {new Date(ds[0] + "T00:00:00").toLocaleDateString("pt-BR")}
+                    {ds.length > 1 && <> a {new Date(ds[ds.length - 1] + "T00:00:00").toLocaleDateString("pt-BR")}</>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={pick[g.key] ?? ""} onValueChange={(v) => setPick((p) => ({ ...p, [g.key]: v }))}>
+                    <SelectTrigger className="w-56 h-9"><SelectValue placeholder="Matéria" /></SelectTrigger>
+                    <SelectContent>
+                      {filtered.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" disabled={busy === g.key} onClick={() => link(g)}>
+                    Vincular {g.ids.length}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
