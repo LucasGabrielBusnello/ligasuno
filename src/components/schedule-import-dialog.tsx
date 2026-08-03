@@ -278,6 +278,24 @@ export function ScheduleImportButton({
                 Revise e corrija o que o site identificou. A distribuição das aulas por turma só é feita depois que você confirmar.
               </p>
 
+              {files.length > 0 && (
+                <div className="rounded-lg border divide-y">
+                  {files.map((f) => (
+                    <div key={f.name} className="flex items-start gap-2 p-2">
+                      {f.type === "pdf" ? <FileText className="size-4 mt-0.5 shrink-0 text-muted-foreground" /> : <FileSpreadsheet className="size-4 mt-0.5 shrink-0 text-muted-foreground" />}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">{f.name}</p>
+                        <p className={f.warning ? "text-amber-600 dark:text-amber-400 text-xs" : "text-muted-foreground text-xs"}>
+                          {f.warning ?? `${f.entries} atividade(s) lidas`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+
+
               <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
                 <Sparkles className="size-4 text-emerald-500" />
                 <span className="text-xs text-muted-foreground flex-1 min-w-[12rem]">
