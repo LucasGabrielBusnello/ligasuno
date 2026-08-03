@@ -40,19 +40,25 @@ export async function runScheduleImport(
     }
   }
 
-  // 1) garante os componentes curriculares
+  // 1) garante os componentes curriculares (com suas turmas de prática)
   const byName = new Map<string, string>();
+  const groupsByName = new Map<string, string[]>();
   if (subjects.length) {
     const { data: existing } = await supabase.from("subjects").select("id,name,class_codes");
     const existingList = (existing ?? []) as any[];
     for (const s of subjects) {
+      const subGroups = Array.from(
+        new Set((s.groups ?? []).map((g) => String(g).trim().toUpperCase()).filter(Boolean)),
+      ).sort();
+      const finalGroups = subGroups.length ? subGroups : ["A"];
+      groupsByName.set(s.name.toLowerCase(), finalGroups);
       const found = existingList.find((e) => String(e.name).trim().toLowerCase() === s.name.trim().toLowerCase());
       if (found) {
         byName.set(s.name.toLowerCase(), found.id);
         const codes: string[] = Array.isArray(found.class_codes) ? found.class_codes : [];
-        if (!codes.includes(class_code)) {
-          await supabase.from("subjects").update({ class_codes: [...codes, class_code] }).eq("id", found.id);
-        }
+        const patch: any = { subdivisions: finalGroups };
+        if (!codes.includes(class_code)) patch.class_codes = [...codes, class_code];
+        await supabase.from("subjects").update(patch).eq("id", found.id);
         continue;
       }
       const { data: ins } = await supabase
@@ -61,13 +67,14 @@ export async function runScheduleImport(
           name: s.name,
           professor: s.professor ?? null,
           class_codes: [class_code],
-          subdivisions: [subdivision || "A"],
+          subdivisions: finalGroups,
         })
         .select("id")
         .single();
       if (ins?.id) byName.set(s.name.toLowerCase(), ins.id);
     }
   }
+
 
   if (!entries.length) return { subjects: byName.size, entries: 0, replaced: 0 };
 
