@@ -310,7 +310,7 @@ function EntryDialog({
   const [kind, setKind] = useState<"class" | "practice" | "exam">("class");
   const [color, setColor] = useState<string>(DEFAULT_KIND_COLORS.class);
   const [customColor, setCustomColor] = useState(false);
-  const [groups, setGroups] = useState<{ id: string; letter: string }[]>([]);
+  const [groups, setGroups] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [newGroup, setNewGroup] = useState("");
 
