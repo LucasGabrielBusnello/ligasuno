@@ -216,7 +216,10 @@ function CoordCronograma() {
           classCode={classCode}
           onCellClick={(date, shift) => setPanel({ date, shift })}
         />
+
+        <PendingGroupsPanel classCode={classCode} reloadKey={entries.length} />
       </section>
+
 
       {/* Side panel */}
       <Sheet open={!!panel} onOpenChange={(v) => !v && setPanel(null)}>
