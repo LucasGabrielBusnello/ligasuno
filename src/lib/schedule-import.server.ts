@@ -99,27 +99,32 @@ export async function runScheduleImport(
     replaced = (del ?? []).length;
   }
 
-  const rows = entries.map((e) => ({
-    term_id: term_id ?? null,
-    subject_id: e.subject_name ? byName.get(e.subject_name.toLowerCase()) ?? null : null,
-    class_code,
-    subdivision: subdivision || "A",
-    date: e.date,
-    shift: e.shift,
-    start_time: e.start_time,
-    end_time: e.end_time,
-    kind: e.kind,
-    is_abex: e.is_abex,
-    // [] = todas as turmas; null = não identificado (a coordenação ajusta depois)
-    practice_groups:
-      e.practice_groups === null || e.practice_groups === undefined
-        ? []
-        : e.practice_groups.length === 0 && (e.kind === "practice" || e.kind === "abex" || e.is_abex)
-          ? groups
-          : e.practice_groups,
-    notes: e.notes ?? null,
-    created_by: userId,
-  }));
+  const rows = entries.map((e) => {
+    const subjGroups = e.subject_name ? groupsByName.get(e.subject_name.toLowerCase()) ?? null : null;
+    const fallbackGroups = subjGroups?.length ? subjGroups : (groups.length ? groups : ["A"]);
+    return {
+      term_id: term_id ?? null,
+      subject_id: e.subject_name ? byName.get(e.subject_name.toLowerCase()) ?? null : null,
+      class_code,
+      subdivision: subdivision || "A",
+      date: e.date,
+      shift: e.shift,
+      start_time: e.start_time,
+      end_time: e.end_time,
+      kind: e.kind,
+      is_abex: e.is_abex,
+      // [] = pendente de definição; caso contrário usa as turmas da matéria
+      practice_groups:
+        e.practice_groups === null || e.practice_groups === undefined
+          ? []
+          : e.practice_groups.length === 0 && (e.kind === "practice" || e.kind === "abex" || e.is_abex)
+            ? fallbackGroups
+            : e.practice_groups,
+      notes: e.notes ?? null,
+      created_by: userId,
+    };
+  });
+
 
   for (let i = 0; i < rows.length; i += 400) {
     const { error } = await supabase.from("schedule_entries").insert(rows.slice(i, i + 400));
