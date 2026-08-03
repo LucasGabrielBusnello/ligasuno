@@ -224,6 +224,23 @@ export function ScheduleImportButton({
                 Revise e corrija o que o site identificou. A distribuição das aulas por turma só é feita depois que você confirmar.
               </p>
 
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                <Sparkles className="size-4 text-emerald-500" />
+                <span className="text-xs text-muted-foreground flex-1 min-w-[12rem]">
+                  {aiBusy
+                    ? "A IA está lendo o cronograma e ajustando matérias, tipos de aula e turmas…"
+                    : aiDone
+                      ? "Revisão por IA aplicada. Confira abaixo e corrija o que for necessário."
+                      : "Use a IA para interpretar as células do cronograma automaticamente."}
+                </span>
+                <Button variant="outline" size="sm" disabled={aiBusy} onClick={() => runAI()}>
+                  {aiBusy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {aiDone ? "Reanalisar com IA" : "Analisar com IA"}
+                </Button>
+              </div>
+
+
+
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wide">Componentes curriculares ({subjects.length})</Label>
                 <p className="text-xs text-muted-foreground">
