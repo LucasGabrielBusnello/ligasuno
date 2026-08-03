@@ -257,6 +257,7 @@ export const importScheduleFromSheet = createServerFn({ method: "POST" })
       term_id: z.string().uuid().nullish(),
       replace: z.boolean().default(true),
       subjects: z.array(z.object({ name: z.string().min(1), professor: z.string().nullish() })).max(200).default([]),
+      groups: z.array(z.string().min(1).max(4)).max(26).default([]),
       entries: z.array(z.object({
         date: z.string(),
         shift: z.enum(SHIFTS),
@@ -266,6 +267,7 @@ export const importScheduleFromSheet = createServerFn({ method: "POST" })
         is_abex: z.boolean(),
         subject_name: z.string().nullish(),
         notes: z.string().nullish(),
+        practice_groups: z.array(z.string()).nullish(),
       })).max(5000),
     }).parse(v)
   )
@@ -356,6 +358,41 @@ export const deleteClassGroup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCoord(context.supabase, context.userId);
     const { error } = await context.supabase.from("class_subdivisions").delete().eq("id", data.id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+/* ---------- PENDÊNCIAS DE TURMA (prática/ABEX sem grupos definidos) ---------- */
+
+export const listEntriesNeedingGroups = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ class_code: z.enum(ATM_CLASSES), from: z.string().optional() }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    let q = context.supabase
+      .from("schedule_entries")
+      .select("id, date, shift, start_time, end_time, kind, is_abex, practice_groups, notes, subject:subjects(id,name)")
+      .eq("class_code", data.class_code)
+      .or("kind.eq.practice,kind.eq.abex,is_abex.eq.true")
+      .order("date");
+    if (data.from) q = q.gte("date", data.from);
+    const { data: rows, error } = await q;
+    if (error) throw error;
+    return (rows ?? []).filter((r: any) => !Array.isArray(r.practice_groups) || r.practice_groups.length === 0);
+  });
+
+export const setEntryGroups = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ id: z.string().uuid(), practice_groups: z.array(z.string().min(1).max(4)) }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("schedule_entries")
+      .update({ practice_groups: data.practice_groups })
+      .eq("id", data.id);
     if (error) throw error;
     return { ok: true };
   });

@@ -1,5 +1,6 @@
 import imageCompression from "browser-image-compression";
 import { supabase } from "@/integrations/supabase/client";
+import { logActivity } from "@/lib/activity-log";
 
 const MAX_MB = 5;
 
@@ -28,6 +29,13 @@ export async function uploadImage(file: File, folder: string): Promise<string> {
 
   const { data } = supabase.storage.from("images").getPublicUrl(path);
   if (!data?.publicUrl) throw new Error("Falha ao obter URL pública da imagem.");
+
+  logActivity({
+    category: "imagem",
+    action: "Enviou uma imagem",
+    target: folder,
+    details: { path, size_kb: Math.round(compressed.size / 1024), original_name: file.name },
+  });
 
   return data.publicUrl;
 }

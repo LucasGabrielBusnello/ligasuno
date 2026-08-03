@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SiteHeader } from "@/components/site-header";
 import { MaintenanceGate } from "@/components/maintenance-gate";
 import { supabase } from "@/integrations/supabase/client";
+import { logActivity } from "@/lib/activity-log";
 
 import appCss from "../styles.css?url";
 
@@ -130,12 +131,36 @@ function RootComponent() {
       <MaintenanceGate>
         <SiteHeader />
         <VisitTracker />
+        <AuthLogger />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </MaintenanceGate>
       <Toaster richColors position="top-center" />
     </QueryClientProvider>
   );
+}
+
+function AuthLogger() {
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN") {
+        const key = `meduno_login_logged_${session?.user?.id ?? ""}`;
+        if (sessionStorage.getItem(key)) return;
+        sessionStorage.setItem(key, "1");
+        logActivity({
+          category: "auth",
+          action: "Fez login",
+          target: session?.user?.email ?? null,
+          details: { provider: session?.user?.app_metadata?.provider ?? null },
+        });
+      }
+      if (event === "SIGNED_OUT") {
+        logActivity({ category: "auth", action: "Saiu da conta" });
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  return null;
 }
 
 function VisitTracker() {
@@ -153,6 +178,12 @@ function VisitTracker() {
       const now = Date.now();
       if (now - last < 30_000) return;
       sessionStorage.setItem(key, String(now));
+      logActivity({
+        category: "navegacao",
+        action: "Acessou uma página",
+        target: pathname,
+        details: { referrer: document.referrer || null },
+      });
       supabase.auth.getUser().then(({ data }) => {
         supabase.from("site_visits" as any).insert({
           visitor_id: vid,

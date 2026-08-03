@@ -11,6 +11,8 @@ export type ParsedEntry = {
   is_abex: boolean;
   subject_name: string | null;
   notes: string;
+  /** Turmas (A, B, C…) identificadas no texto. null = não foi possível identificar. */
+  practice_groups: string[] | null;
 };
 
 export type ParsedSubject = { name: string; professor: string | null };
@@ -18,10 +20,13 @@ export type ParsedSubject = { name: string; professor: string | null };
 export type ParsedSchedule = {
   subjects: ParsedSubject[];
   entries: ParsedEntry[];
+  /** Letras de turma identificadas na planilha inteira. */
+  groups: string[];
   startDate: string | null;
   endDate: string | null;
   title: string | null;
 };
+
 
 const SHIFT_TIMES: Record<ParsedShift, { start: string; end: string }> = {
   morning: { start: "08:00", end: "12:00" },
@@ -160,7 +165,34 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
   return best?.name ?? null;
 }
 
+/**
+ * Identifica quais turmas (A, B, C…) têm aula naquela célula.
+ * Retorna:
+ *  - lista de letras quando o texto cita turmas/grupos específicos;
+ *  - `[]` (todas) quando o texto indica que todos os grupos participam;
+ *  - `null` quando é prática/ABEX e não foi possível identificar.
+ */
+export function detectGroups(text: string, kind: ParsedEntry["kind"], isAbex: boolean): string[] | null {
+  const n = norm(text);
+  const needsGroups = kind === "practice" || kind === "abex" || isAbex;
 
+  const letters = new Set<string>();
+  // "GRUPO A", "GRUPOS A E B", "TURMAS A, B e C", "SUBTURMA C"
+  const re = /\b(?:grupos?|turmas?|subturmas?)\s*:?\s*((?:[a-h]\d?)(?:\s*(?:,|e|\/|-|\+)\s*[a-h]\d?)*)\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(n))) {
+    for (const part of m[1].split(/[,e\/\-+\s]+/)) {
+      const l = part.trim().toUpperCase();
+      if (/^[A-H]\d?$/.test(l)) letters.add(l);
+    }
+  }
+  if (letters.size) return [...letters].sort();
+
+  // "6 GRUPOS", "TODOS OS GRUPOS", "TODAS AS TURMAS" → todas
+  if (/\b\d+\s*(grupos|turmas)\b|\btodos os grupos\b|\btodas as turmas\b|\bduplas\b/.test(n)) return [];
+
+  return needsGroups ? null : [];
+}
 
 
 export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule> {
@@ -251,11 +283,13 @@ export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule>
           is_abex,
           subject_name: matchSubject(text, subjects),
           notes: stripProfessor(text),
+          practice_groups: detectGroups(text, kind, is_abex),
         });
       }
     }
   }
 
   entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  return { subjects, entries, startDate, endDate, title };
+  const groups = [...new Set(entries.flatMap((e) => e.practice_groups ?? []))].sort();
+  return { subjects, entries, groups, startDate, endDate, title };
 }
