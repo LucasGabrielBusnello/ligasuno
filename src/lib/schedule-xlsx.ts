@@ -283,11 +283,13 @@ export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule>
           is_abex,
           subject_name: matchSubject(text, subjects),
           notes: stripProfessor(text),
+          practice_groups: detectGroups(text, kind, is_abex),
         });
       }
     }
   }
 
   entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  return { subjects, entries, startDate, endDate, title };
+  const groups = [...new Set(entries.flatMap((e) => e.practice_groups ?? []))].sort();
+  return { subjects, entries, groups, startDate, endDate, title };
 }
