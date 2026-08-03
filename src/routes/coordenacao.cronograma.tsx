@@ -19,6 +19,7 @@ import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
   listClassGroups, addClassGroup, deleteClassGroup,
+  listEntriesNeedingGroups, setEntryGroups,
 
 } from "@/lib/schedule.functions";
 import { listSubjects, listTerms } from "@/lib/curriculum.functions";
@@ -697,5 +698,97 @@ function RescheduleDialog({ entry, classCode, onClose, onSaved }: { entry: any |
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ---------- PENDÊNCIAS: práticas/ABEX sem turmas definidas ---------- */
+function PendingGroupsPanel({ classCode, reloadKey }: { classCode: string; reloadKey: number }) {
+  const listPending = useServerFn(listEntriesNeedingGroups);
+  const saveGroups = useServerFn(setEntryGroups);
+  const loadGroups = useServerFn(listClassGroups);
+  const [rows, setRows] = useState<any[]>([]);
+  const [groups, setGroups] = useState<{ id: string; letter: string }[]>([]);
+  const [sel, setSel] = useState<Record<string, string[]>>({});
+
+  const refresh = async () => {
+    try {
+      const [p, g] = await Promise.all([
+        listPending({ data: { class_code: classCode as any } }),
+        loadGroups({ data: { class_code: classCode as any } }),
+      ]);
+      setRows((p as any[]) ?? []);
+      setGroups((g as any[]) ?? []);
+      setSel({});
+    } catch { /* noop */ }
+  };
+  useEffect(() => { refresh(); }, [classCode, reloadKey]);
+
+  if (!rows.length) return null;
+
+  const toggle = (id: string, letter: string) =>
+    setSel((prev) => {
+      const cur = prev[id] ?? [];
+      return { ...prev, [id]: cur.includes(letter) ? cur.filter((l) => l !== letter) : [...cur, letter] };
+    });
+
+  const save = async (id: string) => {
+    const letters = sel[id] ?? [];
+    if (!letters.length) { toast.error("Selecione ao menos uma turma"); return; }
+    try {
+      await saveGroups({ data: { id, practice_groups: letters } });
+      toast.success("Turmas definidas");
+      setRows((prev) => prev.filter((r) => r.id !== id));
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  return (
+    <Card className="border-amber-500/40">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="size-4 text-amber-500" />
+          <h2 className="font-black">Aulas sem turma definida ({rows.length})</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Não foi possível identificar quais turmas têm prática/ABEX nestes horários. Selecione as turmas e salve.
+        </p>
+        {groups.length === 0 && (
+          <p className="text-xs text-amber-500">Cadastre as turmas (A, B, C…) ao editar uma aula prática antes de ajustar aqui.</p>
+        )}
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {rows.map((r) => (
+            <div key={r.id} className="rounded-lg border border-border/60 p-3 flex flex-wrap items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-sm truncate">{r.subject?.name ?? r.notes ?? "Prática"}</div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(r.date + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" })}
+                  {" · "}{SHIFT_LABEL[r.shift as Shift]}{" · "}{String(r.start_time).slice(0, 5)}–{String(r.end_time).slice(0, 5)}
+                  {r.is_abex ? " · ABEX" : ""}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                {groups.map((g) => {
+                  const on = (sel[r.id] ?? []).includes(g.letter);
+                  return (
+                    <Button
+                      key={g.id}
+                      type="button"
+                      size="sm"
+                      variant={on ? "default" : "outline"}
+                      onClick={() => toggle(r.id, g.letter)}
+                    >{g.letter}</Button>
+                  );
+                })}
+                {groups.length > 0 && (
+                  <Button size="sm" variant="secondary" onClick={() => setSel((p) => ({ ...p, [r.id]: groups.map((g) => g.letter) }))}>
+                    Todas
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => save(r.id)}>Salvar</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
