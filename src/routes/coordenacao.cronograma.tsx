@@ -422,31 +422,37 @@ function EntryDialog({
           </div>
           {showGroups && (
             <div className="rounded-lg border border-border/60 p-3 space-y-2">
-              <Label className="mb-0">Turmas com prática neste turno</Label>
+              <Label className="mb-0">Turmas de prática {currentSubj ? `de ${currentSubj.name}` : ""}</Label>
+              <p className="text-[11px] text-muted-foreground">
+                Cada matéria tem suas próprias turmas (padrão: A). Marque quais têm prática neste turno.
+              </p>
+              {!subjectId && <p className="text-[11px] text-amber-500">Selecione a matéria para gerenciar as turmas.</p>}
               <div className="flex flex-wrap gap-1.5">
-                {groups.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">Nenhuma turma cadastrada para {classCode}.</p>
-                )}
-                {groups.map((g) => {
-                  const on = selectedGroups.includes(g.letter);
+                {groups.map((letter) => {
+                  const on = selectedGroups.includes(letter);
                   return (
-                    <span key={g.id} className="inline-flex items-center">
+                    <span key={letter} className="inline-flex items-center">
                       <button
                         type="button"
-                        onClick={() => setSelectedGroups((prev) => on ? prev.filter((l) => l !== g.letter) : [...prev, g.letter])}
+                        onClick={() => setSelectedGroups((prev) => on ? prev.filter((l) => l !== letter) : [...prev, letter])}
                         className={`rounded-l-md border px-2.5 py-1 text-xs font-bold ${on ? "bg-emerald-600 text-white border-emerald-600" : "border-border/60 text-muted-foreground"}`}
                       >
-                        {g.letter}
+                        {letter}
                       </button>
                       <button
                         type="button"
-                        title="Remover turma"
+                        title="Remover turma desta matéria"
+                        disabled={!subjectId || groups.length <= 1}
                         onClick={async () => {
-                          await delGroup({ data: { id: g.id } });
-                          setSelectedGroups((prev) => prev.filter((l) => l !== g.letter));
-                          refreshGroups();
+                          const next = groups.filter((l) => l !== letter);
+                          try {
+                            await saveSubjGroups({ data: { subject_id: subjectId, groups: next } });
+                            setGroups(next.length ? next : ["A"]);
+                            setSelectedGroups((prev) => prev.filter((l) => l !== letter));
+                            onSubjectsChanged?.();
+                          } catch (e: any) { toast.error(e.message); }
                         }}
-                        className="rounded-r-md border border-l-0 border-border/60 px-1.5 py-1 text-xs text-muted-foreground hover:text-destructive"
+                        className="rounded-r-md border border-l-0 border-border/60 px-1.5 py-1 text-xs text-muted-foreground hover:text-destructive disabled:opacity-40"
                       >
                         ×
                       </button>
@@ -455,16 +461,21 @@ function EntryDialog({
                 })}
               </div>
               <div className="flex gap-2">
-                <Input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Nova turma (ex.: A)" className="h-8" />
-                <Button size="sm" variant="outline" onClick={async () => {
+                <Input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Nova turma (ex.: B)" className="h-8" />
+                <Button size="sm" variant="outline" disabled={!subjectId} onClick={async () => {
                   const letter = newGroup.trim().toUpperCase();
-                  if (!letter) return;
-                  try { await addGroup({ data: { class_code: classCode as any, letter } }); setNewGroup(""); refreshGroups(); }
-                  catch (e: any) { toast.error(e.message); }
+                  if (!letter || !subjectId) return;
+                  if (groups.includes(letter)) { setNewGroup(""); return; }
+                  const next = [...groups, letter].sort();
+                  try {
+                    await saveSubjGroups({ data: { subject_id: subjectId, groups: next } });
+                    setGroups(next); setNewGroup(""); onSubjectsChanged?.();
+                  } catch (e: any) { toast.error(e.message); }
                 }}>Adicionar</Button>
               </div>
             </div>
           )}
+
 
           <div className="rounded-lg border border-border/60 p-3 space-y-2">
             <div className="flex items-center justify-between">
