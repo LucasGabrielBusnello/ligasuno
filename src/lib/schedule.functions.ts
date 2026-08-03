@@ -256,7 +256,7 @@ export const importScheduleFromSheet = createServerFn({ method: "POST" })
       subdivision: z.string().default("A"),
       term_id: z.string().uuid().nullish(),
       replace: z.boolean().default(true),
-      subjects: z.array(z.object({ name: z.string().min(1), professor: z.string().nullish() })).max(200).default([]),
+      subjects: z.array(z.object({ name: z.string().min(1), professor: z.string().nullish(), groups: z.array(z.string().min(1).max(4)).max(26).optional() })).max(200).default([]),
       groups: z.array(z.string().min(1).max(4)).max(26).default([]),
       entries: z.array(z.object({
         date: z.string(),
