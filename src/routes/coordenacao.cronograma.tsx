@@ -332,10 +332,10 @@ function EntryDialog({
     setNewGroup("");
   }, [state.open, editing, state.date, state.shift]);
 
-  const refreshGroups = async () => {
-    try { setGroups((await loadGroups({ data: { class_code: classCode as any } })) as any); } catch { /* noop */ }
-  };
-  useEffect(() => { if (state.open) refreshGroups(); }, [state.open, classCode]);
+  useEffect(() => {
+    const s = subjects.find((x) => x.id === subjectId);
+    setGroups(s?.subdivisions?.length ? Array.from(new Set(s.subdivisions)) : ["A"]);
+  }, [subjectId, subjects, state.open]);
 
   const filteredSubjects = useMemo(
     () => subjects.filter((s) => s.class_codes?.includes(classCode)),
