@@ -165,7 +165,34 @@ function matchSubject(text: string, catalog: ParsedSubject[]): string | null {
   return best?.name ?? null;
 }
 
+/**
+ * Identifica quais turmas (A, B, C…) têm aula naquela célula.
+ * Retorna:
+ *  - lista de letras quando o texto cita turmas/grupos específicos;
+ *  - `[]` (todas) quando o texto indica que todos os grupos participam;
+ *  - `null` quando é prática/ABEX e não foi possível identificar.
+ */
+export function detectGroups(text: string, kind: ParsedEntry["kind"], isAbex: boolean): string[] | null {
+  const n = norm(text);
+  const needsGroups = kind === "practice" || kind === "abex" || isAbex;
 
+  const letters = new Set<string>();
+  // "GRUPO A", "GRUPOS A E B", "TURMAS A, B e C", "SUBTURMA C"
+  const re = /\b(?:grupos?|turmas?|subturmas?)\s*:?\s*((?:[a-h]\d?)(?:\s*(?:,|e|\/|-|\+)\s*[a-h]\d?)*)\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(n))) {
+    for (const part of m[1].split(/[,e\/\-+\s]+/)) {
+      const l = part.trim().toUpperCase();
+      if (/^[A-H]\d?$/.test(l)) letters.add(l);
+    }
+  }
+  if (letters.size) return [...letters].sort();
+
+  // "6 GRUPOS", "TODOS OS GRUPOS", "TODAS AS TURMAS" → todas
+  if (/\b\d+\s*(grupos|turmas)\b|\btodos os grupos\b|\btodas as turmas\b|\bduplas\b/.test(n)) return [];
+
+  return needsGroups ? null : [];
+}
 
 
 export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule> {
