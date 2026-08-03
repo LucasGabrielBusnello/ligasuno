@@ -257,6 +257,7 @@ export const importScheduleFromSheet = createServerFn({ method: "POST" })
       term_id: z.string().uuid().nullish(),
       replace: z.boolean().default(true),
       subjects: z.array(z.object({ name: z.string().min(1), professor: z.string().nullish() })).max(200).default([]),
+      groups: z.array(z.string().min(1).max(4)).max(26).default([]),
       entries: z.array(z.object({
         date: z.string(),
         shift: z.enum(SHIFTS),
@@ -266,6 +267,7 @@ export const importScheduleFromSheet = createServerFn({ method: "POST" })
         is_abex: z.boolean(),
         subject_name: z.string().nullish(),
         notes: z.string().nullish(),
+        practice_groups: z.array(z.string()).nullish(),
       })).max(5000),
     }).parse(v)
   )
