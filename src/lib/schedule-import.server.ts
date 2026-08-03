@@ -27,7 +27,12 @@ export async function runScheduleImport(
   },
 ) {
   const { class_code, subdivision, term_id, replace, subjects, entries } = input;
-  const groups = (input.groups ?? []).map((g) => g.trim().toUpperCase()).filter(Boolean);
+  const groups = Array.from(new Set([
+    ...(input.groups ?? []),
+    ...subjects.flatMap((s) => s.groups ?? []),
+  ].map((g) => String(g).trim().toUpperCase()).filter(Boolean)));
+
+
 
   // 0) garante as turmas (A, B, C…) confirmadas pela coordenação
   if (groups.length) {
