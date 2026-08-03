@@ -195,7 +195,13 @@ export async function parseScheduleWorkbook(file: File): Promise<ParsedSchedule>
     const n = norm(label);
     if (!label || n.startsWith("codigo") || n.startsWith("cronograma") || n.startsWith("horario das aulas")) continue;
     if (n === "janela verde" || n.includes("inicio semestre")) continue;
-    const prof = r[4] ? String(r[4]).trim() : null;
+    // a coluna de professores varia entre planilhas: pega a 1ª célula preenchida à direita
+    let prof: string | null = null;
+    for (let c = 1; c <= 5; c++) {
+      const v = String(r[c] ?? "").trim();
+      if (v && !toISODate(r[c])) { prof = v; break; }
+    }
+
     if (label.length > 3 && label === label.toUpperCase()) {
       subjects.push({ name: label.replace(/\s+/g, " "), professor: prof });
     }
