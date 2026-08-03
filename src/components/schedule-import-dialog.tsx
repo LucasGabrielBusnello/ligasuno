@@ -26,6 +26,7 @@ export function ScheduleImportButton({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const importFn = useServerFn(importScheduleFromSheet);
+  const aiFn = useServerFn(refineScheduleWithAI);
   const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
   const [subjects, setSubjects] = useState<ParsedSubject[]>([]);
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
@@ -35,8 +36,72 @@ export function ScheduleImportButton({
   const [subdivision, setSubdivision] = useState("A");
   const [replace, setReplace] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiDone, setAiDone] = useState(false);
 
-  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); };
+  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); setAiDone(false); };
+
+  /** Envia as células ambíguas para a IA e aplica as correções. */
+  const runAI = async (
+    subs: ParsedSubject[] = subjects,
+    ents: ParsedEntry[] = entries,
+    silent = false,
+  ) => {
+    const uniq = new Map<string, { text: string; kind: string; is_abex: boolean; shift: string }>();
+    for (const e of ents) {
+      const text = (e.notes ?? "").trim();
+      if (!text) continue;
+      if (!uniq.has(text)) uniq.set(text, { text, kind: e.kind, is_abex: e.is_abex, shift: e.shift });
+    }
+    const cells = [...uniq.values()];
+    if (!cells.length || !subs.length) return;
+    try {
+      setAiBusy(true);
+      const res: any[] = await aiFn({
+        data: {
+          subjects: subs.map((s) => ({ name: s.name, professor: s.professor ?? null })),
+          cells: cells.slice(0, 400),
+        },
+      });
+      const byText = new Map(res.map((r) => [String(r.text ?? "").trim(), r]));
+      let fixedSubj = 0;
+      let fixedGroups = 0;
+      const nextGroups = new Map<string, Set<string>>();
+
+      const nextEntries = ents.map((e) => {
+        const r = byText.get((e.notes ?? "").trim());
+        if (!r) return e;
+        const out = { ...e };
+        if (r.subject_name && r.subject_name !== e.subject_name) { out.subject_name = r.subject_name; fixedSubj++; }
+        if (r.kind) { out.kind = r.kind; out.is_abex = !!r.is_abex; }
+        if (Array.isArray(r.groups)) {
+          if (e.practice_groups === null) fixedGroups++;
+          out.practice_groups = r.groups;
+          if (out.subject_name && r.groups.length) {
+            const set = nextGroups.get(out.subject_name) ?? new Set<string>();
+            r.groups.forEach((g: string) => set.add(g));
+            nextGroups.set(out.subject_name, set);
+          }
+        }
+        return out;
+      });
+
+      setEntries(nextEntries);
+      setSubjects(subs.map((s) => {
+        const extra = nextGroups.get(s.name);
+        if (!extra?.size) return s;
+        const cur = s.groups?.length ? s.groups : ["A"];
+        return { ...s, groups: [...new Set([...cur, ...extra])].sort() };
+      }));
+      setAiDone(true);
+      if (!silent) toast.success(`IA revisou ${cells.length} atividades · ${fixedSubj} matérias e ${fixedGroups} turmas ajustadas`);
+    } catch (e: any) {
+      if (!silent) toast.error(e?.message ?? "Falha ao consultar a IA");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
 
   const addGroupTo = (i: number) => {
     const letter = (groupDraft[i] ?? "").trim().toUpperCase();
