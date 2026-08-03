@@ -252,13 +252,16 @@ export function ScheduleImportButton({
       <input
         ref={fileRef}
         type="file"
-        accept=".xlsx,.xls"
+        multiple
+        accept=".xlsx,.xls,.pdf"
         className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+        onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) onFiles(fs); }}
       />
       <Button variant="outline" size="sm" disabled={busy} onClick={() => fileRef.current?.click()}>
-        {busy && !parsed ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />} Importar Excel
+        {busy && !parsed ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+        {busy && !parsed ? (reading ? `Lendo ${reading}…` : "Lendo arquivos…") : "Importar cronograma"}
       </Button>
+
 
       <Dialog open={!!parsed} onOpenChange={(o) => !o && reset()}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
