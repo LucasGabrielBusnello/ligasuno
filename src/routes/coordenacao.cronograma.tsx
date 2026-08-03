@@ -219,7 +219,8 @@ function CoordCronograma() {
           onCellClick={(date, shift) => setPanel({ date, shift })}
         />
 
-        <PendingGroupsPanel classCode={classCode} reloadKey={entries.length} />
+        <PendingGroupsPanel classCode={classCode} subjects={subjects} reloadKey={entries.length} onChanged={reload} />
+        <UnlinkedSubjectPanel classCode={classCode} subjects={subjects} reloadKey={entries.length} onChanged={reload} />
       </section>
 
 
