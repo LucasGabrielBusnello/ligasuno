@@ -7,10 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Upload, Loader2, Trash2, Plus, AlertTriangle, Sparkles } from "lucide-react";
-import { parseScheduleWorkbook, type ParsedSchedule, type ParsedEntry, type ParsedSubject } from "@/lib/schedule-xlsx";
+import { Upload, Loader2, Trash2, Plus, AlertTriangle, Sparkles, FileText, FileSpreadsheet } from "lucide-react";
+import { parseScheduleWorkbook, mergeParsedSchedules, type ParsedSchedule, type ParsedEntry, type ParsedSubject } from "@/lib/schedule-xlsx";
+import { extractPdfText } from "@/lib/schedule-pdf";
 import { importScheduleFromSheet } from "@/lib/schedule.functions";
 import { refineScheduleWithAI } from "@/lib/schedule-ai.functions";
+import { parseScheduleFromPdfText } from "@/lib/schedule-pdf-ai.functions";
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 const SHIFT_LABEL: Record<string, string> = { morning: "Manhã", afternoon: "Tarde", night: "Noite" };
