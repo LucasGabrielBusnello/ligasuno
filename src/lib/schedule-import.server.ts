@@ -10,6 +10,7 @@ type Entry = {
   is_abex: boolean;
   subject_name?: string | null;
   notes?: string | null;
+  practice_groups?: string[] | null;
 };
 
 export async function runScheduleImport(
@@ -21,10 +22,23 @@ export async function runScheduleImport(
     term_id?: string | null;
     replace: boolean;
     subjects: Sub[];
+    groups?: string[];
     entries: Entry[];
   },
 ) {
   const { class_code, subdivision, term_id, replace, subjects, entries } = input;
+  const groups = (input.groups ?? []).map((g) => g.trim().toUpperCase()).filter(Boolean);
+
+  // 0) garante as turmas (A, B, C…) confirmadas pela coordenação
+  if (groups.length) {
+    const { data: existingGroups } = await supabase
+      .from("class_subdivisions").select("letter").eq("class_code", class_code);
+    const have = new Set((existingGroups ?? []).map((g: any) => String(g.letter).toUpperCase()));
+    const missing = groups.filter((g) => !have.has(g));
+    if (missing.length) {
+      await supabase.from("class_subdivisions").insert(missing.map((letter) => ({ class_code, letter })));
+    }
+  }
 
   // 1) garante os componentes curriculares
   const byName = new Map<string, string>();
@@ -84,6 +98,13 @@ export async function runScheduleImport(
     end_time: e.end_time,
     kind: e.kind,
     is_abex: e.is_abex,
+    // [] = todas as turmas; null = não identificado (a coordenação ajusta depois)
+    practice_groups:
+      e.practice_groups === null || e.practice_groups === undefined
+        ? []
+        : e.practice_groups.length === 0 && (e.kind === "practice" || e.kind === "abex" || e.is_abex)
+          ? groups
+          : e.practice_groups,
     notes: e.notes ?? null,
     created_by: userId,
   }));
