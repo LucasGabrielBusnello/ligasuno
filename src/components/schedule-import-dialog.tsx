@@ -123,10 +123,14 @@ export function ScheduleImportButton({
         return;
       }
       setClassCode(defaultClass);
-      setSubjects(p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] })));
-      setEntries(p.entries.map((e) => ({ ...e })));
+      const subs = p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] }));
+      const ents = p.entries.map((e) => ({ ...e }));
+      setSubjects(subs);
+      setEntries(ents);
       setStep(1);
       setParsed(p);
+      setAiDone(false);
+      void runAI(subs, ents);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao ler a planilha");
     } finally {
