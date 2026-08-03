@@ -143,69 +143,66 @@ export function ScheduleImportButton({
 
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wide">Componentes curriculares ({subjects.length})</Label>
-                <div className="space-y-2">
-                  {subjects.map((s, i) => (
-                    <div key={i} className="flex gap-2">
-                      <Input
-                        value={s.name}
-                        onChange={(e) => renameSubject(i, e.target.value)}
-                        placeholder="Nome da matéria"
-                      />
-                      <Input
-                        className="w-48"
-                        value={s.professor ?? ""}
-                        onChange={(e) =>
-                          setSubjects((prev) => prev.map((x, idx) => (idx === i ? { ...x, professor: e.target.value } : x)))
-                        }
-                        placeholder="Professor(a)"
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => removeSubject(i)}><Trash2 className="size-4" /></Button>
-                    </div>
-                  ))}
+                <p className="text-xs text-muted-foreground">
+                  Cada matéria começa com a turma <b>A</b>. Adicione mais turmas de prática só onde for necessário.
+                </p>
+                <div className="space-y-3">
+                  {subjects.map((s, i) => {
+                    const gs = s.groups?.length ? s.groups : ["A"];
+                    return (
+                      <div key={i} className="rounded-lg border p-2 space-y-2">
+                        <div className="flex gap-2">
+                          <Input
+                            value={s.name}
+                            onChange={(e) => renameSubject(i, e.target.value)}
+                            placeholder="Nome da matéria"
+                          />
+                          <Input
+                            className="w-48"
+                            value={s.professor ?? ""}
+                            onChange={(e) =>
+                              setSubjects((prev) => prev.map((x, idx) => (idx === i ? { ...x, professor: e.target.value } : x)))
+                            }
+                            placeholder="Professor(a)"
+                          />
+                          <Button variant="ghost" size="icon" onClick={() => removeSubject(i)}><Trash2 className="size-4" /></Button>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Turmas:</span>
+                          {gs.map((g) => (
+                            <Badge key={g} variant="secondary" className="gap-1">
+                              {g}
+                              <button
+                                className="ml-1"
+                                onClick={() =>
+                                  setSubjects((prev) => prev.map((x, idx) =>
+                                    idx === i ? { ...x, groups: gs.filter((l) => l !== g) } : x))
+                                }
+                              >×</button>
+                            </Badge>
+                          ))}
+                          <Input
+                            className="w-20 h-7 text-xs"
+                            placeholder="+ turma"
+                            value={groupDraft[i] ?? ""}
+                            onChange={(e) => setGroupDraft((p) => ({ ...p, [i]: e.target.value.toUpperCase().slice(0, 4) }))}
+                            onKeyDown={(e) => { if (e.key === "Enter") addGroupTo(i); }}
+                          />
+                          <Button variant="outline" size="sm" className="h-7" onClick={() => addGroupTo(i)}>Adicionar</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {subjects.length === 0 && <p className="text-muted-foreground">Nenhuma matéria identificada.</p>}
                   <Button
                     variant="outline" size="sm"
-                    onClick={() => setSubjects((prev) => [...prev, { name: "", professor: "" }])}
+                    onClick={() => setSubjects((prev) => [...prev, { name: "", professor: "", groups: ["A"] }])}
                   >
                     <Plus className="size-4" /> Adicionar matéria
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wide">Turmas de prática (A, B, C…)</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {groups.map((g) => (
-                    <Badge key={g} variant="secondary" className="gap-1">
-                      {g}
-                      <button className="ml-1" onClick={() => setGroups((prev) => prev.filter((x) => x !== g))}>×</button>
-                    </Badge>
-                  ))}
-                  <Input
-                    className="w-24 h-8"
-                    value={newGroup}
-                    placeholder="Nova"
-                    onChange={(e) => setNewGroup(e.target.value.toUpperCase().slice(0, 4))}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newGroup.trim()) {
-                        setGroups((prev) => [...new Set([...prev, newGroup.trim().toUpperCase()])].sort());
-                        setNewGroup("");
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="outline" size="sm"
-                    onClick={() => {
-                      if (!newGroup.trim()) return;
-                      setGroups((prev) => [...new Set([...prev, newGroup.trim().toUpperCase()])].sort());
-                      setNewGroup("");
-                    }}
-                  >Adicionar</Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Aulas práticas/ABEX sem turma citada na planilha serão marcadas para <b>todas</b> essas turmas.
-                </p>
-              </div>
 
               <div className="rounded-lg border p-3 space-y-1 text-muted-foreground">
                 <p><b className="text-foreground">{entries.length}</b> atividades
