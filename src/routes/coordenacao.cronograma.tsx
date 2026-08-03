@@ -19,7 +19,8 @@ import {
   listScheduleWeek, upsertScheduleEntry, deleteScheduleEntry, rescheduleEntry,
   bulkCreateScheduleEntries, copyScheduleWeek, checkScheduleConflicts,
   listClassGroups, addClassGroup, deleteClassGroup,
-  listEntriesNeedingGroups, setEntryGroups,
+  listEntriesNeedingGroups, setEntryGroups, setSubjectGroups,
+  listEntriesWithoutSubject, assignSubjectToEntries,
 
 } from "@/lib/schedule.functions";
 import { listSubjects, listTerms } from "@/lib/curriculum.functions";
