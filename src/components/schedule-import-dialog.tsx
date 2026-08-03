@@ -28,15 +28,25 @@ export function ScheduleImportButton({
   const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
   const [subjects, setSubjects] = useState<ParsedSubject[]>([]);
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
-  const [groups, setGroups] = useState<string[]>([]);
-  const [newGroup, setNewGroup] = useState("");
+  const [groupDraft, setGroupDraft] = useState<Record<number, string>>({});
   const [step, setStep] = useState<1 | 2>(1);
   const [classCode, setClassCode] = useState(defaultClass);
   const [subdivision, setSubdivision] = useState("A");
   const [replace, setReplace] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  const reset = () => { setParsed(null); setStep(1); setNewGroup(""); };
+  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); };
+
+  const addGroupTo = (i: number) => {
+    const letter = (groupDraft[i] ?? "").trim().toUpperCase();
+    if (!letter) return;
+    setSubjects((prev) => prev.map((x, idx) => {
+      if (idx !== i) return x;
+      const cur = x.groups?.length ? x.groups : ["A"];
+      return { ...x, groups: [...new Set([...cur, letter])].sort() };
+    }));
+    setGroupDraft((p) => ({ ...p, [i]: "" }));
+  };
 
   const onFile = async (f: File) => {
     try {
@@ -47,9 +57,8 @@ export function ScheduleImportButton({
         return;
       }
       setClassCode(defaultClass);
-      setSubjects(p.subjects.map((s) => ({ ...s })));
+      setSubjects(p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] })));
       setEntries(p.entries.map((e) => ({ ...e })));
-      setGroups(p.groups.length ? p.groups : ["A", "B"]);
       setStep(1);
       setParsed(p);
     } catch (e: any) {
@@ -79,14 +88,18 @@ export function ScheduleImportButton({
   const confirm = async () => {
     try {
       setBusy(true);
-      const cleanGroups = [...new Set(groups.map((g) => g.trim().toUpperCase()).filter(Boolean))];
+      const cleanGroups = [...new Set(subjects.flatMap((s) => s.groups ?? ["A"]).map((g) => g.trim().toUpperCase()).filter(Boolean))];
       const r: any = await importFn({
         data: {
           class_code: classCode as any,
           subdivision,
           term_id: termId ?? null,
           replace,
-          subjects: subjects.filter((s) => s.name.trim()),
+          subjects: subjects.filter((s) => s.name.trim()).map((s) => ({
+            name: s.name,
+            professor: s.professor ?? null,
+            groups: s.groups?.length ? s.groups : ["A"],
+          })),
           groups: cleanGroups,
           entries: entries.map((e) => ({
             date: e.date,
@@ -143,69 +156,66 @@ export function ScheduleImportButton({
 
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wide">Componentes curriculares ({subjects.length})</Label>
-                <div className="space-y-2">
-                  {subjects.map((s, i) => (
-                    <div key={i} className="flex gap-2">
-                      <Input
-                        value={s.name}
-                        onChange={(e) => renameSubject(i, e.target.value)}
-                        placeholder="Nome da matéria"
-                      />
-                      <Input
-                        className="w-48"
-                        value={s.professor ?? ""}
-                        onChange={(e) =>
-                          setSubjects((prev) => prev.map((x, idx) => (idx === i ? { ...x, professor: e.target.value } : x)))
-                        }
-                        placeholder="Professor(a)"
-                      />
-                      <Button variant="ghost" size="icon" onClick={() => removeSubject(i)}><Trash2 className="size-4" /></Button>
-                    </div>
-                  ))}
+                <p className="text-xs text-muted-foreground">
+                  Cada matéria começa com a turma <b>A</b>. Adicione mais turmas de prática só onde for necessário.
+                </p>
+                <div className="space-y-3">
+                  {subjects.map((s, i) => {
+                    const gs = s.groups?.length ? s.groups : ["A"];
+                    return (
+                      <div key={i} className="rounded-lg border p-2 space-y-2">
+                        <div className="flex gap-2">
+                          <Input
+                            value={s.name}
+                            onChange={(e) => renameSubject(i, e.target.value)}
+                            placeholder="Nome da matéria"
+                          />
+                          <Input
+                            className="w-48"
+                            value={s.professor ?? ""}
+                            onChange={(e) =>
+                              setSubjects((prev) => prev.map((x, idx) => (idx === i ? { ...x, professor: e.target.value } : x)))
+                            }
+                            placeholder="Professor(a)"
+                          />
+                          <Button variant="ghost" size="icon" onClick={() => removeSubject(i)}><Trash2 className="size-4" /></Button>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Turmas:</span>
+                          {gs.map((g) => (
+                            <Badge key={g} variant="secondary" className="gap-1">
+                              {g}
+                              <button
+                                className="ml-1"
+                                onClick={() =>
+                                  setSubjects((prev) => prev.map((x, idx) =>
+                                    idx === i ? { ...x, groups: gs.filter((l) => l !== g) } : x))
+                                }
+                              >×</button>
+                            </Badge>
+                          ))}
+                          <Input
+                            className="w-20 h-7 text-xs"
+                            placeholder="+ turma"
+                            value={groupDraft[i] ?? ""}
+                            onChange={(e) => setGroupDraft((p) => ({ ...p, [i]: e.target.value.toUpperCase().slice(0, 4) }))}
+                            onKeyDown={(e) => { if (e.key === "Enter") addGroupTo(i); }}
+                          />
+                          <Button variant="outline" size="sm" className="h-7" onClick={() => addGroupTo(i)}>Adicionar</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {subjects.length === 0 && <p className="text-muted-foreground">Nenhuma matéria identificada.</p>}
                   <Button
                     variant="outline" size="sm"
-                    onClick={() => setSubjects((prev) => [...prev, { name: "", professor: "" }])}
+                    onClick={() => setSubjects((prev) => [...prev, { name: "", professor: "", groups: ["A"] }])}
                   >
                     <Plus className="size-4" /> Adicionar matéria
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wide">Turmas de prática (A, B, C…)</Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  {groups.map((g) => (
-                    <Badge key={g} variant="secondary" className="gap-1">
-                      {g}
-                      <button className="ml-1" onClick={() => setGroups((prev) => prev.filter((x) => x !== g))}>×</button>
-                    </Badge>
-                  ))}
-                  <Input
-                    className="w-24 h-8"
-                    value={newGroup}
-                    placeholder="Nova"
-                    onChange={(e) => setNewGroup(e.target.value.toUpperCase().slice(0, 4))}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newGroup.trim()) {
-                        setGroups((prev) => [...new Set([...prev, newGroup.trim().toUpperCase()])].sort());
-                        setNewGroup("");
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="outline" size="sm"
-                    onClick={() => {
-                      if (!newGroup.trim()) return;
-                      setGroups((prev) => [...new Set([...prev, newGroup.trim().toUpperCase()])].sort());
-                      setNewGroup("");
-                    }}
-                  >Adicionar</Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Aulas práticas/ABEX sem turma citada na planilha serão marcadas para <b>todas</b> essas turmas.
-                </p>
-              </div>
 
               <div className="rounded-lg border p-3 space-y-1 text-muted-foreground">
                 <p><b className="text-foreground">{entries.length}</b> atividades
@@ -246,7 +256,7 @@ export function ScheduleImportButton({
               </div>
 
               <div className="rounded-lg border p-3 space-y-1 text-muted-foreground">
-                <p><b className="text-foreground">{subjects.length}</b> componentes · <b className="text-foreground">{groups.join(", ") || "—"}</b> turmas · <b className="text-foreground">{entries.length}</b> atividades</p>
+                <p><b className="text-foreground">{subjects.length}</b> componentes · <b className="text-foreground">{[...new Set(subjects.flatMap((s) => s.groups ?? ["A"]))].sort().join(", ") || "—"}</b> turmas · <b className="text-foreground">{entries.length}</b> atividades</p>
                 {unresolved > 0 && (
                   <p className="text-amber-600 dark:text-amber-400">
                     {unresolved} prática(s)/ABEX ficarão pendentes de definição de turma.

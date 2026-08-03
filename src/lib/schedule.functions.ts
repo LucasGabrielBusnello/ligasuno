@@ -256,7 +256,7 @@ export const importScheduleFromSheet = createServerFn({ method: "POST" })
       subdivision: z.string().default("A"),
       term_id: z.string().uuid().nullish(),
       replace: z.boolean().default(true),
-      subjects: z.array(z.object({ name: z.string().min(1), professor: z.string().nullish() })).max(200).default([]),
+      subjects: z.array(z.object({ name: z.string().min(1), professor: z.string().nullish(), groups: z.array(z.string().min(1).max(4)).max(26).optional() })).max(200).default([]),
       groups: z.array(z.string().min(1).max(4)).max(26).default([]),
       entries: z.array(z.object({
         date: z.string(),
@@ -395,4 +395,64 @@ export const setEntryGroups = createServerFn({ method: "POST" })
       .eq("id", data.id);
     if (error) throw error;
     return { ok: true };
+  });
+
+/* ---------- TURMAS DE PRÁTICA POR MATÉRIA ---------- */
+
+export const setSubjectGroups = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({
+      subject_id: z.string().uuid(),
+      groups: z.array(z.string().min(1).max(4)).max(26),
+    }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const clean = Array.from(new Set(data.groups.map((g) => g.trim().toUpperCase()).filter(Boolean))).sort();
+    const { error } = await context.supabase
+      .from("subjects")
+      .update({ subdivisions: clean.length ? clean : ["A"] })
+      .eq("id", data.subject_id);
+    if (error) throw error;
+    return { groups: clean.length ? clean : ["A"] };
+  });
+
+/* ---------- AULAS SEM MATÉRIA VINCULADA ---------- */
+
+export const listEntriesWithoutSubject = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ class_code: z.enum(ATM_CLASSES), from: z.string().optional() }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    let q = context.supabase
+      .from("schedule_entries")
+      .select("id, date, shift, start_time, end_time, kind, is_abex, notes")
+      .eq("class_code", data.class_code)
+      .is("subject_id", null)
+      .neq("kind", "green_zone")
+      .order("date");
+    if (data.from) q = q.gte("date", data.from);
+    const { data: rows, error } = await q;
+    if (error) throw error;
+    return rows ?? [];
+  });
+
+export const assignSubjectToEntries = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({
+      ids: z.array(z.string().uuid()).min(1).max(2000),
+      subject_id: z.string().uuid(),
+    }).parse(v)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCoord(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("schedule_entries")
+      .update({ subject_id: data.subject_id })
+      .in("id", data.ids);
+    if (error) throw error;
+    return { count: data.ids.length };
   });
