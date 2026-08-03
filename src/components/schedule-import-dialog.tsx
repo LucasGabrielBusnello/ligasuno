@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Upload, Loader2, Trash2, Plus, AlertTriangle } from "lucide-react";
+import { Upload, Loader2, Trash2, Plus, AlertTriangle, Sparkles } from "lucide-react";
 import { parseScheduleWorkbook, type ParsedSchedule, type ParsedEntry, type ParsedSubject } from "@/lib/schedule-xlsx";
 import { importScheduleFromSheet } from "@/lib/schedule.functions";
+import { refineScheduleWithAI } from "@/lib/schedule-ai.functions";
 
 const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 const SHIFT_LABEL: Record<string, string> = { morning: "Manhã", afternoon: "Tarde", night: "Noite" };
@@ -25,6 +26,7 @@ export function ScheduleImportButton({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const importFn = useServerFn(importScheduleFromSheet);
+  const aiFn = useServerFn(refineScheduleWithAI);
   const [parsed, setParsed] = useState<ParsedSchedule | null>(null);
   const [subjects, setSubjects] = useState<ParsedSubject[]>([]);
   const [entries, setEntries] = useState<ParsedEntry[]>([]);
@@ -34,8 +36,72 @@ export function ScheduleImportButton({
   const [subdivision, setSubdivision] = useState("A");
   const [replace, setReplace] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiDone, setAiDone] = useState(false);
 
-  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); };
+  const reset = () => { setParsed(null); setStep(1); setGroupDraft({}); setAiDone(false); };
+
+  /** Envia as células ambíguas para a IA e aplica as correções. */
+  const runAI = async (
+    subs: ParsedSubject[] = subjects,
+    ents: ParsedEntry[] = entries,
+    silent = false,
+  ) => {
+    const uniq = new Map<string, { text: string; kind: string; is_abex: boolean; shift: string }>();
+    for (const e of ents) {
+      const text = (e.notes ?? "").trim();
+      if (!text) continue;
+      if (!uniq.has(text)) uniq.set(text, { text, kind: e.kind, is_abex: e.is_abex, shift: e.shift });
+    }
+    const cells = [...uniq.values()];
+    if (!cells.length || !subs.length) return;
+    try {
+      setAiBusy(true);
+      const res: any[] = await aiFn({
+        data: {
+          subjects: subs.map((s) => ({ name: s.name, professor: s.professor ?? null })),
+          cells: cells.slice(0, 400),
+        },
+      });
+      const byText = new Map(res.map((r) => [String(r.text ?? "").trim(), r]));
+      let fixedSubj = 0;
+      let fixedGroups = 0;
+      const nextGroups = new Map<string, Set<string>>();
+
+      const nextEntries = ents.map((e) => {
+        const r = byText.get((e.notes ?? "").trim());
+        if (!r) return e;
+        const out = { ...e };
+        if (r.subject_name && r.subject_name !== e.subject_name) { out.subject_name = r.subject_name; fixedSubj++; }
+        if (r.kind) { out.kind = r.kind; out.is_abex = !!r.is_abex; }
+        if (Array.isArray(r.groups)) {
+          if (e.practice_groups === null) fixedGroups++;
+          out.practice_groups = r.groups;
+          if (out.subject_name && r.groups.length) {
+            const set = nextGroups.get(out.subject_name) ?? new Set<string>();
+            r.groups.forEach((g: string) => set.add(g));
+            nextGroups.set(out.subject_name, set);
+          }
+        }
+        return out;
+      });
+
+      setEntries(nextEntries);
+      setSubjects(subs.map((s) => {
+        const extra = nextGroups.get(s.name);
+        if (!extra?.size) return s;
+        const cur = s.groups?.length ? s.groups : ["A"];
+        return { ...s, groups: [...new Set([...cur, ...extra])].sort() };
+      }));
+      setAiDone(true);
+      if (!silent) toast.success(`IA revisou ${cells.length} atividades · ${fixedSubj} matérias e ${fixedGroups} turmas ajustadas`);
+    } catch (e: any) {
+      if (!silent) toast.error(e?.message ?? "Falha ao consultar a IA");
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
 
   const addGroupTo = (i: number) => {
     const letter = (groupDraft[i] ?? "").trim().toUpperCase();
@@ -57,10 +123,14 @@ export function ScheduleImportButton({
         return;
       }
       setClassCode(defaultClass);
-      setSubjects(p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] })));
-      setEntries(p.entries.map((e) => ({ ...e })));
+      const subs = p.subjects.map((s) => ({ ...s, groups: s.groups?.length ? s.groups : ["A"] }));
+      const ents = p.entries.map((e) => ({ ...e }));
+      setSubjects(subs);
+      setEntries(ents);
       setStep(1);
       setParsed(p);
+      setAiDone(false);
+      void runAI(subs, ents);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao ler a planilha");
     } finally {
@@ -153,6 +223,23 @@ export function ScheduleImportButton({
               <p className="text-muted-foreground">
                 Revise e corrija o que o site identificou. A distribuição das aulas por turma só é feita depois que você confirmar.
               </p>
+
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                <Sparkles className="size-4 text-emerald-500" />
+                <span className="text-xs text-muted-foreground flex-1 min-w-[12rem]">
+                  {aiBusy
+                    ? "A IA está lendo o cronograma e ajustando matérias, tipos de aula e turmas…"
+                    : aiDone
+                      ? "Revisão por IA aplicada. Confira abaixo e corrija o que for necessário."
+                      : "Use a IA para interpretar as células do cronograma automaticamente."}
+                </span>
+                <Button variant="outline" size="sm" disabled={aiBusy} onClick={() => runAI()}>
+                  {aiBusy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+                  {aiDone ? "Reanalisar com IA" : "Analisar com IA"}
+                </Button>
+              </div>
+
+
 
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-wide">Componentes curriculares ({subjects.length})</Label>
