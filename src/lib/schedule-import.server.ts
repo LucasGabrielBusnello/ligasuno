@@ -1,6 +1,6 @@
 /** Lógica de importação de cronograma (servidor). */
 
-type Sub = { name: string; professor?: string | null };
+type Sub = { name: string; professor?: string | null; groups?: string[] | null };
 type Entry = {
   date: string;
   shift: "morning" | "afternoon" | "night";
