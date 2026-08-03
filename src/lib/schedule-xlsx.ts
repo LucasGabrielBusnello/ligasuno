@@ -11,6 +11,8 @@ export type ParsedEntry = {
   is_abex: boolean;
   subject_name: string | null;
   notes: string;
+  /** Turmas (A, B, C…) identificadas no texto. null = não foi possível identificar. */
+  practice_groups: string[] | null;
 };
 
 export type ParsedSubject = { name: string; professor: string | null };
@@ -18,10 +20,13 @@ export type ParsedSubject = { name: string; professor: string | null };
 export type ParsedSchedule = {
   subjects: ParsedSubject[];
   entries: ParsedEntry[];
+  /** Letras de turma identificadas na planilha inteira. */
+  groups: string[];
   startDate: string | null;
   endDate: string | null;
   title: string | null;
 };
+
 
 const SHIFT_TIMES: Record<ParsedShift, { start: string; end: string }> = {
   morning: { start: "08:00", end: "12:00" },
