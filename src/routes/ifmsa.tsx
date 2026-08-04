@@ -236,6 +236,7 @@ function IfmsaPage() {
               <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:flex-wrap md:justify-center md:overflow-visible md:mx-0 md:px-0">
                 {sectors.map((s) => {
                   const on = s.code === active;
+                  const icon = sectorIcon(s.code);
                   return (
                     <button
                       key={s.id}
@@ -246,7 +247,17 @@ function IfmsaPage() {
                       }`}
                       style={on ? { backgroundColor: s.color } : undefined}
                     >
-                      <span>{s.emoji || "🐾"}</span> {s.name}
+                      {icon ? (
+                        <img
+                          src={icon}
+                          alt=""
+                          aria-hidden
+                          className={`size-5 object-contain ${on ? "brightness-0 invert" : ""}`}
+                        />
+                      ) : (
+                        <span>{s.emoji || "🐾"}</span>
+                      )}{" "}
+                      {s.name}
                     </button>
                   );
                 })}
