@@ -38,6 +38,9 @@ export type Membership = {
 const ALL_CAMED_TABS = ["info", "membros", "noticias", "ligas", "mensagens", "horarios", "documentos"] as const;
 export type CamedTab = (typeof ALL_CAMED_TABS)[number];
 
+const ALL_IFMSA_TABS = ["info", "setores", "diretoria", "intercambio"] as const;
+export type IfmsaTab = (typeof ALL_IFMSA_TABS)[number];
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -46,7 +49,9 @@ export function useAuth() {
   const [isCoordination, setIsCoordination] = useState(false);
   const [isCamedPresident, setIsCamedPresident] = useState(false);
   const [camedPanelTabs, setCamedPanelTabs] = useState<CamedTab[]>([]);
+  const [ifmsaPanelTabs, setIfmsaPanelTabs] = useState<IfmsaTab[]>([]);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
