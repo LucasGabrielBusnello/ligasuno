@@ -6,6 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Reveal } from "@/components/reveal";
 import ifmsaLogo from "@/assets/ifmsa-logo.jpeg.asset.json";
+import scone from "@/assets/ifmsa-scone.png.asset.json";
+import scope from "@/assets/ifmsa-scope.png.asset.json";
+import score from "@/assets/ifmsa-score.png.asset.json";
+import scorp from "@/assets/ifmsa-scorp.png.asset.json";
+import scora from "@/assets/ifmsa-scora.png.asset.json";
+import scoph from "@/assets/ifmsa-scoph.png.asset.json";
+import scome from "@/assets/ifmsa-scome.png.asset.json";
+
+const SECTOR_ICONS: Record<string, string> = {
+  SCONE: scone.url,
+  SCOPE: scope.url,
+  SCORE: score.url,
+  SCORP: scorp.url,
+  SCORA: scora.url,
+  SCOPH: scoph.url,
+  SCOME: scome.url,
+};
+
+const sectorIcon = (code?: string | null) =>
+  code ? SECTOR_ICONS[code.trim().toUpperCase()] ?? null : null;
 import {
   Download,
   Globe2,
@@ -216,6 +236,7 @@ function IfmsaPage() {
               <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:flex-wrap md:justify-center md:overflow-visible md:mx-0 md:px-0">
                 {sectors.map((s) => {
                   const on = s.code === active;
+                  const icon = sectorIcon(s.code);
                   return (
                     <button
                       key={s.id}
@@ -226,7 +247,17 @@ function IfmsaPage() {
                       }`}
                       style={on ? { backgroundColor: s.color } : undefined}
                     >
-                      <span>{s.emoji || "🐾"}</span> {s.name}
+                      {icon ? (
+                        <img
+                          src={icon}
+                          alt=""
+                          aria-hidden
+                          className={`size-5 object-contain ${on ? "brightness-0 invert" : ""}`}
+                        />
+                      ) : (
+                        <span>{s.emoji || "🐾"}</span>
+                      )}{" "}
+                      {s.name}
                     </button>
                   );
                 })}
@@ -242,10 +273,18 @@ function IfmsaPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-3">
                         <div
-                          className="size-12 shrink-0 rounded-2xl grid place-items-center text-2xl"
+                          className="size-14 shrink-0 rounded-2xl grid place-items-center text-2xl p-2"
                           style={{ backgroundColor: `${current.color}22` }}
                         >
-                          {current.emoji || "🐾"}
+                          {sectorIcon(current.code) ? (
+                            <img
+                              src={sectorIcon(current.code)!}
+                              alt={current.code}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            current.emoji || "🐾"
+                          )}
                         </div>
                         <div className="min-w-0">
                           <h3 className="text-2xl font-black tracking-tight truncate">{current.name}</h3>
