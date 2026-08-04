@@ -24,8 +24,11 @@ const SECTOR_ICONS: Record<string, string> = {
   SCOME: scome.url,
 };
 
-const sectorIcon = (code?: string | null) =>
-  code ? SECTOR_ICONS[code.trim().toUpperCase()] ?? null : null;
+const sectorIcon = (sector?: { code?: string | null; icon_url?: string | null } | null) => {
+  if (!sector) return null;
+  if (sector.icon_url) return sector.icon_url;
+  return sector.code ? SECTOR_ICONS[sector.code.trim().toUpperCase()] ?? null : null;
+};
 import {
   Download,
   Globe2,
@@ -69,6 +72,7 @@ type Sector = {
   description: string | null;
   color: string;
   emoji: string | null;
+  icon_url: string | null;
   image_url: string | null;
   links: { label?: string; url?: string }[];
   highlights: string[];
@@ -236,7 +240,7 @@ function IfmsaPage() {
               <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 md:flex-wrap md:justify-center md:overflow-visible md:mx-0 md:px-0">
                 {sectors.map((s) => {
                   const on = s.code === active;
-                  const icon = sectorIcon(s.code);
+                  const icon = sectorIcon(s);
                   return (
                     <button
                       key={s.id}
@@ -276,9 +280,9 @@ function IfmsaPage() {
                           className="size-14 shrink-0 rounded-2xl grid place-items-center text-2xl p-2"
                           style={{ backgroundColor: `${current.color}22` }}
                         >
-                          {sectorIcon(current.code) ? (
+                          {sectorIcon(current) ? (
                             <img
-                              src={sectorIcon(current.code)!}
+                              src={sectorIcon(current)!}
                               alt={current.code}
                               className="h-full w-full object-contain"
                             />

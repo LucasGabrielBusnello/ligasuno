@@ -1,0 +1,1 @@
+ALTER TABLE public.ifmsa_sectors ADD COLUMN IF NOT EXISTS icon_url TEXT;

@@ -320,6 +320,7 @@ const EMPTY_SECTOR = {
   description: "",
   color: "#0a8f4a",
   emoji: "🐾",
+  icon_url: "",
   image_url: "",
   links: [] as { label: string; url: string }[],
   highlights: [] as string[],
@@ -350,6 +351,7 @@ function SectorsTab() {
       description: editing.description || null,
       color: editing.color || "#0a8f4a",
       emoji: editing.emoji || "🐾",
+      icon_url: editing.icon_url || null,
       image_url: editing.image_url || null,
       links: (editing.links ?? []).filter((l: any) => l?.url),
       highlights: (editing.highlights ?? []).filter(Boolean),
@@ -385,7 +387,11 @@ function SectorsTab() {
       <CardContent className="space-y-2">
         {rows.map((s) => (
           <div key={s.id} className="p-3 rounded-lg border flex items-center gap-3 flex-wrap">
-            <span className="text-2xl">{s.emoji}</span>
+            {s.icon_url ? (
+              <img src={s.icon_url} alt="" className="size-8 object-contain" />
+            ) : (
+              <span className="text-2xl">{s.emoji}</span>
+            )}
             <div className="min-w-0 flex-1">
               <div className="font-black truncate">
                 {s.name} {s.is_exchange && <Badge className="ml-1 text-[10px] bg-sky-600">intercâmbio</Badge>}
@@ -449,6 +455,12 @@ function SectorsTab() {
                   <Input type="number" value={editing.display_order ?? 0} onChange={(e) => setEditing({ ...editing, display_order: e.target.value })} />
                 </div>
               </div>
+              <ImageUpload
+                label="Ícone do comitê (substitui o emoji)"
+                folder="ifmsa"
+                value={editing.icon_url ?? ""}
+                onChange={(url) => setEditing({ ...editing, icon_url: url })}
+              />
               <ImageUpload label="Imagem" folder="ifmsa" value={editing.image_url ?? ""} onChange={(url) => setEditing({ ...editing, image_url: url })} />
               <div>
                 <Label>Destaques (um por linha)</Label>

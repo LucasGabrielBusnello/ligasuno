@@ -2175,6 +2175,7 @@ export type Database = {
           emoji: string | null
           full_name: string | null
           highlights: Json
+          icon_url: string | null
           id: string
           image_url: string | null
           is_exchange: boolean
@@ -2193,6 +2194,7 @@ export type Database = {
           emoji?: string | null
           full_name?: string | null
           highlights?: Json
+          icon_url?: string | null
           id?: string
           image_url?: string | null
           is_exchange?: boolean
@@ -2211,6 +2213,7 @@ export type Database = {
           emoji?: string | null
           full_name?: string | null
           highlights?: Json
+          icon_url?: string | null
           id?: string
           image_url?: string | null
           is_exchange?: boolean
