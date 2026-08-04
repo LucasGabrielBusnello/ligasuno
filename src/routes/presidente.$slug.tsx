@@ -908,14 +908,14 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
 function MinicoursesManager({ event, open, onClose }: { event: any; open: boolean; onClose: () => void }) {
   const [list, setList] = useState<any[]>([]);
   const [regsByMc, setRegsByMc] = useState<Record<string, any[]>>({});
-  const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ id: string; league_id: string; seats: number }>>>({});
+  const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ id: string; league_id: string; seats: number; price?: number | null }>>>({});
   const [leaguesList, setLeaguesList] = useState<Array<{ id: string; name: string }>>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
   const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
-  const [exclusiveDraft, setExclusiveDraft] = useState<Array<{ id?: string; league_id: string; seats: number }>>([]);
+  const [exclusiveDraft, setExclusiveDraft] = useState<Array<{ id?: string; league_id: string; seats: number; price?: number | null }>>([]);
   const [checkinMc, setCheckinMc] = useState<any | null>(null);
   const [certMc, setCertMc] = useState<any | null>(null);
 
@@ -961,7 +961,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       published: !!mc.published,
       total_hours: Number(mc.total_hours) || 0,
     });
-    setExclusiveDraft((slotsByMc[mc.id] ?? []).map((s: any) => ({ id: s.id, league_id: s.league_id, seats: Number(s.seats) })));
+    setExclusiveDraft((slotsByMc[mc.id] ?? []).map((s: any) => ({ id: s.id, league_id: s.league_id, seats: Number(s.seats), price: s.price === null || s.price === undefined ? null : Number(s.price) })));
     setFormOpen(true);
   }
   async function save(e: React.FormEvent) {
@@ -1000,9 +1000,9 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       }
       for (const s of exclusiveDraft) {
         if (s.id) {
-          await (supabase as any).from("minicourse_exclusive_slots").update({ league_id: s.league_id, seats: s.seats }).eq("id", s.id);
+          await (supabase as any).from("minicourse_exclusive_slots").update({ league_id: s.league_id, seats: s.seats, price: f.is_free ? null : (s.price ?? null) }).eq("id", s.id);
         } else {
-          await (supabase as any).from("minicourse_exclusive_slots").insert({ minicourse_id: mcId, league_id: s.league_id, seats: s.seats });
+          await (supabase as any).from("minicourse_exclusive_slots").insert({ minicourse_id: mcId, league_id: s.league_id, seats: s.seats, price: f.is_free ? null : (s.price ?? null) });
         }
       }
     }
