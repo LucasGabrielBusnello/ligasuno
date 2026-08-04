@@ -449,6 +449,12 @@ function SectorsTab() {
                   <Input type="number" value={editing.display_order ?? 0} onChange={(e) => setEditing({ ...editing, display_order: e.target.value })} />
                 </div>
               </div>
+              <ImageUpload
+                label="Ícone do comitê (substitui o emoji)"
+                folder="ifmsa"
+                value={editing.icon_url ?? ""}
+                onChange={(url) => setEditing({ ...editing, icon_url: url })}
+              />
               <ImageUpload label="Imagem" folder="ifmsa" value={editing.image_url ?? ""} onChange={(url) => setEditing({ ...editing, image_url: url })} />
               <div>
                 <Label>Destaques (um por linha)</Label>
