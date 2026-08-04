@@ -222,6 +222,7 @@ function InfoTab() {
               <Label>API key do CallMeBot</Label>
               <Input placeholder="123456" value={info.whatsapp_apikey} onChange={(e) => setInfo({ ...info, whatsapp_apikey: e.target.value })} />
             </div>
+            <WhatsappTestButton />
           </div>
 
 
