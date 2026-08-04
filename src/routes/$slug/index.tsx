@@ -955,18 +955,22 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
                   {mc.description && <p className="text-xs mt-1 whitespace-pre-line">{mc.description}</p>}
                   {slots.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {slots.map((s) => {
+                      {slots.map((s: any) => {
                         const used = cnt.byLeague[s.league_id] ?? 0;
                         const remaining = Math.max(0, Number(s.seats) - used);
                         const name = leaguesById[s.league_id]?.name ?? "liga";
+                        const hasPrice = s.price !== null && s.price !== undefined && !mc.is_free;
                         return (
-                          <Badge key={s.league_id} variant="outline" className="text-[10px]">
-                            {remaining} de {s.seats} vagas exclusivas para {name}
+                          <Badge key={s.league_id} variant="outline" className={`text-[10px] ${hasPrice && remaining > 0 ? "border-emerald-500 text-emerald-700 dark:text-emerald-400" : ""}`}>
+                            {hasPrice
+                              ? `${name}: R$ ${Number(s.price).toFixed(2)} — ${remaining} de ${s.seats} vagas`
+                              : `${remaining} de ${s.seats} vagas exclusivas para ${name}`}
                           </Badge>
                         );
                       })}
                     </div>
                   )}
+
                 </div>
                 <div className="shrink-0 text-right space-y-1">
                   <div className="text-[10px] text-muted-foreground">{cnt.total}/{cap || "∞"} vagas</div>
