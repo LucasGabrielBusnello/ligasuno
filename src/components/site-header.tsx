@@ -34,8 +34,10 @@ const NAV = [
   { to: "/aaamd", label: "AAAMD", icon: Trophy },
   { to: "/ligas", label: "Ligas", icon: Users },
   { to: "/camed", label: "CAMED", icon: Building2 },
+  { to: "/ifmsa", label: "IFMSA", icon: null, logo: ifmsaLogo.url },
   { to: "/parceiros", label: "Parceiros", icon: Handshake },
 ] as const;
+
 
 
 export function SiteHeader() {
