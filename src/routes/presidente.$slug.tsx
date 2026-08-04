@@ -1111,36 +1111,57 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
             <div className="rounded border p-3 bg-muted/30 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <Label className="text-xs">Vagas exclusivas</Label>
-                  <p className="text-[11px] text-muted-foreground leading-snug">Reserve parte das vagas totais para ligantes desta liga ou de ligas parceiras. As vagas exclusivas <strong>saem das vagas totais</strong> (não somam).</p>
+                  <Label className="text-xs">Vagas exclusivas / valor por liga</Label>
+                  <p className="text-[11px] text-muted-foreground leading-snug">Reserve parte das vagas totais para ligantes desta liga ou de ligas parceiras. As vagas exclusivas <strong>saem das vagas totais</strong> (não somam). Se informar um valor especial, ele vale só enquanto houver vagas dessa liga; depois volta ao valor normal.</p>
                 </div>
-                <Button type="button" size="sm" variant="outline" onClick={() => setExclusiveDraft((d) => [...d, { league_id: event.league_id, seats: 1 }])}>
+                <Button type="button" size="sm" variant="outline" onClick={() => setExclusiveDraft((d) => [...d, { league_id: event.league_id, seats: 1, price: null }])}>
                   <Plus className="size-3.5" /> Reservar
                 </Button>
               </div>
               {exclusiveDraft.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground italic">Nenhuma reserva. Todas as vagas ficam abertas.</p>
               ) : (
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {exclusiveDraft.map((s, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <select
-                        className="flex-1 h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-                        value={s.league_id}
-                        onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, league_id: e.target.value } : x))}
-                      >
-                        <option value="">— liga —</option>
-                        {leaguesList.map((l) => (
-                          <option key={l.id} value={l.id}>{l.name}{l.id === event.league_id ? " (organizadora)" : ""}</option>
-                        ))}
-                      </select>
-                      <Input
-                        type="number" min="1" className="w-20" value={s.seats}
-                        onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, seats: Math.max(1, +e.target.value || 1) } : x))}
-                      />
-                      <Button type="button" size="sm" variant="destructive" onClick={() => setExclusiveDraft((d) => d.filter((_, i) => i !== idx))}>
-                        <Trash2 className="size-3" />
-                      </Button>
+                    <div key={idx} className="rounded-md border bg-background p-2 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="flex-1 h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                          value={s.league_id}
+                          onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, league_id: e.target.value } : x))}
+                        >
+                          <option value="">— liga —</option>
+                          {leaguesList.map((l) => (
+                            <option key={l.id} value={l.id}>{l.name}{l.id === event.league_id ? " (organizadora)" : ""}</option>
+                          ))}
+                        </select>
+                        <div className="w-20">
+                          <Input
+                            type="number" min="1" value={s.seats}
+                            onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, seats: Math.max(1, +e.target.value || 1) } : x))}
+                          />
+                          <p className="text-[10px] text-muted-foreground text-center">vagas</p>
+                        </div>
+                        <Button type="button" size="sm" variant="destructive" onClick={() => setExclusiveDraft((d) => d.filter((_, i) => i !== idx))}>
+                          <Trash2 className="size-3" />
+                        </Button>
+                      </div>
+                      {!f.is_free && (
+                        <label className="flex items-center gap-2 text-[11px]">
+                          <Switch
+                            checked={s.price !== null && s.price !== undefined}
+                            onCheckedChange={(v) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, price: v ? 0 : null } : x))}
+                          />
+                          <span>Valor diferente para esta liga</span>
+                          {s.price !== null && s.price !== undefined && (
+                            <Input
+                              type="number" min="0" step="0.01" className="h-8 w-28 ml-auto"
+                              value={s.price}
+                              onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, price: Math.max(0, +e.target.value || 0) } : x))}
+                            />
+                          )}
+                        </label>
+                      )}
                     </div>
                   ))}
                   <p className="text-[11px] text-muted-foreground">
@@ -1149,6 +1170,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
                 </div>
               )}
             </div>
+
 
             <label className="flex items-center justify-between gap-2 p-3 rounded border">
               <div>
