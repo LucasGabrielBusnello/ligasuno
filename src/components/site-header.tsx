@@ -14,6 +14,7 @@ import {
   Settings2,
   Shield,
   Handshake,
+  Globe2,
 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,13 +29,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import ifmsaLogo from "@/assets/ifmsa-logo.jpeg.asset.json";
 
 const NAV = [
   { to: "/aluno", label: "Aluno", icon: Stethoscope },
   { to: "/aaamd", label: "AAAMD", icon: Trophy },
   { to: "/ligas", label: "Ligas", icon: Users },
   { to: "/camed", label: "CAMED", icon: Building2 },
-  { to: "/ifmsa", label: "IFMSA", icon: null, logo: ifmsaLogo.url },
+  { to: "/ifmsa", label: "IFMSA", icon: Globe2, logo: ifmsaLogo.url },
   { to: "/parceiros", label: "Parceiros", icon: Handshake },
 ] as const;
 
@@ -88,7 +90,12 @@ export function SiteHeader() {
                         : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     }`}
                   >
-                    <Icon className="size-4" /> {n.label}
+                    {"logo" in n && n.logo ? (
+                      <img src={n.logo} alt="" className="size-4 rounded-[3px] object-contain" />
+                    ) : (
+                      <Icon className="size-4" />
+                    )}{" "}
+                    {n.label}
                   </Link>
                 );
               })}
@@ -169,7 +176,12 @@ export function SiteHeader() {
                       active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent"
                     }`}
                   >
-                    <Icon className="size-4" /> {n.label}
+                    {"logo" in n && n.logo ? (
+                      <img src={n.logo} alt="" className="size-4 rounded-[3px] object-contain" />
+                    ) : (
+                      <Icon className="size-4" />
+                    )}{" "}
+                    {n.label}
                   </Link>
                 );
               })}
