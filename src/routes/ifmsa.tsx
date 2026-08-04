@@ -361,10 +361,10 @@ function TestimonialsMarquee({ items, color }: { items: any[]; color: string }) 
         <Globe2 className="size-5" style={{ color }} />
         <h4 className="font-black tracking-tight">Quem foi, conta como foi</h4>
       </div>
-      <div className="relative overflow-hidden group">
+      <div className="relative overflow-hidden group marquee-mask">
         <div
           ref={trackRef}
-          className="flex gap-4 px-6 md:px-8 w-max animate-[ifmsa-marquee_38s_linear_infinite] group-hover:[animation-play-state:paused]"
+          className="flex gap-4 px-6 md:px-8 w-max animate-marquee-slow group-hover:[animation-play-state:paused]"
         >
           {loop.map((t, i) => (
             <figure
