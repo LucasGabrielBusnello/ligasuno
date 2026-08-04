@@ -3696,6 +3696,7 @@ export type Database = {
           id: string
           league_id: string
           minicourse_id: string
+          price: number | null
           seats: number
         }
         Insert: {
@@ -3703,6 +3704,7 @@ export type Database = {
           id?: string
           league_id: string
           minicourse_id: string
+          price?: number | null
           seats: number
         }
         Update: {
@@ -3710,6 +3712,7 @@ export type Database = {
           id?: string
           league_id?: string
           minicourse_id?: string
+          price?: number | null
           seats?: number
         }
         Relationships: [
