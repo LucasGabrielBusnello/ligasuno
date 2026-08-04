@@ -273,10 +273,18 @@ function IfmsaPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-3">
                         <div
-                          className="size-12 shrink-0 rounded-2xl grid place-items-center text-2xl"
+                          className="size-14 shrink-0 rounded-2xl grid place-items-center text-2xl p-2"
                           style={{ backgroundColor: `${current.color}22` }}
                         >
-                          {current.emoji || "🐾"}
+                          {sectorIcon(current.code) ? (
+                            <img
+                              src={sectorIcon(current.code)!}
+                              alt={current.code}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            current.emoji || "🐾"
+                          )}
                         </div>
                         <div className="min-w-0">
                           <h3 className="text-2xl font-black tracking-tight truncate">{current.name}</h3>
