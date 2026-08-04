@@ -320,6 +320,7 @@ const EMPTY_SECTOR = {
   description: "",
   color: "#0a8f4a",
   emoji: "🐾",
+  icon_url: "",
   image_url: "",
   links: [] as { label: string; url: string }[],
   highlights: [] as string[],
@@ -386,7 +387,11 @@ function SectorsTab() {
       <CardContent className="space-y-2">
         {rows.map((s) => (
           <div key={s.id} className="p-3 rounded-lg border flex items-center gap-3 flex-wrap">
-            <span className="text-2xl">{s.emoji}</span>
+            {s.icon_url ? (
+              <img src={s.icon_url} alt="" className="size-8 object-contain" />
+            ) : (
+              <span className="text-2xl">{s.emoji}</span>
+            )}
             <div className="min-w-0 flex-1">
               <div className="font-black truncate">
                 {s.name} {s.is_exchange && <Badge className="ml-1 text-[10px] bg-sky-600">intercâmbio</Badge>}
