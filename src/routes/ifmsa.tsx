@@ -6,6 +6,26 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Reveal } from "@/components/reveal";
 import ifmsaLogo from "@/assets/ifmsa-logo.jpeg.asset.json";
+import scone from "@/assets/ifmsa-scone.png.asset.json";
+import scope from "@/assets/ifmsa-scope.png.asset.json";
+import score from "@/assets/ifmsa-score.png.asset.json";
+import scorp from "@/assets/ifmsa-scorp.png.asset.json";
+import scora from "@/assets/ifmsa-scora.png.asset.json";
+import scoph from "@/assets/ifmsa-scoph.png.asset.json";
+import scome from "@/assets/ifmsa-scome.png.asset.json";
+
+const SECTOR_ICONS: Record<string, string> = {
+  SCONE: scone.url,
+  SCOPE: scope.url,
+  SCORE: score.url,
+  SCORP: scorp.url,
+  SCORA: scora.url,
+  SCOPH: scoph.url,
+  SCOME: scome.url,
+};
+
+const sectorIcon = (code?: string | null) =>
+  code ? SECTOR_ICONS[code.trim().toUpperCase()] ?? null : null;
 import {
   Download,
   Globe2,
