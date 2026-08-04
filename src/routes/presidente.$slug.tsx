@@ -590,8 +590,12 @@ export function EventsTab({ league }: any) {
           <form onSubmit={save} className="space-y-3">
             <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
             <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-            <div><Label>Data do evento</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
-            <div><Label>Data e hora de término (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Se preenchida, será exibida como período do evento.</p></div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div><Label>Data de início</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+              <div><Label>Data de fim (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
+            </div>
+            <p className="text-[11px] text-muted-foreground -mt-1">Se a data de fim for preenchida, o evento será exibido como período (ex.: 10/09 a 12/09).</p>
+
             <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
 
             <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
