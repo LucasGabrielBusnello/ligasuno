@@ -201,17 +201,47 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
       throw new Error("Você precisa estar inscrito (e pago) no evento para acessar os minicursos.");
     }
 
-    const isFree = !!(mc as any).is_free || Number((mc as any).price) <= 0;
-    const price = isFree ? 0 : Number((mc as any).price);
+    // Preço especial por liga: vale enquanto houver vagas daquela liga
+    let exclusiveLeagueId: string | null = null;
+    let price = !!(mc as any).is_free ? 0 : Number((mc as any).price) || 0;
+    if (!(mc as any).is_free) {
+      const { data: slots } = await supabaseAdmin
+        .from("minicourse_exclusive_slots")
+        .select("league_id, seats, price")
+        .eq("minicourse_id", data.minicourse_id);
+      const priced = ((slots ?? []) as any[]).filter((s) => s.price !== null && s.price !== undefined);
+      if (priced.length) {
+        const { data: myLeagues } = await supabaseAdmin
+          .from("league_memberships").select("league_id").eq("user_id", userId);
+        const mine = new Set(((myLeagues ?? []) as any[]).map((m) => m.league_id));
+        const candidates = priced.filter((s) => mine.has(s.league_id)).sort((a, b) => Number(a.price) - Number(b.price));
+        for (const c of candidates) {
+          const { count: used } = await supabaseAdmin
+            .from("minicourse_registrations")
+            .select("id", { count: "exact", head: true })
+            .eq("minicourse_id", data.minicourse_id)
+            .eq("exclusive_league_id", c.league_id)
+            .in("status", ["paid", "pending"]);
+          if ((used ?? 0) < Number(c.seats)) {
+            exclusiveLeagueId = c.league_id;
+            price = Number(c.price) || 0;
+            break;
+          }
+        }
+      }
+    }
+    const isFree = price <= 0;
 
     const { data: reg, error: regErr } = await supabaseAdmin
       .from("minicourse_registrations")
       .upsert({
         minicourse_id: data.minicourse_id, user_id: userId,
         event_registration_id: (evReg as any).id, paid_price: price,
+        exclusive_league_id: exclusiveLeagueId,
         status: isFree ? "paid" : "pending",
-      }, { onConflict: "minicourse_id,user_id" } as any)
+      } as any, { onConflict: "minicourse_id,user_id" } as any)
       .select("*").single();
+
     if (regErr || !reg) throw new Error(regErr?.message || "Falha ao registrar");
 
     if (isFree) return { free: true, registration_id: (reg as any).id, status: "paid" };
