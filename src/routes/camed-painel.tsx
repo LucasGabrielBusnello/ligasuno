@@ -138,6 +138,34 @@ function CamedMaintenanceCard() {
   );
 }
 
+function WhatsappTestButton() {
+  const [loading, setLoading] = useState(false);
+  return (
+    <div className="space-y-1">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={loading}
+        onClick={async () => {
+          setLoading(true);
+          try {
+            const { testCamedWhatsapp } = await import("@/lib/camed.functions");
+            const r: any = await testCamedWhatsapp();
+            if (r?.ok) toast.success("Mensagem de teste enviada no WhatsApp!");
+            else toast.error(r?.reason || "Falha ao enviar", { duration: 10000 });
+          } catch (e: any) {
+            toast.error(e?.message ?? "Falha ao enviar");
+          } finally { setLoading(false); }
+        }}
+      >
+        {loading ? "Enviando..." : "Enviar mensagem de teste"}
+      </Button>
+      <p className="text-xs text-muted-foreground">Salve as informações antes de testar. Se a chave estiver inválida, peça uma nova ao bot no WhatsApp.</p>
+    </div>
+  );
+}
+
 function InfoTab() {
   const [info, setInfo] = useState<any>({ title: "", subtitle: "", description: "", email: "", hero_image_url: "", whatsapp_phone: "", whatsapp_apikey: "", history_title: "Conheça a Nossa História", history_description: "", history_images: [] as HistoryItem[] });
   useEffect(() => {
@@ -222,6 +250,7 @@ function InfoTab() {
               <Label>API key do CallMeBot</Label>
               <Input placeholder="123456" value={info.whatsapp_apikey} onChange={(e) => setInfo({ ...info, whatsapp_apikey: e.target.value })} />
             </div>
+            <WhatsappTestButton />
           </div>
 
 

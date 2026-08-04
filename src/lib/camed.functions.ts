@@ -156,23 +156,31 @@ export const bookCamedSlot = createServerFn({ method: "POST" })
     }
 
     // Aviso gratuito no WhatsApp do responsável (via CallMeBot, se configurado no painel)
-    const waPhone = ((info as any)?.whatsapp_phone as string | undefined)?.replace(/\D/g, "");
-    const waKey = (info as any)?.whatsapp_apikey as string | undefined;
-    if (waPhone && waKey) {
-      const text =
-        `*Novo horário marcado no CAMED*\n\n` +
-        `🗓️ ${slotAt}\n` +
-        `📍 ${data.modality}\n` +
-        `👤 ${userName}${userEmail ? ` (${userEmail})` : ""}\n` +
-        `📞 ${data.phone}\n` +
-        `📝 ${data.reason}`;
-      try {
-        const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(waPhone)}&text=${encodeURIComponent(text)}&apikey=${encodeURIComponent(waKey)}`;
-        const res = await fetch(url);
-        if (!res.ok) console.error("CallMeBot WhatsApp falhou", res.status, await res.text());
-      } catch (e) { console.error("CallMeBot WhatsApp erro", e); }
-    }
-    return { ok: true };
+    const text =
+      `*Novo horário marcado no CAMED*\n\n` +
+      `🗓️ ${slotAt}\n` +
+      `📍 ${data.modality}\n` +
+      `👤 ${userName}${userEmail ? ` (${userEmail})` : ""}\n` +
+      `📞 ${data.phone}\n` +
+      `📝 ${data.reason}`;
+    const { sendCallMeBot } = await import("./callmebot.server");
+    const wa = await sendCallMeBot((info as any)?.whatsapp_phone, (info as any)?.whatsapp_apikey, text);
+    if (!wa.ok) console.error("CallMeBot WhatsApp falhou:", wa.reason);
+    return { ok: true, whatsapp: wa };
+  });
+
+export const testCamedWhatsapp = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { createClient } = await import("@supabase/supabase-js");
+    const admin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+    const { data: info } = await admin.from("camed_info").select("whatsapp_phone, whatsapp_apikey").eq("id", 1).maybeSingle();
+    const { sendCallMeBot } = await import("./callmebot.server");
+    return await sendCallMeBot(
+      (info as any)?.whatsapp_phone,
+      (info as any)?.whatsapp_apikey,
+      "✅ Teste do MEDUNO: as notificações de horários do CAMED estão funcionando.",
+    );
   });
 
 
