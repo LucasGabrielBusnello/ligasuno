@@ -750,8 +750,13 @@ function ParticipantPanelDialog({ event, registration, league, onClose, onUpdate
           </TabsList>
           <TabsContent value="info" className="space-y-3 pt-3">
             {event.event_date && (
-              <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span><b>Data:</b> {new Date(event.event_date).toLocaleDateString("pt-BR")}</span></div>
+              <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span>
+                <b>{event.end_date ? "Período:" : "Data:"}</b>{" "}
+                {new Date(event.event_date).toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                {event.end_date ? ` até ${new Date(event.end_date).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : ""}
+              </span></div>
             )}
+
             {Number(event.total_hours) > 0 && (
               <div className="text-xs text-muted-foreground">Carga horária do certificado: <b>{Number(event.total_hours)}h</b></div>
             )}
