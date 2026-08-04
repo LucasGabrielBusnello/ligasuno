@@ -350,6 +350,7 @@ function SectorsTab() {
       description: editing.description || null,
       color: editing.color || "#0a8f4a",
       emoji: editing.emoji || "🐾",
+      icon_url: editing.icon_url || null,
       image_url: editing.image_url || null,
       links: (editing.links ?? []).filter((l: any) => l?.url),
       highlights: (editing.highlights ?? []).filter(Boolean),
