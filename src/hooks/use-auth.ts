@@ -38,6 +38,9 @@ export type Membership = {
 const ALL_CAMED_TABS = ["info", "membros", "noticias", "ligas", "mensagens", "horarios", "documentos"] as const;
 export type CamedTab = (typeof ALL_CAMED_TABS)[number];
 
+const ALL_IFMSA_TABS = ["info", "setores", "diretoria", "intercambio"] as const;
+export type IfmsaTab = (typeof ALL_IFMSA_TABS)[number];
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -46,7 +49,9 @@ export function useAuth() {
   const [isCoordination, setIsCoordination] = useState(false);
   const [isCamedPresident, setIsCamedPresident] = useState(false);
   const [camedPanelTabs, setCamedPanelTabs] = useState<CamedTab[]>([]);
+  const [ifmsaPanelTabs, setIfmsaPanelTabs] = useState<IfmsaTab[]>([]);
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
@@ -58,6 +63,8 @@ export function useAuth() {
         setIsCoordination(false);
         setIsCamedPresident(false);
         setCamedPanelTabs([]);
+        setIfmsaPanelTabs([]);
+
         setLoading(false);
       } else {
         loadExtras(sess.user.id);
@@ -107,10 +114,20 @@ export function useAuth() {
     } else {
       setCamedPanelTabs([]);
     }
+    if (admin) {
+      setIfmsaPanelTabs([...ALL_IFMSA_TABS]);
+    } else if ((p as any)?.email) {
+      const { data: ipa } = await (supabase as any)
+        .from("ifmsa_panel_access").select("permissions").ilike("email", (p as any).email).maybeSingle();
+      const arr = ((ipa as any)?.permissions ?? []) as string[];
+      setIfmsaPanelTabs(arr.filter((k): k is IfmsaTab => (ALL_IFMSA_TABS as readonly string[]).includes(k)));
+    } else {
+      setIfmsaPanelTabs([]);
+    }
     setLoading(false);
   }
 
-  return { user, session, profile, isAdminMaster, isCoordination, isCamedPresident, camedPanelTabs, loading };
+  return { user, session, profile, isAdminMaster, isCoordination, isCamedPresident, camedPanelTabs, ifmsaPanelTabs, loading };
 }
 
 export const CAMED_TAB_LABELS: Record<CamedTab, string> = {
@@ -123,6 +140,15 @@ export const CAMED_TAB_LABELS: Record<CamedTab, string> = {
   documentos: "Atas e Documentos",
 };
 export const ALL_CAMED_TABS_LIST = ALL_CAMED_TABS;
+
+export const IFMSA_TAB_LABELS: Record<IfmsaTab, string> = {
+  info: "Info & Cartilha",
+  setores: "Comitês",
+  diretoria: "Diretoria",
+  intercambio: "Intercâmbio",
+};
+export const ALL_IFMSA_TABS_LIST = ALL_IFMSA_TABS;
+
 
 export async function signOut() {
   await supabase.auth.signOut();

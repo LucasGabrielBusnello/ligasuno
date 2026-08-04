@@ -2057,6 +2057,207 @@ export type Database = {
           },
         ]
       }
+      ifmsa_info: {
+        Row: {
+          cartilha_cta: string | null
+          cartilha_description: string | null
+          cartilha_title: string | null
+          cartilha_url: string | null
+          description: string | null
+          hero_image_url: string | null
+          id: number
+          instagram_url: string | null
+          logo_url: string | null
+          subtitle: string | null
+          title: string
+          updated_at: string
+          whatsapp_url: string | null
+        }
+        Insert: {
+          cartilha_cta?: string | null
+          cartilha_description?: string | null
+          cartilha_title?: string | null
+          cartilha_url?: string | null
+          description?: string | null
+          hero_image_url?: string | null
+          id?: number
+          instagram_url?: string | null
+          logo_url?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+          whatsapp_url?: string | null
+        }
+        Update: {
+          cartilha_cta?: string | null
+          cartilha_description?: string | null
+          cartilha_title?: string | null
+          cartilha_url?: string | null
+          description?: string | null
+          hero_image_url?: string | null
+          id?: number
+          instagram_url?: string | null
+          logo_url?: string | null
+          subtitle?: string | null
+          title?: string
+          updated_at?: string
+          whatsapp_url?: string | null
+        }
+        Relationships: []
+      }
+      ifmsa_members: {
+        Row: {
+          acronym: string | null
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          name: string
+          role: string
+          sector_code: string | null
+        }
+        Insert: {
+          acronym?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          name: string
+          role: string
+          sector_code?: string | null
+        }
+        Update: {
+          acronym?: string | null
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          name?: string
+          role?: string
+          sector_code?: string | null
+        }
+        Relationships: []
+      }
+      ifmsa_panel_access: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          permissions: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          permissions?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          permissions?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ifmsa_sectors: {
+        Row: {
+          code: string
+          color: string
+          created_at: string
+          description: string | null
+          display_order: number
+          emoji: string | null
+          full_name: string | null
+          highlights: Json
+          id: string
+          image_url: string | null
+          is_exchange: boolean
+          links: Json
+          name: string
+          published: boolean
+          short_description: string | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          color?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          emoji?: string | null
+          full_name?: string | null
+          highlights?: Json
+          id?: string
+          image_url?: string | null
+          is_exchange?: boolean
+          links?: Json
+          name: string
+          published?: boolean
+          short_description?: string | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          color?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          emoji?: string | null
+          full_name?: string | null
+          highlights?: Json
+          id?: string
+          image_url?: string | null
+          is_exchange?: boolean
+          links?: Json
+          name?: string
+          published?: boolean
+          short_description?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ifmsa_testimonials: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          location: string | null
+          name: string
+          photo_url: string | null
+          program: string | null
+          published: boolean
+          quote: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          location?: string | null
+          name: string
+          photo_url?: string | null
+          program?: string | null
+          published?: boolean
+          quote: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          location?: string | null
+          name?: string
+          photo_url?: string | null
+          program?: string | null
+          published?: boolean
+          quote?: string
+        }
+        Relationships: []
+      }
       league_activities: {
         Row: {
           caption: string | null
@@ -4253,6 +4454,11 @@ export type Database = {
       }
       has_camed_panel_access: { Args: { _user_id: string }; Returns: boolean }
       has_camed_panel_tab: {
+        Args: { _tab: string; _user_id: string }
+        Returns: boolean
+      }
+      has_ifmsa_panel_access: { Args: { _user_id: string }; Returns: boolean }
+      has_ifmsa_panel_tab: {
         Args: { _tab: string; _user_id: string }
         Returns: boolean
       }

@@ -13,6 +13,8 @@ import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as ParceirosRouteImport } from './routes/parceiros'
 import { Route as PainelRouteImport } from './routes/painel'
 import { Route as LigasRouteImport } from './routes/ligas'
+import { Route as IfmsaPainelRouteImport } from './routes/ifmsa-painel'
+import { Route as IfmsaRouteImport } from './routes/ifmsa'
 import { Route as CamedPainelRouteImport } from './routes/camed-painel'
 import { Route as CamedGaleriaRouteImport } from './routes/camed-galeria'
 import { Route as CamedRouteImport } from './routes/camed'
@@ -58,6 +60,16 @@ const PainelRoute = PainelRouteImport.update({
 const LigasRoute = LigasRouteImport.update({
   id: '/ligas',
   path: '/ligas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IfmsaPainelRoute = IfmsaPainelRouteImport.update({
+  id: '/ifmsa-painel',
+  path: '/ifmsa-painel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IfmsaRoute = IfmsaRouteImport.update({
+  id: '/ifmsa',
+  path: '/ifmsa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CamedPainelRoute = CamedPainelRouteImport.update({
@@ -211,6 +223,8 @@ export interface FileRoutesByFullPath {
   '/camed': typeof CamedRoute
   '/camed-galeria': typeof CamedGaleriaRoute
   '/camed-painel': typeof CamedPainelRoute
+  '/ifmsa': typeof IfmsaRoute
+  '/ifmsa-painel': typeof IfmsaPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/parceiros': typeof ParceirosRoute
@@ -243,6 +257,8 @@ export interface FileRoutesByTo {
   '/camed': typeof CamedRoute
   '/camed-galeria': typeof CamedGaleriaRoute
   '/camed-painel': typeof CamedPainelRoute
+  '/ifmsa': typeof IfmsaRoute
+  '/ifmsa-painel': typeof IfmsaPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/parceiros': typeof ParceirosRoute
@@ -276,6 +292,8 @@ export interface FileRoutesById {
   '/camed': typeof CamedRoute
   '/camed-galeria': typeof CamedGaleriaRoute
   '/camed-painel': typeof CamedPainelRoute
+  '/ifmsa': typeof IfmsaRoute
+  '/ifmsa-painel': typeof IfmsaPainelRoute
   '/ligas': typeof LigasRoute
   '/painel': typeof PainelRoute
   '/parceiros': typeof ParceirosRoute
@@ -310,6 +328,8 @@ export interface FileRouteTypes {
     | '/camed'
     | '/camed-galeria'
     | '/camed-painel'
+    | '/ifmsa'
+    | '/ifmsa-painel'
     | '/ligas'
     | '/painel'
     | '/parceiros'
@@ -342,6 +362,8 @@ export interface FileRouteTypes {
     | '/camed'
     | '/camed-galeria'
     | '/camed-painel'
+    | '/ifmsa'
+    | '/ifmsa-painel'
     | '/ligas'
     | '/painel'
     | '/parceiros'
@@ -374,6 +396,8 @@ export interface FileRouteTypes {
     | '/camed'
     | '/camed-galeria'
     | '/camed-painel'
+    | '/ifmsa'
+    | '/ifmsa-painel'
     | '/ligas'
     | '/painel'
     | '/parceiros'
@@ -407,6 +431,8 @@ export interface RootRouteChildren {
   CamedRoute: typeof CamedRoute
   CamedGaleriaRoute: typeof CamedGaleriaRoute
   CamedPainelRoute: typeof CamedPainelRoute
+  IfmsaRoute: typeof IfmsaRoute
+  IfmsaPainelRoute: typeof IfmsaPainelRoute
   LigasRoute: typeof LigasRoute
   PainelRoute: typeof PainelRoute
   ParceirosRoute: typeof ParceirosRoute
@@ -457,6 +483,20 @@ declare module '@tanstack/react-router' {
       path: '/ligas'
       fullPath: '/ligas'
       preLoaderRoute: typeof LigasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ifmsa-painel': {
+      id: '/ifmsa-painel'
+      path: '/ifmsa-painel'
+      fullPath: '/ifmsa-painel'
+      preLoaderRoute: typeof IfmsaPainelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ifmsa': {
+      id: '/ifmsa'
+      path: '/ifmsa'
+      fullPath: '/ifmsa'
+      preLoaderRoute: typeof IfmsaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/camed-painel': {
@@ -655,6 +695,8 @@ const rootRouteChildren: RootRouteChildren = {
   CamedRoute: CamedRoute,
   CamedGaleriaRoute: CamedGaleriaRoute,
   CamedPainelRoute: CamedPainelRoute,
+  IfmsaRoute: IfmsaRoute,
+  IfmsaPainelRoute: IfmsaPainelRoute,
   LigasRoute: LigasRoute,
   PainelRoute: PainelRoute,
   ParceirosRoute: ParceirosRoute,
