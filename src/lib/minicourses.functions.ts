@@ -42,8 +42,15 @@ export const createMinicourseCheckout = createServerFn({ method: "POST" })
       throw new Error("Você precisa estar inscrito (e pago) no evento para acessar os minicursos.");
     }
 
-    const isFree = !!(mc as any).is_free || Number((mc as any).price) <= 0;
-    const price = isFree ? 0 : Number((mc as any).price);
+    let basePrice = !!(mc as any).is_free ? 0 : Number((mc as any).price) || 0;
+    const ligPrice = (mc as any).price_ligante;
+    if (!(mc as any).is_free && ligPrice !== null && ligPrice !== undefined) {
+      const { data: mem } = await supabaseAdmin
+        .from("league_memberships").select("id").eq("user_id", userId).eq("league_id", leagueId).maybeSingle();
+      if (mem) basePrice = Number(ligPrice) || 0;
+    }
+    const isFree = basePrice <= 0;
+    const price = isFree ? 0 : basePrice;
 
     const { data: reg, error: regErr } = await supabaseAdmin
       .from("minicourse_registrations")
