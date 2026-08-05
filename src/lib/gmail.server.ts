@@ -13,22 +13,52 @@ function base64UrlEncode(s: string): string {
     .replace(/=+$/g, "");
 }
 
+function htmlToText(html: string): string {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<head[\s\S]*?<\/head>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|h1|h2|h3)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function buildRawMime(args: { to: string; subject: string; html: string; from?: string }): string {
-  // Codifica o HTML em base64 para evitar problemas com UTF-8 multibyte (—, é, ã)
-  // que quebram o corpo quando enviado como 7bit. Quebra em linhas de 76 chars (RFC).
+  // Envia multipart/alternative (texto + HTML): mensagens só-HTML têm muito mais
+  // chance de cair em spam/quarentena de provedores institucionais.
+  const boundary = `mduno_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
   const htmlB64 = Buffer.from(args.html, "utf-8").toString("base64").replace(/(.{76})/g, "$1\r\n");
+  const textB64 = Buffer.from(htmlToText(args.html), "utf-8").toString("base64").replace(/(.{76})/g, "$1\r\n");
   const subjectB64 = Buffer.from(args.subject, "utf-8").toString("base64");
   const headers = [
     args.from ? `From: ${args.from}` : null,
     `To: ${args.to}`,
     `Subject: =?UTF-8?B?${subjectB64}?=`,
     "MIME-Version: 1.0",
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+  ].filter(Boolean) as string[];
+  const body = [
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    textB64,
+    `--${boundary}`,
     'Content-Type: text/html; charset="UTF-8"',
     "Content-Transfer-Encoding: base64",
-  ].filter(Boolean) as string[];
-  const mime = headers.join("\r\n") + "\r\n\r\n" + htmlB64;
+    "",
+    htmlB64,
+    `--${boundary}--`,
+    "",
+  ].join("\r\n");
+  const mime = headers.join("\r\n") + "\r\n\r\n" + body;
   return base64UrlEncode(mime);
 }
+
 
 export type SendGmailArgs = {
   to: string;
