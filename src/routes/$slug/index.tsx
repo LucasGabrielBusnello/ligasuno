@@ -848,6 +848,7 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ league_id: string; seats: number }>>>({});
   const [leaguesById, setLeaguesById] = useState<Record<string, { name: string }>>({});
   const [busy, setBusy] = useState(false);
+  const [isLigante, setIsLigante] = useState(false);
   const [pix, setPix] = useState<PixPaymentData | null>(null);
 
   async function reload() {
