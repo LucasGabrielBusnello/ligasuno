@@ -26,7 +26,7 @@ import { getCollectorFees } from "@/lib/mp-fees";
 import { syncEventToSheet, getSheetConfig, saveSheetConfig } from "@/lib/sheets-sync.functions";
 import { listEventCheckinRoster } from "@/lib/event-checkin.functions";
 
-import { disconnectMp } from "@/lib/mp-oauth.functions";
+import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
 import {
   createLeagueSubscriptionCheckout,
   createLeagueSemesterPixCheckout,
