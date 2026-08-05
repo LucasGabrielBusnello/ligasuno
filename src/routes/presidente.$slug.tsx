@@ -273,7 +273,20 @@ function calculateAnuidadePixQuote(monthlyPix: number) {
 function MpConnectCard({ leagueId }: { leagueId: string }) {
   const [account, setAccount] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualToken, setManualToken] = useState("");
   const disconnect = useServerFn(disconnectMp);
+  const connectManual = useServerFn(connectMpManual);
+
+  async function saveManual() {
+    try {
+      setLoading(true);
+      const r: any = await connectManual({ data: { league_id: leagueId, access_token: manualToken.trim() } });
+      toast.success(`Mercado Pago conectado (${r?.nickname ?? r?.mp_user_id})`);
+      setManualToken(""); setShowManual(false); reload();
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); } finally { setLoading(false); }
+  }
+
 
   async function reload() {
     const { data } = await supabase.from("league_mp_accounts").select("*").eq("league_id", leagueId).maybeSingle();
