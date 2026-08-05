@@ -58,7 +58,9 @@ export function SemesterDialog({
   const [histPayments, setHistPayments] = useState<any[]>([]);
 
   // form
+  const [liganteAmount, setLiganteAmount] = useState<string>("");
   const [directorAmount, setDirectorAmount] = useState<string>("");
+
   const [dueDate, setDueDate] = useState<string>("");
   const [lateFee, setLateFee] = useState<string>("");
   const [notify, setNotify] = useState(true);
