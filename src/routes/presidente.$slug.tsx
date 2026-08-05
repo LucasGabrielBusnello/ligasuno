@@ -957,6 +957,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       starts_at: mc.starts_at ? new Date(mc.starts_at).toISOString().slice(0, 16) : "",
       location: mc.location ?? "", description: mc.description ?? "",
       is_free: !!mc.is_free, price: Number(mc.price) || 0,
+      price_ligante: mc.price_ligante === null || mc.price_ligante === undefined ? null : Number(mc.price_ligante),
       max_registrations: Number(mc.max_registrations) || 20,
       published: !!mc.published,
       total_hours: Number(mc.total_hours) || 0,
