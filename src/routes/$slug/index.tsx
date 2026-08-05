@@ -852,6 +852,11 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const [pix, setPix] = useState<PixPaymentData | null>(null);
 
   async function reload() {
+    if (user) {
+      const { data: mem } = await supabase
+        .from("league_memberships").select("id").eq("user_id", user.id).eq("league_id", event.league_id).maybeSingle();
+      setIsLigante(!!mem);
+    } else setIsLigante(false);
     const { data: mcs } = await supabase
       .from("league_minicourses")
       .select("*")
