@@ -151,10 +151,10 @@ function LeaguesAdmin() {
 }
 
 function LeagueDialog({ open, setOpen, league, onSaved }: any) {
-  const [form, setForm] = useState({ name: "", slug: "", description: "", icon_url: "", theme_color: "#1f5132", president_query: "" });
+  const [form, setForm] = useState({ name: "", slug: "", description: "", icon_url: "", theme_color: "#1f5132", president_query: "", president2_query: "" });
   useEffect(() => {
-    if (league) setForm({ name: league.name, slug: league.slug, description: league.description ?? "", icon_url: league.icon_url ?? "", theme_color: league.theme_color, president_query: "" });
-    else setForm({ name: "", slug: "", description: "", icon_url: "", theme_color: "#1f5132", president_query: "" });
+    if (league) setForm({ name: league.name, slug: league.slug, description: league.description ?? "", icon_url: league.icon_url ?? "", theme_color: league.theme_color, president_query: "", president2_query: "" });
+    else setForm({ name: "", slug: "", description: "", icon_url: "", theme_color: "#1f5132", president_query: "", president2_query: "" });
   }, [league, open]);
 
   async function save(e: React.FormEvent) {
@@ -166,20 +166,34 @@ function LeagueDialog({ open, setOpen, league, onSaved }: any) {
       if (!data) return toast.error("Esse usuário não existe");
       president_id = data.id;
     }
+    let president2_id: string | null = league?.president2_id ?? null;
+    const q2 = form.president2_query.trim();
+    if (q2) {
+      if (q2 === "-") {
+        president2_id = null;
+      } else {
+        const { data } = await supabase.from("profiles").select("id").or(`email.ilike.${q2},username.ilike.${q2}`).maybeSingle();
+        if (!data) return toast.error("Esse usuário (2º presidente) não existe");
+        president2_id = data.id;
+      }
+    }
     const payload: any = {
       name: form.name, slug: form.slug.toLowerCase().replace(/[^a-z0-9-]/g, ""), description: form.description,
-      icon_url: form.icon_url || null, theme_color: form.theme_color, president_id,
+      icon_url: form.icon_url || null, theme_color: form.theme_color, president_id, president2_id,
     };
     let err;
     if (league) { ({ error: err } = await supabase.from("leagues").update(payload).eq("id", league.id)); }
     else { ({ error: err } = await supabase.from("leagues").insert(payload)); }
     if (err) return toast.error(err.message);
 
-    if (president_id) {
-      await supabase.from("league_memberships").upsert(
-        { league_id: league?.id ?? (await supabase.from("leagues").select("id").eq("slug", payload.slug).maybeSingle()).data?.id, user_id: president_id, role: "presidente" },
-        { onConflict: "league_id,user_id" }
-      );
+    const leagueId = league?.id ?? (await supabase.from("leagues").select("id").eq("slug", payload.slug).maybeSingle()).data?.id;
+    for (const pid of [president_id, president2_id]) {
+      if (pid && leagueId) {
+        await supabase.from("league_memberships").upsert(
+          { league_id: leagueId, user_id: pid, role: "presidente" },
+          { onConflict: "league_id,user_id" }
+        );
+      }
     }
     toast.success("Liga salva"); setOpen(false); onSaved();
   }
@@ -195,6 +209,7 @@ function LeagueDialog({ open, setOpen, league, onSaved }: any) {
           <div><ImageUpload label="Ícone" folder="leagues" value={form.icon_url} onChange={(url) => setForm({ ...form, icon_url: url })} /></div>
           <div><Label>Cor tema</Label><Input type="color" value={form.theme_color} onChange={(e) => setForm({ ...form, theme_color: e.target.value })} /></div>
           <div><Label>Presidente (email ou usuário)</Label><Input value={form.president_query} onChange={(e) => setForm({ ...form, president_query: e.target.value })} placeholder={league?.president_id ? "(manter atual)" : "lucas@email.com"} /></div>
+          <div><Label>2º Presidente (email ou usuário)</Label><Input value={form.president2_query} onChange={(e) => setForm({ ...form, president2_query: e.target.value })} placeholder={league?.president2_id ? "(manter atual — use - para remover)" : "opcional"} /><p className="text-[11px] text-muted-foreground mt-1">Tem os mesmos poderes do presidente. Digite "-" para remover.</p></div>
           <DialogFooter><Button type="submit">Salvar</Button></DialogFooter>
         </form>
       </DialogContent>

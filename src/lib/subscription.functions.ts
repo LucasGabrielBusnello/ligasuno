@@ -84,11 +84,11 @@ export const createLeagueSubscriptionCheckout = createServerFn({ method: "POST" 
 
     const { data: league } = await supabase
       .from("leagues")
-      .select("id, name, slug, president_id")
+      .select("id, name, slug, president_id, president2_id")
       .eq("id", data.league_id)
       .maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
-    if ((league as any).president_id !== userId) {
+    if ((league as any).president_id !== userId && (league as any).president2_id !== userId) {
       throw new Error("Apenas a presidência pode pagar a anuidade");
     }
 
@@ -125,11 +125,11 @@ export const createLeagueSemesterPixCheckout = createServerFn({ method: "POST" }
 
     const { data: league } = await supabase
       .from("leagues")
-      .select("id, name, slug, president_id, paid_until")
+      .select("id, name, slug, president_id, president2_id, paid_until")
       .eq("id", data.league_id)
       .maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
-    if ((league as any).president_id !== userId) {
+    if ((league as any).president_id !== userId && (league as any).president2_id !== userId) {
       throw new Error("Apenas a presidência pode pagar a anuidade");
     }
 
@@ -200,11 +200,11 @@ export const cancelLeagueSubscription = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { data: league } = await supabaseAdmin
-      .from("leagues").select("id, president_id").eq("id", data.league_id).maybeSingle();
+      .from("leagues").select("id, president_id, president2_id").eq("id", data.league_id).maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
 
     const { data: isAdmin } = await supabaseAdmin.rpc("is_admin_master", { _user_id: userId });
-    if ((league as any).president_id !== userId && !isAdmin) {
+    if ((league as any).president_id !== userId && (league as any).president2_id !== userId && !isAdmin) {
       throw new Error("Apenas a presidência ou admin master pode cancelar");
     }
 

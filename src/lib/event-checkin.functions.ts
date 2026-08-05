@@ -5,8 +5,8 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 async function isLeagueManager(userId: string, leagueId: string) {
   const { data: lg } = await supabaseAdmin
-    .from("leagues").select("president_id").eq("id", leagueId).maybeSingle();
-  if (lg && (lg as any).president_id === userId) return true;
+    .from("leagues").select("president_id, president2_id").eq("id", leagueId).maybeSingle();
+  if (lg && ((lg as any).president_id === userId || (lg as any).president2_id === userId)) return true;
   const { data: m } = await supabaseAdmin
     .from("league_memberships").select("role")
     .eq("league_id", leagueId).eq("user_id", userId).eq("role", "diretor").maybeSingle();

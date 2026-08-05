@@ -18,17 +18,17 @@ async function hasManagerAccess(adminCli: any, userId: string, leagueId: string)
 }
 
 async function ensureEventOwner(adminCli: any, eventId: string, userId: string) {
-  const { data: ev } = await adminCli.from("league_events").select("*, leagues!inner(id,name,slug,theme_color,president_id)").eq("id", eventId).maybeSingle();
+  const { data: ev } = await adminCli.from("league_events").select("*, leagues!inner(id,name,slug,theme_color,president_id,president2_id)").eq("id", eventId).maybeSingle();
   if (!ev) throw new Error("Evento não encontrado");
-  if ((ev as any).leagues.president_id !== userId) {
+  if ((ev as any).leagues.president_id !== userId && (ev as any).leagues.president2_id !== userId) {
     if (!(await hasManagerAccess(adminCli, userId, (ev as any).leagues.id))) throw new Error("Sem permissão");
   }
   return ev;
 }
 async function ensureMcOwner(adminCli: any, mcId: string, userId: string) {
-  const { data: mc } = await adminCli.from("league_minicourses").select("*, league_events!inner(id, title, event_date, leagues!inner(id,name,slug,theme_color,president_id))").eq("id", mcId).maybeSingle();
+  const { data: mc } = await adminCli.from("league_minicourses").select("*, league_events!inner(id, title, event_date, leagues!inner(id,name,slug,theme_color,president_id,president2_id))").eq("id", mcId).maybeSingle();
   if (!mc) throw new Error("Minicurso não encontrado");
-  if ((mc as any).league_events.leagues.president_id !== userId) {
+  if ((mc as any).league_events.leagues.president_id !== userId && (mc as any).league_events.leagues.president2_id !== userId) {
     if (!(await hasManagerAccess(adminCli, userId, (mc as any).league_events.leagues.id))) throw new Error("Sem permissão");
   }
   return mc;
@@ -248,7 +248,7 @@ async function loadSignatureBytes(admin: any, leagueId: string): Promise<{ bytes
   }
   let presidentName = sig?.president_name || "";
   if (!presidentName) {
-    const { data: lg } = await admin.from("leagues").select("president_id").eq("id", leagueId).maybeSingle();
+    const { data: lg } = await admin.from("leagues").select("president_id, president2_id").eq("id", leagueId).maybeSingle();
     if (lg) {
       const { data: prof } = await admin.from("profiles").select("full_name,username").eq("id", lg.president_id).maybeSingle();
       presidentName = prof?.full_name || prof?.username || "Presidência";

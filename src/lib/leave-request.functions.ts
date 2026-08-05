@@ -33,7 +33,7 @@ export const createLeaveRequest = createServerFn({ method: "POST" })
     // Envia e-mail ao presidente
     try {
       const [{ data: league }, { data: profile }] = await Promise.all([
-        (supabaseAdmin as any).from("leagues").select("id, name, slug, theme_color, president_id").eq("id", data.league_id).maybeSingle(),
+        (supabaseAdmin as any).from("leagues").select("id, name, slug, theme_color, president_id, president2_id").eq("id", data.league_id).maybeSingle(),
         (supabaseAdmin as any).from("profiles").select("full_name, username, email, cpf, registration_number").eq("id", userId).maybeSingle(),
       ]);
       if (league && (league as any).president_id) {
@@ -72,9 +72,9 @@ export const processLeaveRequest = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { data: req } = await (supabaseAdmin as any).from("league_leave_requests")
-      .select("*, leagues:league_id(president_id)").eq("id", data.request_id).maybeSingle();
+      .select("*, leagues:league_id(president_id, president2_id)").eq("id", data.request_id).maybeSingle();
     if (!req) throw new Error("Pedido não encontrado");
-    if ((req as any).leagues?.president_id !== userId) {
+    if ((req as any).leagues?.president_id !== userId && (req as any).leagues?.president2_id !== userId) {
       const { data: isAdmin } = await (supabaseAdmin as any).rpc("is_admin_master", { _user_id: userId });
       if (!isAdmin) throw new Error("Não autorizado");
     }
@@ -109,9 +109,9 @@ export const listLeagueLeaveRequests = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { userId } = context;
     const { data: league } = await (supabaseAdmin as any)
-      .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
+      .from("leagues").select("president_id, president2_id").eq("id", data.league_id).maybeSingle();
     const { data: isAdmin } = await (supabaseAdmin as any).rpc("is_admin_master", { _user_id: userId });
-    if ((league as any)?.president_id !== userId && !isAdmin) throw new Error("Não autorizado");
+    if ((league as any)?.president_id !== userId && (league as any)?.president2_id !== userId && !isAdmin) throw new Error("Não autorizado");
 
     const { data: rows } = await (supabaseAdmin as any).from("league_leave_requests")
       .select("*").eq("league_id", data.league_id).eq("status", "pending")

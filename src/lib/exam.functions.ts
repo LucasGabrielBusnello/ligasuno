@@ -24,11 +24,11 @@ function shuffle<T>(arr: T[]): T[] {
 
 async function assertPresident(leagueId: string, userId: string) {
   const [{ data: league }, { data: roles }] = await Promise.all([
-    (supabaseAdmin as any).from("leagues").select("president_id").eq("id", leagueId).maybeSingle(),
+    (supabaseAdmin as any).from("leagues").select("president_id, president2_id").eq("id", leagueId).maybeSingle(),
     (supabaseAdmin as any).from("user_roles").select("role").eq("user_id", userId),
   ]);
   const isAdmin = (roles ?? []).some((r: any) => r.role === "admin_master");
-  if (!isAdmin && (!league || (league as any).president_id !== userId)) {
+  if (!isAdmin && (!league || ((league as any).president_id !== userId && (league as any).president2_id !== userId))) {
     throw new Error("Acesso negado");
   }
 }

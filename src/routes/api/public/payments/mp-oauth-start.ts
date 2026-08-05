@@ -46,11 +46,11 @@ export const Route = createFileRoute("/api/public/payments/mp-oauth-start")({
 
           const { data: league } = await supabaseAdmin
             .from("leagues")
-            .select("id, president_id")
+            .select("id, president_id, president2_id")
             .eq("id", leagueId)
             .maybeSingle();
 
-          if (!league || (league as any).president_id !== userId) {
+          if (!league || ((league as any).president_id !== userId && (league as any).president2_id !== userId)) {
             return new Response("Sem permissão", { status: 403 });
           }
 

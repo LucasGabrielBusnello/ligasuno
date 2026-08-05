@@ -3574,6 +3574,7 @@ export type Database = {
           name: string
           paid_until: string | null
           president_id: string | null
+          president2_id: string | null
           published: boolean
           selection_deadline: string | null
           selection_exam_date: string | null
@@ -3594,6 +3595,7 @@ export type Database = {
           name: string
           paid_until?: string | null
           president_id?: string | null
+          president2_id?: string | null
           published?: boolean
           selection_deadline?: string | null
           selection_exam_date?: string | null
@@ -3614,6 +3616,7 @@ export type Database = {
           name?: string
           paid_until?: string | null
           president_id?: string | null
+          president2_id?: string | null
           published?: boolean
           selection_deadline?: string | null
           selection_exam_date?: string | null

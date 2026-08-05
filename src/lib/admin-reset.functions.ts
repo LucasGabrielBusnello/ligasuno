@@ -61,7 +61,7 @@ export const resetLeagueData = createServerFn({ method: "POST" })
     if (s.presidents) {
       // Remove presidents from leagues AND remove their presidente membership
       await (supabaseAdmin as any).from("league_memberships").delete().in("league_id", ids).eq("role", "presidente");
-      await (supabaseAdmin as any).from("leagues").update({ president_id: null }).in("id", ids);
+      await (supabaseAdmin as any).from("leagues").update({ president_id: null, president2_id: null }).in("id", ids);
     }
     if (s.schedule) {
       await (supabaseAdmin as any).from("league_schedule_items").delete().in("league_id", ids);

@@ -10,9 +10,9 @@ async function adminClient() {
 }
 
 async function assertPresident(admin: any, leagueId: string, userId: string) {
-  const { data: l } = await admin.from("leagues").select("president_id").eq("id", leagueId).maybeSingle();
+  const { data: l } = await admin.from("leagues").select("president_id, president2_id").eq("id", leagueId).maybeSingle();
   if (!l) throw new Error("Liga não encontrada");
-  if (l.president_id !== userId) {
+  if (l.president_id !== userId && (l as any).president2_id !== userId) {
     const { data: r } = await admin.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin_master").maybeSingle();
     if (!r) throw new Error("Sem permissão");
   }

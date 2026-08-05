@@ -23,6 +23,7 @@ export type League = {
   icon_url: string | null;
   theme_color: string;
   president_id: string | null;
+  president2_id?: string | null;
   published: boolean;
   paid_until: string | null;
   initial_setup_done: boolean;

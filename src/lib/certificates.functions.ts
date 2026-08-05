@@ -45,11 +45,11 @@ async function adminClient() {
 }
 
 async function ensurePresidentOrAdmin(supabaseUser: any, leagueId: string, userId: string) {
-  const { data: l } = await supabaseUser.from("leagues").select("president_id").eq("id", leagueId).maybeSingle();
+  const { data: l } = await supabaseUser.from("leagues").select("president_id, president2_id").eq("id", leagueId).maybeSingle();
   if (!l) throw new Error("Liga não encontrada");
   const { data: roles } = await supabaseUser.from("user_roles").select("role").eq("user_id", userId);
   const isAdmin = (roles ?? []).some((r: any) => r.role === "admin_master");
-  if (l.president_id !== userId && !isAdmin) throw new Error("Acesso negado");
+  if (l.president_id !== userId && (l as any).president2_id !== userId && !isAdmin) throw new Error("Acesso negado");
 }
 
 /** Devolve membros (ligante/diretor/presidente) com nome/cpf/email pré-preenchidos e horas totais (status=presente). */
@@ -60,7 +60,7 @@ export const previewCertificates = createServerFn({ method: "POST" })
     await ensurePresidentOrAdmin(context.supabase, data.league_id, context.userId);
     const admin = await adminClient();
 
-    const { data: league } = await admin.from("leagues").select("id,name,slug,theme_color,president_id").eq("id", data.league_id).maybeSingle();
+    const { data: league } = await admin.from("leagues").select("id,name,slug,theme_color,president_id, president2_id").eq("id", data.league_id).maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
 
     const { data: members } = await admin
@@ -379,7 +379,7 @@ export const sendSemesterCertificates = createServerFn({ method: "POST" })
     await ensurePresidentOrAdmin(context.supabase, data.league_id, context.userId);
     const admin = await adminClient();
 
-    const { data: league } = await admin.from("leagues").select("id, name, slug, theme_color, president_id").eq("id", data.league_id).maybeSingle();
+    const { data: league } = await admin.from("leagues").select("id, name, slug, theme_color, president_id, president2_id").eq("id", data.league_id).maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
 
     const { data: sigRow } = await admin.from("league_president_signatures").select("signature_url, president_name").eq("league_id", data.league_id).maybeSingle();

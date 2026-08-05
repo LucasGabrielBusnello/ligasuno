@@ -128,7 +128,7 @@ function MinhasLigasSection() {
     (async () => {
       const [{ data: mem }, { data: presLeagues }] = await Promise.all([
         supabase.from("league_memberships").select("role, leagues(*)").eq("user_id", user.id),
-        supabase.from("leagues").select("*").eq("president_id", user.id),
+        supabase.from("leagues").select("*").or(`president_id.eq.${user.id},president2_id.eq.${user.id}`),
       ]);
       const map = new Map<string, any>();
       (mem ?? []).forEach((m: any) => { if (m.leagues) map.set(m.leagues.id, { league: m.leagues, role: m.role }); });
