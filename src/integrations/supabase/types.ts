@@ -2728,6 +2728,7 @@ export type Database = {
           location: string | null
           max_registrations: number
           price: number
+          price_ligante: number | null
           published: boolean
           starts_at: string
           title: string
@@ -2744,6 +2745,7 @@ export type Database = {
           location?: string | null
           max_registrations?: number
           price?: number
+          price_ligante?: number | null
           published?: boolean
           starts_at: string
           title: string
@@ -2760,6 +2762,7 @@ export type Database = {
           location?: string | null
           max_registrations?: number
           price?: number
+          price_ligante?: number | null
           published?: boolean
           starts_at?: string
           title?: string

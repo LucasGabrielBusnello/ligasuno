@@ -201,19 +201,25 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
       throw new Error("Você precisa estar inscrito (e pago) no evento para acessar os minicursos.");
     }
 
-    // Preço especial por liga: vale enquanto houver vagas daquela liga
+    // Preço base: ligantes da liga organizadora podem ter valor próprio
     let exclusiveLeagueId: string | null = null;
     let price = !!(mc as any).is_free ? 0 : Number((mc as any).price) || 0;
     if (!(mc as any).is_free) {
+      const { data: myLeaguesAll } = await supabaseAdmin
+        .from("league_memberships").select("league_id, role").eq("user_id", userId);
+      const mine = new Set(((myLeaguesAll ?? []) as any[]).map((m) => m.league_id));
+      const ligPrice = (mc as any).price_ligante;
+      if (ligPrice !== null && ligPrice !== undefined && mine.has(leagueId)) {
+        price = Number(ligPrice) || 0;
+      }
+
+      // Preço especial por liga: vale enquanto houver vagas daquela liga
       const { data: slots } = await supabaseAdmin
         .from("minicourse_exclusive_slots")
         .select("league_id, seats, price")
         .eq("minicourse_id", data.minicourse_id);
       const priced = ((slots ?? []) as any[]).filter((s) => s.price !== null && s.price !== undefined);
       if (priced.length) {
-        const { data: myLeagues } = await supabaseAdmin
-          .from("league_memberships").select("league_id").eq("user_id", userId);
-        const mine = new Set(((myLeagues ?? []) as any[]).map((m) => m.league_id));
         const candidates = priced.filter((s) => mine.has(s.league_id)).sort((a, b) => Number(a.price) - Number(b.price));
         for (const c of candidates) {
           const { count: used } = await supabaseAdmin
@@ -222,7 +228,7 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
             .eq("minicourse_id", data.minicourse_id)
             .eq("exclusive_league_id", c.league_id)
             .in("status", ["paid", "pending"]);
-          if ((used ?? 0) < Number(c.seats)) {
+          if ((used ?? 0) < Number(c.seats) && Number(c.price) < price) {
             exclusiveLeagueId = c.league_id;
             price = Number(c.price) || 0;
             break;

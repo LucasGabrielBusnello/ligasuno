@@ -913,7 +913,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
-  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
+  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, price_ligante: null as number | null, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
   const [exclusiveDraft, setExclusiveDraft] = useState<Array<{ id?: string; league_id: string; seats: number; price?: number | null }>>([]);
   const [checkinMc, setCheckinMc] = useState<any | null>(null);
@@ -957,6 +957,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       starts_at: mc.starts_at ? new Date(mc.starts_at).toISOString().slice(0, 16) : "",
       location: mc.location ?? "", description: mc.description ?? "",
       is_free: !!mc.is_free, price: Number(mc.price) || 0,
+      price_ligante: mc.price_ligante === null || mc.price_ligante === undefined ? null : Number(mc.price_ligante),
       max_registrations: Number(mc.max_registrations) || 20,
       published: !!mc.published,
       total_hours: Number(mc.total_hours) || 0,
@@ -982,6 +983,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       starts_at: new Date(f.starts_at).toISOString(),
       location: f.location || null, description: f.description || null,
       is_free: !!f.is_free, price: f.is_free ? 0 : Number(f.price) || 0,
+      price_ligante: f.is_free || f.price_ligante === null || f.price_ligante === undefined ? null : Number(f.price_ligante) || 0,
       max_registrations: maxReg,
       published: !!f.published,
       total_hours: Number(f.total_hours) || 0,
@@ -1101,7 +1103,22 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
               <Switch checked={f.is_free} onCheckedChange={(v) => setF({ ...f, is_free: v })} />
             </div>
             {!f.is_free && (
-              <div><Label>Valor adicional (R$)</Label><Input type="number" step="0.01" min="0.50" value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Mínimo R$ 0,50 (limite do gateway).</p></div>
+              <div className="space-y-3">
+                <div><Label>Valor para não ligantes (R$)</Label><Input type="number" step="0.01" min="0.50" value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Mínimo R$ 0,50 (limite do gateway).</p></div>
+                <label className="flex items-center justify-between gap-2 p-2 rounded border">
+                  <div>
+                    <span className="text-sm font-medium">Valor diferente para ligantes</span>
+                    <p className="text-[11px] text-muted-foreground">Vale para membros da liga organizadora.</p>
+                  </div>
+                  <Switch
+                    checked={f.price_ligante !== null && f.price_ligante !== undefined}
+                    onCheckedChange={(v) => setF({ ...f, price_ligante: v ? 0 : null })}
+                  />
+                </label>
+                {f.price_ligante !== null && f.price_ligante !== undefined && (
+                  <div><Label>Valor para ligantes (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: Math.max(0, +e.target.value || 0) })} /><p className="text-[11px] text-muted-foreground mt-1">Use 0 para gratuito aos ligantes.</p></div>
+                )}
+              </div>
             )}
             <div className="rounded border p-2 bg-muted/30">
               <Label className="text-xs">Horas no certificado</Label>

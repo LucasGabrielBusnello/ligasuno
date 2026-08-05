@@ -848,9 +848,15 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ league_id: string; seats: number }>>>({});
   const [leaguesById, setLeaguesById] = useState<Record<string, { name: string }>>({});
   const [busy, setBusy] = useState(false);
+  const [isLigante, setIsLigante] = useState(false);
   const [pix, setPix] = useState<PixPaymentData | null>(null);
 
   async function reload() {
+    if (user) {
+      const { data: mem } = await supabase
+        .from("league_memberships").select("id").eq("user_id", user.id).eq("league_id", event.league_id).maybeSingle();
+      setIsLigante(!!mem);
+    } else setIsLigante(false);
     const { data: mcs } = await supabase
       .from("league_minicourses")
       .select("*")
@@ -945,9 +951,24 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h5 className="font-black">{mc.title}</h5>
-                    <Badge variant={mc.is_free ? "secondary" : "default"} className="text-[10px]">
-                      {mc.is_free ? "Gratuito" : `R$ ${Number(mc.price).toFixed(2)}`}
-                    </Badge>
+                    {(() => {
+                      const hasLig = !mc.is_free && mc.price_ligante !== null && mc.price_ligante !== undefined;
+                      const effective = hasLig && isLigante ? Number(mc.price_ligante) : Number(mc.price);
+                      return (
+                        <>
+                          <Badge variant={mc.is_free || effective <= 0 ? "secondary" : "default"} className="text-[10px]">
+                            {mc.is_free || effective <= 0 ? "Gratuito" : `R$ ${effective.toFixed(2)}`}
+                          </Badge>
+                          {hasLig && (
+                            <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-700 dark:text-emerald-400">
+                              {isLigante
+                                ? `Valor de ligante · não ligantes R$ ${Number(mc.price).toFixed(2)}`
+                                : `Ligantes: ${Number(mc.price_ligante) <= 0 ? "Gratuito" : `R$ ${Number(mc.price_ligante).toFixed(2)}`}`}
+                            </Badge>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                   <p className="text-xs text-muted-foreground">👤 {mc.instructor}</p>
                   <p className="text-xs text-muted-foreground">🗓️ {new Date(mc.starts_at).toLocaleString("pt-BR")}</p>
