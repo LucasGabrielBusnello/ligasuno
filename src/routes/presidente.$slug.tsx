@@ -333,7 +333,7 @@ function MpConnectCard({ leagueId }: { leagueId: string }) {
             : "Conecte sua conta Mercado Pago para começar a receber pagamentos. Os valores caem direto na sua conta. Você precisa ter CPF cadastrado no Mercado Pago — a conta é gratuita."}
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {!connected ? (
           <Button onClick={connect} disabled={loading} size="lg">
             {loading ? "Abrindo..." : "Conectar Mercado Pago"}
@@ -350,7 +350,38 @@ function MpConnectCard({ leagueId }: { leagueId: string }) {
             </div>
           </div>
         )}
+
+        <div className="rounded border p-4 space-y-2">
+          <button
+            type="button"
+            className="text-sm font-bold underline"
+            onClick={() => setShowManual((v) => !v)}
+          >
+            {showManual ? "Ocultar" : "O Mercado Pago recusou a autorização? Conectar manualmente"}
+          </button>
+          {showManual && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Se a sua conta do Mercado Pago já está vinculada à aplicação da plataforma, o botão de autorização pode dizer
+                que não é possível conectar. Nesse caso, cole aqui o <strong>Access Token de produção</strong> da sua conta
+                (Mercado Pago → Seus negócios → Configurações → Gestão e administração → Credenciais de produção).
+                Ele começa com <code className="font-mono">APP_USR-</code>.
+              </p>
+              <Input
+                value={manualToken}
+                onChange={(e) => setManualToken(e.target.value)}
+                placeholder="APP_USR-..."
+                type="password"
+                autoComplete="off"
+              />
+              <Button onClick={saveManual} disabled={loading || manualToken.trim().length < 20}>
+                Salvar Access Token
+              </Button>
+            </div>
+          )}
+        </div>
       </CardContent>
+
     </Card>
   );
 }
