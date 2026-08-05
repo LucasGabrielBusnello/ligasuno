@@ -188,6 +188,7 @@ export const listSemesterCycles = createServerFn({ method: "POST" })
 
 const upsertSchema = z.object({
   league_id: z.string().uuid(),
+  amount_cents: z.number().int().min(0).optional(),
   director_amount_cents: z.number().int().min(0),
   due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   late_fee_cents: z.number().int().min(0).default(0),
@@ -201,11 +202,15 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
     const league = await assertPresident(context.supabase, data.league_id, context.userId);
     const brand = (league as any).theme_color || "#1f5132";
 
-    // Valor padrão para ligantes vem sempre do CAMED.
-    const camedAmountCents = await loadCamedDefaultSemesterCents();
+    // Valor dos ligantes é definido pelo presidente; se não informado, usa o padrão do CAMED.
+    const camedAmountCents =
+      data.amount_cents && data.amount_cents > 0
+        ? data.amount_cents
+        : await loadCamedDefaultSemesterCents();
     if (!camedAmountCents) {
-      throw new Error("O CAMED ainda não definiu o valor padrão da semestralidade. Avise a coordenação.");
+      throw new Error("Defina o valor da semestralidade para os ligantes.");
     }
+
 
     const period = currentSemester();
     const { data: existing } = await supabaseAdmin
