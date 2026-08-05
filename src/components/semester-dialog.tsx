@@ -73,16 +73,19 @@ export function SemesterDialog({
       setPayments(r.payments);
       setCamedDefaultCents(r.camed_default_cents ?? 0);
       if (r.cycle) {
+        setLiganteAmount((((r.cycle.amount_cents ?? 0)) / 100).toFixed(2));
         setDirectorAmount((((r.cycle.director_amount_cents ?? 0)) / 100).toFixed(2));
         setDueDate(r.cycle.due_date);
         setLateFee(((r.cycle.late_fee_cents ?? 0) / 100).toFixed(2));
       } else {
+        setLiganteAmount((((r.camed_default_cents ?? 0)) / 100).toFixed(2));
         setDirectorAmount("0");
         setLateFee("0");
         // default vencimento = 30 dias
         const d = new Date(); d.setDate(d.getDate() + 30);
         setDueDate(d.toISOString().slice(0, 10));
       }
+
       const h = await listHist({ data: { league_id: league.id } });
       setHistory(h.cycles);
     } finally {
