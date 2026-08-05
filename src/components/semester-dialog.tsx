@@ -102,21 +102,24 @@ export function SemesterDialog({
   }
 
   async function handleSave() {
+    const ligAmt = Math.round(parseFloat((liganteAmount || "0").replace(",", ".")) * 100);
     const dirAmt = Math.round(parseFloat((directorAmount || "0").replace(",", ".")) * 100);
     const lf = Math.round(parseFloat((lateFee || "0").replace(",", ".")) * 100);
     if (Number.isNaN(dirAmt) || dirAmt < 0) return toast.error("Valor inválido");
+    if (Number.isNaN(ligAmt) || ligAmt <= 0) return toast.error("Defina o valor da semestralidade para os ligantes");
     if (!dueDate) return toast.error("Defina a data de vencimento");
-    if (!camedDefaultCents) return toast.error("O CAMED ainda não definiu o valor padrão da semestralidade.");
     try {
       await upsert({
         data: {
           league_id: league.id,
+          amount_cents: ligAmt,
           director_amount_cents: dirAmt,
           late_fee_cents: lf || 0,
           due_date: dueDate,
           notify,
         },
       });
+
       toast.success(cycle ? "Ciclo atualizado" : "Ciclo criado");
       await reload();
       onUpdated?.();
