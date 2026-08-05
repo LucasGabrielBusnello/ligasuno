@@ -75,6 +75,55 @@ export const disconnectMp = createServerFn({ method: "POST" })
   });
 
 /**
+ * Conexão manual via Access Token da própria conta do presidente.
+ * Útil quando o OAuth do Mercado Pago recusa a autorização (por exemplo,
+ * quando a conta é a mesma dona da aplicação na plataforma).
+ */
+export const connectMpManual = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({
+    league_id: z.string().uuid(),
+    access_token: z.string().min(20),
+  }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { userId } = context;
+
+    const { data: league } = await supabaseAdmin
+      .from("leagues").select("president_id, president2_id").eq("id", data.league_id).maybeSingle();
+    if (!league || ((league as any).president_id !== userId && (league as any).president2_id !== userId)) {
+      throw new Error("Apenas o presidente da liga pode conectar o Mercado Pago.");
+    }
+
+    const token = data.access_token.trim();
+    if (!/^(APP_USR-|TEST-)/.test(token)) {
+      throw new Error("Access Token inválido: deve começar com APP_USR- (produção) ou TEST- (teste).");
+    }
+
+    const res = await fetch("https://api.mercadopago.com/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const me = await res.json().catch(() => null);
+    if (!res.ok || !me?.id) {
+      throw new Error(`Access Token recusado pelo Mercado Pago: ${me?.message ?? res.status}`);
+    }
+
+    await supabaseAdmin.from("league_mp_accounts").upsert({
+      league_id: data.league_id,
+      mp_user_id: String(me.id),
+      access_token: token,
+      refresh_token: null,
+      public_key: null,
+      scope: "manual",
+      live_mode: token.startsWith("APP_USR-"),
+      expires_at: null,
+      updated_at: new Date().toISOString(),
+    } as any, { onConflict: "league_id" });
+
+    return { ok: true, mp_user_id: String(me.id), nickname: me.nickname ?? null };
+  });
+
+/**
  * Renova access_token usando o refresh_token. Server-side helper para webhook/checkouts.
  */
 export async function refreshMpToken(refreshToken: string) {

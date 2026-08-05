@@ -26,7 +26,7 @@ import { getCollectorFees } from "@/lib/mp-fees";
 import { syncEventToSheet, getSheetConfig, saveSheetConfig } from "@/lib/sheets-sync.functions";
 import { listEventCheckinRoster } from "@/lib/event-checkin.functions";
 
-import { disconnectMp } from "@/lib/mp-oauth.functions";
+import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
 import {
   createLeagueSubscriptionCheckout,
   createLeagueSemesterPixCheckout,
@@ -273,7 +273,20 @@ function calculateAnuidadePixQuote(monthlyPix: number) {
 function MpConnectCard({ leagueId }: { leagueId: string }) {
   const [account, setAccount] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [manualToken, setManualToken] = useState("");
   const disconnect = useServerFn(disconnectMp);
+  const connectManual = useServerFn(connectMpManual);
+
+  async function saveManual() {
+    try {
+      setLoading(true);
+      const r: any = await connectManual({ data: { league_id: leagueId, access_token: manualToken.trim() } });
+      toast.success(`Mercado Pago conectado (${r?.nickname ?? r?.mp_user_id})`);
+      setManualToken(""); setShowManual(false); reload();
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); } finally { setLoading(false); }
+  }
+
 
   async function reload() {
     const { data } = await supabase.from("league_mp_accounts").select("*").eq("league_id", leagueId).maybeSingle();
@@ -333,7 +346,7 @@ function MpConnectCard({ leagueId }: { leagueId: string }) {
             : "Conecte sua conta Mercado Pago para começar a receber pagamentos. Os valores caem direto na sua conta. Você precisa ter CPF cadastrado no Mercado Pago — a conta é gratuita."}
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         {!connected ? (
           <Button onClick={connect} disabled={loading} size="lg">
             {loading ? "Abrindo..." : "Conectar Mercado Pago"}
@@ -350,7 +363,38 @@ function MpConnectCard({ leagueId }: { leagueId: string }) {
             </div>
           </div>
         )}
+
+        <div className="rounded border p-4 space-y-2">
+          <button
+            type="button"
+            className="text-sm font-bold underline"
+            onClick={() => setShowManual((v) => !v)}
+          >
+            {showManual ? "Ocultar" : "O Mercado Pago recusou a autorização? Conectar manualmente"}
+          </button>
+          {showManual && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Se a sua conta do Mercado Pago já está vinculada à aplicação da plataforma, o botão de autorização pode dizer
+                que não é possível conectar. Nesse caso, cole aqui o <strong>Access Token de produção</strong> da sua conta
+                (Mercado Pago → Seus negócios → Configurações → Gestão e administração → Credenciais de produção).
+                Ele começa com <code className="font-mono">APP_USR-</code>.
+              </p>
+              <Input
+                value={manualToken}
+                onChange={(e) => setManualToken(e.target.value)}
+                placeholder="APP_USR-..."
+                type="password"
+                autoComplete="off"
+              />
+              <Button onClick={saveManual} disabled={loading || manualToken.trim().length < 20}>
+                Salvar Access Token
+              </Button>
+            </div>
+          )}
+        </div>
       </CardContent>
+
     </Card>
   );
 }
