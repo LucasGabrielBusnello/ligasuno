@@ -61,7 +61,7 @@ async function assertPresident(supabase: any, leagueId: string, userId: string) 
   const { data: roleRow } = await supabase
     .from("user_roles").select("role").eq("user_id", userId).eq("role", "admin_master").maybeSingle();
   const isAdmin = !!roleRow;
-  if (l.president_id !== userId && !isAdmin) throw new Error("Apenas o presidente pode gerenciar a semestralidade");
+  if (l.president_id !== userId && (l as any).president2_id !== userId && !isAdmin) throw new Error("Apenas o presidente pode gerenciar a semestralidade");
   return l;
 }
 
@@ -251,7 +251,7 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
       for (const p of pendings ?? []) {
         const role = roleByUser.get((p as any).user_id);
         const isLeader =
-          role === "diretor" || role === "presidente" || (league as any).president_id === (p as any).user_id;
+          role === "diretor" || role === "presidente" || (league as any).president_id === (p as any).user_id || (league as any).president2_id === (p as any).user_id;
         await supabaseAdmin
           .from("semester_payments")
           .update({ amount_due_cents: isLeader ? data.director_amount_cents : camedAmountCents })
@@ -380,7 +380,7 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
     const presidentId = (cycle as any).leagues?.id ? null : null;
     const { data: leagueRow } = await supabaseAdmin
       .from("leagues").select("president_id, president2_id").eq("id", data.league_id).maybeSingle();
-    const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId;
+    const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId || (leagueRow as any)?.president2_id === userId;
     if (!role && !isLeader) {
       throw new Error("Apenas membros da liga podem pagar a semestralidade");
     }
@@ -533,7 +533,7 @@ export const createSemesterPix = createServerFn({ method: "POST" })
     const role = (mem as any)?.role;
     const { data: leagueRow } = await supabaseAdmin
       .from("leagues").select("president_id, president2_id").eq("id", data.league_id).maybeSingle();
-    const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId;
+    const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId || (leagueRow as any)?.president2_id === userId;
     if (!role && !isLeader) {
       throw new Error("Apenas membros da liga podem pagar a semestralidade");
     }

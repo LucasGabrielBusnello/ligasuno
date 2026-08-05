@@ -28,7 +28,7 @@ async function assertPresident(leagueId: string, userId: string) {
     (supabaseAdmin as any).from("user_roles").select("role").eq("user_id", userId),
   ]);
   const isAdmin = (roles ?? []).some((r: any) => r.role === "admin_master");
-  if (!isAdmin && (!league || (league as any).president_id !== userId)) {
+  if (!isAdmin && (!league || ((league as any).president_id !== userId && (league as any).president2_id !== userId))) {
     throw new Error("Acesso negado");
   }
 }

@@ -28,7 +28,7 @@ export const startMpOAuth = createServerFn({ method: "POST" })
     const { data: league } = await supabaseAdmin
       .from("leagues").select("id, president_id, president2_id, slug")
       .eq("id", data.league_id).maybeSingle();
-    if (!league || (league as any).president_id !== userId) {
+    if (!league || ((league as any).president_id !== userId && (league as any).president2_id !== userId)) {
       throw new Error("Apenas o presidente da liga pode conectar o Mercado Pago.");
     }
 
@@ -67,7 +67,7 @@ export const disconnectMp = createServerFn({ method: "POST" })
     const { userId } = context;
     const { data: league } = await supabaseAdmin
       .from("leagues").select("president_id, president2_id").eq("id", data.league_id).maybeSingle();
-    if (!league || (league as any).president_id !== userId) {
+    if (!league || ((league as any).president_id !== userId && (league as any).president2_id !== userId)) {
       throw new Error("Sem permissão.");
     }
     await supabaseAdmin.from("league_mp_accounts").delete().eq("league_id", data.league_id);

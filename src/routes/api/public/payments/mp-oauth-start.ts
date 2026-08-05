@@ -50,7 +50,7 @@ export const Route = createFileRoute("/api/public/payments/mp-oauth-start")({
             .eq("id", leagueId)
             .maybeSingle();
 
-          if (!league || (league as any).president_id !== userId) {
+          if (!league || ((league as any).president_id !== userId && (league as any).president2_id !== userId)) {
             return new Response("Sem permissão", { status: 403 });
           }
 

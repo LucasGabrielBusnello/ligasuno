@@ -88,7 +88,7 @@ export const createLeagueSubscriptionCheckout = createServerFn({ method: "POST" 
       .eq("id", data.league_id)
       .maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
-    if ((league as any).president_id !== userId) {
+    if ((league as any).president_id !== userId && (league as any).president2_id !== userId) {
       throw new Error("Apenas a presidência pode pagar a anuidade");
     }
 
@@ -129,7 +129,7 @@ export const createLeagueSemesterPixCheckout = createServerFn({ method: "POST" }
       .eq("id", data.league_id)
       .maybeSingle();
     if (!league) throw new Error("Liga não encontrada");
-    if ((league as any).president_id !== userId) {
+    if ((league as any).president_id !== userId && (league as any).president2_id !== userId) {
       throw new Error("Apenas a presidência pode pagar a anuidade");
     }
 
@@ -204,7 +204,7 @@ export const cancelLeagueSubscription = createServerFn({ method: "POST" })
     if (!league) throw new Error("Liga não encontrada");
 
     const { data: isAdmin } = await supabaseAdmin.rpc("is_admin_master", { _user_id: userId });
-    if ((league as any).president_id !== userId && !isAdmin) {
+    if ((league as any).president_id !== userId && (league as any).president2_id !== userId && !isAdmin) {
       throw new Error("Apenas a presidência ou admin master pode cancelar");
     }
 

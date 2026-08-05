@@ -49,7 +49,7 @@ async function ensurePresidentOrAdmin(supabaseUser: any, leagueId: string, userI
   if (!l) throw new Error("Liga não encontrada");
   const { data: roles } = await supabaseUser.from("user_roles").select("role").eq("user_id", userId);
   const isAdmin = (roles ?? []).some((r: any) => r.role === "admin_master");
-  if (l.president_id !== userId && !isAdmin) throw new Error("Acesso negado");
+  if (l.president_id !== userId && (l as any).president2_id !== userId && !isAdmin) throw new Error("Acesso negado");
 }
 
 /** Devolve membros (ligante/diretor/presidente) com nome/cpf/email pré-preenchidos e horas totais (status=presente). */
