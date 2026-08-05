@@ -1515,23 +1515,25 @@ function MembersTab({ league }: any) {
       profiles: profileMap.get(member.user_id) ?? null,
     }));
 
-    if (league.president_id && !mergedMembers.some((member) => member.user_id === league.president_id)) {
-      const { data: presidentProfile } = await supabase
-        .from("profiles")
-        .select("id, username, email, full_name, registration_number")
-        .eq("id", league.president_id)
-        .maybeSingle();
+    for (const presId of [league.president_id, (league as any).president2_id] as (string | null | undefined)[]) {
+      if (presId && !mergedMembers.some((member) => member.user_id === presId)) {
+        const { data: presidentProfile } = await supabase
+          .from("profiles")
+          .select("id, username, email, full_name, registration_number")
+          .eq("id", presId)
+          .maybeSingle();
 
-      if (presidentProfile) {
-        mergedMembers.unshift({
-          id: `presidente-${league.id}`,
-          league_id: league.id,
-          user_id: league.president_id,
-          role: "presidente",
-          created_at: new Date(0).toISOString(),
-          permissions: null,
-          profiles: presidentProfile,
-        });
+        if (presidentProfile) {
+          mergedMembers.unshift({
+            id: `presidente-${league.id}-${presId}`,
+            league_id: league.id,
+            user_id: presId,
+            role: "presidente",
+            created_at: new Date(0).toISOString(),
+            permissions: null,
+            profiles: presidentProfile,
+          });
+        }
       }
     }
 
