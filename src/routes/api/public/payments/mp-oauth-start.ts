@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/public/payments/mp-oauth-start")({
 
           const { data: league } = await supabaseAdmin
             .from("leagues")
-            .select("id, president_id")
+            .select("id, president_id, president2_id")
             .eq("id", leagueId)
             .maybeSingle();
 

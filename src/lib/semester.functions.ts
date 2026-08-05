@@ -54,7 +54,7 @@ function currentSemester(d = new Date()): { semester: 1 | 2; year: number; start
 async function assertPresident(supabase: any, leagueId: string, userId: string) {
   const { data: l } = await supabase
     .from("leagues")
-    .select("id, president_id, name, slug, theme_color")
+    .select("id, president_id, president2_id, name, slug, theme_color")
     .eq("id", leagueId)
     .maybeSingle();
   if (!l) throw new Error("Liga não encontrada");
@@ -379,7 +379,7 @@ export const createSemesterCheckout = createServerFn({ method: "POST" })
     const role = (mem as any)?.role;
     const presidentId = (cycle as any).leagues?.id ? null : null;
     const { data: leagueRow } = await supabaseAdmin
-      .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
+      .from("leagues").select("president_id, president2_id").eq("id", data.league_id).maybeSingle();
     const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId;
     if (!role && !isLeader) {
       throw new Error("Apenas membros da liga podem pagar a semestralidade");
@@ -532,7 +532,7 @@ export const createSemesterPix = createServerFn({ method: "POST" })
       .maybeSingle();
     const role = (mem as any)?.role;
     const { data: leagueRow } = await supabaseAdmin
-      .from("leagues").select("president_id").eq("id", data.league_id).maybeSingle();
+      .from("leagues").select("president_id, president2_id").eq("id", data.league_id).maybeSingle();
     const isLeader = role === "diretor" || role === "presidente" || (leagueRow as any)?.president_id === userId;
     if (!role && !isLeader) {
       throw new Error("Apenas membros da liga podem pagar a semestralidade");
