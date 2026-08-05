@@ -37,7 +37,7 @@ function LigantePage() {
 
   if (!league || !user) return <div className="p-12 text-center">Carregando...</div>;
   const allowed = myRole && ["ligante", "diretor", "presidente"].includes(myRole);
-  if (!allowed && league.president_id !== user.id) {
+  if (!allowed && league.president_id !== user.id && (league as any).president2_id !== user.id) {
     return (
       <div className="p-12 text-center max-w-md mx-auto">
         <Lock className="size-12 mx-auto text-muted-foreground mb-4" />
@@ -50,7 +50,7 @@ function LigantePage() {
 
   const initialTab = typeof window !== "undefined" ? (new URL(window.location.href).searchParams.get("tab") ?? "schedule") : "schedule";
   const initialSet = typeof window !== "undefined" ? new URL(window.location.href).searchParams.get("set") : null;
-  const isStaff = !!(myRole && ["diretor", "presidente"].includes(myRole)) || league.president_id === user.id;
+  const isStaff = !!(myRole && ["diretor", "presidente"].includes(myRole)) || league.president_id === user.id || (league as any).president2_id === user.id;
 
   return (
     <div className="min-h-screen">

@@ -197,7 +197,7 @@ function LeaguePage() {
 
   const paid = league.paid_until && new Date(league.paid_until) >= new Date();
   const visible = league.published && paid;
-  const isPresident = !!(user && league.president_id === user.id);
+  const isPresident = !!(user && (league.president_id === user.id || (league as any).president2_id === user.id));
   const isDiretor = myRole === "diretor";
   const isLigante = myRole === "ligante" || isDiretor || isPresident;
 

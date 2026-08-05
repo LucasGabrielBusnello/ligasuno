@@ -49,7 +49,7 @@ function DiretorPage() {
   }, [loading, user, league]);
 
   if (!league || !user) return <div className="p-12 text-center">Carregando...</div>;
-  const allowed = isAdminMaster || league.president_id === user.id || myRole === "diretor";
+  const allowed = isAdminMaster || league.president_id === user.id || (league as any).president2_id === user.id || myRole === "diretor";
   if (!allowed) return (
     <div className="p-12 text-center max-w-md mx-auto">
       <h1 className="text-2xl font-black">Acesso negado</h1>
@@ -57,7 +57,7 @@ function DiretorPage() {
     </div>
   );
 
-  const isPrivileged = isAdminMaster || league.president_id === user.id;
+  const isPrivileged = isAdminMaster || league.president_id === user.id || (league as any).president2_id === user.id;
   const perms: string[] | null = isPrivileged ? null : myPerms;
   const can = (k: string) => perms === null || perms.includes(k);
   const tabs: { key: string; perm: string; label: string; icon: React.ReactNode; el: React.ReactNode }[] = [

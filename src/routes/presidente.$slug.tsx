@@ -66,7 +66,7 @@ function PresidentePage() {
   useEffect(() => { if (!loading && !user) nav({ to: "/auth" }); }, [loading, user]);
 
   if (!league || !user) return <div className="p-12 text-center">Carregando...</div>;
-  const isOwner = league.president_id === user.id || isAdminMaster;
+  const isOwner = league.president_id === user.id || (league as any).president2_id === user.id || isAdminMaster;
   if (!isOwner) return <div className="p-12 text-center"><h1 className="text-2xl font-black">Acesso negado</h1></div>;
 
 
