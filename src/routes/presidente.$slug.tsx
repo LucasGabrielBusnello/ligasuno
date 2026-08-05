@@ -913,7 +913,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
-  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, max_registrations: 20, published: false, total_hours: 0 };
+  const blank = { title: "", instructor: "", starts_at: "", location: "", description: "", is_free: true, price: 0, price_ligante: null as number | null, max_registrations: 20, published: false, total_hours: 0 };
   const [f, setF] = useState<any>(blank);
   const [exclusiveDraft, setExclusiveDraft] = useState<Array<{ id?: string; league_id: string; seats: number; price?: number | null }>>([]);
   const [checkinMc, setCheckinMc] = useState<any | null>(null);
