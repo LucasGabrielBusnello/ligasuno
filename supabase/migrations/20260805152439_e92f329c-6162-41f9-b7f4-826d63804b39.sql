@@ -1,0 +1,1 @@
+ALTER TABLE public.league_minicourses ADD COLUMN IF NOT EXISTS price_ligante numeric;
