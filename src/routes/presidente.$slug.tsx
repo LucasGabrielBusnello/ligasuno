@@ -543,6 +543,7 @@ export function EventsTab({ league }: any) {
       price_visitor: Number(ev.price_visitor) || 0,
       partner_league_ids: ev.partner_league_ids ?? [],
       max_seats: Number(ev.max_seats) || 0,
+      free_minicourse_quota: Number(ev.free_minicourse_quota) || 0,
       total_hours: Number(ev.total_hours) || 0,
       checkin_count: cn,
       checkin_schedule: sched,
