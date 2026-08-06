@@ -972,7 +972,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   const [list, setList] = useState<any[]>([]);
   const [regsByMc, setRegsByMc] = useState<Record<string, any[]>>({});
   const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ id: string; league_id: string; seats: number; price?: number | null }>>>({});
-  const [leaguesList, setLeaguesList] = useState<Array<{ id: string; name: string }>>([]);
+  const [leaguesList, setLeaguesList] = useState<Array<{ id: string; name: string; icon_url?: string | null }>>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
