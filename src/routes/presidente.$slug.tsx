@@ -632,31 +632,36 @@ export function EventsTab({ league }: any) {
         {events.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento criado ainda.</p>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>{editing ? "Editar Evento" : "Novo Evento"}</DialogTitle></DialogHeader>
-          <form onSubmit={save} className="space-y-3">
-            <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-            <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><Label>Data de início</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
-              <div><Label>Data de fim (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
-            </div>
-            <p className="text-[11px] text-muted-foreground -mt-1">Se a data de fim for preenchida, o evento será exibido como período (ex.: 10/09 a 12/09).</p>
+          <form onSubmit={save} className="space-y-4">
+            <FormSection title="1 · Informações gerais">
+              <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+              <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+              <div><ImageUpload label="Imagem" folder="events" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
+            </FormSection>
 
-            <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
+            <FormSection title="2 · Datas e cronograma">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><Label>Data de início</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+                <div><Label>Data de fim (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-1">Se a data de fim for preenchida, o evento será exibido como período (ex.: 10/09 a 12/09).</p>
+              <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
+              <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
+            </FormSection>
 
-            <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
-            <div><ImageUpload label="Imagem" folder="events" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
-            <div className="grid grid-cols-3 gap-2">
-              <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
-              <div><Label className="text-xs">Valor Liga Parceira (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_partner} onChange={(e) => setF({ ...f, price_partner: +e.target.value })} /></div>
-              <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
-            </div>
-            <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
+            <FormSection title="3 · Valores e vagas">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
+                <div><Label className="text-xs">Valor Liga Parceira (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_partner} onChange={(e) => setF({ ...f, price_partner: +e.target.value })} /></div>
+                <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
+              </div>
+              <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
+            </FormSection>
 
             {/* MINICURSOS GRATUITOS */}
-            <div className="rounded border p-3 space-y-2 bg-muted/30">
-              <h4 className="text-sm font-bold">Minicursos inclusos na inscrição</h4>
+            <FormSection title="4 · Minicursos inclusos na inscrição">
               <p className="text-[11px] text-muted-foreground">
                 Define quantos minicursos cada inscrito pago do evento pode garantir <strong>sem pagar nada</strong>.
                 Exemplo: com 1, o participante escolhe 1 minicurso gratuitamente; a partir do 2°, ele paga o valor
@@ -667,13 +672,12 @@ export function EventsTab({ league }: any) {
                 <Label className="text-xs">Minicursos gratuitos por inscrito</Label>
                 <Input type="number" min="0" value={f.free_minicourse_quota} onChange={(e) => setF({ ...f, free_minicourse_quota: Math.max(0, +e.target.value || 0) })} />
               </div>
-            </div>
+            </FormSection>
 
 
             {/* CERTIFICADO E CREDENCIAMENTOS */}
-            <div className="rounded border p-3 space-y-3 bg-muted/30">
-              <h4 className="text-sm font-bold flex items-center gap-1"><Award className="size-4" /> Certificado e Credenciamentos</h4>
-              <div className="grid grid-cols-2 gap-2">
+            <FormSection title="5 · Certificado e credenciamentos">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs">Horas totais do evento</Label>
                   <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
@@ -690,15 +694,15 @@ export function EventsTab({ league }: any) {
               <div className="space-y-2">
                 {(f.checkin_schedule || []).map((s: any, i: number) => (
                   <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-5">
+                    <div className="col-span-12 sm:col-span-5">
                       <Label className="text-[10px]">Nome do {i + 1}° credenciamento</Label>
                       <Input value={s.label || ""} onChange={(e) => updateScheduleItem(i, { label: e.target.value })} />
                     </div>
-                    <div className="col-span-5">
+                    <div className="col-span-8 sm:col-span-5">
                       <Label className="text-[10px]">Data / Hora</Label>
                       <Input type="datetime-local" value={s.starts_at || ""} onChange={(e) => updateScheduleItem(i, { starts_at: e.target.value })} />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-4 sm:col-span-2">
                       <Label className="text-[10px]">Intervalo (min)</Label>
                       <Input type="number" min="1" value={s.interval_min || 30} onChange={(e) => updateScheduleItem(i, { interval_min: +e.target.value })} />
                     </div>
@@ -709,11 +713,11 @@ export function EventsTab({ league }: any) {
                 <span>Congelar inscrições no dia do evento (segurança)</span>
                 <Switch checked={!!f.freeze_on_event_day} onCheckedChange={(v) => setF({ ...f, freeze_on_event_day: v })} />
               </label>
-            </div>
+            </FormSection>
 
-            <div>
-              <Label>Ligas parceiras (recebem o valor de parceiro)</Label>
-              <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1">
+            <FormSection title="6 · Ligas parceiras do evento">
+              <p className="text-[11px] text-muted-foreground">Ligantes das ligas marcadas pagam o "Valor Liga Parceira" na inscrição do evento.</p>
+              <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1 bg-background">
                 {allLeagues.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma outra liga cadastrada.</p>}
                 {allLeagues.map((l) => (
                   <label key={l.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -722,7 +726,7 @@ export function EventsTab({ league }: any) {
                   </label>
                 ))}
               </div>
-            </div>
+            </FormSection>
             <DialogFooter><Button type="submit">{editing ? "Salvar alterações" : "Criar"}</Button></DialogFooter>
           </form>
         </DialogContent>
@@ -968,11 +972,20 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   );
 }
 
+function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      {children}
+    </section>
+  );
+}
+
 function MinicoursesManager({ event, open, onClose }: { event: any; open: boolean; onClose: () => void }) {
   const [list, setList] = useState<any[]>([]);
   const [regsByMc, setRegsByMc] = useState<Record<string, any[]>>({});
   const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ id: string; league_id: string; seats: number; price?: number | null }>>>({});
-  const [leaguesList, setLeaguesList] = useState<Array<{ id: string; name: string }>>([]);
+  const [leaguesList, setLeaguesList] = useState<Array<{ id: string; name: string; icon_url?: string | null }>>([]);
   const [editing, setEditing] = useState<any | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [viewing, setViewing] = useState<any | null>(null);
@@ -1009,7 +1022,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   useEffect(() => {
     if (!open) return;
     reload();
-    supabase.from("leagues").select("id, name").order("name").then(({ data }) => setLeaguesList((data ?? []) as any));
+    supabase.from("leagues").select("id, name, icon_url").order("name").then(({ data }) => setLeaguesList((data ?? []) as any));
   }, [open, event.id]);
 
   function openNew() { setEditing(null); setF(blank); setExclusiveDraft([]); setFormOpen(true); }
@@ -1147,112 +1160,147 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
       </Dialog>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>{editing ? "Editar minicurso" : "Novo minicurso"}</DialogTitle></DialogHeader>
-          <form onSubmit={save} className="space-y-3">
-            <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-            <div><Label>Lecionador</Label><Input required value={f.instructor} onChange={(e) => setF({ ...f, instructor: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Data e hora</Label><Input type="datetime-local" required value={f.starts_at} onChange={(e) => setF({ ...f, starts_at: e.target.value })} /></div>
-              <div><Label>Vagas (máx.)</Label><Input type="number" min="1" required value={f.max_registrations} onChange={(e) => setF({ ...f, max_registrations: +e.target.value })} /></div>
-            </div>
-            <div><Label>Local</Label><Input placeholder="Sala, prédio, link..." value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></div>
-            <div><Label>Descrição</Label><Textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-            <div className="flex items-center justify-between gap-2 p-3 rounded border">
-              <div>
-                <Label className="cursor-pointer">Gratuito</Label>
-                <p className="text-[11px] text-muted-foreground">Se desativado, exigirá pagamento.</p>
+          <form onSubmit={save} className="space-y-4">
+            <FormSection title="1 · Informações do minicurso">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2"><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+                <div><Label>Lecionador</Label><Input required value={f.instructor} onChange={(e) => setF({ ...f, instructor: e.target.value })} /></div>
+                <div><Label>Data e hora</Label><Input type="datetime-local" required value={f.starts_at} onChange={(e) => setF({ ...f, starts_at: e.target.value })} /></div>
+                <div className="sm:col-span-2"><Label>Local</Label><Input placeholder="Sala, prédio, link..." value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></div>
+                <div className="sm:col-span-2"><Label>Descrição</Label><Textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
               </div>
-              <Switch checked={f.is_free} onCheckedChange={(v) => setF({ ...f, is_free: v })} />
-            </div>
-            {!f.is_free && (
-              <div className="space-y-3">
-                <div><Label>Valor para não ligantes (R$)</Label><Input type="number" step="0.01" min="0.50" value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Mínimo R$ 0,50 (limite do gateway).</p></div>
-                <label className="flex items-center justify-between gap-2 p-2 rounded border">
-                  <div>
-                    <span className="text-sm font-medium">Valor diferente para ligantes</span>
-                    <p className="text-[11px] text-muted-foreground">Vale para membros da liga organizadora.</p>
-                  </div>
-                  <Switch
-                    checked={f.price_ligante !== null && f.price_ligante !== undefined}
-                    onCheckedChange={(v) => setF({ ...f, price_ligante: v ? 0 : null })}
-                  />
-                </label>
-                {f.price_ligante !== null && f.price_ligante !== undefined && (
-                  <div><Label>Valor para ligantes (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: Math.max(0, +e.target.value || 0) })} /><p className="text-[11px] text-muted-foreground mt-1">Use 0 para gratuito aos ligantes.</p></div>
-                )}
-              </div>
-            )}
-            <div className="rounded border p-2 bg-muted/30">
-              <Label className="text-xs">Horas no certificado</Label>
-              <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
-              <p className="text-[11px] text-muted-foreground mt-1">Minicursos têm 1 credenciamento — esta é a carga horária total no certificado.</p>
-            </div>
-            <div className="rounded border p-3 bg-muted/30 space-y-2">
-              <div className="flex items-center justify-between gap-2">
+            </FormSection>
+
+            <FormSection title="2 · Vagas e certificado">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label className="text-xs">Vagas exclusivas / valor por liga</Label>
-                  <p className="text-[11px] text-muted-foreground leading-snug">Reserve parte das vagas totais para ligantes desta liga ou de ligas parceiras. As vagas exclusivas <strong>saem das vagas totais</strong> (não somam). Se informar um valor especial, ele vale só enquanto houver vagas dessa liga; depois volta ao valor normal.</p>
+                  <Label>Vagas (máx.)</Label>
+                  <Input type="number" min="1" required value={f.max_registrations} onChange={(e) => setF({ ...f, max_registrations: +e.target.value })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">Inclui as vagas exclusivas configuradas abaixo.</p>
                 </div>
-                <Button type="button" size="sm" variant="outline" onClick={() => setExclusiveDraft((d) => [...d, { league_id: event.league_id, seats: 1, price: null }])}>
-                  <Plus className="size-3.5" /> Reservar
+                <div>
+                  <Label>Horas no certificado</Label>
+                  <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
+                  <p className="text-[11px] text-muted-foreground mt-1">Minicursos têm 1 credenciamento — carga horária total.</p>
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection title="3 · Valores">
+              <label className="flex items-center justify-between gap-2 rounded-md border bg-background p-2.5">
+                <div>
+                  <span className="text-sm font-medium">Minicurso gratuito</span>
+                  <p className="text-[11px] text-muted-foreground">Se desativado, exigirá pagamento.</p>
+                </div>
+                <Switch checked={f.is_free} onCheckedChange={(v) => setF({ ...f, is_free: v })} />
+              </label>
+              {!f.is_free && (
+                <div className="space-y-3 mt-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Valor padrão (R$)</Label>
+                      <Input type="number" step="0.01" min="0.50" value={f.price} onChange={(e) => setF({ ...f, price: +e.target.value })} />
+                      <p className="text-[11px] text-muted-foreground mt-1">Cobrado de quem não tem desconto. Mínimo R$ 0,50.</p>
+                    </div>
+                    <div className="rounded-md border bg-background p-2.5">
+                      <label className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">Valor para ligantes desta liga</span>
+                        <Switch
+                          checked={f.price_ligante !== null && f.price_ligante !== undefined}
+                          onCheckedChange={(v) => setF({ ...f, price_ligante: v ? 0 : null })}
+                        />
+                      </label>
+                      {f.price_ligante !== null && f.price_ligante !== undefined && (
+                        <Input className="mt-2" type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: Math.max(0, +e.target.value || 0) })} />
+                      )}
+                      <p className="text-[11px] text-muted-foreground mt-1">Use 0 para gratuito aos ligantes.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </FormSection>
+
+            <FormSection title="4 · Ligas parceiras e vagas exclusivas">
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Escolha se este minicurso tem liga parceira. Para cada liga você define <strong>quantas vagas são exclusivas</strong> e, se quiser,
+                um <strong>valor especial</strong> para elas. As vagas exclusivas saem do total de vagas (não somam) e, quando forem preenchidas,
+                os ligantes daquela liga passam a pagar o valor normal.
+              </p>
+              <div className="flex justify-end">
+                <Button type="button" size="sm" variant="outline" onClick={() => setExclusiveDraft((d) => [...d, { league_id: "", seats: 1, price: null }])}>
+                  <Plus className="size-3.5" /> Adicionar liga parceira
                 </Button>
               </div>
               {exclusiveDraft.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground italic">Nenhuma reserva. Todas as vagas ficam abertas.</p>
+                <p className="text-[11px] text-muted-foreground italic">Nenhuma liga parceira. Todas as vagas ficam abertas pelo valor padrão.</p>
               ) : (
                 <div className="space-y-2">
-                  {exclusiveDraft.map((s, idx) => (
-                    <div key={idx} className="rounded-md border bg-background p-2 space-y-1.5">
-                      <div className="flex items-center gap-2">
-                        <select
-                          className="flex-1 h-9 rounded-md border border-input bg-transparent px-2 text-sm"
-                          value={s.league_id}
-                          onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, league_id: e.target.value } : x))}
-                        >
-                          <option value="">— liga —</option>
-                          {leaguesList.map((l) => (
-                            <option key={l.id} value={l.id}>{l.name}{l.id === event.league_id ? " (organizadora)" : ""}</option>
-                          ))}
-                        </select>
-                        <div className="w-20">
-                          <Input
-                            type="number" min="1" value={s.seats}
-                            onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, seats: Math.max(1, +e.target.value || 1) } : x))}
-                          />
-                          <p className="text-[10px] text-muted-foreground text-center">vagas</p>
-                        </div>
-                        <Button type="button" size="sm" variant="destructive" onClick={() => setExclusiveDraft((d) => d.filter((_, i) => i !== idx))}>
-                          <Trash2 className="size-3" />
-                        </Button>
-                      </div>
-                      {!f.is_free && (
-                        <label className="flex items-center gap-2 text-[11px]">
-                          <Switch
-                            checked={s.price !== null && s.price !== undefined}
-                            onCheckedChange={(v) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, price: v ? 0 : null } : x))}
-                          />
-                          <span>Valor diferente para esta liga</span>
-                          {s.price !== null && s.price !== undefined && (
-                            <Input
-                              type="number" min="0" step="0.01" className="h-8 w-28 ml-auto"
-                              value={s.price}
-                              onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, price: Math.max(0, +e.target.value || 0) } : x))}
-                            />
+                  {exclusiveDraft.map((s, idx) => {
+                    const lg = leaguesList.find((l) => l.id === s.league_id);
+                    return (
+                      <div key={idx} className="rounded-md border bg-background p-2.5 space-y-2">
+                        <div className="flex items-center gap-2">
+                          {lg?.icon_url ? (
+                            <img src={lg.icon_url} alt={lg.name} className="h-9 w-9 rounded-full object-cover ring-1 ring-border shrink-0" />
+                          ) : (
+                            <div className="h-9 w-9 rounded-full bg-primary/15 grid place-items-center text-[10px] font-black shrink-0">
+                              {(lg?.name ?? "?").slice(0, 2).toUpperCase()}
+                            </div>
                           )}
-                        </label>
-                      )}
-                    </div>
-                  ))}
+                          <select
+                            className="flex-1 h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                            value={s.league_id}
+                            onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, league_id: e.target.value } : x))}
+                          >
+                            <option value="">— selecione a liga —</option>
+                            {leaguesList.map((l) => (
+                              <option key={l.id} value={l.id}>{l.name}{l.id === event.league_id ? " (organizadora)" : ""}</option>
+                            ))}
+                          </select>
+                          <Button type="button" size="sm" variant="destructive" onClick={() => setExclusiveDraft((d) => d.filter((_, i) => i !== idx))}>
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <div>
+                            <Label className="text-[10px]">Vagas exclusivas</Label>
+                            <Input
+                              type="number" min="1" value={s.seats}
+                              onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, seats: Math.max(1, +e.target.value || 1) } : x))}
+                            />
+                          </div>
+                          {!f.is_free && (
+                            <div>
+                              <label className="flex items-center justify-between gap-2">
+                                <span className="text-[10px]">Valor exclusivo (R$)</span>
+                                <Switch
+                                  checked={s.price !== null && s.price !== undefined}
+                                  onCheckedChange={(v) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, price: v ? 0 : null } : x))}
+                                />
+                              </label>
+                              {s.price !== null && s.price !== undefined && (
+                                <Input
+                                  type="number" min="0" step="0.01" className="mt-1"
+                                  value={s.price}
+                                  onChange={(e) => setExclusiveDraft((d) => d.map((x, i) => i === idx ? { ...x, price: Math.max(0, +e.target.value || 0) } : x))}
+                                />
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                   <p className="text-[11px] text-muted-foreground">
                     Total reservado: {exclusiveDraft.reduce((a, s) => a + (Number(s.seats) || 0), 0)} / {f.max_registrations} vagas · Restam {Math.max(0, (Number(f.max_registrations) || 0) - exclusiveDraft.reduce((a, s) => a + (Number(s.seats) || 0), 0))} vagas abertas.
                   </p>
                 </div>
               )}
-            </div>
+            </FormSection>
 
-
-            <label className="flex items-center justify-between gap-2 p-3 rounded border">
+            <label className="flex items-center justify-between gap-2 p-3 rounded-lg border">
               <div>
                 <span className="text-sm font-medium">Publicar imediatamente</span>
                 <p className="text-[11px] text-muted-foreground">Quando publicado, aparece para inscritos no evento.</p>
