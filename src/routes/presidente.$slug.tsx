@@ -676,9 +676,8 @@ export function EventsTab({ league }: any) {
 
 
             {/* CERTIFICADO E CREDENCIAMENTOS */}
-            <div className="rounded border p-3 space-y-3 bg-muted/30">
-              <h4 className="text-sm font-bold flex items-center gap-1"><Award className="size-4" /> Certificado e Credenciamentos</h4>
-              <div className="grid grid-cols-2 gap-2">
+            <FormSection title="5 · Certificado e credenciamentos">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <Label className="text-xs">Horas totais do evento</Label>
                   <Input type="number" min="0" step="0.5" value={f.total_hours} onChange={(e) => setF({ ...f, total_hours: +e.target.value })} />
@@ -695,15 +694,15 @@ export function EventsTab({ league }: any) {
               <div className="space-y-2">
                 {(f.checkin_schedule || []).map((s: any, i: number) => (
                   <div key={i} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-5">
+                    <div className="col-span-12 sm:col-span-5">
                       <Label className="text-[10px]">Nome do {i + 1}° credenciamento</Label>
                       <Input value={s.label || ""} onChange={(e) => updateScheduleItem(i, { label: e.target.value })} />
                     </div>
-                    <div className="col-span-5">
+                    <div className="col-span-8 sm:col-span-5">
                       <Label className="text-[10px]">Data / Hora</Label>
                       <Input type="datetime-local" value={s.starts_at || ""} onChange={(e) => updateScheduleItem(i, { starts_at: e.target.value })} />
                     </div>
-                    <div className="col-span-2">
+                    <div className="col-span-4 sm:col-span-2">
                       <Label className="text-[10px]">Intervalo (min)</Label>
                       <Input type="number" min="1" value={s.interval_min || 30} onChange={(e) => updateScheduleItem(i, { interval_min: +e.target.value })} />
                     </div>
@@ -714,11 +713,11 @@ export function EventsTab({ league }: any) {
                 <span>Congelar inscrições no dia do evento (segurança)</span>
                 <Switch checked={!!f.freeze_on_event_day} onCheckedChange={(v) => setF({ ...f, freeze_on_event_day: v })} />
               </label>
-            </div>
+            </FormSection>
 
-            <div>
-              <Label>Ligas parceiras (recebem o valor de parceiro)</Label>
-              <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1">
+            <FormSection title="6 · Ligas parceiras do evento">
+              <p className="text-[11px] text-muted-foreground">Ligantes das ligas marcadas pagam o "Valor Liga Parceira" na inscrição do evento.</p>
+              <div className="border rounded p-2 max-h-40 overflow-y-auto space-y-1 mt-1 bg-background">
                 {allLeagues.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma outra liga cadastrada.</p>}
                 {allLeagues.map((l) => (
                   <label key={l.id} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -727,7 +726,7 @@ export function EventsTab({ league }: any) {
                   </label>
                 ))}
               </div>
-            </div>
+            </FormSection>
             <DialogFooter><Button type="submit">{editing ? "Salvar alterações" : "Criar"}</Button></DialogFooter>
           </form>
         </DialogContent>
