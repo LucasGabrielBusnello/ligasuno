@@ -968,6 +968,15 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   );
 }
 
+function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <h4 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{title}</h4>
+      {children}
+    </section>
+  );
+}
+
 function MinicoursesManager({ event, open, onClose }: { event: any; open: boolean; onClose: () => void }) {
   const [list, setList] = useState<any[]>([]);
   const [regsByMc, setRegsByMc] = useState<Record<string, any[]>>({});
