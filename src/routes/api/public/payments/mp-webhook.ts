@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getPayment, getPreapproval } from "@/lib/mp.server";
-import { sendGmail, emailLayout, sendEventRegistrationEmail, sendMinicourseRegistrationEmail } from "@/lib/gmail.server";
+import { sendGmail, emailLayout, sendMinicourseRegistrationEmail } from "@/lib/gmail.server";
+import { sendEventBadgeEmail } from "@/lib/event-badge-email.server";
 
 
 /**
@@ -136,16 +137,7 @@ async function handlePayment(paymentId: string) {
         const lg = ev.leagues;
         if (email && lg) {
           try {
-            await sendEventRegistrationEmail({
-              to: email,
-              fullName: (reg as any).full_name,
-              leagueName: lg.name, leagueSlug: lg.slug, brandColor: lg.theme_color,
-              eventTitle: ev.title, eventDate: ev.event_date, eventTime: ev.schedule,
-              paidPrice: Number((reg as any).paid_price) || 0,
-            });
-            await supabaseAdmin.from("event_email_log").insert({
-              event_id: ev.id ?? ev.event_id ?? null, kind: "registration", reference_id: refId, recipient: email,
-            } as any).then(() => {}, () => {});
+            await sendEventBadgeEmail(refId);
           } catch (e) { console.error("event email failed", e); }
         }
       }

@@ -69,7 +69,13 @@ export const createEventCheckout = createServerFn({ method: "POST" })
       .select("*").single();
     if (regErr || !reg) throw new Error(regErr?.message || "Falha ao registrar");
 
-    if (paid === 0) return { free: true, registration_id: reg.id };
+    if (paid === 0) {
+      try {
+        const { sendEventBadgeEmail } = await import("@/lib/event-badge-email.server");
+        await sendEventBadgeEmail(reg.id);
+      } catch (e) { console.error("badge email failed", e); }
+      return { free: true, registration_id: reg.id };
+    }
 
     // Carrega conta MP da liga + taxa configurada
     const mpAccount = await loadLeagueMpAccount(supabaseAdmin, leagueId);

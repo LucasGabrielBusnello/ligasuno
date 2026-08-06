@@ -477,7 +477,7 @@ export async function sendGmailWithAttachment(args: {
     `To: ${args.to}`,
     `Subject: =?UTF-8?B?${subjectB64}?=`,
     "MIME-Version: 1.0",
-    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    `Content-Type: multipart/${args.attachment.contentId ? "related" : "mixed"}; boundary="${boundary}"`,
     "",
     `--${boundary}`,
     'Content-Type: text/html; charset="UTF-8"',

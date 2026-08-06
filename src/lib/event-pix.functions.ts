@@ -94,6 +94,10 @@ export const createEventPix = createServerFn({ method: "POST" })
     if (regErr || !reg) throw new Error(regErr?.message || "Falha ao registrar");
 
     if (paid === 0) {
+      try {
+        const { sendEventBadgeEmail } = await import("@/lib/event-badge-email.server");
+        await sendEventBadgeEmail(reg.id);
+      } catch (e) { console.error("badge email failed", e); }
       return { free: true, registration_id: reg.id, status: "paid" };
     }
 
@@ -161,6 +165,10 @@ export const getEventPaymentStatus = createServerFn({ method: "POST" })
       if (pay?.status === "approved") {
         await supabaseAdmin.from("event_registrations")
           .update({ status: "paid" }).eq("id", (reg as any).id);
+        try {
+          const { sendEventBadgeEmail } = await import("@/lib/event-badge-email.server");
+          await sendEventBadgeEmail((reg as any).id);
+        } catch (e) { console.error("badge email failed", e); }
         return { status: "paid" };
       }
       return { status: pay?.status ?? (reg as any).status };
