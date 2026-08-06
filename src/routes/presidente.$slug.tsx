@@ -1009,7 +1009,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   useEffect(() => {
     if (!open) return;
     reload();
-    supabase.from("leagues").select("id, name").order("name").then(({ data }) => setLeaguesList((data ?? []) as any));
+    supabase.from("leagues").select("id, name, icon_url").order("name").then(({ data }) => setLeaguesList((data ?? []) as any));
   }, [open, event.id]);
 
   function openNew() { setEditing(null); setF(blank); setExclusiveDraft([]); setFormOpen(true); }
