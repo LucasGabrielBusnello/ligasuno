@@ -632,31 +632,36 @@ export function EventsTab({ league }: any) {
         {events.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Nenhum evento criado ainda.</p>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader><DialogTitle>{editing ? "Editar Evento" : "Novo Evento"}</DialogTitle></DialogHeader>
-          <form onSubmit={save} className="space-y-3">
-            <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
-            <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><Label>Data de início</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
-              <div><Label>Data de fim (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
-            </div>
-            <p className="text-[11px] text-muted-foreground -mt-1">Se a data de fim for preenchida, o evento será exibido como período (ex.: 10/09 a 12/09).</p>
+          <form onSubmit={save} className="space-y-4">
+            <FormSection title="1 · Informações gerais">
+              <div><Label>Título</Label><Input required value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></div>
+              <div><Label>Descrição</Label><Textarea value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></div>
+              <div><ImageUpload label="Imagem" folder="events" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
+            </FormSection>
 
-            <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
+            <FormSection title="2 · Datas e cronograma">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div><Label>Data de início</Label><Input type="date" value={f.event_date} onChange={(e) => setF({ ...f, event_date: e.target.value })} /></div>
+                <div><Label>Data de fim (opcional)</Label><Input type="datetime-local" value={f.end_date} onChange={(e) => setF({ ...f, end_date: e.target.value })} /></div>
+              </div>
+              <p className="text-[11px] text-muted-foreground -mt-1">Se a data de fim for preenchida, o evento será exibido como período (ex.: 10/09 a 12/09).</p>
+              <div><Label>Prazo final de inscrições</Label><Input type="datetime-local" value={f.registration_deadline} onChange={(e) => setF({ ...f, registration_deadline: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Após esta data e hora, novas inscrições serão bloqueadas automaticamente.</p></div>
+              <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
+            </FormSection>
 
-            <div><Label>Cronograma do evento</Label><Textarea rows={5} placeholder="Programação detalhada: horários, palestras, atividades..." value={f.schedule} onChange={(e) => setF({ ...f, schedule: e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Visível para inscritos no painel do inscrito.</p></div>
-            <div><ImageUpload label="Imagem" folder="events" value={f.image_url} onChange={(url) => setF({ ...f, image_url: url })} /></div>
-            <div className="grid grid-cols-3 gap-2">
-              <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
-              <div><Label className="text-xs">Valor Liga Parceira (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_partner} onChange={(e) => setF({ ...f, price_partner: +e.target.value })} /></div>
-              <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
-            </div>
-            <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
+            <FormSection title="3 · Valores e vagas">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div><Label className="text-xs">Valor Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_ligante} onChange={(e) => setF({ ...f, price_ligante: +e.target.value })} /></div>
+                <div><Label className="text-xs">Valor Liga Parceira (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_partner} onChange={(e) => setF({ ...f, price_partner: +e.target.value })} /></div>
+                <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
+              </div>
+              <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
+            </FormSection>
 
             {/* MINICURSOS GRATUITOS */}
-            <div className="rounded border p-3 space-y-2 bg-muted/30">
-              <h4 className="text-sm font-bold">Minicursos inclusos na inscrição</h4>
+            <FormSection title="4 · Minicursos inclusos na inscrição">
               <p className="text-[11px] text-muted-foreground">
                 Define quantos minicursos cada inscrito pago do evento pode garantir <strong>sem pagar nada</strong>.
                 Exemplo: com 1, o participante escolhe 1 minicurso gratuitamente; a partir do 2°, ele paga o valor
@@ -667,7 +672,7 @@ export function EventsTab({ league }: any) {
                 <Label className="text-xs">Minicursos gratuitos por inscrito</Label>
                 <Input type="number" min="0" value={f.free_minicourse_quota} onChange={(e) => setF({ ...f, free_minicourse_quota: Math.max(0, +e.target.value || 0) })} />
               </div>
-            </div>
+            </FormSection>
 
 
             {/* CERTIFICADO E CREDENCIAMENTOS */}
