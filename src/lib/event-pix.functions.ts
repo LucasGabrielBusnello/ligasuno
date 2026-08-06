@@ -236,6 +236,23 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
         }
       }
     }
+    // Cota de minicursos gratuitos definida no evento
+    let usesQuota = false;
+    const quota = Number((mc as any).league_events?.free_minicourse_quota) || 0;
+    if (price > 0 && quota > 0) {
+      const { data: mine } = await supabaseAdmin
+        .from("minicourse_registrations")
+        .select("id, quota_used, minicourse_id, league_minicourses!inner(event_id)")
+        .eq("user_id", userId)
+        .in("status", ["paid", "pending"]);
+      const usedCount = ((mine ?? []) as any[]).filter(
+        (r) => r.quota_used && r.league_minicourses?.event_id === eventId && r.minicourse_id !== data.minicourse_id,
+      ).length;
+      if (usedCount < quota) {
+        usesQuota = true;
+        price = 0;
+      }
+    }
     const isFree = price <= 0;
 
     const { data: reg, error: regErr } = await supabaseAdmin
@@ -244,9 +261,11 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
         minicourse_id: data.minicourse_id, user_id: userId,
         event_registration_id: (evReg as any).id, paid_price: price,
         exclusive_league_id: exclusiveLeagueId,
+        quota_used: usesQuota,
         status: isFree ? "paid" : "pending",
       } as any, { onConflict: "minicourse_id,user_id" } as any)
       .select("*").single();
+
 
     if (regErr || !reg) throw new Error(regErr?.message || "Falha ao registrar");
 
