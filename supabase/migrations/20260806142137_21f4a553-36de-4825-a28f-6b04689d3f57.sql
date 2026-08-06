@@ -1,0 +1,1 @@
+ALTER TABLE public.minicourse_registrations ADD COLUMN IF NOT EXISTS quota_used boolean NOT NULL DEFAULT false;

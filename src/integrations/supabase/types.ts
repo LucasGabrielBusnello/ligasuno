@@ -3759,6 +3759,7 @@ export type Database = {
           id: string
           minicourse_id: string
           paid_price: number
+          quota_used: boolean
           status: string
           stripe_session_id: string | null
           updated_at: string
@@ -3774,6 +3775,7 @@ export type Database = {
           id?: string
           minicourse_id: string
           paid_price?: number
+          quota_used?: boolean
           status?: string
           stripe_session_id?: string | null
           updated_at?: string
@@ -3789,6 +3791,7 @@ export type Database = {
           id?: string
           minicourse_id?: string
           paid_price?: number
+          quota_used?: boolean
           status?: string
           stripe_session_id?: string | null
           updated_at?: string
