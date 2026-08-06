@@ -2525,6 +2525,7 @@ export type Database = {
           description: string | null
           end_date: string | null
           event_date: string | null
+          free_minicourse_quota: number
           freeze_on_event_day: boolean
           full_name_required: boolean
           id: string
@@ -2550,6 +2551,7 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           event_date?: string | null
+          free_minicourse_quota?: number
           freeze_on_event_day?: boolean
           full_name_required?: boolean
           id?: string
@@ -2575,6 +2577,7 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           event_date?: string | null
+          free_minicourse_quota?: number
           freeze_on_event_day?: boolean
           full_name_required?: boolean
           id?: string
