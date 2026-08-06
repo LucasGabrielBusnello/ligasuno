@@ -179,7 +179,7 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
 
     const { data: mc, error: mcErr } = await supabase
       .from("league_minicourses")
-      .select("*, league_events!inner(id, title, league_id, leagues!inner(slug,name))")
+      .select("*, league_events!inner(id, title, league_id, free_minicourse_quota, leagues!inner(slug,name))")
       .eq("id", data.minicourse_id).maybeSingle();
     if (mcErr || !mc) throw new Error("Minicurso não encontrado");
     if (!(mc as any).published) throw new Error("Minicurso indisponível");
