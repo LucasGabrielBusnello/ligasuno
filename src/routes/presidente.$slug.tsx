@@ -654,6 +654,22 @@ export function EventsTab({ league }: any) {
             </div>
             <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
 
+            {/* MINICURSOS GRATUITOS */}
+            <div className="rounded border p-3 space-y-2 bg-muted/30">
+              <h4 className="text-sm font-bold">Minicursos inclusos na inscrição</h4>
+              <p className="text-[11px] text-muted-foreground">
+                Define quantos minicursos cada inscrito pago do evento pode garantir <strong>sem pagar nada</strong>.
+                Exemplo: com 1, o participante escolhe 1 minicurso gratuitamente; a partir do 2°, ele paga o valor
+                definido no minicurso que estiver tentando se inscrever. Use 0 para cobrar todos os minicursos
+                normalmente (os minicursos marcados como gratuitos continuam sempre gratuitos e não consomem a cota).
+              </p>
+              <div className="w-40">
+                <Label className="text-xs">Minicursos gratuitos por inscrito</Label>
+                <Input type="number" min="0" value={f.free_minicourse_quota} onChange={(e) => setF({ ...f, free_minicourse_quota: Math.max(0, +e.target.value || 0) })} />
+              </div>
+            </div>
+
+
             {/* CERTIFICADO E CREDENCIAMENTOS */}
             <div className="rounded border p-3 space-y-3 bg-muted/30">
               <h4 className="text-sm font-bold flex items-center gap-1"><Award className="size-4" /> Certificado e Credenciamentos</h4>
