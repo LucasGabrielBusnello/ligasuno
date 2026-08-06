@@ -934,8 +934,18 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   if (list === null) return <p className="text-sm text-muted-foreground">Carregando minicursos...</p>;
   if (list.length === 0) return <p className="text-sm text-muted-foreground text-center py-6">Nenhum minicurso publicado ainda.</p>;
 
+  const quota = Number((event as any).free_minicourse_quota) || 0;
+  const quotaUsed = Object.values(myRegs).filter((r: any) => r?.quota_used && (r.status === "paid" || r.status === "pending")).length;
+
   return (
     <div className="space-y-2">
+      {quota > 0 && (
+        <div className="rounded-md border border-emerald-600/40 bg-emerald-600/10 p-3 text-xs text-emerald-100">
+          Sua inscrição inclui <strong>{quota}</strong> minicurso{quota > 1 ? "s" : ""} gratuito{quota > 1 ? "s" : ""}.
+          {" "}Você já usou <strong>{Math.min(quotaUsed, quota)}</strong> de {quota}. Após esgotar, os próximos minicursos são cobrados normalmente.
+        </div>
+      )}
+
       {list.map((mc) => {
         const mine = myRegs[mc.id];
         const cnt = counts[mc.id] ?? { total: 0, general: 0, byLeague: {} };

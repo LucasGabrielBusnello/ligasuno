@@ -509,6 +509,7 @@ export function EventsTab({ league }: any) {
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
     max_seats: 0,
+    free_minicourse_quota: 0,
     total_hours: 0,
     checkin_count: 1,
     checkin_schedule: [{ idx: 1, label: "1° Credenciamento", starts_at: "", interval_min: 30 }] as any[],
@@ -542,6 +543,7 @@ export function EventsTab({ league }: any) {
       price_visitor: Number(ev.price_visitor) || 0,
       partner_league_ids: ev.partner_league_ids ?? [],
       max_seats: Number(ev.max_seats) || 0,
+      free_minicourse_quota: Number(ev.free_minicourse_quota) || 0,
       total_hours: Number(ev.total_hours) || 0,
       checkin_count: cn,
       checkin_schedule: sched,
@@ -573,6 +575,7 @@ export function EventsTab({ league }: any) {
       price_visitor: Number(f.price_visitor) || 0,
       partner_league_ids: f.partner_league_ids,
       max_seats: Number(f.max_seats) > 0 ? Number(f.max_seats) : null,
+      free_minicourse_quota: Math.max(0, Number(f.free_minicourse_quota) || 0),
       total_hours: Number(f.total_hours) || 0,
       checkin_count: cn,
       checkin_schedule: sched,
@@ -650,6 +653,22 @@ export function EventsTab({ league }: any) {
               <div><Label className="text-xs">Valor Não Ligante (R$)</Label><Input type="number" step="0.01" min="0" value={f.price_visitor} onChange={(e) => setF({ ...f, price_visitor: +e.target.value })} /></div>
             </div>
             <div><Label>Número de vagas (0 = ilimitado)</Label><Input type="number" min="0" value={f.max_seats} onChange={(e) => setF({ ...f, max_seats: +e.target.value })} /><p className="text-[11px] text-muted-foreground mt-1">Quando preenchidas, novos inscritos serão bloqueados automaticamente.</p></div>
+
+            {/* MINICURSOS GRATUITOS */}
+            <div className="rounded border p-3 space-y-2 bg-muted/30">
+              <h4 className="text-sm font-bold">Minicursos inclusos na inscrição</h4>
+              <p className="text-[11px] text-muted-foreground">
+                Define quantos minicursos cada inscrito pago do evento pode garantir <strong>sem pagar nada</strong>.
+                Exemplo: com 1, o participante escolhe 1 minicurso gratuitamente; a partir do 2°, ele paga o valor
+                definido no minicurso que estiver tentando se inscrever. Use 0 para cobrar todos os minicursos
+                normalmente (os minicursos marcados como gratuitos continuam sempre gratuitos e não consomem a cota).
+              </p>
+              <div className="w-40">
+                <Label className="text-xs">Minicursos gratuitos por inscrito</Label>
+                <Input type="number" min="0" value={f.free_minicourse_quota} onChange={(e) => setF({ ...f, free_minicourse_quota: Math.max(0, +e.target.value || 0) })} />
+              </div>
+            </div>
+
 
             {/* CERTIFICADO E CREDENCIAMENTOS */}
             <div className="rounded border p-3 space-y-3 bg-muted/30">
