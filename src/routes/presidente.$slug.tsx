@@ -509,6 +509,7 @@ export function EventsTab({ league }: any) {
     price_ligante: 0, price_partner: 0, price_visitor: 0,
     partner_league_ids: [] as string[],
     max_seats: 0,
+    free_minicourse_quota: 0,
     total_hours: 0,
     checkin_count: 1,
     checkin_schedule: [{ idx: 1, label: "1° Credenciamento", starts_at: "", interval_min: 30 }] as any[],
