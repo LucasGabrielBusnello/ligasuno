@@ -886,9 +886,9 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
     const slotsMap: Record<string, any[]> = {};
     ((slotsRes?.data ?? []) as any[]).forEach((s: any) => { (slotsMap[s.minicourse_id] ||= []).push(s); });
     setSlotsByMc(slotsMap);
-    const lgIds = Array.from(new Set(((slotsRes?.data ?? []) as any[]).map((s: any) => s.league_id)));
+    const lgIds = Array.from(new Set([event.league_id, ...((slotsRes?.data ?? []) as any[]).map((s: any) => s.league_id)].filter(Boolean)));
     if (lgIds.length) {
-      const { data: lgs } = await supabase.from("leagues").select("id, name").in("id", lgIds);
+      const { data: lgs } = await supabase.from("leagues").select("id, name, icon_url").in("id", lgIds);
       const map: Record<string, any> = {};
       (lgs ?? []).forEach((l: any) => { map[l.id] = l; });
       setLeaguesById(map);
