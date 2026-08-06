@@ -575,6 +575,7 @@ export function EventsTab({ league }: any) {
       price_visitor: Number(f.price_visitor) || 0,
       partner_league_ids: f.partner_league_ids,
       max_seats: Number(f.max_seats) > 0 ? Number(f.max_seats) : null,
+      free_minicourse_quota: Math.max(0, Number(f.free_minicourse_quota) || 0),
       total_hours: Number(f.total_hours) || 0,
       checkin_count: cn,
       checkin_schedule: sched,
