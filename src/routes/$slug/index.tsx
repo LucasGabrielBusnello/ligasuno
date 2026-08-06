@@ -984,6 +984,27 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
                   <p className="text-xs text-muted-foreground">🗓️ {new Date(mc.starts_at).toLocaleString("pt-BR")}</p>
                   {mc.location && <p className="text-xs text-muted-foreground">📍 {mc.location}</p>}
                   {mc.description && <p className="text-xs mt-1 whitespace-pre-line">{mc.description}</p>}
+                  {slots.some((s: any) => s.league_id !== event.league_id) && (
+                    <div className="mt-2 rounded-lg border bg-muted/30 p-2">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">Realização e ligas parceiras</p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        {Array.from(new Set([event.league_id, ...slots.map((s: any) => s.league_id)])).map((lid: any) => {
+                          const lg = leaguesById[lid];
+                          if (!lg) return null;
+                          return (
+                            <div key={lid} className="flex items-center gap-1.5">
+                              {lg.icon_url ? (
+                                <img src={lg.icon_url} alt={lg.name} loading="lazy" className="h-8 w-8 rounded-full object-cover ring-1 ring-border bg-background" />
+                              ) : (
+                                <div className="h-8 w-8 rounded-full bg-primary/15 grid place-items-center text-[10px] font-black">{String(lg.name).slice(0, 2).toUpperCase()}</div>
+                              )}
+                              <span className="text-[11px] font-medium">{lg.name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   {slots.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-2">
                       {slots.map((s: any) => {
