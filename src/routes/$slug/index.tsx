@@ -846,7 +846,7 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
   const [counts, setCounts] = useState<Record<string, { total: number; general: number; byLeague: Record<string, number> }>>({});
   const [slotsByMc, setSlotsByMc] = useState<Record<string, Array<{ league_id: string; seats: number }>>>({});
-  const [leaguesById, setLeaguesById] = useState<Record<string, { name: string }>>({});
+  const [leaguesById, setLeaguesById] = useState<Record<string, { name: string; icon_url?: string | null }>>({});
   const [busy, setBusy] = useState(false);
   const [isLigante, setIsLigante] = useState(false);
   const [pix, setPix] = useState<PixPaymentData | null>(null);
