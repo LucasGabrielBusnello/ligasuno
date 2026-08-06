@@ -458,7 +458,7 @@ export async function sendGmailWithAttachment(args: {
   to: string;
   subject: string;
   html: string;
-  attachment: { filename: string; mimeType: string; contentBase64: string };
+  attachment: { filename: string; mimeType: string; contentBase64: string; contentId?: string; inline?: boolean };
 }): Promise<{ id?: string; skipped?: boolean }> {
   const lovableKey = process.env.LOVABLE_API_KEY;
   const gmailKey = process.env.GOOGLE_MAIL_API_KEY;
@@ -487,7 +487,8 @@ export async function sendGmailWithAttachment(args: {
     "",
     `--${boundary}`,
     `Content-Type: ${args.attachment.mimeType}; name="${args.attachment.filename}"`,
-    `Content-Disposition: attachment; filename="${args.attachment.filename}"`,
+    `Content-Disposition: ${args.attachment.inline ? "inline" : "attachment"}; filename="${args.attachment.filename}"`,
+    ...(args.attachment.contentId ? [`Content-ID: <${args.attachment.contentId}>`, `X-Attachment-Id: ${args.attachment.contentId}`] : []),
     "Content-Transfer-Encoding: base64",
     "",
     attB64,
