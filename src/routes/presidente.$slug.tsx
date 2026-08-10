@@ -1083,8 +1083,45 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               {selected.discount_reason && <Row k="Desconto" v={selected.discount_reason} />}
               <Row k="Status" v={selected.status} />
               <Row k="Inscrito em" v={new Date(selected.created_at).toLocaleString("pt-BR")} />
+              <div className="pt-3 border-t space-y-2">
+                <div className="text-xs font-bold">Editar inscrição</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[11px]">Nome</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.full_name ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== selected.full_name) saveReg(selected, { full_name: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Valor pago (R$)</Label>
+                    <Input className="h-8 text-sm" type="number" step="0.01" min="0" defaultValue={Number(selected.paid_price) || 0}
+                      onBlur={(e) => { const v = Number(e.target.value) || 0; if (v !== Number(selected.paid_price)) saveReg(selected, { paid_price: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Categoria</Label>
+                    <select className="w-full h-8 text-sm rounded border bg-background px-2" value={selected.category ?? "visitor"}
+                      onChange={(e) => saveReg(selected, { category: e.target.value })}>
+                      <option value="ligante">Ligante</option>
+                      <option value="partner">Parceiro</option>
+                      <option value="visitor">Visitante</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Status</Label>
+                    <select className="w-full h-8 text-sm rounded border bg-background px-2" value={selected.status ?? "pending"}
+                      onChange={(e) => saveReg(selected, { status: e.target.value })}>
+                      <option value="paid">Pago</option>
+                      <option value="pending">Pendente</option>
+                    </select>
+                  </div>
+                </div>
+                <Button size="sm" variant="destructive" className="w-full" disabled={regBusy === selected.id}
+                  onClick={() => removeReg(selected)}>
+                  <Trash2 className="size-3 mr-1" /> Remover do evento
+                </Button>
+              </div>
             </div>
           )}
+
         </DialogContent>
       </Dialog>
       <MinicoursesManager event={event} open={mcOpen} onClose={() => setMcOpen(false)} />
