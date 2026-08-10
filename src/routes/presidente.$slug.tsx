@@ -31,6 +31,12 @@ import {
   adminUpdateMinicourseRegistration,
   adminDeleteMinicourseRegistration,
 } from "@/lib/minicourse-admin.functions";
+import {
+  searchProfilesForEvent,
+  adminAddEventRegistration,
+  adminUpdateEventRegistration,
+  adminDeleteEventRegistration,
+} from "@/lib/event-admin.functions";
 
 import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
 import {
