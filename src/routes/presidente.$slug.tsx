@@ -2008,13 +2008,30 @@ function MembersTab({ league }: any) {
         <Button onClick={() => setSemOpen(true)} variant="outline"><DollarSign className="size-4" /> Semestralidade</Button>
         <Button onClick={() => setSelOpen(true)} variant="outline"><ClipboardCheck className="size-4" /> Processo Seletivo</Button>
       </div>
-      <div className="flex gap-2 flex-wrap">
-        <Input className="flex-1 min-w-[200px]" placeholder="Email ou usuário" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select className="px-3 rounded border bg-background" value={role} onChange={(e) => setRole(e.target.value as any)}>
-          <option value="ligante">Ligante</option><option value="diretor">Diretor</option>
-        </select>
-        <Button onClick={add}>Adicionar</Button>
+      <div className="space-y-2">
+        <div className="flex gap-2 flex-wrap">
+          <Input className="flex-1 min-w-[200px]" placeholder="Nome, e-mail ou usuário" value={query}
+            onChange={(e) => { setQuery(e.target.value); setSelectedProfile(null); }} />
+          <select className="px-3 rounded border bg-background" value={role} onChange={(e) => setRole(e.target.value as any)}>
+            <option value="ligante">Ligante</option><option value="diretor">Diretor</option>
+          </select>
+          <Button onClick={add}>Adicionar</Button>
+        </div>
+        {selectedProfile ? (
+          <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{selectedProfile.full_name || selectedProfile.username}</span></p>
+        ) : (suggestions && suggestions.length > 0) ? (
+          <div className="space-y-1">
+            {suggestions.map((s: any) => (
+              <button key={s.id} type="button"
+                onClick={() => { setSelectedProfile(s); setQuery(s.full_name || s.username || ""); setSuggestions(null); }}
+                className="w-full text-left p-2 rounded border bg-background text-sm font-bold truncate hover:bg-muted/60 transition-colors">
+                {s.full_name || s.username}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
+
       <div className="space-y-2">
         {members.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Nenhum membro ainda.</p>}
         {members.map((m) => (
