@@ -50,6 +50,8 @@ import { LiganteSemestralidadeCard } from "@/components/ligante-semestralidade-c
 import { listCyclePayments } from "@/lib/semester.functions";
 import { listLeagueLeaveRequests, processLeaveRequest } from "@/lib/leave-request.functions";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+
 
 export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
 
