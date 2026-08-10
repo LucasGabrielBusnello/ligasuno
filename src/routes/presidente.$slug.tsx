@@ -1584,22 +1584,28 @@ function MinicourseRegistrationsDialog({ minicourse, regs, onClose, onChanged }:
             <>
               <p className="text-[11px] text-muted-foreground">Apenas pessoas já inscritas no evento podem ser adicionadas.</p>
               <div className="flex gap-2">
-                <Input placeholder="Buscar por nome ou e-mail" value={q} onChange={(e) => setQ(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } }} />
-                <Button size="sm" onClick={doSearch} disabled={busy === "search"}>{busy === "search" ? "..." : "Buscar"}</Button>
+                <Input placeholder="Digite o nome ou e-mail" value={q}
+                  onChange={(e) => { setQ(e.target.value); setSelected(null); }} />
+                <Button size="sm" disabled={!selected || busy === selected?.user_id}
+                  onClick={() => selected && add(selected.user_id)}>
+                  {busy === selected?.user_id ? "..." : "Adicionar"}
+                </Button>
               </div>
-              {results && results.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum participante disponível encontrado.</p>}
-              <div className="space-y-1">
-                {(results ?? []).map((r) => (
-                  <div key={r.user_id} className="flex items-center gap-2 p-2 rounded border bg-background">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold truncate">{r.full_name}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{r.email} · evento: {r.status}</div>
-                    </div>
-                    <Button size="sm" onClick={() => add(r.user_id)} disabled={busy === r.user_id}>Adicionar</Button>
-                  </div>
-                ))}
-              </div>
+              {busy === "search" && <p className="text-[11px] text-muted-foreground">Buscando…</p>}
+              {selected && <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{selected.full_name}</span></p>}
+              {!selected && results && results.length === 0 && busy !== "search" && <p className="text-[11px] text-muted-foreground">Nenhum participante disponível encontrado.</p>}
+              {!selected && (
+                <div className="space-y-1">
+                  {(results ?? []).map((r) => (
+                    <button key={r.user_id} type="button"
+                      onClick={() => { setSelected(r); setQ(r.full_name ?? ""); setResults(null); }}
+                      className="w-full text-left p-2 rounded border bg-background text-sm font-bold truncate hover:bg-muted/60 transition-colors">
+                      {r.full_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
             </>
           )}
         </div>
