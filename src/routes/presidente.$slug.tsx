@@ -31,6 +31,12 @@ import {
   adminUpdateMinicourseRegistration,
   adminDeleteMinicourseRegistration,
 } from "@/lib/minicourse-admin.functions";
+import {
+  searchProfilesForEvent,
+  adminAddEventRegistration,
+  adminUpdateEventRegistration,
+  adminDeleteEventRegistration,
+} from "@/lib/event-admin.functions";
 
 import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
 import {
@@ -804,60 +810,119 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   }
 
 
+  const searchProfiles = useServerFn(searchProfilesForEvent);
+  const addEventReg = useServerFn(adminAddEventRegistration);
+  const updEventReg = useServerFn(adminUpdateEventRegistration);
+  const delEventReg = useServerFn(adminDeleteEventRegistration);
+  const [regQuery, setRegQuery] = useState("");
+  const [regResults, setRegResults] = useState<any[] | null>(null);
+  const [regBusy, setRegBusy] = useState<string | null>(null);
+
+  async function loadRegs() {
+    const { data: rs } = await supabase
+      .from("event_registrations")
+      .select("*")
+      .eq("event_id", event.id)
+      .order("created_at", { ascending: false });
+    const list = rs ?? [];
+    const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
+    let profMap: Record<string, any> = {};
+    if (uids.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id,username,email,phone")
+        .in("id", uids);
+      (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+    }
+    setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+
+    // Carrega transações MP aprovadas para calcular valor LÍQUIDO (bruto - taxas)
+    const regIds = list.map((r: any) => r.id);
+    if (regIds.length > 0) {
+      const { data: txns } = await supabase
+        .from("payment_transactions")
+        .select("reference_id, gross_amount, fee_amount, raw")
+        .eq("category", "event")
+        .eq("status", "approved")
+        .in("reference_id", regIds);
+      const map: Record<string, { gross: number; fee: number }> = {};
+      (txns ?? []).forEach((t: any) => {
+        const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
+        map[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
+      });
+      setTxnByReg(map);
+    }
+
+    // Arrecadação dos minicursos deste evento
+    const { data: mcs } = await supabase.from("league_minicourses").select("id").eq("event_id", event.id);
+    const mcIds = (mcs ?? []).map((m: any) => m.id);
+    if (mcIds.length > 0) {
+      const { data: mcRegs } = await supabase
+        .from("minicourse_registrations")
+        .select("paid_price,status")
+        .in("minicourse_id", mcIds)
+        .eq("status", "paid");
+      const paid = (mcRegs ?? []).filter((r: any) => Number(r.paid_price) > 0);
+      setMcRevenue({
+        total: paid.reduce((a: number, r: any) => a + (Number(r.paid_price) || 0), 0),
+        count: (mcRegs ?? []).length,
+      });
+    }
+  }
+
+  async function runSearch() {
+    if (regQuery.trim().length < 2) return toast.error("Digite ao menos 2 caracteres");
+    setRegBusy("search");
+    try {
+      const r: any = await searchProfiles({ data: { event_id: event.id, query: regQuery.trim() } } as any);
+      setRegResults(r ?? []);
+    } catch (e: any) { toast.error(e?.message ?? "Falha na busca"); }
+    finally { setRegBusy(null); }
+  }
+
+  async function addPerson(p: any) {
+    setRegBusy(p.id);
+    try {
+      await addEventReg({ data: {
+        event_id: event.id, user_id: p.id,
+        full_name: p.full_name || p.username || p.email,
+        category: "visitor", paid_price: 0, status: "paid",
+      } } as any);
+      toast.success("Inscrito adicionado");
+      setRegResults((prev) => (prev ?? []).map((x) => x.id === p.id ? { ...x, already: true } : x));
+      await loadRegs();
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setRegBusy(null); }
+  }
+
+  async function removeReg(r: any) {
+    if (!confirm(`Remover ${r.full_name} do evento? Isso também remove suas inscrições nos minicursos.`)) return;
+    setRegBusy(r.id);
+    try {
+      await delEventReg({ data: { registration_id: r.id } } as any);
+      toast.success("Inscrição removida");
+      setSelected(null);
+      await loadRegs();
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setRegBusy(null); }
+  }
+
+  async function saveReg(r: any, patch: any) {
+    setRegBusy(r.id);
+    try {
+      await updEventReg({ data: { registration_id: r.id, ...patch } } as any);
+      toast.success("Inscrição atualizada");
+      await loadRegs();
+      setSelected((s: any) => s && s.id === r.id ? { ...s, ...patch } : s);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setRegBusy(null); }
+  }
+
   useEffect(() => {
     if (!expanded || regs !== null) return;
-    (async () => {
-      const { data: rs } = await supabase
-        .from("event_registrations")
-        .select("*")
-        .eq("event_id", event.id)
-        .order("created_at", { ascending: false });
-      const list = rs ?? [];
-      const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
-      let profMap: Record<string, any> = {};
-      if (uids.length > 0) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id,username,email,phone")
-          .in("id", uids);
-        (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
-      }
-      setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
-
-      // Carrega transações MP aprovadas para calcular valor LÍQUIDO (bruto - taxas)
-      const regIds = list.map((r: any) => r.id);
-      if (regIds.length > 0) {
-        const { data: txns } = await supabase
-          .from("payment_transactions")
-          .select("reference_id, gross_amount, fee_amount, raw")
-          .eq("category", "event")
-          .eq("status", "approved")
-          .in("reference_id", regIds);
-        const map: Record<string, { gross: number; fee: number }> = {};
-        (txns ?? []).forEach((t: any) => {
-          const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
-          map[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
-        });
-        setTxnByReg(map);
-      }
-
-      // Arrecadação dos minicursos deste evento
-      const { data: mcs } = await supabase.from("league_minicourses").select("id").eq("event_id", event.id);
-      const mcIds = (mcs ?? []).map((m: any) => m.id);
-      if (mcIds.length > 0) {
-        const { data: mcRegs } = await supabase
-          .from("minicourse_registrations")
-          .select("paid_price,status")
-          .in("minicourse_id", mcIds)
-          .eq("status", "paid");
-        const paid = (mcRegs ?? []).filter((r: any) => Number(r.paid_price) > 0);
-        setMcRevenue({
-          total: paid.reduce((a: number, r: any) => a + (Number(r.paid_price) || 0), 0),
-          count: (mcRegs ?? []).length,
-        });
-      }
-    })();
+    loadRegs();
   }, [expanded]);
+
 
   const paidRegs = (regs ?? []).filter(r => r.status === "paid");
   const hasPaidRegs = paidRegs.length > 0;
@@ -950,31 +1015,54 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                 <div className="font-black">R$ {(totalNet + mcRevenue.total).toFixed(2)}</div>
               </div>
             </div>
+            <div className="rounded border p-2 space-y-2">
+              <div className="text-xs font-bold">Adicionar inscrito</div>
+              <div className="flex gap-2">
+                <Input value={regQuery} onChange={(e) => setRegQuery(e.target.value)} placeholder="Buscar por nome, usuário ou e-mail"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }} className="h-8 text-sm" />
+                <Button size="sm" onClick={runSearch} disabled={regBusy === "search"}>{regBusy === "search" ? "..." : "Buscar"}</Button>
+              </div>
+              {regResults !== null && regResults.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {(regResults ?? []).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 p-2 rounded border text-sm">
+                  <div className="min-w-0">
+                    <div className="font-bold truncate">{p.full_name || p.username}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{p.email}</div>
+                  </div>
+                  <Button size="sm" variant={p.already ? "outline" : "default"} disabled={p.already || regBusy === p.id}
+                    onClick={() => addPerson(p)}>{p.already ? "Já inscrito" : (regBusy === p.id ? "..." : "Adicionar")}</Button>
+                </div>
+              ))}
+            </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
-            {regs !== null && !hasPaidRegs && (
-              <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito confirmado ainda.</p>
+            {regs !== null && regs.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p>
             )}
-            {regs !== null && hasPaidRegs && (
+            {regs !== null && regs.length > 0 && (
               <>
                 <div className="flex justify-end">
                   <Button size="sm" variant="outline" onClick={copyPaidRegistrations}>Copiar Inscritos</Button>
                 </div>
                 <div className="space-y-1">
-                  {paidRegs.map((r: any) => (
-                    <button key={r.id} onClick={() => setSelected(r)} className="w-full text-left p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
+                  {regs.map((r: any) => (
+                    <div key={r.id} className="w-full p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
+                      <button onClick={() => setSelected(r)} className="min-w-0 flex-1 text-left">
                         <div className="text-sm font-bold truncate">{r.full_name}</div>
                         <div className="text-[11px] text-muted-foreground">{r.profiles?.email}</div>
-                      </div>
+                      </button>
                       <div className="flex flex-col items-end shrink-0">
-                        <Badge variant="default" className="text-[10px]">Pago</Badge>
+                        <Badge variant={r.status === "paid" ? "default" : "secondary"} className="text-[10px]">{r.status === "paid" ? "Pago" : "Pendente"}</Badge>
                         <span className="text-[10px] text-muted-foreground mt-0.5">{r.category} · R${Number(r.paid_price).toFixed(2)}</span>
                       </div>
-                    </button>
+                      <Button size="sm" variant="destructive" disabled={regBusy === r.id} onClick={() => removeReg(r)}>
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               </>
             )}
+
 
           </div>
         )}
@@ -995,8 +1083,45 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               {selected.discount_reason && <Row k="Desconto" v={selected.discount_reason} />}
               <Row k="Status" v={selected.status} />
               <Row k="Inscrito em" v={new Date(selected.created_at).toLocaleString("pt-BR")} />
+              <div className="pt-3 border-t space-y-2">
+                <div className="text-xs font-bold">Editar inscrição</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[11px]">Nome</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.full_name ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== selected.full_name) saveReg(selected, { full_name: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Valor pago (R$)</Label>
+                    <Input className="h-8 text-sm" type="number" step="0.01" min="0" defaultValue={Number(selected.paid_price) || 0}
+                      onBlur={(e) => { const v = Number(e.target.value) || 0; if (v !== Number(selected.paid_price)) saveReg(selected, { paid_price: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Categoria</Label>
+                    <select className="w-full h-8 text-sm rounded border bg-background px-2" value={selected.category ?? "visitor"}
+                      onChange={(e) => saveReg(selected, { category: e.target.value })}>
+                      <option value="ligante">Ligante</option>
+                      <option value="partner">Parceiro</option>
+                      <option value="visitor">Visitante</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Status</Label>
+                    <select className="w-full h-8 text-sm rounded border bg-background px-2" value={selected.status ?? "pending"}
+                      onChange={(e) => saveReg(selected, { status: e.target.value })}>
+                      <option value="paid">Pago</option>
+                      <option value="pending">Pendente</option>
+                    </select>
+                  </div>
+                </div>
+                <Button size="sm" variant="destructive" className="w-full" disabled={regBusy === selected.id}
+                  onClick={() => removeReg(selected)}>
+                  <Trash2 className="size-3 mr-1" /> Remover do evento
+                </Button>
+              </div>
             </div>
           )}
+
         </DialogContent>
       </Dialog>
       <MinicoursesManager event={event} open={mcOpen} onClose={() => setMcOpen(false)} />
