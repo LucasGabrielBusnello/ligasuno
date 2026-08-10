@@ -684,21 +684,21 @@ export const getSemesterPaymentStatus = createServerFn({ method: "POST" })
     const paymentId = (payment as any).mp_payment_id;
     if (!paymentId) return { status: (payment as any).status };
     try {
-      const mp = await loadLeagueMpAccount(supabaseAdmin, (payment as any).league_id).catch(() => null);
-      const pay = await getPayment(String(paymentId), (mp as any)?.access_token);
-      if (pay?.status === "approved") {
-        const gross = Number(pay?.transaction_amount ?? 0);
+      const { getLeaguePaymentStatus } = await import("@/lib/league-pay.server");
+      const st = await getLeaguePaymentStatus(
+        supabaseAdmin, (payment as any).league_id, String(paymentId));
+      if (st === "approved") {
         await supabaseAdmin.from("semester_payments")
           .update({
             status: "paid",
             paid_at: new Date().toISOString(),
-            amount_paid_cents: Math.round(gross * 100),
+            amount_paid_cents: (payment as any).amount_due_cents,
             mp_payment_id: String(paymentId),
           })
           .eq("id", (payment as any).id);
         return { status: "paid" };
       }
-      return { status: pay?.status ?? (payment as any).status };
+      return { status: st ?? (payment as any).status };
     } catch {
       return { status: (payment as any).status };
     }
