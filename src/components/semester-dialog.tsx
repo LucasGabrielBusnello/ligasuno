@@ -48,6 +48,8 @@ export function SemesterDialog({
   const close = useServerFn(closeCurrentSemesterCycle);
   const listCur = useServerFn(listCyclePayments);
   const listHist = useServerFn(listSemesterCycles);
+  const setStatus = useServerFn(setSemesterPaymentStatus);
+
 
   const [loading, setLoading] = useState(false);
   const [cycle, setCycle] = useState<any>(null);
