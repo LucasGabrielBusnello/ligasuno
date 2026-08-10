@@ -807,7 +807,14 @@ function ParticipantPanelDialog({ event, registration, league, onClose, onUpdate
           <TabsContent value="mc" className="pt-3">
             <ParticipantMinicourses event={event} isPaid={reg?.status === "paid"} />
           </TabsContent>
+          <TabsContent value="dados" className="pt-3">
+            <ParticipantDataTab registration={reg} onUpdate={onUpdate} />
+          </TabsContent>
+          <TabsContent value="mymc" className="pt-3">
+            <MyMinicoursesTab event={event} />
+          </TabsContent>
         </Tabs>
+
         <DialogFooter><Button onClick={onClose} variant="outline">Fechar</Button></DialogFooter>
       </DialogContent>
       <PixPaymentDialog
