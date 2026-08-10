@@ -157,9 +157,9 @@ export const getEventPaymentStatus = createServerFn({ method: "POST" })
 
     try {
       const leagueId = (reg as any).league_events.league_id;
-      const mp = await loadLeagueMpAccount(supabaseAdmin, leagueId).catch(() => null);
-      const pay = await getPayment(String(paymentId), (mp as any)?.access_token);
-      if (pay?.status === "approved") {
+      const { getLeaguePaymentStatus } = await import("@/lib/league-pay.server");
+      const st = await getLeaguePaymentStatus(supabaseAdmin, leagueId, String(paymentId));
+      if (st === "approved") {
         await supabaseAdmin.from("event_registrations")
           .update({ status: "paid" }).eq("id", (reg as any).id);
         try {
@@ -168,7 +168,7 @@ export const getEventPaymentStatus = createServerFn({ method: "POST" })
         } catch (e) { console.error("badge email failed", e); }
         return { status: "paid" };
       }
-      return { status: pay?.status ?? (reg as any).status };
+      return { status: st ?? (reg as any).status };
     } catch {
       return { status: (reg as any).status };
     }
