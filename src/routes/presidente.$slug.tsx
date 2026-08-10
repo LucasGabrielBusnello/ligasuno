@@ -108,6 +108,8 @@ function PresidentePage() {
 
         <MpConnectCard leagueId={league.id} />
 
+        <LeaguePaymentProviderCard leagueId={league.id} />
+
         <div className="mt-4">
           <LiganteSemestralidadeCard leagueId={league.id} />
         </div>
