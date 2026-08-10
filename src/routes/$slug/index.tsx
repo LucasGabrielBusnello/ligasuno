@@ -850,7 +850,129 @@ function BadgeTab({ event, registration, themeColor }: { event: any; registratio
   );
 }
 
+function ParticipantDataTab({ registration, onUpdate }: { registration: any; onUpdate?: (reg: any) => void }) {
+  const [form, setForm] = useState({
+    full_name: registration?.full_name ?? "",
+    social_name: registration?.social_name ?? "",
+    cpf: registration?.cpf ?? "",
+    course: registration?.course ?? "",
+  });
+  const [busy, setBusy] = useState(false);
+  if (!registration) return <p className="text-sm text-muted-foreground italic">Inscrição não encontrada.</p>;
+
+  async function save() {
+    if (!form.full_name.trim()) return toast.error("Informe o nome completo.");
+    const cpf = normalizeCpf(form.cpf || "");
+    if (cpf && !isValidCPF(cpf)) return toast.error("CPF inválido.");
+    setBusy(true);
+    const patch = {
+      full_name: form.full_name.trim(),
+      social_name: form.social_name.trim() || null,
+      cpf: cpf || registration.cpf,
+      course: form.course.trim() || registration.course,
+    };
+    const { error } = await supabase.from("event_registrations").update(patch as any).eq("id", registration.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    onUpdate?.({ ...registration, ...patch });
+    toast.success("Dados atualizados!");
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">Atualize os dados usados no crachá e no certificado.</p>
+      <div className="space-y-1.5">
+        <Label>Nome completo</Label>
+        <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Nome social (opcional)</Label>
+        <Input value={form.social_name} onChange={(e) => setForm({ ...form, social_name: e.target.value })} />
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>CPF</Label>
+          <Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Curso</Label>
+          <Input value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} />
+        </div>
+      </div>
+      <Button onClick={save} disabled={busy} className="w-full">{busy ? "Salvando..." : "Salvar alterações"}</Button>
+    </div>
+  );
+}
+
+function MyMinicoursesTab({ event }: { event: any }) {
+  const { user } = useAuth();
+  const cancelReg = useServerFn(cancelMinicourseRegistration);
+  const [rows, setRows] = useState<any[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function load() {
+    if (!user) { setRows([]); return; }
+    const { data: mcs } = await supabase.from("league_minicourses").select("id,title,starts_at,location").eq("event_id", event.id);
+    const ids = (mcs ?? []).map((m: any) => m.id);
+    if (ids.length === 0) { setRows([]); return; }
+    const { data } = await supabase.from("minicourse_registrations").select("*").eq("user_id", user.id).in("minicourse_id", ids);
+    const byId: Record<string, any> = {};
+    (mcs ?? []).forEach((m: any) => { byId[m.id] = m; });
+    setRows((data ?? []).map((r: any) => ({ ...r, mc: byId[r.minicourse_id] })));
+  }
+  useEffect(() => { load(); }, [user, event.id]);
+
+  async function cancel(r: any) {
+    if (!confirm(`Cancelar sua inscrição em "${r.mc?.title}"?`)) return;
+    setBusy(r.id);
+    try {
+      await cancelReg({ data: { registration_id: r.id } } as any);
+      toast.success("Inscrição cancelada.");
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao cancelar"); }
+    finally { setBusy(null); }
+  }
+
+  if (rows === null) return <p className="text-sm text-muted-foreground">Carregando...</p>;
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground italic p-3 rounded border bg-muted/30">Você ainda não se inscreveu em nenhum minicurso deste evento.</p>;
+
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => {
+        const wasPaid = r.status === "paid" && Number(r.paid_price ?? 0) > 0 && !r.quota_used;
+        return (
+          <Card key={r.id}><CardContent className="p-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="font-bold text-sm truncate">{r.mc?.title ?? "Minicurso"}</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {r.mc?.starts_at ? new Date(r.mc.starts_at).toLocaleString("pt-BR") : "sem horário"}
+                  {r.mc?.location ? ` · ${r.mc.location}` : ""}
+                </div>
+                {r.checkin_code && <div className="text-[11px] font-mono mt-0.5">Código: {r.checkin_code}</div>}
+              </div>
+              <Badge className={r.status === "paid" ? "bg-emerald-600" : "bg-amber-600"}>
+                {r.status === "paid" ? (Number(r.paid_price ?? 0) > 0 ? `Pago R$ ${Number(r.paid_price).toFixed(2)}` : "Confirmado") : "Pendente"}
+              </Badge>
+            </div>
+            {wasPaid ? (
+              <p className="text-[11px] rounded border border-amber-500/40 bg-amber-500/10 p-2">
+                Pagamento já realizado. Entre em contato com a organização do evento para reembolso.
+              </p>
+            ) : (
+              <Button size="sm" variant="outline" className="w-full" disabled={busy === r.id} onClick={() => cancel(r)}>
+                {busy === r.id ? "Cancelando..." : "Cancelar inscrição"}
+              </Button>
+            )}
+          </CardContent></Card>
+        );
+      })}
+    </div>
+  );
+}
+
 function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean }) {
+
   const { user } = useAuth();
   const [list, setList] = useState<any[] | null>(null);
   const [myRegs, setMyRegs] = useState<Record<string, any>>({});
