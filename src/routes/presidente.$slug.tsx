@@ -875,15 +875,20 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
     }
   }
 
-  async function runSearch() {
-    if (regQuery.trim().length < 2) return toast.error("Digite ao menos 2 caracteres");
+  useEffect(() => {
+    const q = regQueryDebounced.trim();
+    if (regSelected && q === (regSelected.full_name || regSelected.username || "")) return;
+    if (q.length < 2) { setRegResults(null); return; }
+    let cancelled = false;
     setRegBusy("search");
-    try {
-      const r: any = await searchProfiles({ data: { event_id: event.id, query: regQuery.trim() } } as any);
-      setRegResults(r ?? []);
-    } catch (e: any) { toast.error(e?.message ?? "Falha na busca"); }
-    finally { setRegBusy(null); }
-  }
+    searchProfiles({ data: { event_id: event.id, query: q } } as any)
+      .then((r: any) => { if (!cancelled) setRegResults(r ?? []); })
+      .catch(() => { if (!cancelled) setRegResults([]); })
+      .finally(() => { if (!cancelled) setRegBusy(null); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regQueryDebounced, event.id]);
+
 
   async function addPerson(p: any) {
     setRegBusy(p.id);
