@@ -834,6 +834,22 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
         });
         setTxnByReg(map);
       }
+
+      // Arrecadação dos minicursos deste evento
+      const { data: mcs } = await supabase.from("league_minicourses").select("id").eq("event_id", event.id);
+      const mcIds = (mcs ?? []).map((m: any) => m.id);
+      if (mcIds.length > 0) {
+        const { data: mcRegs } = await supabase
+          .from("minicourse_registrations")
+          .select("paid_price,status")
+          .in("minicourse_id", mcIds)
+          .eq("status", "paid");
+        const paid = (mcRegs ?? []).filter((r: any) => Number(r.paid_price) > 0);
+        setMcRevenue({
+          total: paid.reduce((a: number, r: any) => a + (Number(r.paid_price) || 0), 0),
+          count: (mcRegs ?? []).length,
+        });
+      }
     })();
   }, [expanded]);
 
