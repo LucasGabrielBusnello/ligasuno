@@ -804,60 +804,119 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   }
 
 
+  const searchProfiles = useServerFn(searchProfilesForEvent);
+  const addEventReg = useServerFn(adminAddEventRegistration);
+  const updEventReg = useServerFn(adminUpdateEventRegistration);
+  const delEventReg = useServerFn(adminDeleteEventRegistration);
+  const [regQuery, setRegQuery] = useState("");
+  const [regResults, setRegResults] = useState<any[] | null>(null);
+  const [regBusy, setRegBusy] = useState<string | null>(null);
+
+  async function loadRegs() {
+    const { data: rs } = await supabase
+      .from("event_registrations")
+      .select("*")
+      .eq("event_id", event.id)
+      .order("created_at", { ascending: false });
+    const list = rs ?? [];
+    const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
+    let profMap: Record<string, any> = {};
+    if (uids.length > 0) {
+      const { data: profs } = await supabase
+        .from("profiles")
+        .select("id,username,email,phone")
+        .in("id", uids);
+      (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+    }
+    setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+
+    // Carrega transações MP aprovadas para calcular valor LÍQUIDO (bruto - taxas)
+    const regIds = list.map((r: any) => r.id);
+    if (regIds.length > 0) {
+      const { data: txns } = await supabase
+        .from("payment_transactions")
+        .select("reference_id, gross_amount, fee_amount, raw")
+        .eq("category", "event")
+        .eq("status", "approved")
+        .in("reference_id", regIds);
+      const map: Record<string, { gross: number; fee: number }> = {};
+      (txns ?? []).forEach((t: any) => {
+        const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
+        map[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
+      });
+      setTxnByReg(map);
+    }
+
+    // Arrecadação dos minicursos deste evento
+    const { data: mcs } = await supabase.from("league_minicourses").select("id").eq("event_id", event.id);
+    const mcIds = (mcs ?? []).map((m: any) => m.id);
+    if (mcIds.length > 0) {
+      const { data: mcRegs } = await supabase
+        .from("minicourse_registrations")
+        .select("paid_price,status")
+        .in("minicourse_id", mcIds)
+        .eq("status", "paid");
+      const paid = (mcRegs ?? []).filter((r: any) => Number(r.paid_price) > 0);
+      setMcRevenue({
+        total: paid.reduce((a: number, r: any) => a + (Number(r.paid_price) || 0), 0),
+        count: (mcRegs ?? []).length,
+      });
+    }
+  }
+
+  async function runSearch() {
+    if (regQuery.trim().length < 2) return toast.error("Digite ao menos 2 caracteres");
+    setRegBusy("search");
+    try {
+      const r: any = await searchProfiles({ data: { event_id: event.id, query: regQuery.trim() } } as any);
+      setRegResults(r ?? []);
+    } catch (e: any) { toast.error(e?.message ?? "Falha na busca"); }
+    finally { setRegBusy(null); }
+  }
+
+  async function addPerson(p: any) {
+    setRegBusy(p.id);
+    try {
+      await addEventReg({ data: {
+        event_id: event.id, user_id: p.id,
+        full_name: p.full_name || p.username || p.email,
+        category: "visitor", paid_price: 0, status: "paid",
+      } } as any);
+      toast.success("Inscrito adicionado");
+      setRegResults((prev) => (prev ?? []).map((x) => x.id === p.id ? { ...x, already: true } : x));
+      await loadRegs();
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setRegBusy(null); }
+  }
+
+  async function removeReg(r: any) {
+    if (!confirm(`Remover ${r.full_name} do evento? Isso também remove suas inscrições nos minicursos.`)) return;
+    setRegBusy(r.id);
+    try {
+      await delEventReg({ data: { registration_id: r.id } } as any);
+      toast.success("Inscrição removida");
+      setSelected(null);
+      await loadRegs();
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setRegBusy(null); }
+  }
+
+  async function saveReg(r: any, patch: any) {
+    setRegBusy(r.id);
+    try {
+      await updEventReg({ data: { registration_id: r.id, ...patch } } as any);
+      toast.success("Inscrição atualizada");
+      await loadRegs();
+      setSelected((s: any) => s && s.id === r.id ? { ...s, ...patch } : s);
+    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    finally { setRegBusy(null); }
+  }
+
   useEffect(() => {
     if (!expanded || regs !== null) return;
-    (async () => {
-      const { data: rs } = await supabase
-        .from("event_registrations")
-        .select("*")
-        .eq("event_id", event.id)
-        .order("created_at", { ascending: false });
-      const list = rs ?? [];
-      const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
-      let profMap: Record<string, any> = {};
-      if (uids.length > 0) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id,username,email,phone")
-          .in("id", uids);
-        (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
-      }
-      setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
-
-      // Carrega transações MP aprovadas para calcular valor LÍQUIDO (bruto - taxas)
-      const regIds = list.map((r: any) => r.id);
-      if (regIds.length > 0) {
-        const { data: txns } = await supabase
-          .from("payment_transactions")
-          .select("reference_id, gross_amount, fee_amount, raw")
-          .eq("category", "event")
-          .eq("status", "approved")
-          .in("reference_id", regIds);
-        const map: Record<string, { gross: number; fee: number }> = {};
-        (txns ?? []).forEach((t: any) => {
-          const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
-          map[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
-        });
-        setTxnByReg(map);
-      }
-
-      // Arrecadação dos minicursos deste evento
-      const { data: mcs } = await supabase.from("league_minicourses").select("id").eq("event_id", event.id);
-      const mcIds = (mcs ?? []).map((m: any) => m.id);
-      if (mcIds.length > 0) {
-        const { data: mcRegs } = await supabase
-          .from("minicourse_registrations")
-          .select("paid_price,status")
-          .in("minicourse_id", mcIds)
-          .eq("status", "paid");
-        const paid = (mcRegs ?? []).filter((r: any) => Number(r.paid_price) > 0);
-        setMcRevenue({
-          total: paid.reduce((a: number, r: any) => a + (Number(r.paid_price) || 0), 0),
-          count: (mcRegs ?? []).length,
-        });
-      }
-    })();
+    loadRegs();
   }, [expanded]);
+
 
   const paidRegs = (regs ?? []).filter(r => r.status === "paid");
   const hasPaidRegs = paidRegs.length > 0;
