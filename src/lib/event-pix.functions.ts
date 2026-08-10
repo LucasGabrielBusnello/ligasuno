@@ -5,10 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isValidCPF, normalizeCpf } from "@/lib/cpf";
 import {
   computeFee,
-  createPixPayment,
-  getPayment,
   loadFeeForCategory,
-  loadLeagueMpAccount,
 } from "@/lib/mp.server";
 
 const PUBLISHED_URL = "https://ligasuno.com.br";
