@@ -1355,6 +1355,144 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
   );
 }
 
+function MinicourseRegistrationsDialog({ minicourse, regs, onClose, onChanged }: {
+  minicourse: any | null; regs: any[]; onClose: () => void; onChanged: () => void;
+}) {
+  const search = useServerFn(searchEventParticipants);
+  const addReg = useServerFn(adminAddMinicourseRegistration);
+  const updReg = useServerFn(adminUpdateMinicourseRegistration);
+  const delReg = useServerFn(adminDeleteMinicourseRegistration);
+
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<any[] | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [editing, setEditing] = useState<any | null>(null);
+  const [ef, setEf] = useState<{ status: string; paid_price: number }>({ status: "paid", paid_price: 0 });
+
+  useEffect(() => { setQ(""); setResults(null); setAdding(false); setEditing(null); }, [minicourse?.id]);
+
+  async function doSearch() {
+    if (!minicourse) return;
+    setBusy("search");
+    try { setResults(await search({ data: { minicourse_id: minicourse.id, query: q } }) as any); }
+    catch (e: any) { toast.error(e?.message ?? "Falha na busca"); }
+    finally { setBusy(null); }
+  }
+
+  async function add(userId: string) {
+    if (!minicourse) return;
+    setBusy(userId);
+    try {
+      await addReg({ data: { minicourse_id: minicourse.id, user_id: userId, paid_price: 0, status: "paid" } });
+      toast.success("Inscrito adicionado");
+      setResults((r) => (r ?? []).filter((x) => x.user_id !== userId));
+      onChanged();
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao adicionar"); }
+    finally { setBusy(null); }
+  }
+
+  async function saveEdit() {
+    if (!editing) return;
+    setBusy("edit");
+    try {
+      await updReg({ data: { registration_id: editing.id, status: ef.status as any, paid_price: Number(ef.paid_price) || 0 } });
+      toast.success("Inscrição atualizada");
+      setEditing(null); onChanged();
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao salvar"); }
+    finally { setBusy(null); }
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Remover esta inscrição do minicurso?")) return;
+    setBusy(id);
+    try { await delReg({ data: { registration_id: id } }); toast.success("Inscrição removida"); onChanged(); }
+    catch (e: any) { toast.error(e?.message ?? "Falha ao remover"); }
+    finally { setBusy(null); }
+  }
+
+  return (
+    <Dialog open={!!minicourse} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader><DialogTitle>Inscritos · {minicourse?.title}</DialogTitle></DialogHeader>
+
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Cadastrar inscrito</span>
+            <Button size="sm" variant={adding ? "secondary" : "outline"} onClick={() => setAdding((v) => !v)}>
+              <Plus className="size-3.5 mr-1" /> {adding ? "Fechar" : "Adicionar"}
+            </Button>
+          </div>
+          {adding && (
+            <>
+              <p className="text-[11px] text-muted-foreground">Apenas pessoas já inscritas no evento podem ser adicionadas.</p>
+              <div className="flex gap-2">
+                <Input placeholder="Buscar por nome ou e-mail" value={q} onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } }} />
+                <Button size="sm" onClick={doSearch} disabled={busy === "search"}>{busy === "search" ? "..." : "Buscar"}</Button>
+              </div>
+              {results && results.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum participante disponível encontrado.</p>}
+              <div className="space-y-1">
+                {(results ?? []).map((r) => (
+                  <div key={r.user_id} className="flex items-center gap-2 p-2 rounded border bg-background">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold truncate">{r.full_name}</div>
+                      <div className="text-[11px] text-muted-foreground truncate">{r.email} · evento: {r.status}</div>
+                    </div>
+                    <Button size="sm" onClick={() => add(r.user_id)} disabled={busy === r.user_id}>Adicionar</Button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          {regs.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p>}
+          {regs.map((r) => (
+            <div key={r.id} className="p-2 rounded border flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold truncate">{r.profile?.full_name ?? r.profile?.username ?? "—"}</div>
+                <div className="text-[11px] text-muted-foreground truncate">{r.profile?.email}</div>
+              </div>
+              <div className="flex flex-col items-end shrink-0">
+                <Badge variant={r.status === "paid" ? "default" : "secondary"} className="text-[10px]">{r.status === "paid" ? "Confirmado" : "Pendente"}</Badge>
+                <span className="text-[10px] text-muted-foreground mt-0.5">R$ {Number(r.paid_price ?? 0).toFixed(2)}</span>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button size="sm" variant="outline" onClick={() => { setEditing(r); setEf({ status: r.status === "paid" ? "paid" : "pending", paid_price: Number(r.paid_price) || 0 }); }}>Editar</Button>
+                <Button size="sm" variant="destructive" onClick={() => remove(r.id)} disabled={busy === r.id}><Trash2 className="size-3" /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <Dialog open={!!editing} onOpenChange={(v) => !v && setEditing(null)}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader><DialogTitle>Editar inscrição</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Status</Label>
+                <select className="w-full h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                  value={ef.status} onChange={(e) => setEf({ ...ef, status: e.target.value })}>
+                  <option value="paid">Confirmado</option>
+                  <option value="pending">Pendente</option>
+                </select>
+              </div>
+              <div>
+                <Label>Valor pago (R$)</Label>
+                <Input type="number" step="0.01" min="0" value={ef.paid_price}
+                  onChange={(e) => setEf({ ...ef, paid_price: Math.max(0, +e.target.value || 0) })} />
+              </div>
+            </div>
+            <DialogFooter><Button onClick={saveEdit} disabled={busy === "edit"}>Salvar</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Row({ k, v }: { k: string; v: string }) {
   return <div className="flex justify-between gap-3 border-b py-1.5"><span className="text-muted-foreground">{k}</span><span className="font-medium text-right">{v}</span></div>;
 }
