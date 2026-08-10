@@ -50,6 +50,8 @@ import { LiganteSemestralidadeCard } from "@/components/ligante-semestralidade-c
 import { listCyclePayments } from "@/lib/semester.functions";
 import { listLeagueLeaveRequests, processLeaveRequest } from "@/lib/leave-request.functions";
 import { LeagueQuizManager } from "@/components/league-quiz-manager";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+
 
 export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
 
@@ -816,7 +818,10 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const delEventReg = useServerFn(adminDeleteEventRegistration);
   const [regQuery, setRegQuery] = useState("");
   const [regResults, setRegResults] = useState<any[] | null>(null);
+  const [regSelected, setRegSelected] = useState<any | null>(null);
   const [regBusy, setRegBusy] = useState<string | null>(null);
+  const regQueryDebounced = useDebouncedValue(regQuery, 600);
+
 
   async function loadRegs() {
     const { data: rs } = await supabase
@@ -870,15 +875,20 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
     }
   }
 
-  async function runSearch() {
-    if (regQuery.trim().length < 2) return toast.error("Digite ao menos 2 caracteres");
+  useEffect(() => {
+    const q = regQueryDebounced.trim();
+    if (regSelected && q === (regSelected.full_name || regSelected.username || "")) return;
+    if (q.length < 2) { setRegResults(null); return; }
+    let cancelled = false;
     setRegBusy("search");
-    try {
-      const r: any = await searchProfiles({ data: { event_id: event.id, query: regQuery.trim() } } as any);
-      setRegResults(r ?? []);
-    } catch (e: any) { toast.error(e?.message ?? "Falha na busca"); }
-    finally { setRegBusy(null); }
-  }
+    searchProfiles({ data: { event_id: event.id, query: q } } as any)
+      .then((r: any) => { if (!cancelled) setRegResults(r ?? []); })
+      .catch(() => { if (!cancelled) setRegResults([]); })
+      .finally(() => { if (!cancelled) setRegBusy(null); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regQueryDebounced, event.id]);
+
 
   async function addPerson(p: any) {
     setRegBusy(p.id);
@@ -889,8 +899,9 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
         category: "visitor", paid_price: 0, status: "paid",
       } } as any);
       toast.success("Inscrito adicionado");
-      setRegResults((prev) => (prev ?? []).map((x) => x.id === p.id ? { ...x, already: true } : x));
+      setRegResults(null); setRegSelected(null); setRegQuery("");
       await loadRegs();
+
     } catch (e: any) { toast.error(e?.message ?? "Falha"); }
     finally { setRegBusy(null); }
   }
@@ -1018,21 +1029,26 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             <div className="rounded border p-2 space-y-2">
               <div className="text-xs font-bold">Adicionar inscrito</div>
               <div className="flex gap-2">
-                <Input value={regQuery} onChange={(e) => setRegQuery(e.target.value)} placeholder="Buscar por nome, usuário ou e-mail"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }} className="h-8 text-sm" />
-                <Button size="sm" onClick={runSearch} disabled={regBusy === "search"}>{regBusy === "search" ? "..." : "Buscar"}</Button>
+                <Input value={regQuery}
+                  onChange={(e) => { setRegQuery(e.target.value); setRegSelected(null); }}
+                  placeholder="Digite o nome, usuário ou e-mail" className="h-8 text-sm" />
+                <Button size="sm" disabled={!regSelected || regBusy === regSelected?.id || regSelected?.already}
+                  onClick={() => regSelected && addPerson(regSelected)}>
+                  {regSelected?.already ? "Já inscrito" : (regBusy === regSelected?.id ? "..." : "Adicionar")}
+                </Button>
               </div>
-              {regResults !== null && regResults.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
-              {(regResults ?? []).map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between gap-2 p-2 rounded border text-sm">
-                  <div className="min-w-0">
-                    <div className="font-bold truncate">{p.full_name || p.username}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{p.email}</div>
-                  </div>
-                  <Button size="sm" variant={p.already ? "outline" : "default"} disabled={p.already || regBusy === p.id}
-                    onClick={() => addPerson(p)}>{p.already ? "Já inscrito" : (regBusy === p.id ? "..." : "Adicionar")}</Button>
-                </div>
+              {regBusy === "search" && <p className="text-[11px] text-muted-foreground">Buscando…</p>}
+              {regSelected && <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{regSelected.full_name || regSelected.username}</span></p>}
+              {!regSelected && regResults !== null && regResults.length === 0 && regBusy !== "search" && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {!regSelected && (regResults ?? []).map((p: any) => (
+                <button key={p.id} type="button"
+                  onClick={() => { setRegSelected(p); setRegQuery(p.full_name || p.username || ""); setRegResults(null); }}
+                  className="w-full text-left p-2 rounded border text-sm hover:bg-muted/60 transition-colors">
+                  <span className="font-bold truncate block">{p.full_name || p.username}</span>
+                  {p.already && <span className="text-[11px] text-muted-foreground">Já inscrito</span>}
+                </button>
               ))}
+
             </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
             {regs !== null && regs.length === 0 && (
@@ -1496,20 +1512,30 @@ function MinicourseRegistrationsDialog({ minicourse, regs, onClose, onChanged }:
 
   const [q, setQ] = useState("");
   const [results, setResults] = useState<any[] | null>(null);
+  const [selected, setSelected] = useState<any | null>(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
   const [ef, setEf] = useState<{ status: string; paid_price: number }>({ status: "paid", paid_price: 0 });
+  const qDebounced = useDebouncedValue(q, 600);
 
-  useEffect(() => { setQ(""); setResults(null); setAdding(false); setEditing(null); }, [minicourse?.id]);
+  useEffect(() => { setQ(""); setResults(null); setSelected(null); setAdding(false); setEditing(null); }, [minicourse?.id]);
 
-  async function doSearch() {
-    if (!minicourse) return;
+  useEffect(() => {
+    if (!minicourse || !adding) return;
+    const term = qDebounced.trim();
+    if (selected && term === (selected.full_name || "")) return;
+    if (term.length < 2) { setResults(null); return; }
+    let cancelled = false;
     setBusy("search");
-    try { setResults(await search({ data: { minicourse_id: minicourse.id, query: q } }) as any); }
-    catch (e: any) { toast.error(e?.message ?? "Falha na busca"); }
-    finally { setBusy(null); }
-  }
+    search({ data: { minicourse_id: minicourse.id, query: term } })
+      .then((r: any) => { if (!cancelled) setResults(r ?? []); })
+      .catch(() => { if (!cancelled) setResults([]); })
+      .finally(() => { if (!cancelled) setBusy(null); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qDebounced, minicourse?.id, adding]);
+
 
   async function add(userId: string) {
     if (!minicourse) return;
@@ -1517,7 +1543,7 @@ function MinicourseRegistrationsDialog({ minicourse, regs, onClose, onChanged }:
     try {
       await addReg({ data: { minicourse_id: minicourse.id, user_id: userId, paid_price: 0, status: "paid" } });
       toast.success("Inscrito adicionado");
-      setResults((r) => (r ?? []).filter((x) => x.user_id !== userId));
+      setResults(null); setSelected(null); setQ("");
       onChanged();
     } catch (e: any) { toast.error(e?.message ?? "Falha ao adicionar"); }
     finally { setBusy(null); }
@@ -1558,22 +1584,28 @@ function MinicourseRegistrationsDialog({ minicourse, regs, onClose, onChanged }:
             <>
               <p className="text-[11px] text-muted-foreground">Apenas pessoas já inscritas no evento podem ser adicionadas.</p>
               <div className="flex gap-2">
-                <Input placeholder="Buscar por nome ou e-mail" value={q} onChange={(e) => setQ(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } }} />
-                <Button size="sm" onClick={doSearch} disabled={busy === "search"}>{busy === "search" ? "..." : "Buscar"}</Button>
+                <Input placeholder="Digite o nome ou e-mail" value={q}
+                  onChange={(e) => { setQ(e.target.value); setSelected(null); }} />
+                <Button size="sm" disabled={!selected || busy === selected?.user_id}
+                  onClick={() => selected && add(selected.user_id)}>
+                  {busy === selected?.user_id ? "..." : "Adicionar"}
+                </Button>
               </div>
-              {results && results.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum participante disponível encontrado.</p>}
-              <div className="space-y-1">
-                {(results ?? []).map((r) => (
-                  <div key={r.user_id} className="flex items-center gap-2 p-2 rounded border bg-background">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold truncate">{r.full_name}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{r.email} · evento: {r.status}</div>
-                    </div>
-                    <Button size="sm" onClick={() => add(r.user_id)} disabled={busy === r.user_id}>Adicionar</Button>
-                  </div>
-                ))}
-              </div>
+              {busy === "search" && <p className="text-[11px] text-muted-foreground">Buscando…</p>}
+              {selected && <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{selected.full_name}</span></p>}
+              {!selected && results && results.length === 0 && busy !== "search" && <p className="text-[11px] text-muted-foreground">Nenhum participante disponível encontrado.</p>}
+              {!selected && (
+                <div className="space-y-1">
+                  {(results ?? []).map((r) => (
+                    <button key={r.user_id} type="button"
+                      onClick={() => { setSelected(r); setQ(r.full_name ?? ""); setResults(null); }}
+                      className="w-full text-left p-2 rounded border bg-background text-sm font-bold truncate hover:bg-muted/60 transition-colors">
+                      {r.full_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
             </>
           )}
         </div>
@@ -1865,6 +1897,10 @@ export function ActivitiesTab({ league }: any) {
 function MembersTab({ league }: any) {
   const [members, setMembers] = useState<any[]>([]);
   const [query, setQuery] = useState("");
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [suggestions, setSuggestions] = useState<any[] | null>(null);
+  const queryDebounced = useDebouncedValue(query, 600);
+
   const [role, setRole] = useState<"ligante" | "diretor">("ligante");
   const [selOpen, setSelOpen] = useState(false);
   const [semOpen, setSemOpen] = useState(false);
@@ -1936,19 +1972,35 @@ function MembersTab({ league }: any) {
     } catch { /* sem ciclo ainda */ }
   };
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [league.id]);
+  useEffect(() => {
+    const term = queryDebounced.trim();
+    if (selectedProfile && term === (selectedProfile.full_name || selectedProfile.username || "")) return;
+    if (term.length < 2) { setSuggestions(null); return; }
+    let cancelled = false;
+    (supabase as any).rpc("find_profile_for_league", { _league_id: league.id, _query: term })
+      .then(({ data }: any) => { if (!cancelled) setSuggestions(data ?? []); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryDebounced, league.id]);
+
   async function add() {
-    if (!query.trim()) return;
-    const q = query.trim();
-    const { data: profs, error: pe } = await (supabase as any)
-      .rpc("find_profile_for_league", { _league_id: league.id, _query: q });
-    if (pe) return toast.error(pe.message);
-    if (!profs || profs.length === 0) return toast.error("Nenhum usuário encontrado com esse e-mail/usuário. Confirme se a pessoa já criou uma conta no MEDUNO.");
-    if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — use o e-mail completo");
-    const prof = profs[0];
+
+    if (!query.trim() && !selectedProfile) return;
+    let prof: any = selectedProfile;
+    if (!prof) {
+      const q = query.trim();
+      const { data: profs, error: pe } = await (supabase as any)
+        .rpc("find_profile_for_league", { _league_id: league.id, _query: q });
+      if (pe) return toast.error(pe.message);
+      if (!profs || profs.length === 0) return toast.error("Nenhum usuário encontrado com esse e-mail/usuário. Confirme se a pessoa já criou uma conta no MEDUNO.");
+      if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — selecione na lista de sugestões");
+      prof = profs[0];
+    }
     const { error } = await supabase.from("league_memberships").upsert({ league_id: league.id, user_id: prof.id, role }, { onConflict: "league_id,user_id" });
     if (error) return toast.error(error.message);
-    toast.success("Adicionado"); setQuery(""); await reload();
+    toast.success("Adicionado"); setQuery(""); setSelectedProfile(null); setSuggestions(null); await reload();
   }
+
   async function remove(id: string) {
     if (!confirm("Remover este membro da liga?")) return;
     const { error } = await supabase.from("league_memberships").delete().eq("id", id);
@@ -1968,13 +2020,30 @@ function MembersTab({ league }: any) {
         <Button onClick={() => setSemOpen(true)} variant="outline"><DollarSign className="size-4" /> Semestralidade</Button>
         <Button onClick={() => setSelOpen(true)} variant="outline"><ClipboardCheck className="size-4" /> Processo Seletivo</Button>
       </div>
-      <div className="flex gap-2 flex-wrap">
-        <Input className="flex-1 min-w-[200px]" placeholder="Email ou usuário" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select className="px-3 rounded border bg-background" value={role} onChange={(e) => setRole(e.target.value as any)}>
-          <option value="ligante">Ligante</option><option value="diretor">Diretor</option>
-        </select>
-        <Button onClick={add}>Adicionar</Button>
+      <div className="space-y-2">
+        <div className="flex gap-2 flex-wrap">
+          <Input className="flex-1 min-w-[200px]" placeholder="Nome, e-mail ou usuário" value={query}
+            onChange={(e) => { setQuery(e.target.value); setSelectedProfile(null); }} />
+          <select className="px-3 rounded border bg-background" value={role} onChange={(e) => setRole(e.target.value as any)}>
+            <option value="ligante">Ligante</option><option value="diretor">Diretor</option>
+          </select>
+          <Button onClick={add}>Adicionar</Button>
+        </div>
+        {selectedProfile ? (
+          <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{selectedProfile.full_name || selectedProfile.username}</span></p>
+        ) : (suggestions && suggestions.length > 0) ? (
+          <div className="space-y-1">
+            {suggestions.map((s: any) => (
+              <button key={s.id} type="button"
+                onClick={() => { setSelectedProfile(s); setQuery(s.full_name || s.username || ""); setSuggestions(null); }}
+                className="w-full text-left p-2 rounded border bg-background text-sm font-bold truncate hover:bg-muted/60 transition-colors">
+                {s.full_name || s.username}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
+
       <div className="space-y-2">
         {members.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">Nenhum membro ainda.</p>}
         {members.map((m) => (
