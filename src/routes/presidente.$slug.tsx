@@ -816,7 +816,10 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const delEventReg = useServerFn(adminDeleteEventRegistration);
   const [regQuery, setRegQuery] = useState("");
   const [regResults, setRegResults] = useState<any[] | null>(null);
+  const [regSelected, setRegSelected] = useState<any | null>(null);
   const [regBusy, setRegBusy] = useState<string | null>(null);
+  const regQueryDebounced = useDebouncedValue(regQuery, 600);
+
 
   async function loadRegs() {
     const { data: rs } = await supabase
