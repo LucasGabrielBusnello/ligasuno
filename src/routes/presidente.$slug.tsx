@@ -934,6 +934,15 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                   <div className="text-[10px] text-muted-foreground mt-0.5">Bruto R$ {totalGross.toFixed(2)} · Taxas −R$ {(totalGross - totalNet).toFixed(2)}</div>
                 )}
               </div>
+              <div className="p-2 rounded bg-emerald-500/10 col-span-2 sm:col-span-1">
+                <div className="text-xs text-muted-foreground">Minicursos</div>
+                <div className="font-black">R$ {mcRevenue.total.toFixed(2)}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{mcRevenue.count} inscrições pagas/confirmadas</div>
+              </div>
+              <div className="p-2 rounded bg-primary/20 col-span-2 sm:col-span-1">
+                <div className="text-xs text-muted-foreground">Total geral</div>
+                <div className="font-black">R$ {(totalNet + mcRevenue.total).toFixed(2)}</div>
+              </div>
             </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
             {regs !== null && !hasPaidRegs && (
