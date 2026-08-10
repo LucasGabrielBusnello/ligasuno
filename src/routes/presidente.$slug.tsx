@@ -39,6 +39,7 @@ import {
 } from "@/lib/event-admin.functions";
 
 import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
+import { LeaguePaymentProviderCard } from "@/components/league-payment-provider-card";
 import {
   createLeagueSubscriptionCheckout,
   createLeagueSemesterPixCheckout,
