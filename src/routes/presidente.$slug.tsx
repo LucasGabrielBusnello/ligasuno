@@ -25,6 +25,12 @@ import { generateBadgesPdf } from "@/lib/badge-pdf";
 import { getCollectorFees } from "@/lib/mp-fees";
 import { syncEventToSheet, getSheetConfig, saveSheetConfig } from "@/lib/sheets-sync.functions";
 import { listEventCheckinRoster } from "@/lib/event-checkin.functions";
+import {
+  searchEventParticipants,
+  adminAddMinicourseRegistration,
+  adminUpdateMinicourseRegistration,
+  adminDeleteMinicourseRegistration,
+} from "@/lib/minicourse-admin.functions";
 
 import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
 import {
