@@ -331,8 +331,42 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
     return { ok: true, cycle_id: cycleId };
   });
 
+// ------------------ president: alterar manualmente o status de pagamento ------------------
 
-// ------------------ president: close current cycle (archive) ------------------
+export const setSemesterPaymentStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    payment_id: z.string().uuid(),
+    status: z.enum(["paid", "pending", "overdue"]),
+    amount_paid_cents: z.number().int().min(0).optional(),
+  }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: pay } = await supabaseAdmin
+      .from("semester_payments")
+      .select("id, league_id, amount_due_cents")
+      .eq("id", data.payment_id)
+      .maybeSingle();
+    if (!pay) throw new Error("Pagamento não encontrado");
+    await assertPresident(context.supabase, (pay as any).league_id, context.userId);
+
+    const patch: any = { status: data.status };
+    if (data.status === "paid") {
+      patch.paid_at = new Date().toISOString();
+      patch.amount_paid_cents = data.amount_paid_cents ?? (pay as any).amount_due_cents ?? 0;
+    } else {
+      patch.paid_at = null;
+      patch.amount_paid_cents = 0;
+    }
+
+    const { error } = await supabaseAdmin
+      .from("semester_payments")
+      .update(patch)
+      .eq("id", data.payment_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 
 export const closeCurrentSemesterCycle = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
