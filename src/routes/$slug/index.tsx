@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createEventPix, getEventPaymentStatus } from "@/lib/event-pix.functions";
+import { cancelMinicourseRegistration } from "@/lib/participant.functions";
+
 import { verifySelectionPayment } from "@/lib/selection.functions";
 import { SelectionRegisterDialog, SelectionAccessDialog } from "@/components/selection-public";
 import { ArrowLeft, Calendar, Users, Award, Activity, LogIn, Sparkles, BookOpen, Microscope, Heart, Newspaper, HelpCircle, ChevronRight, GraduationCap, ShieldCheck, CreditCard, QrCode, CheckCircle, XCircle, ClipboardList, Zap, Star } from "lucide-react";
