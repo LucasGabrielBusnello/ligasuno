@@ -1028,21 +1028,26 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
             <div className="rounded border p-2 space-y-2">
               <div className="text-xs font-bold">Adicionar inscrito</div>
               <div className="flex gap-2">
-                <Input value={regQuery} onChange={(e) => setRegQuery(e.target.value)} placeholder="Buscar por nome, usuário ou e-mail"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }} className="h-8 text-sm" />
-                <Button size="sm" onClick={runSearch} disabled={regBusy === "search"}>{regBusy === "search" ? "..." : "Buscar"}</Button>
+                <Input value={regQuery}
+                  onChange={(e) => { setRegQuery(e.target.value); setRegSelected(null); }}
+                  placeholder="Digite o nome, usuário ou e-mail" className="h-8 text-sm" />
+                <Button size="sm" disabled={!regSelected || regBusy === regSelected?.id || regSelected?.already}
+                  onClick={() => regSelected && addPerson(regSelected)}>
+                  {regSelected?.already ? "Já inscrito" : (regBusy === regSelected?.id ? "..." : "Adicionar")}
+                </Button>
               </div>
-              {regResults !== null && regResults.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
-              {(regResults ?? []).map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between gap-2 p-2 rounded border text-sm">
-                  <div className="min-w-0">
-                    <div className="font-bold truncate">{p.full_name || p.username}</div>
-                    <div className="text-[11px] text-muted-foreground truncate">{p.email}</div>
-                  </div>
-                  <Button size="sm" variant={p.already ? "outline" : "default"} disabled={p.already || regBusy === p.id}
-                    onClick={() => addPerson(p)}>{p.already ? "Já inscrito" : (regBusy === p.id ? "..." : "Adicionar")}</Button>
-                </div>
+              {regBusy === "search" && <p className="text-[11px] text-muted-foreground">Buscando…</p>}
+              {regSelected && <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{regSelected.full_name || regSelected.username}</span></p>}
+              {!regSelected && regResults !== null && regResults.length === 0 && regBusy !== "search" && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {!regSelected && (regResults ?? []).map((p: any) => (
+                <button key={p.id} type="button"
+                  onClick={() => { setRegSelected(p); setRegQuery(p.full_name || p.username || ""); setRegResults(null); }}
+                  className="w-full text-left p-2 rounded border text-sm hover:bg-muted/60 transition-colors">
+                  <span className="font-bold truncate block">{p.full_name || p.username}</span>
+                  {p.already && <span className="text-[11px] text-muted-foreground">Já inscrito</span>}
+                </button>
               ))}
+
             </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
             {regs !== null && regs.length === 0 && (
