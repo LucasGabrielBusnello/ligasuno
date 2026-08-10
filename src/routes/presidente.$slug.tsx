@@ -1338,29 +1338,13 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!viewing} onOpenChange={(v) => !v && setViewing(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Inscritos · {viewing?.title}</DialogTitle></DialogHeader>
-          {viewing && (
-            <div className="space-y-1">
-              {(regsByMc[viewing.id] ?? []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p>}
-              {(regsByMc[viewing.id] ?? []).map((r) => (
-                <div key={r.id} className="p-2 rounded border flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-bold truncate">{r.profile?.full_name ?? r.profile?.username ?? "—"}</div>
-                    <div className="text-[11px] text-muted-foreground">{r.profile?.email}</div>
-                  </div>
-                  <div className="flex flex-col items-end shrink-0">
-                    <Badge variant={r.status === "paid" ? "default" : "secondary"} className="text-[10px]">{r.status === "paid" ? "Confirmado" : "Pendente"}</Badge>
-                    <span className="text-[10px] text-muted-foreground mt-0.5">R$ {Number(r.paid_price).toFixed(2)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
+      <MinicourseRegistrationsDialog
+        minicourse={viewing}
+        regs={viewing ? (regsByMc[viewing.id] ?? []) : []}
+        onClose={() => setViewing(null)}
+        onChanged={reload}
+      />
 
-      </Dialog>
 
       <CheckinDialog mode={checkinMc ? { kind: "minicourse", minicourse: checkinMc } : null} open={!!checkinMc} onClose={() => setCheckinMc(null)} />
       <EventCertificatesDialog
