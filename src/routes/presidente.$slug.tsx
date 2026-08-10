@@ -1512,20 +1512,30 @@ function MinicourseRegistrationsDialog({ minicourse, regs, onClose, onChanged }:
 
   const [q, setQ] = useState("");
   const [results, setResults] = useState<any[] | null>(null);
+  const [selected, setSelected] = useState<any | null>(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<any | null>(null);
   const [ef, setEf] = useState<{ status: string; paid_price: number }>({ status: "paid", paid_price: 0 });
+  const qDebounced = useDebouncedValue(q, 600);
 
-  useEffect(() => { setQ(""); setResults(null); setAdding(false); setEditing(null); }, [minicourse?.id]);
+  useEffect(() => { setQ(""); setResults(null); setSelected(null); setAdding(false); setEditing(null); }, [minicourse?.id]);
 
-  async function doSearch() {
-    if (!minicourse) return;
+  useEffect(() => {
+    if (!minicourse || !adding) return;
+    const term = qDebounced.trim();
+    if (selected && term === (selected.full_name || "")) return;
+    if (term.length < 2) { setResults(null); return; }
+    let cancelled = false;
     setBusy("search");
-    try { setResults(await search({ data: { minicourse_id: minicourse.id, query: q } }) as any); }
-    catch (e: any) { toast.error(e?.message ?? "Falha na busca"); }
-    finally { setBusy(null); }
-  }
+    search({ data: { minicourse_id: minicourse.id, query: term } })
+      .then((r: any) => { if (!cancelled) setResults(r ?? []); })
+      .catch(() => { if (!cancelled) setResults([]); })
+      .finally(() => { if (!cancelled) setBusy(null); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qDebounced, minicourse?.id, adding]);
+
 
   async function add(userId: string) {
     if (!minicourse) return;
