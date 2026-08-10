@@ -236,7 +236,7 @@ export function SemesterDialog({
                     ) : (
                       <div className="space-y-1.5">
                         {payments.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between p-2.5 rounded border text-sm">
+                          <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded border text-sm">
                             <div>
                               <div className="font-bold">{p.profiles?.full_name || p.profiles?.username}</div>
                               <div className="text-xs text-muted-foreground">{p.profiles?.email}</div>
@@ -244,11 +244,30 @@ export function SemesterDialog({
                             <div className="flex items-center gap-2">
                               {p.paid_at && <span className="text-xs text-muted-foreground">{fmtDate(p.paid_at)}</span>}
                               <StatusBadge status={p.status} />
+                              {p.status === "paid" ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={busyId === p.id}
+                                  onClick={() => changeStatus(p.id, "pending")}
+                                >
+                                  Marcar pendente
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  disabled={busyId === p.id}
+                                  onClick={() => changeStatus(p.id, "paid")}
+                                >
+                                  Marcar como pago
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
+
                   </div>
                 )}
               </>
