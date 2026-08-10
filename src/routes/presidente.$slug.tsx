@@ -1969,18 +1969,22 @@ function MembersTab({ league }: any) {
   };
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [league.id]);
   async function add() {
-    if (!query.trim()) return;
-    const q = query.trim();
-    const { data: profs, error: pe } = await (supabase as any)
-      .rpc("find_profile_for_league", { _league_id: league.id, _query: q });
-    if (pe) return toast.error(pe.message);
-    if (!profs || profs.length === 0) return toast.error("Nenhum usuário encontrado com esse e-mail/usuário. Confirme se a pessoa já criou uma conta no MEDUNO.");
-    if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — use o e-mail completo");
-    const prof = profs[0];
+    if (!query.trim() && !selectedProfile) return;
+    let prof: any = selectedProfile;
+    if (!prof) {
+      const q = query.trim();
+      const { data: profs, error: pe } = await (supabase as any)
+        .rpc("find_profile_for_league", { _league_id: league.id, _query: q });
+      if (pe) return toast.error(pe.message);
+      if (!profs || profs.length === 0) return toast.error("Nenhum usuário encontrado com esse e-mail/usuário. Confirme se a pessoa já criou uma conta no MEDUNO.");
+      if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — selecione na lista de sugestões");
+      prof = profs[0];
+    }
     const { error } = await supabase.from("league_memberships").upsert({ league_id: league.id, user_id: prof.id, role }, { onConflict: "league_id,user_id" });
     if (error) return toast.error(error.message);
-    toast.success("Adicionado"); setQuery(""); await reload();
+    toast.success("Adicionado"); setQuery(""); setSelectedProfile(null); setSuggestions(null); await reload();
   }
+
   async function remove(id: string) {
     if (!confirm("Remover este membro da liga?")) return;
     const { error } = await supabase.from("league_memberships").delete().eq("id", id);
