@@ -14,6 +14,8 @@ import {
   closeCurrentSemesterCycle,
   listCyclePayments,
   listSemesterCycles,
+  setSemesterPaymentStatus,
+
 } from "@/lib/semester.functions";
 
 function brl(cents: number) {
@@ -48,6 +50,8 @@ export function SemesterDialog({
   const close = useServerFn(closeCurrentSemesterCycle);
   const listCur = useServerFn(listCyclePayments);
   const listHist = useServerFn(listSemesterCycles);
+  const setStatus = useServerFn(setSemesterPaymentStatus);
+
 
   const [loading, setLoading] = useState(false);
   const [cycle, setCycle] = useState<any>(null);
@@ -94,6 +98,22 @@ export function SemesterDialog({
   }
 
   useEffect(() => { if (open) reload(); /* eslint-disable-next-line */ }, [open, league.id]);
+
+  const [busyId, setBusyId] = useState<string | null>(null);
+  async function changeStatus(paymentId: string, status: "paid" | "pending") {
+    setBusyId(paymentId);
+    try {
+      await setStatus({ data: { payment_id: paymentId, status } });
+      toast.success(status === "paid" ? "Marcado como pago" : "Marcado como pendente");
+      await reload();
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao alterar status");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
 
   async function loadHistPayments(cycleId: string) {
     setHistSelected(cycleId);
@@ -236,7 +256,7 @@ export function SemesterDialog({
                     ) : (
                       <div className="space-y-1.5">
                         {payments.map((p) => (
-                          <div key={p.id} className="flex items-center justify-between p-2.5 rounded border text-sm">
+                          <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded border text-sm">
                             <div>
                               <div className="font-bold">{p.profiles?.full_name || p.profiles?.username}</div>
                               <div className="text-xs text-muted-foreground">{p.profiles?.email}</div>
@@ -244,11 +264,30 @@ export function SemesterDialog({
                             <div className="flex items-center gap-2">
                               {p.paid_at && <span className="text-xs text-muted-foreground">{fmtDate(p.paid_at)}</span>}
                               <StatusBadge status={p.status} />
+                              {p.status === "paid" ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={busyId === p.id}
+                                  onClick={() => changeStatus(p.id, "pending")}
+                                >
+                                  Marcar pendente
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  disabled={busyId === p.id}
+                                  onClick={() => changeStatus(p.id, "paid")}
+                                >
+                                  Marcar como pago
+                                </Button>
+                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
+
                   </div>
                 )}
               </>
