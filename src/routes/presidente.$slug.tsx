@@ -1897,6 +1897,10 @@ export function ActivitiesTab({ league }: any) {
 function MembersTab({ league }: any) {
   const [members, setMembers] = useState<any[]>([]);
   const [query, setQuery] = useState("");
+  const [selectedProfile, setSelectedProfile] = useState<any | null>(null);
+  const [suggestions, setSuggestions] = useState<any[] | null>(null);
+  const queryDebounced = useDebouncedValue(query, 600);
+
   const [role, setRole] = useState<"ligante" | "diretor">("ligante");
   const [selOpen, setSelOpen] = useState(false);
   const [semOpen, setSemOpen] = useState(false);
