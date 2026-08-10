@@ -1015,31 +1015,54 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                 <div className="font-black">R$ {(totalNet + mcRevenue.total).toFixed(2)}</div>
               </div>
             </div>
+            <div className="rounded border p-2 space-y-2">
+              <div className="text-xs font-bold">Adicionar inscrito</div>
+              <div className="flex gap-2">
+                <Input value={regQuery} onChange={(e) => setRegQuery(e.target.value)} placeholder="Buscar por nome, usuário ou e-mail"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); runSearch(); } }} className="h-8 text-sm" />
+                <Button size="sm" onClick={runSearch} disabled={regBusy === "search"}>{regBusy === "search" ? "..." : "Buscar"}</Button>
+              </div>
+              {regResults !== null && regResults.length === 0 && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {(regResults ?? []).map((p: any) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 p-2 rounded border text-sm">
+                  <div className="min-w-0">
+                    <div className="font-bold truncate">{p.full_name || p.username}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{p.email}</div>
+                  </div>
+                  <Button size="sm" variant={p.already ? "outline" : "default"} disabled={p.already || regBusy === p.id}
+                    onClick={() => addPerson(p)}>{p.already ? "Já inscrito" : (regBusy === p.id ? "..." : "Adicionar")}</Button>
+                </div>
+              ))}
+            </div>
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
-            {regs !== null && !hasPaidRegs && (
-              <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito confirmado ainda.</p>
+            {regs !== null && regs.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p>
             )}
-            {regs !== null && hasPaidRegs && (
+            {regs !== null && regs.length > 0 && (
               <>
                 <div className="flex justify-end">
                   <Button size="sm" variant="outline" onClick={copyPaidRegistrations}>Copiar Inscritos</Button>
                 </div>
                 <div className="space-y-1">
-                  {paidRegs.map((r: any) => (
-                    <button key={r.id} onClick={() => setSelected(r)} className="w-full text-left p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
+                  {regs.map((r: any) => (
+                    <div key={r.id} className="w-full p-2 rounded border hover:bg-accent flex items-center justify-between gap-2">
+                      <button onClick={() => setSelected(r)} className="min-w-0 flex-1 text-left">
                         <div className="text-sm font-bold truncate">{r.full_name}</div>
                         <div className="text-[11px] text-muted-foreground">{r.profiles?.email}</div>
-                      </div>
+                      </button>
                       <div className="flex flex-col items-end shrink-0">
-                        <Badge variant="default" className="text-[10px]">Pago</Badge>
+                        <Badge variant={r.status === "paid" ? "default" : "secondary"} className="text-[10px]">{r.status === "paid" ? "Pago" : "Pendente"}</Badge>
                         <span className="text-[10px] text-muted-foreground mt-0.5">{r.category} · R${Number(r.paid_price).toFixed(2)}</span>
                       </div>
-                    </button>
+                      <Button size="sm" variant="destructive" disabled={regBusy === r.id} onClick={() => removeReg(r)}>
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
                   ))}
                 </div>
               </>
             )}
+
 
           </div>
         )}
