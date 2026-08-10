@@ -899,8 +899,9 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
         category: "visitor", paid_price: 0, status: "paid",
       } } as any);
       toast.success("Inscrito adicionado");
-      setRegResults((prev) => (prev ?? []).map((x) => x.id === p.id ? { ...x, already: true } : x));
+      setRegResults(null); setRegSelected(null); setRegQuery("");
       await loadRegs();
+
     } catch (e: any) { toast.error(e?.message ?? "Falha"); }
     finally { setRegBusy(null); }
   }
