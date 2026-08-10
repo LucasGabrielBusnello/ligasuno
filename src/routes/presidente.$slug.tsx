@@ -1543,7 +1543,7 @@ function MinicourseRegistrationsDialog({ minicourse, regs, onClose, onChanged }:
     try {
       await addReg({ data: { minicourse_id: minicourse.id, user_id: userId, paid_price: 0, status: "paid" } });
       toast.success("Inscrito adicionado");
-      setResults((r) => (r ?? []).filter((x) => x.user_id !== userId));
+      setResults(null); setSelected(null); setQ("");
       onChanged();
     } catch (e: any) { toast.error(e?.message ?? "Falha ao adicionar"); }
     finally { setBusy(null); }
