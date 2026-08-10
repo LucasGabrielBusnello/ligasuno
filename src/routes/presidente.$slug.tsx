@@ -39,6 +39,7 @@ import {
 } from "@/lib/event-admin.functions";
 
 import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
+import { LeaguePaymentProviderCard } from "@/components/league-payment-provider-card";
 import {
   createLeagueSubscriptionCheckout,
   createLeagueSemesterPixCheckout,
@@ -107,6 +108,8 @@ function PresidentePage() {
         )}
 
         <MpConnectCard leagueId={league.id} />
+
+        <LeaguePaymentProviderCard leagueId={league.id} />
 
         <div className="mt-4">
           <LiganteSemestralidadeCard leagueId={league.id} />

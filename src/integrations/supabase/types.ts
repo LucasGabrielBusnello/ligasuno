@@ -2315,6 +2315,54 @@ export type Database = {
           },
         ]
       }
+      league_asaas_accounts: {
+        Row: {
+          account_email: string | null
+          account_name: string | null
+          api_key_encrypted: string
+          connected_at: string
+          league_id: string
+          sandbox: boolean
+          updated_at: string
+          wallet_id: string | null
+        }
+        Insert: {
+          account_email?: string | null
+          account_name?: string | null
+          api_key_encrypted: string
+          connected_at?: string
+          league_id: string
+          sandbox?: boolean
+          updated_at?: string
+          wallet_id?: string | null
+        }
+        Update: {
+          account_email?: string | null
+          account_name?: string | null
+          api_key_encrypted?: string
+          connected_at?: string
+          league_id?: string
+          sandbox?: boolean
+          updated_at?: string
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_asaas_accounts_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_asaas_accounts_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_attendance: {
         Row: {
           activity: string
@@ -3576,6 +3624,7 @@ export type Database = {
           initial_setup_done: boolean
           name: string
           paid_until: string | null
+          payment_provider: string
           president_id: string | null
           president2_id: string | null
           published: boolean
@@ -3597,6 +3646,7 @@ export type Database = {
           initial_setup_done?: boolean
           name: string
           paid_until?: string | null
+          payment_provider?: string
           president_id?: string | null
           president2_id?: string | null
           published?: boolean
@@ -3618,6 +3668,7 @@ export type Database = {
           initial_setup_done?: boolean
           name?: string
           paid_until?: string | null
+          payment_provider?: string
           president_id?: string | null
           president2_id?: string | null
           published?: boolean
