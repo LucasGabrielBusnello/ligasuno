@@ -95,6 +95,22 @@ export function SemesterDialog({
 
   useEffect(() => { if (open) reload(); /* eslint-disable-next-line */ }, [open, league.id]);
 
+  const [busyId, setBusyId] = useState<string | null>(null);
+  async function changeStatus(paymentId: string, status: "paid" | "pending") {
+    setBusyId(paymentId);
+    try {
+      await setStatus({ data: { payment_id: paymentId, status } });
+      toast.success(status === "paid" ? "Marcado como pago" : "Marcado como pendente");
+      await reload();
+      onUpdated?.();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao alterar status");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+
   async function loadHistPayments(cycleId: string) {
     setHistSelected(cycleId);
     const r = await listCur({ data: { league_id: league.id, cycle_id: cycleId } });
