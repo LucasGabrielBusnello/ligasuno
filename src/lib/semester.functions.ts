@@ -619,7 +619,6 @@ export const createSemesterPix = createServerFn({ method: "POST" })
     const totalReais = totalCents / 100;
     if (totalReais <= 0) throw new Error("Valor inválido");
 
-    const mpAccount = await loadLeagueMpAccount(supabaseAdmin, data.league_id);
     const feeCfg = await loadFeeForCategory(supabaseAdmin, "semester");
     const fee = computeFee(totalReais, feeCfg.pct, feeCfg.fixed);
 
@@ -633,14 +632,13 @@ export const createSemesterPix = createServerFn({ method: "POST" })
     const { first, last } = splitName((prof as any)?.full_name ?? "");
     const cycleLabel = `${(cycle as any).semester}º/${(cycle as any).year}`;
 
-    const pay = await createPixPayment({
-      sellerAccessToken: (mpAccount as any).access_token,
+    const { createLeaguePix } = await import("@/lib/league-pay.server");
+    const pay = await createLeaguePix({
+      supabaseAdmin,
+      leagueId: data.league_id,
       amount: totalReais,
       description: `Semestralidade ${cycleLabel} — ${(cycle as any).leagues.name}`,
-      payerEmail: email,
-      payerFirstName: first,
-      payerLastName: last,
-      payerCpf: cpf,
+      payer: { email, firstName: first, lastName: last, cpf },
       externalReference: `semester:${(payment as any).id}`,
       notificationUrl: "https://ligasuno.com.br/api/public/payments/mp-webhook",
       applicationFee: fee,
@@ -655,19 +653,18 @@ export const createSemesterPix = createServerFn({ method: "POST" })
 
     await supabaseAdmin
       .from("semester_payments")
-      .update({ mp_payment_id: String(pay.id) })
+      .update({ mp_payment_id: String(pay.payment_id) })
       .eq("id", (payment as any).id);
 
-    const tx = pay?.point_of_interaction?.transaction_data ?? {};
     return {
       registration_id: (payment as any).id,
-      payment_id: String(pay.id),
+      payment_id: pay.payment_id,
       status: pay.status,
       amount: totalReais,
-      qr_code: tx.qr_code as string | undefined,
-      qr_code_base64: tx.qr_code_base64 as string | undefined,
-      ticket_url: tx.ticket_url as string | undefined,
-      expires_at: pay.date_of_expiration as string | undefined,
+      qr_code: pay.qr_code,
+      qr_code_base64: pay.qr_code_base64,
+      ticket_url: pay.ticket_url,
+      expires_at: pay.expires_at,
     };
   });
 
