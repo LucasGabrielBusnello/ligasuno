@@ -742,12 +742,15 @@ function ParticipantPanelDialog({ event, registration, league, onClose, onUpdate
         </DialogHeader>
         {event.image_url && <img src={event.image_url} className="w-full aspect-video object-cover rounded" />}
         <Tabs defaultValue="info">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1">
             <TabsTrigger value="info">Evento</TabsTrigger>
+            <TabsTrigger value="dados">Meus dados</TabsTrigger>
             <TabsTrigger value="badge">Crachá</TabsTrigger>
             <TabsTrigger value="schedule">Cronograma</TabsTrigger>
             <TabsTrigger value="mc">Minicursos</TabsTrigger>
+            <TabsTrigger value="mymc">Meus minicursos</TabsTrigger>
           </TabsList>
+
           <TabsContent value="info" className="space-y-3 pt-3">
             {event.event_date && (
               <div className="flex items-center gap-2 text-sm"><Calendar className="size-4 text-muted-foreground" /><span>
