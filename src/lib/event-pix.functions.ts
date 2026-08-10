@@ -101,7 +101,6 @@ export const createEventPix = createServerFn({ method: "POST" })
       return { free: true, registration_id: reg.id, status: "paid" };
     }
 
-    const mpAccount = await loadLeagueMpAccount(supabaseAdmin, leagueId);
     const feeCfg = await loadFeeForCategory(supabaseAdmin, "event");
     const fee = computeFee(paid, feeCfg.pct, feeCfg.fixed);
 
@@ -110,14 +109,13 @@ export const createEventPix = createServerFn({ method: "POST" })
     const email = (prof as any)?.email || `${userId}@noemail.local`;
     const { first, last } = splitName(data.full_name);
 
-    const pay = await createPixPayment({
-      sellerAccessToken: (mpAccount as any).access_token,
+    const { createLeaguePix } = await import("@/lib/league-pay.server");
+    const pay = await createLeaguePix({
+      supabaseAdmin,
+      leagueId,
       amount: paid,
       description: `${(event as any).title} — ${(event as any).leagues.name}`,
-      payerEmail: email,
-      payerFirstName: first,
-      payerLastName: last,
-      payerCpf: normalizedCpf,
+      payer: { email, firstName: first, lastName: last, cpf: normalizedCpf },
       externalReference: `event:${reg.id}`,
       notificationUrl: WEBHOOK_URL,
       applicationFee: fee,
@@ -126,19 +124,18 @@ export const createEventPix = createServerFn({ method: "POST" })
     });
 
     await supabaseAdmin.from("event_registrations")
-      .update({ stripe_session_id: String(pay.id) }).eq("id", reg.id);
+      .update({ stripe_session_id: String(pay.payment_id) }).eq("id", reg.id);
 
-    const tx = pay?.point_of_interaction?.transaction_data ?? {};
     return {
       free: false,
       registration_id: reg.id,
-      payment_id: String(pay.id),
+      payment_id: pay.payment_id,
       status: pay.status,
       amount: paid,
-      qr_code: tx.qr_code as string | undefined,
-      qr_code_base64: tx.qr_code_base64 as string | undefined,
-      ticket_url: tx.ticket_url as string | undefined,
-      expires_at: pay.date_of_expiration as string | undefined,
+      qr_code: pay.qr_code,
+      qr_code_base64: pay.qr_code_base64,
+      ticket_url: pay.ticket_url,
+      expires_at: pay.expires_at,
     };
   });
 
