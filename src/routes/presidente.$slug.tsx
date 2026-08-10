@@ -1972,7 +1972,19 @@ function MembersTab({ league }: any) {
     } catch { /* sem ciclo ainda */ }
   };
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [league.id]);
+  useEffect(() => {
+    const term = queryDebounced.trim();
+    if (selectedProfile && term === (selectedProfile.full_name || selectedProfile.username || "")) return;
+    if (term.length < 2) { setSuggestions(null); return; }
+    let cancelled = false;
+    (supabase as any).rpc("find_profile_for_league", { _league_id: league.id, _query: term })
+      .then(({ data }: any) => { if (!cancelled) setSuggestions(data ?? []); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryDebounced, league.id]);
+
   async function add() {
+
     if (!query.trim() && !selectedProfile) return;
     let prof: any = selectedProfile;
     if (!prof) {
