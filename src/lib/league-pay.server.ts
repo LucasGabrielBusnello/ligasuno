@@ -162,6 +162,15 @@ export async function createLeagueCheckoutLink(args: {
   payer: { name: string; cpf: string; email?: string };
 }): Promise<{ provider: LeagueProvider; payment_id: string; url: string } | null> {
   const setup = await loadLeaguePaymentSetup(args.supabaseAdmin, args.leagueId);
+  if (setup.provider === "efi") {
+    const r = await createEfiChargeLink({
+      creds: { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
+      amount: args.amount,
+      description: args.description,
+      externalReference: args.externalReference,
+    });
+    return { provider: "efi", payment_id: r.payment_id, url: r.url };
+  }
   if (setup.provider !== "asaas") return null;
   const r = await createAsaasCheckout({
     apiKey: setup.apiKey,
@@ -185,8 +194,16 @@ export async function getLeaguePaymentStatus(
       const p = await getAsaasPayment(setup.apiKey, paymentId);
       return normalizeAsaasStatus(p?.status);
     }
+    if (setup.provider === "efi") {
+      const c = await getEfiCharge(
+        { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
+        String(paymentId),
+      );
+      return normalizeEfiStatus(c?.status);
+    }
     const pay = await getPayment(String(paymentId), setup.accessToken);
     return pay?.status ?? null;
+
   } catch (e) {
     console.error("getLeaguePaymentStatus falhou", e);
     return null;
