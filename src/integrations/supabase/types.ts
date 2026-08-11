@@ -2708,6 +2708,39 @@ export type Database = {
           },
         ]
       }
+      league_infinitepay_accounts: {
+        Row: {
+          connected_at: string
+          handle: string
+          league_id: string
+        }
+        Insert: {
+          connected_at?: string
+          handle: string
+          league_id: string
+        }
+        Update: {
+          connected_at?: string
+          handle?: string
+          league_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_infinitepay_accounts_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_infinitepay_accounts_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_leave_requests: {
         Row: {
           created_at: string
@@ -4202,6 +4235,7 @@ export type Database = {
           end_date: string
           id: string
           is_current: boolean
+          last_notified_at: string | null
           late_fee_cents: number
           league_id: string
           semester: number
@@ -4218,6 +4252,7 @@ export type Database = {
           end_date: string
           id?: string
           is_current?: boolean
+          last_notified_at?: string | null
           late_fee_cents?: number
           league_id: string
           semester: number
@@ -4234,6 +4269,7 @@ export type Database = {
           end_date?: string
           id?: string
           is_current?: boolean
+          last_notified_at?: string | null
           late_fee_cents?: number
           league_id?: string
           semester?: number
