@@ -2564,6 +2564,54 @@ export type Database = {
           },
         ]
       }
+      league_efi_accounts: {
+        Row: {
+          account_name: string | null
+          client_id_encrypted: string
+          client_secret_encrypted: string
+          connected_at: string
+          created_at: string
+          league_id: string
+          sandbox: boolean
+          updated_at: string
+        }
+        Insert: {
+          account_name?: string | null
+          client_id_encrypted: string
+          client_secret_encrypted: string
+          connected_at?: string
+          created_at?: string
+          league_id: string
+          sandbox?: boolean
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string | null
+          client_id_encrypted?: string
+          client_secret_encrypted?: string
+          connected_at?: string
+          created_at?: string
+          league_id?: string
+          sandbox?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_efi_accounts_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_efi_accounts_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "public_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_events: {
         Row: {
           accepting_registrations: boolean
