@@ -83,21 +83,32 @@ export function computeBreakdown(
   };
 }
 
+export type ProviderKey = "mercadopago" | "asaas" | "efi";
+
+export const PROVIDER_LABEL: Record<ProviderKey, string> = {
+  mercadopago: "Mercado Pago",
+  asaas: "Asaas",
+  efi: "Efí",
+};
+
 export function compareProviders(
   gross: number,
   platform: PlatformFee,
   asaasTable: ProviderFeeTable,
-): Record<PayMethod, { mercadopago: FeeBreakdown; asaas: FeeBreakdown }> {
+  efiTable: ProviderFeeTable = EFI_REFERENCE_FEES,
+): Record<PayMethod, Record<ProviderKey, FeeBreakdown>> {
   const methods: PayMethod[] = ["pix", "debit", "credit"];
-  const out = {} as Record<PayMethod, { mercadopago: FeeBreakdown; asaas: FeeBreakdown }>;
+  const out = {} as Record<PayMethod, Record<ProviderKey, FeeBreakdown>>;
   for (const m of methods) {
     out[m] = {
       mercadopago: computeBreakdown(gross, m, MP_FEES, platform),
       asaas: computeBreakdown(gross, m, asaasTable, platform),
+      efi: computeBreakdown(gross, m, efiTable, platform),
     };
   }
   return out;
 }
+
 
 export const brl = (n: number) =>
   Number(n || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
