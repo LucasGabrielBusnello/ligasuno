@@ -286,49 +286,72 @@ export const upsertCurrentSemesterCycle = createServerFn({ method: "POST" })
       (league as any).president_id,
     );
 
-    // Notifica todos os ligantes ainda pendentes
+    // Notifica todos os ligantes ainda pendentes (limite: 1 envio por dia)
+    let notified = 0;
+    let notifySkipped = false;
+    let nextNotifyAt: string | null = null;
     if (data.notify) {
-      const { data: pendings } = await supabaseAdmin
-        .from("semester_payments")
-        .select("user_id, amount_due_cents, profiles!semester_payments_user_id_fkey(email, full_name, username)")
-        .eq("cycle_id", cycleId)
-        .in("status", ["pending", "overdue"]);
-      const msgs = (pendings ?? []).map((p: any) => {
-        const email = p.profiles?.email;
-        if (!email) return null;
-        const name = p.profiles?.full_name || p.profiles?.username || "ligante";
-        const due = p.amount_due_cents ?? camedAmountCents;
-        return {
-          to: email,
-          subject: `Semestralidade aberta — ${league.name}`,
-          html: emailLayout({
-            title: `Olá, ${name}. A semestralidade ${period.semester}º/${period.year} está aberta.`,
-            brandColor: brand,
-            leagueName: league.name,
-            bodyHtml: `<p>A presidência da <strong>${league.name}</strong> abriu o ciclo de pagamento da semestralidade. Quitar agora garante que você não perca atividades, oficinas nem oportunidades de pesquisa da liga.</p>
-              ${emailInfoCard({
-                title: "Seu pagamento",
-                brandColor: brand,
-                rows: [
-                  { label: "Ciclo", value: `${period.semester}º semestre de ${period.year}` },
-                  { label: "Valor", value: brl(due) },
-                  { label: "Vencimento", value: fmtDate(data.due_date) },
-                  ...(data.late_fee_cents > 0 ? [{ label: "Acréscimo após vencer", value: brl(data.late_fee_cents) }] : []),
-                ],
-              })}
-              <p>É rápido: o pagamento é feito por Pix direto no painel do ligante, com confirmação automática.</p>`,
-            ctaLabel: "Pagar via Pix",
-            ctaUrl: `${PUBLISHED_URL}/ligante/${(league as any).slug}?tab=schedule&semestralidade=1`,
-            signature: `— Presidência da ${league.name}`,
-          }),
-        };
-      }).filter(Boolean) as any[];
-      if (msgs.length) {
-        await sendGmailBulk(msgs);
+      const { data: cycleRow } = await supabaseAdmin
+        .from("semester_cycles")
+        .select("last_notified_at")
+        .eq("id", cycleId)
+        .maybeSingle();
+      const last = (cycleRow as any)?.last_notified_at
+        ? new Date((cycleRow as any).last_notified_at).getTime()
+        : 0;
+      const DAY = 24 * 60 * 60 * 1000;
+      if (last && Date.now() - last < DAY) {
+        notifySkipped = true;
+        nextNotifyAt = new Date(last + DAY).toISOString();
+      } else {
+        const { data: pendings } = await supabaseAdmin
+          .from("semester_payments")
+          .select("user_id, amount_due_cents, profiles!semester_payments_user_id_fkey(email, full_name, username)")
+          .eq("cycle_id", cycleId)
+          .in("status", ["pending", "overdue"]);
+        const msgs = (pendings ?? []).map((p: any) => {
+          const email = p.profiles?.email;
+          if (!email) return null;
+          const name = p.profiles?.full_name || p.profiles?.username || "ligante";
+          const due = p.amount_due_cents ?? camedAmountCents;
+          return {
+            to: email,
+            subject: `Semestralidade aberta — ${league.name}`,
+            html: emailLayout({
+              title: `Olá, ${name}. A semestralidade ${period.semester}º/${period.year} está aberta.`,
+              brandColor: brand,
+              leagueName: league.name,
+              bodyHtml: `<p>A presidência da <strong>${league.name}</strong> abriu o ciclo de pagamento da semestralidade. Quitar agora garante que você não perca atividades, oficinas nem oportunidades de pesquisa da liga.</p>
+                ${emailInfoCard({
+                  title: "Seu pagamento",
+                  brandColor: brand,
+                  rows: [
+                    { label: "Ciclo", value: `${period.semester}º semestre de ${period.year}` },
+                    { label: "Valor", value: brl(due) },
+                    { label: "Vencimento", value: fmtDate(data.due_date) },
+                    ...(data.late_fee_cents > 0 ? [{ label: "Acréscimo após vencer", value: brl(data.late_fee_cents) }] : []),
+                  ],
+                })}
+                <p>É rápido: o pagamento é feito direto no painel do ligante.</p>`,
+              ctaLabel: "Pagar agora",
+              ctaUrl: `${PUBLISHED_URL}/ligante/${(league as any).slug}?tab=schedule&semestralidade=1`,
+              signature: `— Presidência da ${league.name}`,
+            }),
+          };
+        }).filter(Boolean) as any[];
+        if (msgs.length) {
+          await sendGmailBulk(msgs);
+          notified = msgs.length;
+        }
+        const now = new Date().toISOString();
+        await supabaseAdmin.from("semester_cycles")
+          .update({ last_notified_at: now } as any).eq("id", cycleId);
+        nextNotifyAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       }
     }
 
-    return { ok: true, cycle_id: cycleId };
+    return { ok: true, cycle_id: cycleId, notified, notify_skipped: notifySkipped, next_notify_at: nextNotifyAt };
+
   });
 
 // ------------------ president: alterar manualmente o status de pagamento ------------------
