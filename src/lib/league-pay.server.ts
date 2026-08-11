@@ -97,6 +97,29 @@ export async function createLeaguePix(args: {
     return { provider: "asaas", ...r, status: normalizeAsaasStatus(r.status) };
   }
 
+  if (setup.provider === "efi") {
+    const origin = (() => {
+      try { return new URL(args.notificationUrl).origin; } catch { return ""; }
+    })();
+    const r = await createEfiChargeLink({
+      creds: { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
+      amount: args.amount,
+      description: args.description,
+      externalReference: args.externalReference,
+      notificationUrl: origin
+        ? `${origin}/api/public/payments/efi-webhook?lid=${args.leagueId}`
+        : undefined,
+    });
+    return {
+      provider: "efi",
+      payment_id: r.payment_id,
+      status: normalizeEfiStatus(r.status),
+      ticket_url: r.url,
+    };
+  }
+
+
+
   const pay = await createPixPayment({
     sellerAccessToken: setup.accessToken,
     amount: args.amount,
