@@ -125,7 +125,7 @@ export const setLeaguePaymentProvider = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({
     league_id: z.string().uuid(),
-    provider: z.enum(["mercadopago", "asaas"]),
+    provider: z.enum(["mercadopago", "asaas", "efi"]),
   }).parse(i))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -135,11 +135,16 @@ export const setLeaguePaymentProvider = createServerFn({ method: "POST" })
       const { data: acc } = await (supabaseAdmin as any)
         .from("league_asaas_accounts").select("league_id").eq("league_id", data.league_id).maybeSingle();
       if (!acc) throw new Error("Conecte a conta Asaas antes de selecioná-la.");
+    } else if (data.provider === "efi") {
+      const { data: acc } = await (supabaseAdmin as any)
+        .from("league_efi_accounts").select("league_id").eq("league_id", data.league_id).maybeSingle();
+      if (!acc) throw new Error("Conecte a conta Efí antes de selecioná-la.");
     } else {
       const { data: acc } = await supabaseAdmin
         .from("league_mp_accounts").select("league_id").eq("league_id", data.league_id).maybeSingle();
       if (!acc) throw new Error("Conecte a conta Mercado Pago antes de selecioná-la.");
     }
+
 
     await supabaseAdmin.from("leagues")
       .update({ payment_provider: data.provider } as any).eq("id", data.league_id);
