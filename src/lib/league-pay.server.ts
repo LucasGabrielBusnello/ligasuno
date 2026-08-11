@@ -8,6 +8,12 @@ import {
   getAsaasPayment,
   normalizeAsaasStatus,
 } from "@/lib/asaas.server";
+import {
+  createEfiChargeLink,
+  getEfiCharge,
+  normalizeEfiStatus,
+} from "@/lib/efi.server";
+
 import { decryptString } from "@/lib/crypto.server";
 
 export type LeagueProvider = "mercadopago" | "asaas" | "efi";
