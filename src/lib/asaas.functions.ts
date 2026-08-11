@@ -23,14 +23,18 @@ export const getLeaguePaymentConfig = createServerFn({ method: "POST" })
     const { loadFeeForCategory } = await import("@/lib/mp.server");
     await assertPresident(supabaseAdmin, data.league_id, context.userId);
 
-    const [{ data: league }, { data: mp }, { data: asaas }] = await Promise.all([
+    const [{ data: league }, { data: mp }, { data: asaas }, { data: efi }] = await Promise.all([
       supabaseAdmin.from("leagues").select("payment_provider").eq("id", data.league_id).maybeSingle(),
       supabaseAdmin.from("league_mp_accounts").select("league_id, user_id_mp, nickname, connected_at")
         .eq("league_id", data.league_id).maybeSingle(),
       (supabaseAdmin as any).from("league_asaas_accounts")
         .select("account_name, account_email, sandbox, connected_at")
         .eq("league_id", data.league_id).maybeSingle(),
+      (supabaseAdmin as any).from("league_efi_accounts")
+        .select("account_name, sandbox, connected_at")
+        .eq("league_id", data.league_id).maybeSingle(),
     ]);
+
 
     const categories = ["event", "minicourse", "selection", "semester"] as const;
     const platformFees: Record<string, { pct: number; fixed: number }> = {};
