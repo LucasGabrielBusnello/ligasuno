@@ -59,14 +59,18 @@ export const getLeaguePaymentConfig = createServerFn({ method: "POST" })
       }
     }
 
+    const rawProvider = (league as any)?.payment_provider;
     return {
-      provider: (league as any)?.payment_provider === "asaas" ? "asaas" : "mercadopago",
+      provider:
+        rawProvider === "asaas" ? "asaas" : rawProvider === "efi" ? "efi" : "mercadopago",
       mp: mp ? { nickname: (mp as any).nickname, connected_at: (mp as any).connected_at } : null,
       asaas: asaas ?? null,
+      efi: efi ?? null,
       asaasFees,
       asaasError,
       platformFees,
     };
+
   });
 
 /** Conecta a conta Asaas da liga (API Key). Recebimento cai em qualquer banco. */
