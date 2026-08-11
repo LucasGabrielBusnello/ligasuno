@@ -1,27 +1,15 @@
 // Camada única de pagamento das ligas — SERVER ONLY.
-// A liga escolhe o provedor: "mercadopago" ou "asaas" (recebe em qualquer banco).
+// A liga escolhe o provedor: "mercadopago" (confirmação automática)
+// ou "infinitepay" (link de checkout, sem confirmação automática).
 
 import { createPixPayment, getPayment, loadLeagueMpAccount } from "@/lib/mp.server";
-import {
-  createAsaasCheckout,
-  createAsaasPix,
-  getAsaasPayment,
-  normalizeAsaasStatus,
-} from "@/lib/asaas.server";
-import {
-  createEfiChargeLink,
-  getEfiCharge,
-  normalizeEfiStatus,
-} from "@/lib/efi.server";
+import { buildCheckoutUrl, checkPaymentByNsu } from "@/lib/infinitepay.server";
 
-import { decryptString } from "@/lib/crypto.server";
-
-export type LeagueProvider = "mercadopago" | "asaas" | "efi";
+export type LeagueProvider = "mercadopago" | "infinitepay";
 
 export type LeaguePaymentSetup =
   | { provider: "mercadopago"; accessToken: string }
-  | { provider: "asaas"; apiKey: string; sandbox: boolean }
-  | { provider: "efi"; clientId: string; clientSecret: string; sandbox: boolean };
+  | { provider: "infinitepay"; handle: string };
 
 export async function loadLeaguePaymentSetup(
   supabaseAdmin: any,
@@ -29,38 +17,21 @@ export async function loadLeaguePaymentSetup(
 ): Promise<LeaguePaymentSetup> {
   const { data: league } = await supabaseAdmin
     .from("leagues").select("payment_provider").eq("id", leagueId).maybeSingle();
-  const raw = league?.payment_provider;
   const provider: LeagueProvider =
-    raw === "asaas" ? "asaas" : raw === "efi" ? "efi" : "mercadopago";
+    league?.payment_provider === "infinitepay" ? "infinitepay" : "mercadopago";
 
-  if (provider === "efi") {
-    const { data } = await supabaseAdmin
-      .from("league_efi_accounts").select("*").eq("league_id", leagueId).maybeSingle();
-    if (!data) {
-      throw new Error("Esta liga ainda não conectou a conta Efí. O presidente precisa conectar antes de aceitar pagamentos.");
+  if (provider === "infinitepay") {
+    const { data } = await (supabaseAdmin as any)
+      .from("league_infinitepay_accounts").select("handle").eq("league_id", leagueId).maybeSingle();
+    if (!data?.handle) {
+      throw new Error("Esta liga ainda não conectou a conta InfinitePay. O presidente precisa conectar antes de aceitar pagamentos.");
     }
-    return {
-      provider: "efi",
-      clientId: await decryptString(String(data.client_id_encrypted)),
-      clientSecret: await decryptString(String(data.client_secret_encrypted)),
-      sandbox: !!data.sandbox,
-    };
-  }
-
-  if (provider === "asaas") {
-    const { data } = await supabaseAdmin
-      .from("league_asaas_accounts").select("*").eq("league_id", leagueId).maybeSingle();
-    if (!data) {
-      throw new Error("Esta liga ainda não conectou a conta Asaas. O presidente precisa conectar antes de aceitar pagamentos.");
-    }
-    const apiKey = await decryptString(String(data.api_key_encrypted));
-    return { provider: "asaas", apiKey, sandbox: !!data.sandbox };
+    return { provider: "infinitepay", handle: String(data.handle) };
   }
 
   const mp = await loadLeagueMpAccount(supabaseAdmin, leagueId);
   return { provider: "mercadopago", accessToken: String((mp as any).access_token) };
 }
-
 
 export type UnifiedPixResult = {
   provider: LeagueProvider;
@@ -72,7 +43,11 @@ export type UnifiedPixResult = {
   expires_at?: string;
 };
 
-/** Cria uma cobrança Pix na conta da liga, no provedor configurado. */
+function originOf(url: string): string {
+  try { return new URL(url).origin; } catch { return ""; }
+}
+
+/** Cria uma cobrança na conta da liga, no provedor configurado. */
 export async function createLeaguePix(args: {
   supabaseAdmin: any;
   leagueId: string;
@@ -87,44 +62,24 @@ export async function createLeaguePix(args: {
 }): Promise<UnifiedPixResult> {
   const setup = await loadLeaguePaymentSetup(args.supabaseAdmin, args.leagueId);
 
-  if (setup.provider === "asaas") {
-    const r = await createAsaasPix({
-      apiKey: setup.apiKey,
-      amount: args.amount,
-      description: args.description,
-      externalReference: args.externalReference,
-      payer: {
-        name: `${args.payer.firstName} ${args.payer.lastName}`.trim(),
-        cpf: args.payer.cpf,
-        email: args.payer.email,
-      },
-      expiresInMinutes: args.expiresInMinutes,
-    });
-    return { provider: "asaas", ...r, status: normalizeAsaasStatus(r.status) };
-  }
-
-  if (setup.provider === "efi") {
-    const origin = (() => {
-      try { return new URL(args.notificationUrl).origin; } catch { return ""; }
-    })();
-    const r = await createEfiChargeLink({
-      creds: { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
-      amount: args.amount,
-      description: args.description,
-      externalReference: args.externalReference,
-      notificationUrl: origin
-        ? `${origin}/api/public/payments/efi-webhook?lid=${args.leagueId}`
-        : undefined,
+  if (setup.provider === "infinitepay") {
+    const origin = originOf(args.notificationUrl);
+    const url = await buildCheckoutUrl({
+      handle: setup.handle,
+      items: [{ description: args.description, quantity: 1, price: Math.round(args.amount * 100) }],
+      orderNsu: args.externalReference,
+      redirectUrl: origin || "https://ligasuno.com.br",
+      webhookUrl: args.notificationUrl,
+      customerName: `${args.payer.firstName} ${args.payer.lastName}`.trim(),
+      customerEmail: args.payer.email,
     });
     return {
-      provider: "efi",
-      payment_id: r.payment_id,
-      status: normalizeEfiStatus(r.status),
-      ticket_url: r.url,
+      provider: "infinitepay",
+      payment_id: args.externalReference,
+      status: "pending",
+      ticket_url: url,
     };
   }
-
-
 
   const pay = await createPixPayment({
     sellerAccessToken: setup.accessToken,
@@ -162,24 +117,17 @@ export async function createLeagueCheckoutLink(args: {
   payer: { name: string; cpf: string; email?: string };
 }): Promise<{ provider: LeagueProvider; payment_id: string; url: string } | null> {
   const setup = await loadLeaguePaymentSetup(args.supabaseAdmin, args.leagueId);
-  if (setup.provider === "efi") {
-    const r = await createEfiChargeLink({
-      creds: { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
-      amount: args.amount,
-      description: args.description,
-      externalReference: args.externalReference,
-    });
-    return { provider: "efi", payment_id: r.payment_id, url: r.url };
-  }
-  if (setup.provider !== "asaas") return null;
-  const r = await createAsaasCheckout({
-    apiKey: setup.apiKey,
-    amount: args.amount,
-    description: args.description,
-    externalReference: args.externalReference,
-    payer: args.payer,
+  if (setup.provider !== "infinitepay") return null;
+  const url = await buildCheckoutUrl({
+    handle: setup.handle,
+    items: [{ description: args.description, quantity: 1, price: Math.round(args.amount * 100) }],
+    orderNsu: args.externalReference,
+    redirectUrl: "https://ligasuno.com.br",
+    webhookUrl: "https://ligasuno.com.br/api/public/payments/infinitepay-webhook",
+    customerName: args.payer.name,
+    customerEmail: args.payer.email,
   });
-  return { provider: "asaas", ...r };
+  return { provider: "infinitepay", payment_id: args.externalReference, url };
 }
 
 /** Consulta o status de um pagamento no provedor da liga (normalizado ao padrão MP). */
@@ -190,20 +138,12 @@ export async function getLeaguePaymentStatus(
 ): Promise<string | null> {
   try {
     const setup = await loadLeaguePaymentSetup(supabaseAdmin, leagueId);
-    if (setup.provider === "asaas") {
-      const p = await getAsaasPayment(setup.apiKey, paymentId);
-      return normalizeAsaasStatus(p?.status);
-    }
-    if (setup.provider === "efi") {
-      const c = await getEfiCharge(
-        { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
-        String(paymentId),
-      );
-      return normalizeEfiStatus(c?.status);
+    if (setup.provider === "infinitepay") {
+      const r = await checkPaymentByNsu(setup.handle, String(paymentId));
+      return r.paid ? "approved" : "pending";
     }
     const pay = await getPayment(String(paymentId), setup.accessToken);
     return pay?.status ?? null;
-
   } catch (e) {
     console.error("getLeaguePaymentStatus falhou", e);
     return null;
