@@ -129,7 +129,7 @@ export function SemesterDialog({
     if (Number.isNaN(ligAmt) || ligAmt <= 0) return toast.error("Defina o valor da semestralidade para os ligantes");
     if (!dueDate) return toast.error("Defina a data de vencimento");
     try {
-      await upsert({
+      const res: any = await upsert({
         data: {
           league_id: league.id,
           amount_cents: ligAmt,
@@ -141,6 +141,18 @@ export function SemesterDialog({
       });
 
       toast.success(cycle ? "Ciclo atualizado" : "Ciclo criado");
+      if (notify) {
+        if (res?.notify_skipped) {
+          toast.warning(
+            `A cobrança por e-mail já foi enviada hoje. Só é possível enviar 1 vez por dia — próximo envio liberado em ${
+              res?.next_notify_at ? new Date(res.next_notify_at).toLocaleString("pt-BR") : "24h"
+            }.`,
+          );
+        } else if (res?.notified) {
+          toast.success(`Cobrança enviada por e-mail para ${res.notified} ligante(s).`);
+        }
+      }
+
       await reload();
       onUpdated?.();
     } catch (e: any) {
