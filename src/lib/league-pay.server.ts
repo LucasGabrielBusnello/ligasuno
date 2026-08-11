@@ -10,11 +10,12 @@ import {
 } from "@/lib/asaas.server";
 import { decryptString } from "@/lib/crypto.server";
 
-export type LeagueProvider = "mercadopago" | "asaas";
+export type LeagueProvider = "mercadopago" | "asaas" | "efi";
 
 export type LeaguePaymentSetup =
   | { provider: "mercadopago"; accessToken: string }
-  | { provider: "asaas"; apiKey: string; sandbox: boolean };
+  | { provider: "asaas"; apiKey: string; sandbox: boolean }
+  | { provider: "efi"; clientId: string; clientSecret: string; sandbox: boolean };
 
 export async function loadLeaguePaymentSetup(
   supabaseAdmin: any,
@@ -22,7 +23,23 @@ export async function loadLeaguePaymentSetup(
 ): Promise<LeaguePaymentSetup> {
   const { data: league } = await supabaseAdmin
     .from("leagues").select("payment_provider").eq("id", leagueId).maybeSingle();
-  const provider: LeagueProvider = (league?.payment_provider === "asaas") ? "asaas" : "mercadopago";
+  const raw = league?.payment_provider;
+  const provider: LeagueProvider =
+    raw === "asaas" ? "asaas" : raw === "efi" ? "efi" : "mercadopago";
+
+  if (provider === "efi") {
+    const { data } = await supabaseAdmin
+      .from("league_efi_accounts").select("*").eq("league_id", leagueId).maybeSingle();
+    if (!data) {
+      throw new Error("Esta liga ainda não conectou a conta Efí. O presidente precisa conectar antes de aceitar pagamentos.");
+    }
+    return {
+      provider: "efi",
+      clientId: await decryptString(String(data.client_id_encrypted)),
+      clientSecret: await decryptString(String(data.client_secret_encrypted)),
+      sandbox: !!data.sandbox,
+    };
+  }
 
   if (provider === "asaas") {
     const { data } = await supabaseAdmin
@@ -37,6 +54,7 @@ export async function loadLeaguePaymentSetup(
   const mp = await loadLeagueMpAccount(supabaseAdmin, leagueId);
   return { provider: "mercadopago", accessToken: String((mp as any).access_token) };
 }
+
 
 export type UnifiedPixResult = {
   provider: LeagueProvider;
