@@ -8,13 +8,20 @@ import {
   getAsaasPayment,
   normalizeAsaasStatus,
 } from "@/lib/asaas.server";
+import {
+  createEfiChargeLink,
+  getEfiCharge,
+  normalizeEfiStatus,
+} from "@/lib/efi.server";
+
 import { decryptString } from "@/lib/crypto.server";
 
-export type LeagueProvider = "mercadopago" | "asaas";
+export type LeagueProvider = "mercadopago" | "asaas" | "efi";
 
 export type LeaguePaymentSetup =
   | { provider: "mercadopago"; accessToken: string }
-  | { provider: "asaas"; apiKey: string; sandbox: boolean };
+  | { provider: "asaas"; apiKey: string; sandbox: boolean }
+  | { provider: "efi"; clientId: string; clientSecret: string; sandbox: boolean };
 
 export async function loadLeaguePaymentSetup(
   supabaseAdmin: any,
@@ -22,7 +29,23 @@ export async function loadLeaguePaymentSetup(
 ): Promise<LeaguePaymentSetup> {
   const { data: league } = await supabaseAdmin
     .from("leagues").select("payment_provider").eq("id", leagueId).maybeSingle();
-  const provider: LeagueProvider = (league?.payment_provider === "asaas") ? "asaas" : "mercadopago";
+  const raw = league?.payment_provider;
+  const provider: LeagueProvider =
+    raw === "asaas" ? "asaas" : raw === "efi" ? "efi" : "mercadopago";
+
+  if (provider === "efi") {
+    const { data } = await supabaseAdmin
+      .from("league_efi_accounts").select("*").eq("league_id", leagueId).maybeSingle();
+    if (!data) {
+      throw new Error("Esta liga ainda não conectou a conta Efí. O presidente precisa conectar antes de aceitar pagamentos.");
+    }
+    return {
+      provider: "efi",
+      clientId: await decryptString(String(data.client_id_encrypted)),
+      clientSecret: await decryptString(String(data.client_secret_encrypted)),
+      sandbox: !!data.sandbox,
+    };
+  }
 
   if (provider === "asaas") {
     const { data } = await supabaseAdmin
@@ -37,6 +60,7 @@ export async function loadLeaguePaymentSetup(
   const mp = await loadLeagueMpAccount(supabaseAdmin, leagueId);
   return { provider: "mercadopago", accessToken: String((mp as any).access_token) };
 }
+
 
 export type UnifiedPixResult = {
   provider: LeagueProvider;
@@ -79,6 +103,29 @@ export async function createLeaguePix(args: {
     return { provider: "asaas", ...r, status: normalizeAsaasStatus(r.status) };
   }
 
+  if (setup.provider === "efi") {
+    const origin = (() => {
+      try { return new URL(args.notificationUrl).origin; } catch { return ""; }
+    })();
+    const r = await createEfiChargeLink({
+      creds: { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
+      amount: args.amount,
+      description: args.description,
+      externalReference: args.externalReference,
+      notificationUrl: origin
+        ? `${origin}/api/public/payments/efi-webhook?lid=${args.leagueId}`
+        : undefined,
+    });
+    return {
+      provider: "efi",
+      payment_id: r.payment_id,
+      status: normalizeEfiStatus(r.status),
+      ticket_url: r.url,
+    };
+  }
+
+
+
   const pay = await createPixPayment({
     sellerAccessToken: setup.accessToken,
     amount: args.amount,
@@ -115,6 +162,15 @@ export async function createLeagueCheckoutLink(args: {
   payer: { name: string; cpf: string; email?: string };
 }): Promise<{ provider: LeagueProvider; payment_id: string; url: string } | null> {
   const setup = await loadLeaguePaymentSetup(args.supabaseAdmin, args.leagueId);
+  if (setup.provider === "efi") {
+    const r = await createEfiChargeLink({
+      creds: { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
+      amount: args.amount,
+      description: args.description,
+      externalReference: args.externalReference,
+    });
+    return { provider: "efi", payment_id: r.payment_id, url: r.url };
+  }
   if (setup.provider !== "asaas") return null;
   const r = await createAsaasCheckout({
     apiKey: setup.apiKey,
@@ -138,8 +194,16 @@ export async function getLeaguePaymentStatus(
       const p = await getAsaasPayment(setup.apiKey, paymentId);
       return normalizeAsaasStatus(p?.status);
     }
+    if (setup.provider === "efi") {
+      const c = await getEfiCharge(
+        { clientId: setup.clientId, clientSecret: setup.clientSecret, sandbox: setup.sandbox },
+        String(paymentId),
+      );
+      return normalizeEfiStatus(c?.status);
+    }
     const pay = await getPayment(String(paymentId), setup.accessToken);
     return pay?.status ?? null;
+
   } catch (e) {
     console.error("getLeaguePaymentStatus falhou", e);
     return null;

@@ -81,24 +81,37 @@ export function PixPaymentDialog({
             {typeof data.amount === "number" && (
               <div className="text-center text-3xl font-black">R$ {data.amount.toFixed(2)}</div>
             )}
-            {data.qr_code_base64 ? (
-              <div className="flex justify-center">
-                <img
-                  src={`data:image/png;base64,${data.qr_code_base64}`}
-                  alt="QR Code Pix"
-                  className="size-56 border rounded bg-white p-2"
-                />
+            {!data.qr_code && data.ticket_url ? (
+              <div className="space-y-3 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Clique abaixo para pagar com Pix, cartão ou boleto na página segura do provedor.
+                </p>
+                <Button asChild className="w-full">
+                  <a href={data.ticket_url} target="_blank" rel="noreferrer">Pagar agora</a>
+                </Button>
               </div>
             ) : (
-              <div className="size-56 bg-muted rounded animate-pulse mx-auto" />
+              <>
+                {data.qr_code_base64 ? (
+                  <div className="flex justify-center">
+                    <img
+                      src={`data:image/png;base64,${data.qr_code_base64}`}
+                      alt="QR Code Pix"
+                      className="size-56 border rounded bg-white p-2"
+                    />
+                  </div>
+                ) : (
+                  <div className="size-56 bg-muted rounded animate-pulse mx-auto" />
+                )}
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-muted-foreground">Pix copia e cola</label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={data.qr_code ?? ""} className="font-mono text-xs" />
+                    <Button type="button" variant="outline" size="icon" onClick={copy}><Copy className="size-4" /></Button>
+                  </div>
+                </div>
+              </>
             )}
-            <div className="space-y-2">
-              <label className="text-xs font-black uppercase text-muted-foreground">Pix copia e cola</label>
-              <div className="flex gap-2">
-                <Input readOnly value={data.qr_code ?? ""} className="font-mono text-xs" />
-                <Button type="button" variant="outline" size="icon" onClick={copy}><Copy className="size-4" /></Button>
-              </div>
-            </div>
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="size-3 animate-spin" />
               Aguardando confirmação do pagamento...
@@ -110,6 +123,7 @@ export function PixPaymentDialog({
               </p>
             )}
           </div>
+
         )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Fechar</Button>
