@@ -40,6 +40,14 @@ export const ASAAS_REFERENCE_FEES: ProviderFeeTable = {
   credit: { percent: 2.99, fixed: 0.49 },
 };
 
+/** Taxas de referência da Efí (Gerencianet) — plano gratuito, recebimento imediato. */
+export const EFI_REFERENCE_FEES: ProviderFeeTable = {
+  pix: { percent: 0, fixed: 0.6 },
+  debit: { percent: 2.79, fixed: 0 },
+  credit: { percent: 3.79, fixed: 0.49 },
+};
+
+
 export type PlatformFee = { pct: number; fixed: number };
 
 export type FeeBreakdown = {
