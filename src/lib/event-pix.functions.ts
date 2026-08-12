@@ -17,6 +17,7 @@ const eventSchema = z.object({
   social_name: z.string().max(150).optional().nullable(),
   cpf: z.string().min(11).max(20),
   course: z.enum(["medicina", "enfermagem", "egresso_medicina", "outro", "egresso_outro"]),
+  referred_by: z.string().uuid().optional().nullable(),
 });
 
 function splitName(full: string) {
@@ -84,6 +85,7 @@ export const createEventPix = createServerFn({ method: "POST" })
         event_id: data.event_id, user_id: userId,
         full_name: data.full_name, social_name: data.social_name || null,
         cpf: normalizedCpf, course: data.course, category,
+        referred_by: data.referred_by || null,
         base_price: base, paid_price: paid, discount_reason: discountReason,
         status: paid === 0 ? "paid" : "pending",
       }, { onConflict: "event_id,user_id" })
