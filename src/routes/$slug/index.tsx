@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { createEventPix, getEventPaymentStatus } from "@/lib/event-pix.functions";
+import { listEventReferrers } from "@/lib/event-referral.functions";
 import { cancelMinicourseRegistration } from "@/lib/participant.functions";
 
 import { verifySelectionPayment } from "@/lib/selection.functions";
@@ -557,12 +558,21 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ full_name: "", social_name: "", cpf: "", course: "medicina" as const });
   const [pix, setPix] = useState<PixPaymentData | null>(null);
+  const loadReferrers = useServerFn(listEventReferrers);
+  const [referrers, setReferrers] = useState<Array<{ id: string; name: string }>>([]);
+  const [referredBy, setReferredBy] = useState<{ id: string; name: string } | null>(null);
+  const [refQuery, setRefQuery] = useState("");
+  const [refOpen, setRefOpen] = useState(false);
 
   useEffect(() => {
     if (event) {
       setStep(1);
       setForm({ full_name: "", social_name: "", cpf: "", course: "medicina" });
       setPix(null);
+      setReferredBy(null); setRefQuery(""); setRefOpen(false);
+      loadReferrers({ data: { event_id: event.id } } as any)
+        .then((r: any) => setReferrers(r ?? []))
+        .catch(() => setReferrers([]));
       // Prefill com dados do perfil
       supabase.auth.getUser().then(({ data: u }) => {
         if (!u.user) return;
@@ -602,6 +612,7 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
         social_name: form.social_name || null,
         cpf: normalizedCpf,
         course: form.course,
+        referred_by: referredBy?.id ?? null,
       }});
       if (res.free) {
         toast.success("Inscrição confirmada!");
@@ -653,6 +664,37 @@ function RegisterEventDialog({ event, onClose, myLeagueIds, leagueId, onSuccess 
                   <option value="egresso_outro">Egresso de outro curso</option>
                 </select>
               </div>
+              {referrers.length > 0 && (
+                <div className="relative">
+                  <Label>Quem te indicou? (opcional)</Label>
+                  <Input
+                    value={referredBy ? referredBy.name : refQuery}
+                    onFocus={() => setRefOpen(true)}
+                    onChange={(e) => { setReferredBy(null); setRefQuery(e.target.value); setRefOpen(true); }}
+                    placeholder="Digite o nome do ligante para buscar" />
+                  {referredBy && (
+                    <button type="button" onClick={() => { setReferredBy(null); setRefQuery(""); }}
+                      className="text-[11px] text-muted-foreground underline mt-1">Limpar indicação</button>
+                  )}
+                  {refOpen && !referredBy && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-lg">
+                      {referrers
+                        .filter((r) => r.name.toLowerCase().includes(refQuery.trim().toLowerCase()))
+                        .slice(0, 30)
+                        .map((r) => (
+                          <button key={r.id} type="button"
+                            onClick={() => { setReferredBy(r); setRefQuery(r.name); setRefOpen(false); }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors">
+                            {r.name}
+                          </button>
+                        ))}
+                      {referrers.filter((r) => r.name.toLowerCase().includes(refQuery.trim().toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum ligante encontrado</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <DialogFooter><Button onClick={() => {
                 if (!form.full_name || form.full_name.length < 2) return toast.error("Informe seu nome completo");
                 if (!isValidCPF(normalizeCpf(form.cpf))) return toast.error("Informe um CPF válido");
