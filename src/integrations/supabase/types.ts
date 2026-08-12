@@ -1941,6 +1941,7 @@ export type Database = {
           full_name: string
           id: string
           paid_price: number
+          referred_by: string | null
           social_name: string | null
           status: string
           stripe_session_id: string | null
@@ -1959,6 +1960,7 @@ export type Database = {
           full_name: string
           id?: string
           paid_price?: number
+          referred_by?: string | null
           social_name?: string | null
           status?: string
           stripe_session_id?: string | null
@@ -1977,6 +1979,7 @@ export type Database = {
           full_name?: string
           id?: string
           paid_price?: number
+          referred_by?: string | null
           social_name?: string | null
           status?: string
           stripe_session_id?: string | null
@@ -1989,6 +1992,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "league_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
