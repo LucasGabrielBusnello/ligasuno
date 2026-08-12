@@ -54,7 +54,27 @@ import { LeagueQuizManager } from "@/components/league-quiz-manager";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 
-export const Route = createFileRoute("/presidente/$slug")({ component: PresidentePage });
+export const Route = createFileRoute("/presidente/$slug")({
+  ssr: false,
+  component: PresidentePage,
+  pendingComponent: () => <div className="p-12 text-center text-muted-foreground">Carregando painel…</div>,
+  errorComponent: ({ error }: any) => (
+    <div className="p-12 text-center space-y-2">
+      <h1 className="text-xl font-black">Algo deu errado ao abrir o painel</h1>
+      <p className="text-sm text-muted-foreground">{error?.message ?? "Erro desconhecido"}</p>
+      <button className="underline text-sm" onClick={() => window.location.reload()}>Recarregar</button>
+    </div>
+  ),
+});
+
+/** Converte uma data ISO para o formato local aceito por <input type="datetime-local"> */
+function toLocalInput(value: any) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return "";
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 16);
+}
 
 const ABOUT_KEYS = [
   { key: "ensino", label: "Ensino", placeholder: "Aulas, discussões clínicas e estudos dirigidos." },
@@ -554,7 +574,7 @@ export function EventsTab({ league }: any) {
     setF({
       title: ev.title, description: ev.description ?? "", image_url: ev.image_url ?? "",
       event_date: ev.event_date ?? "", end_date: ev.end_date ? String(ev.end_date).slice(0, 16) : "", schedule: ev.schedule ?? "",
-      registration_deadline: ev.registration_deadline ? new Date(ev.registration_deadline).toISOString().slice(0, 16) : "",
+      registration_deadline: toLocalInput(ev.registration_deadline),
       price_ligante: Number(ev.price_ligante) || 0,
       price_partner: Number(ev.price_partner) || 0,
       price_visitor: Number(ev.price_visitor) || 0,
@@ -836,16 +856,25 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
       .eq("event_id", event.id)
       .order("created_at", { ascending: false });
     const list = rs ?? [];
-    const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
+    const uids = Array.from(new Set([
+      ...list.map((r: any) => r.user_id),
+      ...list.map((r: any) => r.referred_by).filter(Boolean),
+    ]));
     let profMap: Record<string, any> = {};
     if (uids.length > 0) {
       const { data: profs } = await supabase
         .from("profiles")
-        .select("id,username,email,phone")
+        .select("id,username,email,phone,full_name")
         .in("id", uids);
       (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
     }
-    setRegs(list.map((r: any) => ({ ...r, profiles: profMap[r.user_id] ?? null })));
+    setRegs(list.map((r: any) => ({
+      ...r,
+      profiles: profMap[r.user_id] ?? null,
+      referrer_name: r.referred_by
+        ? (profMap[r.referred_by]?.full_name || profMap[r.referred_by]?.username || "Ligante")
+        : null,
+    })));
 
     // Carrega transações MP aprovadas para calcular valor LÍQUIDO (bruto - taxas)
     const regIds = list.map((r: any) => r.id);
@@ -985,6 +1014,17 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
     totalNet += net;
   });
 
+  const referralRanking = (() => {
+    const map: Record<string, number> = {};
+    (regs ?? []).forEach((r: any) => {
+      if (!r.referred_by) return;
+      const name = r.referrer_name || "Ligante";
+      map[name] = (map[name] ?? 0) + 1;
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]);
+  })();
+  const noReferralCount = (regs ?? []).filter((r: any) => !r.referred_by).length;
+
   async function copyPaidRegistrations() {
     const names = paidRegs.map((r: any) => r.full_name).filter(Boolean).join("\n");
     try {
@@ -1066,6 +1106,23 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                 <div className="text-[10px] text-muted-foreground mt-0.5">Já descontadas as taxas de pagamento</div>
               </div>
             </div>
+            <div className="rounded border p-3 space-y-2">
+              <div className="text-xs font-bold">Indicações</div>
+              {referralRanking.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">Nenhum inscrito informou quem o indicou até agora.</p>
+              ) : (
+                <div className="space-y-1">
+                  {referralRanking.map(([name, count]) => (
+                    <div key={name} className="flex items-center justify-between text-sm border rounded px-2 py-1">
+                      <span className="truncate">{name}</span>
+                      <Badge variant="secondary">{count} inscrito{count > 1 ? "s" : ""}</Badge>
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-muted-foreground pt-1">Sem indicação: {noReferralCount}</p>
+                </div>
+              )}
+            </div>
+
             <div className="rounded border p-3 space-y-2">
               <div className="text-xs font-bold">Adicionar inscrito manualmente</div>
               <div className="flex gap-2">
@@ -1322,7 +1379,7 @@ function MinicoursesManager({ event, open, onClose }: { event: any; open: boolea
     setEditing(mc);
     setF({
       title: mc.title, instructor: mc.instructor,
-      starts_at: mc.starts_at ? new Date(mc.starts_at).toISOString().slice(0, 16) : "",
+      starts_at: toLocalInput(mc.starts_at),
       location: mc.location ?? "", description: mc.description ?? "",
       is_free: !!mc.is_free, price: Number(mc.price) || 0,
       price_ligante: mc.price_ligante === null || mc.price_ligante === undefined ? null : Number(mc.price_ligante),
