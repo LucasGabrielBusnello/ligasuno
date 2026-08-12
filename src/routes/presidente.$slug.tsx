@@ -755,7 +755,7 @@ export function EventsTab({ league }: any) {
 function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete }: any) {
   const [regs, setRegs] = useState<any[] | null>(null);
   const [txnByReg, setTxnByReg] = useState<Record<string, { gross: number; fee: number }>>({});
-  const [mcRevenue, setMcRevenue] = useState<{ total: number; count: number }>({ total: 0, count: 0 });
+  const [mcRevenue, setMcRevenue] = useState<{ total: number; gross: number; count: number }>({ total: 0, gross: 0, count: 0 });
   const [selected, setSelected] = useState<any | null>(null);
   const [mcOpen, setMcOpen] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
@@ -824,6 +824,9 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const [regSelected, setRegSelected] = useState<any | null>(null);
   const [regBusy, setRegBusy] = useState<string | null>(null);
   const regQueryDebounced = useDebouncedValue(regQuery, 600);
+  const [regError, setRegError] = useState<string | null>(null);
+  const [regForm, setRegForm] = useState({ full_name: "", cpf: "", course: "", category: "visitor", paid_price: "0", status: "paid" });
+
 
 
   async function loadRegs() {
@@ -861,21 +864,39 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
       setTxnByReg(map);
     }
 
-    // Arrecadação dos minicursos deste evento
+    // Arrecadação dos minicursos deste evento (líquido = bruto - taxas)
     const { data: mcs } = await supabase.from("league_minicourses").select("id").eq("event_id", event.id);
     const mcIds = (mcs ?? []).map((m: any) => m.id);
     if (mcIds.length > 0) {
       const { data: mcRegs } = await supabase
         .from("minicourse_registrations")
-        .select("paid_price,status")
+        .select("id,paid_price,status")
         .in("minicourse_id", mcIds)
         .eq("status", "paid");
       const paid = (mcRegs ?? []).filter((r: any) => Number(r.paid_price) > 0);
-      setMcRevenue({
-        total: paid.reduce((a: number, r: any) => a + (Number(r.paid_price) || 0), 0),
-        count: (mcRegs ?? []).length,
+      let mcTxn: Record<string, { gross: number; fee: number }> = {};
+      if (paid.length > 0) {
+        const { data: txns } = await supabase
+          .from("payment_transactions")
+          .select("reference_id, gross_amount, fee_amount, raw")
+          .eq("category", "minicourse")
+          .eq("status", "approved")
+          .in("reference_id", paid.map((r: any) => r.id));
+        (txns ?? []).forEach((t: any) => {
+          const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
+          mcTxn[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
+        });
+      }
+      let gross = 0, net = 0;
+      paid.forEach((r: any) => {
+        const t = mcTxn[r.id];
+        const g = t ? t.gross : (Number(r.paid_price) || 0);
+        gross += g;
+        net += t ? Math.max(0, t.gross - t.fee) : g;
       });
+      setMcRevenue({ total: net, gross, count: (mcRegs ?? []).length });
     }
+
   }
 
   useEffect(() => {
@@ -894,20 +915,32 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
 
 
   async function addPerson(p: any) {
+    const name = (regForm.full_name || p.full_name || p.username || p.email || "").trim();
+    if (name.length < 2) { setRegError("Informe o nome completo da pessoa (mínimo 2 letras)."); return; }
     setRegBusy(p.id);
+    setRegError(null);
     try {
       await addEventReg({ data: {
         event_id: event.id, user_id: p.id,
-        full_name: p.full_name || p.username || p.email,
-        category: "visitor", paid_price: 0, status: "paid",
+        full_name: name,
+        cpf: regForm.cpf.trim() || null,
+        course: regForm.course.trim() || null,
+        category: regForm.category as any,
+        paid_price: Number(regForm.paid_price) || 0,
+        status: regForm.status as any,
       } } as any);
       toast.success("Inscrito adicionado");
       setRegResults(null); setRegSelected(null); setRegQuery("");
+      setRegForm({ full_name: "", cpf: "", course: "", category: "visitor", paid_price: "0", status: "paid" });
       await loadRegs();
-
-    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    } catch (e: any) {
+      const msg = e?.message || e?.body?.message || "Erro desconhecido ao adicionar o inscrito.";
+      setRegError(msg);
+      toast.error(msg);
+    }
     finally { setRegBusy(null); }
   }
+
 
   async function removeReg(r: any) {
     if (!confirm(`Remover ${r.full_name} do evento? Isso também remove suas inscrições nos minicursos.`)) return;
@@ -1020,39 +1053,106 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                 )}
               </div>
               <div className="p-2 rounded bg-emerald-500/10 col-span-2 sm:col-span-1">
-                <div className="text-xs text-muted-foreground">Minicursos</div>
+                <div className="text-xs text-muted-foreground">Minicursos (líquido)</div>
                 <div className="font-black">R$ {mcRevenue.total.toFixed(2)}</div>
+                {mcRevenue.gross > mcRevenue.total && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Bruto R$ {mcRevenue.gross.toFixed(2)} · Taxas −R$ {(mcRevenue.gross - mcRevenue.total).toFixed(2)}</div>
+                )}
                 <div className="text-[10px] text-muted-foreground mt-0.5">{mcRevenue.count} inscrições pagas/confirmadas</div>
               </div>
               <div className="p-2 rounded bg-primary/20 col-span-2 sm:col-span-1">
-                <div className="text-xs text-muted-foreground">Total geral</div>
+                <div className="text-xs text-muted-foreground">Total líquido na conta</div>
                 <div className="font-black">R$ {(totalNet + mcRevenue.total).toFixed(2)}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Já descontadas as taxas de pagamento</div>
               </div>
             </div>
-            <div className="rounded border p-2 space-y-2">
-              <div className="text-xs font-bold">Adicionar inscrito</div>
+            <div className="rounded border p-3 space-y-2">
+              <div className="text-xs font-bold">Adicionar inscrito manualmente</div>
               <div className="flex gap-2">
                 <Input value={regQuery}
                   onChange={(e) => { setRegQuery(e.target.value); setRegSelected(null); }}
-                  placeholder="Digite o nome, usuário ou e-mail" className="h-8 text-sm" />
-                <Button size="sm" disabled={!regSelected || regBusy === regSelected?.id || regSelected?.already}
-                  onClick={() => regSelected && addPerson(regSelected)}>
-                  {regSelected?.already ? "Já inscrito" : (regBusy === regSelected?.id ? "..." : "Adicionar")}
-                </Button>
+                  placeholder="Busque pelo nome, usuário ou e-mail" className="h-8 text-sm" />
               </div>
               {regBusy === "search" && <p className="text-[11px] text-muted-foreground">Buscando…</p>}
-              {regSelected && <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{regSelected.full_name || regSelected.username}</span></p>}
-              {!regSelected && regResults !== null && regResults.length === 0 && regBusy !== "search" && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {!regSelected && regResults !== null && regResults.length === 0 && regBusy !== "search" && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  Nenhum usuário encontrado com esse termo. A pessoa precisa ter conta no MEDUNO para ser inscrita — peça o cadastro com o e-mail dela e busque novamente.
+                </p>
+              )}
               {!regSelected && (regResults ?? []).map((p: any) => (
                 <button key={p.id} type="button"
-                  onClick={() => { setRegSelected(p); setRegQuery(p.full_name || p.username || ""); setRegResults(null); }}
+                  onClick={() => {
+                    setRegSelected(p);
+                    setRegQuery(p.full_name || p.username || "");
+                    setRegResults(null);
+                    setRegForm((f) => ({ ...f, full_name: p.full_name || p.username || p.email || "" }));
+                  }}
                   className="w-full text-left p-2 rounded border text-sm hover:bg-muted/60 transition-colors">
                   <span className="font-bold truncate block">{p.full_name || p.username}</span>
                   {p.already && <span className="text-[11px] text-muted-foreground">Já inscrito</span>}
                 </button>
               ))}
 
+              {regSelected && (
+                <div className="space-y-2 pt-2 border-t">
+                  <p className="text-[11px] text-muted-foreground">
+                    Selecionado: <span className="font-bold text-foreground">{regSelected.full_name || regSelected.username}</span>
+                    {regSelected.already && <span className="text-amber-600 dark:text-amber-400"> · já inscrito(a) neste evento</span>}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <Label className="text-[11px]">Nome completo *</Label>
+                      <Input className="h-8 text-sm" value={regForm.full_name}
+                        onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">CPF</Label>
+                      <Input className="h-8 text-sm" value={regForm.cpf}
+                        onChange={(e) => setRegForm({ ...regForm, cpf: e.target.value })} placeholder="Opcional" />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Curso</Label>
+                      <Input className="h-8 text-sm" value={regForm.course}
+                        onChange={(e) => setRegForm({ ...regForm, course: e.target.value })} placeholder="Opcional" />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Categoria</Label>
+                      <select className="w-full h-8 text-sm rounded border bg-background px-2" value={regForm.category}
+                        onChange={(e) => setRegForm({ ...regForm, category: e.target.value })}>
+                        <option value="ligante">Ligante</option>
+                        <option value="partner">Parceiro</option>
+                        <option value="visitor">Visitante</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Valor pago (R$)</Label>
+                      <Input className="h-8 text-sm" type="number" step="0.01" min="0" value={regForm.paid_price}
+                        onChange={(e) => setRegForm({ ...regForm, paid_price: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-[11px]">Status</Label>
+                      <select className="w-full h-8 text-sm rounded border bg-background px-2" value={regForm.status}
+                        onChange={(e) => setRegForm({ ...regForm, status: e.target.value })}>
+                        <option value="paid">Pago</option>
+                        <option value="pending">Pendente</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={regBusy === regSelected.id} onClick={() => addPerson(regSelected)}>
+                      {regBusy === regSelected.id ? "Adicionando..." : "Adicionar inscrito"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setRegSelected(null); setRegQuery(""); setRegError(null); }}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
+              {regError && (
+                <div className="rounded border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive">
+                  <strong>Não foi possível adicionar:</strong> {regError}
+                </div>
+              )}
             </div>
+
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
             {regs !== null && regs.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p>
@@ -1110,6 +1210,22 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                     <Input className="h-8 text-sm" defaultValue={selected.full_name ?? ""}
                       onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== selected.full_name) saveReg(selected, { full_name: v }); }} />
                   </div>
+                  <div>
+                    <Label className="text-[11px]">Nome social</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.social_name ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== (selected.social_name ?? "")) saveReg(selected, { social_name: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">CPF</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.cpf ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== (selected.cpf ?? "")) saveReg(selected, { cpf: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Curso</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.course ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== (selected.course ?? "")) saveReg(selected, { course: v }); }} />
+                  </div>
+
                   <div>
                     <Label className="text-[11px]">Valor pago (R$)</Label>
                     <Input className="h-8 text-sm" type="number" step="0.01" min="0" defaultValue={Number(selected.paid_price) || 0}

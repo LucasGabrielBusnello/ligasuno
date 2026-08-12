@@ -2,6 +2,38 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+/** Traduz erros técnicos do banco em mensagens claras em português. */
+function friendlyDbError(error: any, ctx: "inscrito" | "inscrição"): string {
+  const msg = String(error?.message ?? "");
+  const details = String(error?.details ?? "");
+  const code = String(error?.code ?? "");
+
+  if (code === "23505" || /duplicate key/i.test(msg)) {
+    return "Esta pessoa já está inscrita neste evento.";
+  }
+  if (code === "23503" || /foreign key/i.test(msg)) {
+    return "Não foi possível vincular: o usuário ou o evento não existe mais.";
+  }
+  if (code === "23502" || /null value in column/i.test(msg)) {
+    const col = msg.match(/column "([^"]+)"/)?.[1];
+    const map: Record<string, string> = {
+      cpf: "CPF",
+      course: "Curso",
+      full_name: "Nome completo",
+      user_id: "Usuário",
+    };
+    const label = col ? (map[col] ?? col) : "um campo obrigatório";
+    return `Faltou preencher: ${label}. Preencha esse campo e tente novamente.`;
+  }
+  if (code === "22P02") {
+    return "Algum valor foi preenchido em formato inválido (por exemplo, valor pago com letras).";
+  }
+  if (/permission denied|row-level security/i.test(msg)) {
+    return "Você não tem permissão para alterar esta inscrição.";
+  }
+  return `Não foi possível salvar ${ctx === "inscrito" ? "o inscrito" : "a inscrição"}: ${msg || details || "erro desconhecido"}`;
+}
+
 async function assertCanManageEvent(supabase: any, userId: string, eventId: string) {
   const { data: ev } = await supabase
     .from("league_events").select("id, league_id").eq("id", eventId).maybeSingle();
@@ -56,7 +88,10 @@ export const adminAddEventRegistration = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => z.object({
     event_id: z.string().uuid(),
     user_id: z.string().uuid(),
-    full_name: z.string().trim().min(2).max(150),
+    full_name: z.string().trim().min(2, "Informe o nome completo (mínimo 2 letras).").max(150),
+    social_name: z.string().trim().max(150).optional().nullable(),
+    cpf: z.string().trim().max(20).optional().nullable(),
+    course: z.string().trim().max(120).optional().nullable(),
     category: z.enum(["ligante", "partner", "visitor"]).default("visitor"),
     paid_price: z.number().min(0).default(0),
     status: z.enum(["paid", "pending"]).default("paid"),
@@ -67,18 +102,25 @@ export const adminAddEventRegistration = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: exists } = await supabaseAdmin
-      .from("event_registrations").select("id").eq("event_id", data.event_id).eq("user_id", data.user_id).maybeSingle();
-    if (exists) throw new Error("Esta pessoa já está inscrita no evento");
+      .from("event_registrations").select("id,full_name").eq("event_id", data.event_id).eq("user_id", data.user_id).maybeSingle();
+    if (exists) {
+      throw new Error(`Esta pessoa já está inscrita no evento (${(exists as any).full_name ?? "inscrição existente"}). Edite a inscrição existente em vez de criar outra.`);
+    }
 
     const { error } = await supabaseAdmin.from("event_registrations").insert({
       event_id: data.event_id,
       user_id: data.user_id,
       full_name: data.full_name,
+      social_name: data.social_name || null,
+      // cpf e course são obrigatórios no banco: usamos string vazia quando não informados
+      cpf: (data.cpf ?? "").trim(),
+      course: (data.course ?? "").trim() || "Não informado",
       category: data.category,
+      base_price: data.paid_price,
       paid_price: data.paid_price,
       status: data.status,
     } as any);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyDbError(error, "inscrito"));
     return { ok: true };
   });
 
@@ -86,7 +128,10 @@ export const adminUpdateEventRegistration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({
     registration_id: z.string().uuid(),
-    full_name: z.string().trim().min(2).max(150).optional(),
+    full_name: z.string().trim().min(2, "Informe o nome completo (mínimo 2 letras).").max(150).optional(),
+    social_name: z.string().trim().max(150).optional().nullable(),
+    cpf: z.string().trim().max(20).optional().nullable(),
+    course: z.string().trim().max(120).optional().nullable(),
     category: z.enum(["ligante", "partner", "visitor"]).optional(),
     paid_price: z.number().min(0).optional(),
     status: z.enum(["paid", "pending"]).optional(),
@@ -101,13 +146,16 @@ export const adminUpdateEventRegistration = createServerFn({ method: "POST" })
 
     const patch: any = {};
     if (data.full_name !== undefined) patch.full_name = data.full_name;
+    if (data.social_name !== undefined) patch.social_name = data.social_name || null;
+    if (data.cpf !== undefined) patch.cpf = (data.cpf ?? "").trim();
+    if (data.course !== undefined) patch.course = (data.course ?? "").trim() || "Não informado";
     if (data.category !== undefined) patch.category = data.category;
     if (data.paid_price !== undefined) patch.paid_price = data.paid_price;
     if (data.status !== undefined) patch.status = data.status;
     if (Object.keys(patch).length === 0) return { ok: true };
 
     const { error } = await supabaseAdmin.from("event_registrations").update(patch).eq("id", data.registration_id);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyDbError(error, "inscrição"));
     return { ok: true };
   });
 
@@ -132,6 +180,6 @@ export const adminDeleteEventRegistration = createServerFn({ method: "POST" })
     }
 
     const { error } = await supabaseAdmin.from("event_registrations").delete().eq("id", data.registration_id);
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyDbError(error, "inscrição"));
     return { ok: true };
   });

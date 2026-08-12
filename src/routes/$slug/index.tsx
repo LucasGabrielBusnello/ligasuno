@@ -1086,7 +1086,8 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
         const cap = Number(mc.max_registrations) || 0;
         const slots = slotsByMc[mc.id] ?? [];
         const totalExcl = slots.reduce((a, s) => a + Number(s.seats || 0), 0);
-        const generalCap = Math.max(0, cap - totalExcl);
+        void totalExcl;
+
         const full = cap > 0 && cnt.total >= cap && !mine;
         return (
           <Card key={mc.id}>
@@ -1146,11 +1147,12 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
                         const remaining = Math.max(0, Number(s.seats) - used);
                         const name = leaguesById[s.league_id]?.name ?? "liga";
                         const hasPrice = s.price !== null && s.price !== undefined && !mc.is_free;
+                        if (!hasPrice) return null;
                         return (
-                          <Badge key={s.league_id} variant="outline" className={`text-[10px] ${hasPrice && remaining > 0 ? "border-emerald-500 text-emerald-700 dark:text-emerald-400" : ""}`}>
-                            {hasPrice
-                              ? `${name}: R$ ${Number(s.price).toFixed(2)} — ${remaining} de ${s.seats} vagas`
-                              : `${remaining} de ${s.seats} vagas exclusivas para ${name}`}
+                          <Badge key={s.league_id} variant="outline" className={`text-[10px] ${remaining > 0 ? "border-emerald-500 text-emerald-700 dark:text-emerald-400" : ""}`}>
+                            {remaining > 0
+                              ? `Valor especial para ${name}: R$ ${Number(s.price).toFixed(2)}`
+                              : `Valor especial para ${name} encerrado`}
                           </Badge>
                         );
                       })}
@@ -1159,10 +1161,7 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
 
                 </div>
                 <div className="shrink-0 text-right space-y-1">
-                  <div className="text-[10px] text-muted-foreground">{cnt.total}/{cap || "∞"} vagas</div>
-                  {totalExcl > 0 && cap > 0 && (
-                    <div className="text-[10px] text-muted-foreground">{Math.max(0, generalCap - cnt.general)} abertas</div>
-                  )}
+
                   {mine?.status === "paid" ? (
                     <Badge className="bg-emerald-600">Inscrito</Badge>
                   ) : mine?.status === "pending" ? (
