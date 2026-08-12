@@ -1086,7 +1086,8 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
         const cap = Number(mc.max_registrations) || 0;
         const slots = slotsByMc[mc.id] ?? [];
         const totalExcl = slots.reduce((a, s) => a + Number(s.seats || 0), 0);
-        const generalCap = Math.max(0, cap - totalExcl);
+        void totalExcl;
+
         const full = cap > 0 && cnt.total >= cap && !mine;
         return (
           <Card key={mc.id}>
