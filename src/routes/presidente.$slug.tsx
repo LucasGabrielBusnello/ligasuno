@@ -861,21 +861,39 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
       setTxnByReg(map);
     }
 
-    // Arrecadação dos minicursos deste evento
+    // Arrecadação dos minicursos deste evento (líquido = bruto - taxas)
     const { data: mcs } = await supabase.from("league_minicourses").select("id").eq("event_id", event.id);
     const mcIds = (mcs ?? []).map((m: any) => m.id);
     if (mcIds.length > 0) {
       const { data: mcRegs } = await supabase
         .from("minicourse_registrations")
-        .select("paid_price,status")
+        .select("id,paid_price,status")
         .in("minicourse_id", mcIds)
         .eq("status", "paid");
       const paid = (mcRegs ?? []).filter((r: any) => Number(r.paid_price) > 0);
-      setMcRevenue({
-        total: paid.reduce((a: number, r: any) => a + (Number(r.paid_price) || 0), 0),
-        count: (mcRegs ?? []).length,
+      let mcTxn: Record<string, { gross: number; fee: number }> = {};
+      if (paid.length > 0) {
+        const { data: txns } = await supabase
+          .from("payment_transactions")
+          .select("reference_id, gross_amount, fee_amount, raw")
+          .eq("category", "minicourse")
+          .eq("status", "approved")
+          .in("reference_id", paid.map((r: any) => r.id));
+        (txns ?? []).forEach((t: any) => {
+          const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
+          mcTxn[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
+        });
+      }
+      let gross = 0, net = 0;
+      paid.forEach((r: any) => {
+        const t = mcTxn[r.id];
+        const g = t ? t.gross : (Number(r.paid_price) || 0);
+        gross += g;
+        net += t ? Math.max(0, t.gross - t.fee) : g;
       });
+      setMcRevenue({ total: net, gross, count: (mcRegs ?? []).length });
     }
+
   }
 
   useEffect(() => {
