@@ -915,20 +915,32 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
 
 
   async function addPerson(p: any) {
+    const name = (regForm.full_name || p.full_name || p.username || p.email || "").trim();
+    if (name.length < 2) { setRegError("Informe o nome completo da pessoa (mínimo 2 letras)."); return; }
     setRegBusy(p.id);
+    setRegError(null);
     try {
       await addEventReg({ data: {
         event_id: event.id, user_id: p.id,
-        full_name: p.full_name || p.username || p.email,
-        category: "visitor", paid_price: 0, status: "paid",
+        full_name: name,
+        cpf: regForm.cpf.trim() || null,
+        course: regForm.course.trim() || null,
+        category: regForm.category as any,
+        paid_price: Number(regForm.paid_price) || 0,
+        status: regForm.status as any,
       } } as any);
       toast.success("Inscrito adicionado");
       setRegResults(null); setRegSelected(null); setRegQuery("");
+      setRegForm({ full_name: "", cpf: "", course: "", category: "visitor", paid_price: "0", status: "paid" });
       await loadRegs();
-
-    } catch (e: any) { toast.error(e?.message ?? "Falha"); }
+    } catch (e: any) {
+      const msg = e?.message || e?.body?.message || "Erro desconhecido ao adicionar o inscrito.";
+      setRegError(msg);
+      toast.error(msg);
+    }
     finally { setRegBusy(null); }
   }
+
 
   async function removeReg(r: any) {
     if (!confirm(`Remover ${r.full_name} do evento? Isso também remove suas inscrições nos minicursos.`)) return;
