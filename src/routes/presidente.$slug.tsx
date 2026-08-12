@@ -755,7 +755,7 @@ export function EventsTab({ league }: any) {
 function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete }: any) {
   const [regs, setRegs] = useState<any[] | null>(null);
   const [txnByReg, setTxnByReg] = useState<Record<string, { gross: number; fee: number }>>({});
-  const [mcRevenue, setMcRevenue] = useState<{ total: number; count: number }>({ total: 0, count: 0 });
+  const [mcRevenue, setMcRevenue] = useState<{ total: number; gross: number; count: number }>({ total: 0, gross: 0, count: 0 });
   const [selected, setSelected] = useState<any | null>(null);
   const [mcOpen, setMcOpen] = useState(false);
   const [checkinOpen, setCheckinOpen] = useState(false);
