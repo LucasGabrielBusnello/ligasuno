@@ -1038,39 +1038,106 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                 )}
               </div>
               <div className="p-2 rounded bg-emerald-500/10 col-span-2 sm:col-span-1">
-                <div className="text-xs text-muted-foreground">Minicursos</div>
+                <div className="text-xs text-muted-foreground">Minicursos (líquido)</div>
                 <div className="font-black">R$ {mcRevenue.total.toFixed(2)}</div>
+                {mcRevenue.gross > mcRevenue.total && (
+                  <div className="text-[10px] text-muted-foreground mt-0.5">Bruto R$ {mcRevenue.gross.toFixed(2)} · Taxas −R$ {(mcRevenue.gross - mcRevenue.total).toFixed(2)}</div>
+                )}
                 <div className="text-[10px] text-muted-foreground mt-0.5">{mcRevenue.count} inscrições pagas/confirmadas</div>
               </div>
               <div className="p-2 rounded bg-primary/20 col-span-2 sm:col-span-1">
-                <div className="text-xs text-muted-foreground">Total geral</div>
+                <div className="text-xs text-muted-foreground">Total líquido na conta</div>
                 <div className="font-black">R$ {(totalNet + mcRevenue.total).toFixed(2)}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">Já descontadas as taxas de pagamento</div>
               </div>
             </div>
-            <div className="rounded border p-2 space-y-2">
-              <div className="text-xs font-bold">Adicionar inscrito</div>
+            <div className="rounded border p-3 space-y-2">
+              <div className="text-xs font-bold">Adicionar inscrito manualmente</div>
               <div className="flex gap-2">
                 <Input value={regQuery}
                   onChange={(e) => { setRegQuery(e.target.value); setRegSelected(null); }}
-                  placeholder="Digite o nome, usuário ou e-mail" className="h-8 text-sm" />
-                <Button size="sm" disabled={!regSelected || regBusy === regSelected?.id || regSelected?.already}
-                  onClick={() => regSelected && addPerson(regSelected)}>
-                  {regSelected?.already ? "Já inscrito" : (regBusy === regSelected?.id ? "..." : "Adicionar")}
-                </Button>
+                  placeholder="Busque pelo nome, usuário ou e-mail" className="h-8 text-sm" />
               </div>
               {regBusy === "search" && <p className="text-[11px] text-muted-foreground">Buscando…</p>}
-              {regSelected && <p className="text-[11px] text-muted-foreground">Selecionado: <span className="font-bold text-foreground">{regSelected.full_name || regSelected.username}</span></p>}
-              {!regSelected && regResults !== null && regResults.length === 0 && regBusy !== "search" && <p className="text-[11px] text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {!regSelected && regResults !== null && regResults.length === 0 && regBusy !== "search" && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                  Nenhum usuário encontrado com esse termo. A pessoa precisa ter conta no MEDUNO para ser inscrita — peça o cadastro com o e-mail dela e busque novamente.
+                </p>
+              )}
               {!regSelected && (regResults ?? []).map((p: any) => (
                 <button key={p.id} type="button"
-                  onClick={() => { setRegSelected(p); setRegQuery(p.full_name || p.username || ""); setRegResults(null); }}
+                  onClick={() => {
+                    setRegSelected(p);
+                    setRegQuery(p.full_name || p.username || "");
+                    setRegResults(null);
+                    setRegForm((f) => ({ ...f, full_name: p.full_name || p.username || p.email || "" }));
+                  }}
                   className="w-full text-left p-2 rounded border text-sm hover:bg-muted/60 transition-colors">
                   <span className="font-bold truncate block">{p.full_name || p.username}</span>
                   {p.already && <span className="text-[11px] text-muted-foreground">Já inscrito</span>}
                 </button>
               ))}
 
+              {regSelected && (
+                <div className="space-y-2 pt-2 border-t">
+                  <p className="text-[11px] text-muted-foreground">
+                    Selecionado: <span className="font-bold text-foreground">{regSelected.full_name || regSelected.username}</span>
+                    {regSelected.already && <span className="text-amber-600 dark:text-amber-400"> · já inscrito(a) neste evento</span>}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="col-span-2">
+                      <Label className="text-[11px]">Nome completo *</Label>
+                      <Input className="h-8 text-sm" value={regForm.full_name}
+                        onChange={(e) => setRegForm({ ...regForm, full_name: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">CPF</Label>
+                      <Input className="h-8 text-sm" value={regForm.cpf}
+                        onChange={(e) => setRegForm({ ...regForm, cpf: e.target.value })} placeholder="Opcional" />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Curso</Label>
+                      <Input className="h-8 text-sm" value={regForm.course}
+                        onChange={(e) => setRegForm({ ...regForm, course: e.target.value })} placeholder="Opcional" />
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Categoria</Label>
+                      <select className="w-full h-8 text-sm rounded border bg-background px-2" value={regForm.category}
+                        onChange={(e) => setRegForm({ ...regForm, category: e.target.value })}>
+                        <option value="ligante">Ligante</option>
+                        <option value="partner">Parceiro</option>
+                        <option value="visitor">Visitante</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-[11px]">Valor pago (R$)</Label>
+                      <Input className="h-8 text-sm" type="number" step="0.01" min="0" value={regForm.paid_price}
+                        onChange={(e) => setRegForm({ ...regForm, paid_price: e.target.value })} />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-[11px]">Status</Label>
+                      <select className="w-full h-8 text-sm rounded border bg-background px-2" value={regForm.status}
+                        onChange={(e) => setRegForm({ ...regForm, status: e.target.value })}>
+                        <option value="paid">Pago</option>
+                        <option value="pending">Pendente</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={regBusy === regSelected.id} onClick={() => addPerson(regSelected)}>
+                      {regBusy === regSelected.id ? "Adicionando..." : "Adicionar inscrito"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setRegSelected(null); setRegQuery(""); setRegError(null); }}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
+              {regError && (
+                <div className="rounded border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive">
+                  <strong>Não foi possível adicionar:</strong> {regError}
+                </div>
+              )}
             </div>
+
             {regs === null && <p className="text-xs text-muted-foreground">Carregando inscritos...</p>}
             {regs !== null && regs.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">Nenhum inscrito ainda.</p>
