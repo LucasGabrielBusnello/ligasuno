@@ -824,6 +824,9 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const [regSelected, setRegSelected] = useState<any | null>(null);
   const [regBusy, setRegBusy] = useState<string | null>(null);
   const regQueryDebounced = useDebouncedValue(regQuery, 600);
+  const [regError, setRegError] = useState<string | null>(null);
+  const [regForm, setRegForm] = useState({ full_name: "", cpf: "", course: "", category: "visitor", paid_price: "0", status: "paid" });
+
 
 
   async function loadRegs() {
