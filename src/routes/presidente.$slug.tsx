@@ -1211,6 +1211,22 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
                       onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== selected.full_name) saveReg(selected, { full_name: v }); }} />
                   </div>
                   <div>
+                    <Label className="text-[11px]">Nome social</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.social_name ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== (selected.social_name ?? "")) saveReg(selected, { social_name: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">CPF</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.cpf ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== (selected.cpf ?? "")) saveReg(selected, { cpf: v }); }} />
+                  </div>
+                  <div>
+                    <Label className="text-[11px]">Curso</Label>
+                    <Input className="h-8 text-sm" defaultValue={selected.course ?? ""}
+                      onBlur={(e) => { const v = e.target.value.trim(); if (v !== (selected.course ?? "")) saveReg(selected, { course: v }); }} />
+                  </div>
+
+                  <div>
                     <Label className="text-[11px]">Valor pago (R$)</Label>
                     <Input className="h-8 text-sm" type="number" step="0.01" min="0" defaultValue={Number(selected.paid_price) || 0}
                       onBlur={(e) => { const v = Number(e.target.value) || 0; if (v !== Number(selected.paid_price)) saveReg(selected, { paid_price: v }); }} />
