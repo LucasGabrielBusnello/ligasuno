@@ -175,6 +175,7 @@ function AuthPage() {
     email: "",
     phone: "",
     is_unochapeco: "" as "" | "sim" | "nao",
+    course: "",
     matricula: "",
     class_code: "" as "" | "ATM31" | "ATM30" | "ATM29" | "ATM28" | "ATM27" | "ATM26",
     password: "",
