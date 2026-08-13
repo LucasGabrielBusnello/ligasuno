@@ -21,6 +21,7 @@ import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscrip
 import { ImageUpload } from "@/components/image-upload";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 import { LOG_CATEGORY_LABEL } from "@/lib/activity-log";
+import { listUsersAdmin, updateUserAdmin } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -412,26 +413,129 @@ function CamedMemberDialog({ open, setOpen, member, onSaved }: any) {
 function UsersAdmin() {
   const [users, setUsers] = useState<any[]>([]);
   const [q, setQ] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<any | null>(null);
+  const listFn = useServerFn(listUsersAdmin);
+
+  const reload = async (query?: string) => {
+    setLoading(true);
+    try {
+      const rows = await listFn({ data: { q: query ?? "" } });
+      setUsers(rows as any[]);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao carregar usuários");
+    }
+    setLoading(false);
+  };
+  useEffect(() => { reload(""); }, []);
   useEffect(() => {
-    supabase.from("profiles").select("*").order("created_at", { ascending: false }).limit(200).then(({ data }) => setUsers(data ?? []));
-  }, []);
-  const filtered = users.filter((u) => !q || u.username?.includes(q) || u.email?.includes(q));
+    const t = setTimeout(() => reload(q), 400);
+    return () => clearTimeout(t);
+  }, [q]);
+
   return (
     <Card>
       <CardHeader><CardTitle>Usuários cadastrados</CardTitle></CardHeader>
       <CardContent>
-        <Input placeholder="Buscar..." value={q} onChange={(e) => setQ(e.target.value)} className="mb-4" />
-        <div className="space-y-2">
-          {filtered.map((u) => (
-            <div key={u.id} className="flex items-center justify-between p-3 rounded border">
-              <div><div className="font-bold">{u.username}</div><div className="text-xs text-muted-foreground">{u.email} · {u.phone ?? "—"}</div></div>
-            </div>
-          ))}
-        </div>
+        <Input placeholder="Buscar por nome, usuário, e-mail, CPF ou matrícula..." value={q} onChange={(e) => setQ(e.target.value)} className="mb-4" />
+        {loading ? <p className="text-sm text-muted-foreground">Carregando...</p> : (
+          <div className="space-y-2">
+            {users.length === 0 && <p className="text-sm text-muted-foreground">Nenhum usuário encontrado.</p>}
+            {users.map((u) => (
+              <div key={u.id} className="flex items-center justify-between gap-3 p-3 rounded border">
+                <div className="min-w-0">
+                  <div className="font-bold truncate">{u.full_name || u.username}</div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    @{u.username} · {u.email} · {u.phone ?? "sem telefone"}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {u.is_unochapeco_student ? "Medicina Unochapecó" : (u.course || "Curso não informado")}
+                    {u.class_code ? ` · ${u.class_code}` : ""}
+                    {u.current_semester ? ` · ${u.current_semester}º semestre` : ""}
+                    {u.cpf ? ` · CPF ${u.cpf}` : ""}
+                  </div>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => setEditing(u)}><Edit className="size-4" /> Editar</Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <AdminUserDialog user={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(q); }} />
       </CardContent>
     </Card>
   );
 }
+
+function AdminUserDialog({ user, onClose, onSaved }: { user: any | null; onClose: () => void; onSaved: () => void }) {
+  const [f, setF] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+  const saveFn = useServerFn(updateUserAdmin);
+  useEffect(() => { if (user) setF({ ...user }); }, [user]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await saveFn({ data: {
+        user_id: user.id,
+        full_name: f.full_name || null,
+        username: (f.username ?? "").trim(),
+        email: (f.email ?? "").trim(),
+        phone: f.phone || null,
+        cpf: f.cpf || null,
+        course: f.course || null,
+        matricula: f.matricula || null,
+        registration_number: f.registration_number || null,
+        current_semester: f.current_semester ? Number(f.current_semester) : null,
+        class_code: f.class_code || null,
+        is_unochapeco_student: !!f.is_unochapeco_student,
+      } });
+      toast.success("Dados do usuário atualizados");
+      onSaved();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    }
+    setSaving(false);
+  }
+
+  return (
+    <Dialog open={!!user} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Editar usuário</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label>Nome completo</Label><Input value={f.full_name ?? ""} onChange={(e) => setF({ ...f, full_name: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Usuário</Label><Input value={f.username ?? ""} onChange={(e) => setF({ ...f, username: e.target.value })} /></div>
+            <div><Label>E-mail</Label><Input value={f.email ?? ""} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Telefone</Label><Input value={f.phone ?? ""} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+            <div><Label>CPF</Label><Input value={f.cpf ?? ""} onChange={(e) => setF({ ...f, cpf: e.target.value })} /></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={!!f.is_unochapeco_student} onCheckedChange={(v) => setF({ ...f, is_unochapeco_student: v })} />
+            <Label>Aluno(a) de Medicina da Unochapecó</Label>
+          </div>
+          {f.is_unochapeco_student ? (
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>Turma</Label><Input value={f.class_code ?? ""} onChange={(e) => setF({ ...f, class_code: e.target.value.toUpperCase() })} placeholder="ATM31" /></div>
+              <div><Label>Semestre</Label><Input type="number" min={1} max={20} value={f.current_semester ?? ""} onChange={(e) => setF({ ...f, current_semester: e.target.value })} /></div>
+              <div><Label>Matrícula</Label><Input value={f.matricula ?? ""} onChange={(e) => setF({ ...f, matricula: e.target.value })} /></div>
+            </div>
+          ) : (
+            <div><Label>Curso</Label><Input value={f.course ?? ""} onChange={(e) => setF({ ...f, course: e.target.value })} /></div>
+          )}
+          <div><Label>Registro / Matrícula (outros)</Label><Input value={f.registration_number ?? ""} onChange={(e) => setF({ ...f, registration_number: e.target.value })} /></div>
+          <p className="text-xs text-muted-foreground">A senha não pode ser visualizada nem alterada por aqui — o usuário deve usar "Esqueci minha senha".</p>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button onClick={save} disabled={saving}>Salvar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 /* ===================== CONFIG ===================== */
 function SettingsAdmin() {
