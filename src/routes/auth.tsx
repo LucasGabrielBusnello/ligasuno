@@ -279,9 +279,11 @@ function AuthPage() {
         const mat = su.matricula.replace(/\D/g, "");
         if (mat) patch.matricula = mat;
         patch.class_code = su.class_code;
+        patch.course = "Medicina";
       } else {
         patch.matricula = null;
         patch.class_code = null;
+        patch.course = su.course;
       }
       try { await supabase.from("profiles").update(patch).eq("id", data.user.id); } catch {}
       // não bloqueia o login: e-mail de boas-vindas é enviado em segundo plano
