@@ -230,13 +230,15 @@ function AuthPage() {
       return;
     }
     if (su.is_unochapeco === "") {
-      const msg = "Informe se você é aluno(a) da Unochapecó.";
+      const msg = "Informe se você é aluno(a) de Medicina da Unochapecó.";
       setError(msg); toast.error(msg); return;
     }
     if (su.is_unochapeco === "sim") {
       if (!/^\d{9}$/.test(su.matricula)) { const m = "Matrícula deve ter 9 dígitos."; setError(m); toast.error(m); return; }
       const validClasses = ["ATM31","ATM30","ATM29","ATM28","ATM27","ATM26"];
       if (!validClasses.includes(su.class_code)) { const m = "Selecione sua turma ATM."; setError(m); toast.error(m); return; }
+    } else if (!su.course) {
+      const m = "Selecione qual curso você estuda/trabalha."; setError(m); toast.error(m); return;
     }
 
     setLoading(true);
