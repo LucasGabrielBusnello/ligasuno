@@ -21,6 +21,7 @@ import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscrip
 import { ImageUpload } from "@/components/image-upload";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 import { LOG_CATEGORY_LABEL } from "@/lib/activity-log";
+import { listUsersAdmin, updateUserAdmin } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
