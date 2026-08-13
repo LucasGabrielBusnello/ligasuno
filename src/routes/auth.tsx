@@ -408,14 +408,30 @@ function AuthPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Você é aluno(a) da Unochapecó?</Label>
+                    <Label>Você é aluno(a) de Medicina da Unochapecó?</Label>
                     <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "sim" })}
+                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "sim", course: "" })}
                         className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "sim" ? "border-primary bg-primary/10" : "border-border"}`}>Sim</button>
                       <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "nao", matricula: "", class_code: "" })}
                         className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "nao" ? "border-primary bg-primary/10" : "border-border"}`}>Não</button>
                     </div>
                   </div>
+                  {su.is_unochapeco === "nao" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="su-curso">Qual curso você estuda/trabalha?</Label>
+                      <select
+                        id="su-curso"
+                        value={su.course}
+                        onChange={(e) => setSu({ ...su, course: e.target.value })}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="">Selecione…</option>
+                        {["Fisioterapia","Enfermagem","Educação Física","Nutrição","Outro curso da Saúde","Outro Curso"].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   {su.is_unochapeco === "sim" && (
                     <>
                       <div className="space-y-1.5">
