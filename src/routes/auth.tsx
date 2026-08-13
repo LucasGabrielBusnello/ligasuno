@@ -175,6 +175,7 @@ function AuthPage() {
     email: "",
     phone: "",
     is_unochapeco: "" as "" | "sim" | "nao",
+    course: "",
     matricula: "",
     class_code: "" as "" | "ATM31" | "ATM30" | "ATM29" | "ATM28" | "ATM27" | "ATM26",
     password: "",
@@ -229,13 +230,15 @@ function AuthPage() {
       return;
     }
     if (su.is_unochapeco === "") {
-      const msg = "Informe se você é aluno(a) da Unochapecó.";
+      const msg = "Informe se você é aluno(a) de Medicina da Unochapecó.";
       setError(msg); toast.error(msg); return;
     }
     if (su.is_unochapeco === "sim") {
       if (!/^\d{9}$/.test(su.matricula)) { const m = "Matrícula deve ter 9 dígitos."; setError(m); toast.error(m); return; }
       const validClasses = ["ATM31","ATM30","ATM29","ATM28","ATM27","ATM26"];
       if (!validClasses.includes(su.class_code)) { const m = "Selecione sua turma ATM."; setError(m); toast.error(m); return; }
+    } else if (!su.course) {
+      const m = "Selecione qual curso você estuda/trabalha."; setError(m); toast.error(m); return;
     }
 
     setLoading(true);
@@ -276,9 +279,11 @@ function AuthPage() {
         const mat = su.matricula.replace(/\D/g, "");
         if (mat) patch.matricula = mat;
         patch.class_code = su.class_code;
+        patch.course = "Medicina";
       } else {
         patch.matricula = null;
         patch.class_code = null;
+        patch.course = su.course;
       }
       try { await supabase.from("profiles").update(patch).eq("id", data.user.id); } catch {}
       // não bloqueia o login: e-mail de boas-vindas é enviado em segundo plano
@@ -403,14 +408,30 @@ function AuthPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Você é aluno(a) da Unochapecó?</Label>
+                    <Label>Você é aluno(a) de Medicina da Unochapecó?</Label>
                     <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "sim" })}
+                      <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "sim", course: "" })}
                         className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "sim" ? "border-primary bg-primary/10" : "border-border"}`}>Sim</button>
                       <button type="button" onClick={() => setSu({ ...su, is_unochapeco: "nao", matricula: "", class_code: "" })}
                         className={`p-2.5 rounded-lg border-2 text-sm font-bold transition-all ${su.is_unochapeco === "nao" ? "border-primary bg-primary/10" : "border-border"}`}>Não</button>
                     </div>
                   </div>
+                  {su.is_unochapeco === "nao" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="su-curso">Qual curso você estuda/trabalha?</Label>
+                      <select
+                        id="su-curso"
+                        value={su.course}
+                        onChange={(e) => setSu({ ...su, course: e.target.value })}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="">Selecione…</option>
+                        {["Fisioterapia","Enfermagem","Educação Física","Nutrição","Outro curso da Saúde","Outro Curso"].map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   {su.is_unochapeco === "sim" && (
                     <>
                       <div className="space-y-1.5">
