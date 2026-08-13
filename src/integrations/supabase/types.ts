@@ -4097,6 +4097,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           class_code: Database["public"]["Enums"]["atm_class"] | null
+          course: string | null
           cpf: string | null
           created_at: string
           current_semester: number | null
@@ -4114,6 +4115,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           class_code?: Database["public"]["Enums"]["atm_class"] | null
+          course?: string | null
           cpf?: string | null
           created_at?: string
           current_semester?: number | null
@@ -4131,6 +4133,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           class_code?: Database["public"]["Enums"]["atm_class"] | null
+          course?: string | null
           cpf?: string | null
           created_at?: string
           current_semester?: number | null
