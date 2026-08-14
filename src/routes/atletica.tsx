@@ -5649,7 +5649,7 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
 }
 
 /* ============ Config → História por ano ============ */
-export type AthBoardMember = { name: string; role?: string | null; image_url?: string | null; description?: string | null };
+export type AthBoardMember = { name: string; role?: string | null; image_url?: string | null; description?: string | null; position?: number | null };
 export type AthYearInfo = { year: number; description?: string | null; board?: AthBoardMember[] };
 
 export function normalizeAthYears(raw: any): AthYearInfo[] {
@@ -5664,12 +5664,14 @@ export function normalizeAthYears(raw: any): AthYearInfo[] {
         board: Array.isArray(v?.board)
           ? v.board
               .filter((m: any) => m && typeof m.name === "string")
-              .map((m: any) => ({
+              .map((m: any, idx: number) => ({
                 name: m.name,
                 role: m.role ?? null,
                 image_url: m.image_url ?? null,
                 description: m.description ?? null,
+                position: Number.isFinite(Number(m.position)) ? Number(m.position) : idx,
               }))
+              .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
           : [],
       } as AthYearInfo;
     })
@@ -5719,7 +5721,12 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
           history_title: title,
           history_description: description || null,
           history_images: images,
-          history_years: years,
+          history_years: years.map((y) => ({
+            ...y,
+            board: [...(y.board ?? [])]
+              .map((m, i) => ({ ...m, position: m.position ?? i }))
+              .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+          })),
         } as any,
       });
       toast.success("História salva — recarregando…");
@@ -5880,7 +5887,12 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
                   variant="outline"
                   className="bg-white/5 border-white/20 text-white hover:bg-white/10"
                   onClick={() =>
-                    patchYear({ board: [...(current.board ?? []), { name: "", role: "", image_url: null, description: "" }] })
+                    patchYear({
+                      board: [
+                        ...(current.board ?? []),
+                        { name: "", role: "", image_url: null, description: "", position: (current.board ?? []).length },
+                      ],
+                    })
                   }
                 >
                   <Plus className="size-4 mr-1" /> Adicionar membro
@@ -5921,6 +5933,16 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
                         onChange={(e) => patchMember(i, { description: e.target.value })}
                         placeholder="Descrição (opcional)"
                       />
+                      <div>
+                        <Label className="text-[11px] opacity-70">Posição (0 = primeiro)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={m.position ?? i}
+                          onChange={(e) => patchMember(i, { position: e.target.value === "" ? null : Math.max(0, +e.target.value) })}
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>

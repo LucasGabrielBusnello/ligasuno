@@ -188,14 +188,6 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
     if (mcErr || !mc) throw new Error("Minicurso não encontrado");
     if (!(mc as any).published) throw new Error("Minicurso indisponível");
 
-    const { count } = await supabaseAdmin
-      .from("minicourse_registrations")
-      .select("id", { count: "exact", head: true })
-      .eq("minicourse_id", data.minicourse_id)
-      .in("status", ["paid", "pending"]);
-    const max = Number((mc as any).max_registrations) || 0;
-    if (max > 0 && (count ?? 0) >= max) throw new Error("Vagas esgotadas");
-
     const eventId = (mc as any).event_id;
     const leagueId = (mc as any).league_events.league_id;
     const { data: evReg } = await supabaseAdmin
@@ -204,6 +196,24 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
     if (!evReg || (evReg as any).status !== "paid") {
       throw new Error("Você precisa estar inscrito (e pago) no evento para acessar os minicursos.");
     }
+
+    // Já inscrito? Não recria nem reseta a inscrição existente.
+    const { data: existing } = await supabaseAdmin
+      .from("minicourse_registrations")
+      .select("id,status,paid_price")
+      .eq("minicourse_id", data.minicourse_id).eq("user_id", userId).maybeSingle();
+    if (existing && (existing as any).status === "paid") {
+      return { free: true, registration_id: (existing as any).id, status: "paid" };
+    }
+
+    const { count } = await supabaseAdmin
+      .from("minicourse_registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("minicourse_id", data.minicourse_id)
+      .in("status", ["paid", "pending"]);
+    const max = Number((mc as any).max_registrations) || 0;
+    if (max > 0 && (count ?? 0) >= max && !existing) throw new Error("Vagas esgotadas");
+
 
     // Preço base: ligantes da liga organizadora podem ter valor próprio
     let exclusiveLeagueId: string | null = null;
@@ -285,18 +295,38 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
     const cpf = (evReg as any).cpf || "00000000000";
 
     const { createLeaguePix } = await import("@/lib/league-pay.server");
-    const pay = await createLeaguePix({
-      supabaseAdmin,
-      leagueId,
-      amount: price,
-      description: `Minicurso: ${(mc as any).title}`,
-      payer: { email, firstName: first, lastName: last, cpf },
-      externalReference: `minicourse:${(reg as any).id}`,
-      notificationUrl: WEBHOOK_URL,
-      applicationFee: fee,
-      metadata: { minicourse_registration_id: (reg as any).id, minicourse_id: data.minicourse_id, user_id: userId, league_id: leagueId },
-      expiresInMinutes: 30,
-    });
+    let pay: any;
+    try {
+      pay = await createLeaguePix({
+        supabaseAdmin,
+        leagueId,
+        amount: price,
+        description: `Minicurso: ${(mc as any).title}`,
+        payer: { email, firstName: first, lastName: last, cpf },
+        externalReference: `minicourse:${(reg as any).id}`,
+        notificationUrl: WEBHOOK_URL,
+        applicationFee: fee,
+        metadata: { minicourse_registration_id: (reg as any).id, minicourse_id: data.minicourse_id, user_id: userId, league_id: leagueId },
+        expiresInMinutes: 30,
+      });
+    } catch (e: any) {
+      // Não deixa uma inscrição pendente "fantasma" ocupando vaga quando a cobrança falha.
+      if (!existing) {
+        await supabaseAdmin.from("minicourse_registrations").delete().eq("id", (reg as any).id);
+      }
+      throw new Error(
+        e?.message
+          ? `Não foi possível gerar a cobrança: ${e.message}`
+          : "Não foi possível gerar a cobrança do minicurso. Tente novamente em instantes.",
+      );
+    }
+
+    if (!pay?.qr_code && !pay?.ticket_url) {
+      if (!existing) {
+        await supabaseAdmin.from("minicourse_registrations").delete().eq("id", (reg as any).id);
+      }
+      throw new Error("O provedor de pagamento da liga não retornou o Pix. Avise o presidente da liga.");
+    }
 
     await supabaseAdmin.from("minicourse_registrations")
       .update({ stripe_session_id: String(pay.payment_id) }).eq("id", (reg as any).id);
@@ -305,6 +335,7 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
       free: false,
       registration_id: (reg as any).id,
       payment_id: pay.payment_id,
+      provider: pay.provider,
       status: pay.status,
       amount: price,
       qr_code: pay.qr_code,

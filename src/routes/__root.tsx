@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { SiteHeader } from "@/components/site-header";
 import { MaintenanceGate } from "@/components/maintenance-gate";
+import { GlobalLoading } from "@/components/global-loading";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity-log";
 
@@ -128,6 +129,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <GlobalLoading />
       <MaintenanceGate>
         <SiteHeader />
         <VisitTracker />

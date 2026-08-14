@@ -13,6 +13,7 @@ export type PixPaymentData = {
   qr_code_base64?: string;
   ticket_url?: string;
   expires_at?: string;
+  provider?: string;
 };
 
 export function PixPaymentDialog({
@@ -86,6 +87,12 @@ export function PixPaymentDialog({
                 <p className="text-sm text-muted-foreground">
                   Clique abaixo para pagar com Pix, cartão ou boleto na página segura do provedor.
                 </p>
+                {data.provider === "infinitepay" && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Esta liga usa InfinitePay: a confirmação não é automática. Após pagar, aguarde alguns minutos ou
+                    envie o comprovante à diretoria.
+                  </p>
+                )}
                 <Button asChild className="w-full">
                   <a href={data.ticket_url} target="_blank" rel="noreferrer">Pagar agora</a>
                 </Button>
