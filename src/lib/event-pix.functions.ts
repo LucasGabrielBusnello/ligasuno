@@ -188,14 +188,6 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
     if (mcErr || !mc) throw new Error("Minicurso não encontrado");
     if (!(mc as any).published) throw new Error("Minicurso indisponível");
 
-    const { count } = await supabaseAdmin
-      .from("minicourse_registrations")
-      .select("id", { count: "exact", head: true })
-      .eq("minicourse_id", data.minicourse_id)
-      .in("status", ["paid", "pending"]);
-    const max = Number((mc as any).max_registrations) || 0;
-    if (max > 0 && (count ?? 0) >= max) throw new Error("Vagas esgotadas");
-
     const eventId = (mc as any).event_id;
     const leagueId = (mc as any).league_events.league_id;
     const { data: evReg } = await supabaseAdmin
@@ -204,6 +196,24 @@ export const createMinicoursePix = createServerFn({ method: "POST" })
     if (!evReg || (evReg as any).status !== "paid") {
       throw new Error("Você precisa estar inscrito (e pago) no evento para acessar os minicursos.");
     }
+
+    // Já inscrito? Não recria nem reseta a inscrição existente.
+    const { data: existing } = await supabaseAdmin
+      .from("minicourse_registrations")
+      .select("id,status,paid_price")
+      .eq("minicourse_id", data.minicourse_id).eq("user_id", userId).maybeSingle();
+    if (existing && (existing as any).status === "paid") {
+      return { free: true, registration_id: (existing as any).id, status: "paid" };
+    }
+
+    const { count } = await supabaseAdmin
+      .from("minicourse_registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("minicourse_id", data.minicourse_id)
+      .in("status", ["paid", "pending"]);
+    const max = Number((mc as any).max_registrations) || 0;
+    if (max > 0 && (count ?? 0) >= max && !existing) throw new Error("Vagas esgotadas");
+
 
     // Preço base: ligantes da liga organizadora podem ter valor próprio
     let exclusiveLeagueId: string | null = null;
