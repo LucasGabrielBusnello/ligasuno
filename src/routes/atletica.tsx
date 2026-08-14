@@ -5649,7 +5649,7 @@ function HistoryShowcase({ ath }: { ath: Athletic }) {
 }
 
 /* ============ Config → História por ano ============ */
-export type AthBoardMember = { name: string; role?: string | null; image_url?: string | null; description?: string | null };
+export type AthBoardMember = { name: string; role?: string | null; image_url?: string | null; description?: string | null; position?: number | null };
 export type AthYearInfo = { year: number; description?: string | null; board?: AthBoardMember[] };
 
 export function normalizeAthYears(raw: any): AthYearInfo[] {
