@@ -5882,7 +5882,12 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
                   variant="outline"
                   className="bg-white/5 border-white/20 text-white hover:bg-white/10"
                   onClick={() =>
-                    patchYear({ board: [...(current.board ?? []), { name: "", role: "", image_url: null, description: "" }] })
+                    patchYear({
+                      board: [
+                        ...(current.board ?? []),
+                        { name: "", role: "", image_url: null, description: "", position: (current.board ?? []).length },
+                      ],
+                    })
                   }
                 >
                   <Plus className="size-4 mr-1" /> Adicionar membro
