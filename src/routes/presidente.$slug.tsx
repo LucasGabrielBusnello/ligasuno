@@ -36,6 +36,7 @@ import {
   adminAddEventRegistration,
   adminUpdateEventRegistration,
   adminDeleteEventRegistration,
+  adminListEventRegistrations,
 } from "@/lib/event-admin.functions";
 
 import { disconnectMp, connectMpManual } from "@/lib/mp-oauth.functions";
@@ -782,6 +783,7 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
   const [certOpen, setCertOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const listRosterFn = useServerFn(listEventCheckinRoster);
+  const listRegsFn = useServerFn(adminListEventRegistrations);
   const syncFn = useServerFn(syncEventToSheet);
 
   async function exportData(kind: "csv" | "json") {
