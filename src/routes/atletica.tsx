@@ -5664,12 +5664,14 @@ export function normalizeAthYears(raw: any): AthYearInfo[] {
         board: Array.isArray(v?.board)
           ? v.board
               .filter((m: any) => m && typeof m.name === "string")
-              .map((m: any) => ({
+              .map((m: any, idx: number) => ({
                 name: m.name,
                 role: m.role ?? null,
                 image_url: m.image_url ?? null,
                 description: m.description ?? null,
+                position: Number.isFinite(Number(m.position)) ? Number(m.position) : idx,
               }))
+              .sort((a: any, b: any) => (a.position ?? 0) - (b.position ?? 0))
           : [],
       } as AthYearInfo;
     })
