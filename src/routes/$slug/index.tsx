@@ -1089,6 +1089,7 @@ function ParticipantMinicourses({ event, isPaid }: { event: any; isPaid: boolean
           qr_code: res.qr_code,
           qr_code_base64: res.qr_code_base64,
           ticket_url: res.ticket_url,
+          provider: res.provider,
           expires_at: res.expires_at,
         });
       }
