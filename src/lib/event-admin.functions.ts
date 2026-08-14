@@ -183,3 +183,70 @@ export const adminDeleteEventRegistration = createServerFn({ method: "POST" })
     if (error) throw new Error(friendlyDbError(error, "inscrição"));
     return { ok: true };
   });
+
+/** Lista inscritos + finanças do evento para presidentes, co-presidentes e diretores. */
+export const adminListEventRegistrations = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ event_id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertCanManageEvent(supabase, userId, data.event_id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rs } = await supabaseAdmin
+      .from("event_registrations").select("*")
+      .eq("event_id", data.event_id).order("created_at", { ascending: false });
+    const list = rs ?? [];
+
+    const uids = Array.from(new Set([
+      ...list.map((r: any) => r.user_id),
+      ...list.map((r: any) => r.referred_by).filter(Boolean),
+    ])).filter(Boolean) as string[];
+    const profMap: Record<string, any> = {};
+    if (uids.length > 0) {
+      const { data: profs } = await supabaseAdmin
+        .from("profiles").select("id,username,email,phone,full_name").in("id", uids);
+      (profs ?? []).forEach((p: any) => { profMap[p.id] = p; });
+    }
+
+    const regIds = list.map((r: any) => r.id);
+    let txns: any[] = [];
+    if (regIds.length > 0) {
+      const { data: t } = await supabaseAdmin
+        .from("payment_transactions").select("reference_id, gross_amount, fee_amount, raw")
+        .eq("category", "event").eq("status", "approved").in("reference_id", regIds);
+      txns = t ?? [];
+    }
+
+    const { data: mcs } = await supabaseAdmin
+      .from("league_minicourses").select("id").eq("event_id", data.event_id);
+    const mcIds = (mcs ?? []).map((m: any) => m.id);
+    let mcRegs: any[] = [];
+    let mcTxns: any[] = [];
+    if (mcIds.length > 0) {
+      const { data: mr } = await supabaseAdmin
+        .from("minicourse_registrations").select("id,paid_price,status")
+        .in("minicourse_id", mcIds).eq("status", "paid");
+      mcRegs = mr ?? [];
+      const paidIds = mcRegs.filter((r: any) => Number(r.paid_price) > 0).map((r: any) => r.id);
+      if (paidIds.length > 0) {
+        const { data: mt } = await supabaseAdmin
+          .from("payment_transactions").select("reference_id, gross_amount, fee_amount, raw")
+          .eq("category", "minicourse").eq("status", "approved").in("reference_id", paidIds);
+        mcTxns = mt ?? [];
+      }
+    }
+
+    return {
+      registrations: list.map((r: any) => ({
+        ...r,
+        profiles: profMap[r.user_id] ?? null,
+        referrer_name: r.referred_by
+          ? (profMap[r.referred_by]?.full_name || profMap[r.referred_by]?.username || "Ligante")
+          : null,
+      })),
+      transactions: txns,
+      minicourse_registrations: mcRegs,
+      minicourse_transactions: mcTxns,
+    };
+  });
