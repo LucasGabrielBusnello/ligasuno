@@ -119,16 +119,23 @@ export const listMinicourseCheckinRoster = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ minicourse_id: z.string().uuid() }).parse(i))
   .handler(async ({ data, context }) => {
-    await assertMinicourseOwner(data.minicourse_id, context.userId);
+    const mc = await assertMinicourseOwner(data.minicourse_id, context.userId);
     const { data: regs } = await supabaseAdmin
       .from("minicourse_registrations").select("id,user_id,full_name,cpf,checkin_code,status")
       .eq("minicourse_id", data.minicourse_id).eq("status", "paid");
     const list = regs ?? [];
     const uids = Array.from(new Set(list.map((r: any) => r.user_id)));
     let pmap: Record<string, any> = {};
+    let emap: Record<string, any> = {};
     if (uids.length > 0) {
-      const { data: p } = await supabaseAdmin.from("profiles").select("id,email,full_name").in("id", uids);
+      const { data: p } = await supabaseAdmin.from("profiles").select("id,email,full_name,username").in("id", uids);
       (p ?? []).forEach((x: any) => { pmap[x.id] = x; });
+      if ((mc as any).event_id) {
+        const { data: er } = await supabaseAdmin
+          .from("event_registrations").select("user_id,full_name,social_name")
+          .eq("event_id", (mc as any).event_id).in("user_id", uids);
+        (er ?? []).forEach((x: any) => { emap[x.user_id] = x; });
+      }
     }
     const { data: chks } = await supabaseAdmin
       .from("minicourse_checkins").select("registration_id,checked_in_at,method")
@@ -136,9 +143,14 @@ export const listMinicourseCheckinRoster = createServerFn({ method: "POST" })
     const cset = new Set((chks ?? []).map((c: any) => c.registration_id));
     return {
       members: list.map((r: any) => ({
-        ...r, email: pmap[r.user_id]?.email ?? null, present: cset.has(r.id),
-      })),
+        ...r,
+        full_name: r.full_name || emap[r.user_id]?.social_name || emap[r.user_id]?.full_name
+          || pmap[r.user_id]?.full_name || pmap[r.user_id]?.username || null,
+        email: pmap[r.user_id]?.email ?? null,
+        present: cset.has(r.id),
+      })).sort((a: any, b: any) => (a.full_name || "").localeCompare(b.full_name || "")),
     };
+
   });
 
 export const toggleMinicourseCheckin = createServerFn({ method: "POST" })
