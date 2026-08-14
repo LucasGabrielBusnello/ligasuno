@@ -5721,7 +5721,12 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
           history_title: title,
           history_description: description || null,
           history_images: images,
-          history_years: years,
+          history_years: years.map((y) => ({
+            ...y,
+            board: [...(y.board ?? [])]
+              .map((m, i) => ({ ...m, position: m.position ?? i }))
+              .sort((a, b) => (a.position ?? 0) - (b.position ?? 0)),
+          })),
         } as any,
       });
       toast.success("História salva — recarregando…");
