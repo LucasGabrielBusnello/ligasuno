@@ -5928,6 +5928,16 @@ function HistoryImagesCard({ athletic }: { athletic: Athletic }) {
                         onChange={(e) => patchMember(i, { description: e.target.value })}
                         placeholder="Descrição (opcional)"
                       />
+                      <div>
+                        <Label className="text-[11px] opacity-70">Posição (0 = primeiro)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={m.position ?? i}
+                          onChange={(e) => patchMember(i, { position: e.target.value === "" ? null : Math.max(0, +e.target.value) })}
+                          placeholder="0"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
