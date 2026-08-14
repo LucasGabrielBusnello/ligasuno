@@ -850,6 +850,35 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
 
 
   async function loadRegs() {
+    try {
+      const r: any = await listRegsFn({ data: { event_id: event.id } } as any);
+      setRegs(r.registrations ?? []);
+      const map: Record<string, { gross: number; fee: number }> = {};
+      (r.transactions ?? []).forEach((t: any) => {
+        const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
+        map[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
+      });
+      setTxnByReg(map);
+      const mcTxn: Record<string, { gross: number; fee: number }> = {};
+      (r.minicourse_transactions ?? []).forEach((t: any) => {
+        const fee = getCollectorFees(t.raw) || Number(t.fee_amount || 0);
+        mcTxn[t.reference_id] = { gross: Number(t.gross_amount) || 0, fee };
+      });
+      let gross = 0, net = 0;
+      (r.minicourse_registrations ?? []).filter((x: any) => Number(x.paid_price) > 0).forEach((x: any) => {
+        const t = mcTxn[x.id];
+        const g = t ? t.gross : (Number(x.paid_price) || 0);
+        gross += g;
+        net += t ? Math.max(0, t.gross - t.fee) : g;
+      });
+      setMcRevenue({ total: net, gross, count: (r.minicourse_registrations ?? []).length });
+    } catch (e: any) {
+      setRegs([]);
+      toast.error(e?.message ?? "Não foi possível carregar os inscritos");
+    }
+  }
+
+  async function loadRegsLegacy() {
     const { data: rs } = await supabase
       .from("event_registrations")
       .select("*")
