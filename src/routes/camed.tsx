@@ -110,6 +110,7 @@ function CamedPublicPage() {
 function OpenActivitiesSection() {
   const [items, setItems] = useState<any[]>([]);
   const [leaguesMap, setLeaguesMap] = useState<Record<string, { name: string; icon_url: string | null; slug: string }>>({});
+  const [visible, setVisible] = useState(3);
   useEffect(() => {
     (async () => {
       const { data } = await (supabase.from("league_activities") as any)
