@@ -215,12 +215,6 @@ export function SemesterDialog({
                   </div>
                 )}
 
-                <div className="p-3 rounded border bg-primary/5 text-sm">
-                  <div className="font-bold">Sugestão do CAMED: {brl(camedDefaultCents)}</div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Valor de referência. A liga pode definir livremente os valores de ligantes e diretores abaixo.
-                  </p>
-                </div>
 
                 <div className="p-4 rounded border space-y-3 bg-muted/30">
                   <h3 className="font-black text-sm">{cycle ? "Editar ciclo atual" : "Abrir novo ciclo"}</h3>
