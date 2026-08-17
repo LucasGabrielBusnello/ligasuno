@@ -110,6 +110,7 @@ function CamedPublicPage() {
 function OpenActivitiesSection() {
   const [items, setItems] = useState<any[]>([]);
   const [leaguesMap, setLeaguesMap] = useState<Record<string, { name: string; icon_url: string | null; slug: string }>>({});
+  const [visible, setVisible] = useState(3);
   useEffect(() => {
     (async () => {
       const { data } = await (supabase.from("league_activities") as any)
@@ -130,6 +131,9 @@ function OpenActivitiesSection() {
     })();
   }, []);
   if (items.length === 0) return null;
+  const shown = items.slice(0, visible);
+  const canExpand = visible < items.length;
+  const canCollapse = visible > 3;
   return (
     <section>
       <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
@@ -137,7 +141,7 @@ function OpenActivitiesSection() {
       </h2>
       <p className="text-sm text-muted-foreground mb-6">Atividades interligas abertas a toda comunidade acadêmica.</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((a) => {
+        {shown.map((a) => {
           const host = leaguesMap[a.league_id];
           const partners = (a.participating_league_ids ?? []).map((id: string) => leaguesMap[id]).filter(Boolean);
           const all = [host, ...partners].filter(Boolean);
@@ -171,6 +175,20 @@ function OpenActivitiesSection() {
           );
         })}
       </div>
+      {(canExpand || canCollapse) && (
+        <div className="flex justify-center gap-2 mt-6">
+          {canExpand && (
+            <Button variant="outline" onClick={() => setVisible((v) => Math.min(v + 6, items.length))}>
+              Ver mais
+            </Button>
+          )}
+          {canCollapse && (
+            <Button variant="ghost" onClick={() => setVisible((v) => Math.max(3, v - 6))}>
+              Esconder mais
+            </Button>
+          )}
+        </div>
+      )}
     </section>
   );
 }

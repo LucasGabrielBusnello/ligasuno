@@ -24,6 +24,7 @@ function fmtSize(n?: number | null) {
 export function CamedCourseDocsSection() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [visible, setVisible] = useState(3);
   const signDownload = useServerFn(getCourseDocDownloadUrl);
 
   useEffect(() => {
@@ -54,6 +55,10 @@ export function CamedCourseDocsSection() {
 
   if (docs.length === 0) return null;
 
+  const shown = docs.slice(0, visible);
+  const canExpand = visible < docs.length;
+  const canCollapse = visible > 3;
+
   return (
     <section>
       <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
@@ -63,7 +68,7 @@ export function CamedCourseDocsSection() {
         Materiais e documentos pertinentes ao curso, disponibilizados pelo CAMED.
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {docs.map((d) => (
+        {shown.map((d) => (
           <div
             key={d.id}
             className="rounded-2xl border border-border/70 bg-card overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
@@ -90,6 +95,20 @@ export function CamedCourseDocsSection() {
           </div>
         ))}
       </div>
+      {(canExpand || canCollapse) && (
+        <div className="flex justify-center gap-2 mt-6">
+          {canExpand && (
+            <Button variant="outline" onClick={() => setVisible((v) => Math.min(v + 6, docs.length))}>
+              Ver mais
+            </Button>
+          )}
+          {canCollapse && (
+            <Button variant="ghost" onClick={() => setVisible((v) => Math.max(3, v - 6))}>
+              Esconder mais
+            </Button>
+          )}
+        </div>
+      )}
     </section>
   );
 }
