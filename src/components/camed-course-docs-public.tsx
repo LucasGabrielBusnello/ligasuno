@@ -54,6 +54,10 @@ export function CamedCourseDocsSection() {
 
   if (docs.length === 0) return null;
 
+  const shown = docs.slice(0, visible);
+  const canExpand = visible < docs.length;
+  const canCollapse = visible > 3;
+
   return (
     <section>
       <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
