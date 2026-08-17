@@ -24,6 +24,7 @@ function fmtSize(n?: number | null) {
 export function CamedCourseDocsSection() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [visible, setVisible] = useState(3);
   const signDownload = useServerFn(getCourseDocDownloadUrl);
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export function CamedCourseDocsSection() {
         Materiais e documentos pertinentes ao curso, disponibilizados pelo CAMED.
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {docs.map((d) => (
+        {shown.map((d) => (
           <div
             key={d.id}
             className="rounded-2xl border border-border/70 bg-card overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
