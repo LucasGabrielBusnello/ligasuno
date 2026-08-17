@@ -100,10 +100,11 @@ export function SemesterDialog({
   useEffect(() => { if (open) reload(); /* eslint-disable-next-line */ }, [open, league.id]);
 
   const [busyId, setBusyId] = useState<string | null>(null);
-  async function changeStatus(paymentId: string, status: "paid" | "pending") {
+  const [search, setSearch] = useState("");
+  async function changeStatus(paymentId: string, status: "paid" | "pending", amountPaidCents?: number) {
     setBusyId(paymentId);
     try {
-      await setStatus({ data: { payment_id: paymentId, status } });
+      await setStatus({ data: { payment_id: paymentId, status, ...(amountPaidCents != null ? { amount_paid_cents: amountPaidCents } : {}) } as any });
       toast.success(status === "paid" ? "Marcado como pago" : "Marcado como pendente");
       await reload();
       onUpdated?.();
