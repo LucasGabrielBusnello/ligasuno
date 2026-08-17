@@ -258,11 +258,27 @@ export function SemesterDialog({
                 {cycle && (
                   <div className="space-y-2">
                     <h3 className="font-black text-sm">Status dos ligantes</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Você pode dar baixa manualmente: use “Marcar como pago” (ou informe outro valor recebido).
+                    </p>
                     {payments.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Nenhum ligante na liga ainda.</p>
                     ) : (
                       <div className="space-y-1.5">
-                        {payments.map((p) => (
+                        <Input
+                          placeholder="Buscar ligante por nome ou e-mail…"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                        {payments
+                          .filter((p) => {
+                            const q = search.trim().toLowerCase();
+                            if (!q) return true;
+                            return `${p.profiles?.full_name ?? ""} ${p.profiles?.username ?? ""} ${p.profiles?.email ?? ""}`
+                              .toLowerCase()
+                              .includes(q);
+                          })
+                          .map((p) => (
                           <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded border text-sm">
                             <div>
                               <div className="font-bold">{p.profiles?.full_name || p.profiles?.username}</div>
