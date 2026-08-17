@@ -297,13 +297,32 @@ export function SemesterDialog({
                                   Marcar pendente
                                 </Button>
                               ) : (
-                                <Button
-                                  size="sm"
-                                  disabled={busyId === p.id}
-                                  onClick={() => changeStatus(p.id, "paid")}
-                                >
-                                  Marcar como pago
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    disabled={busyId === p.id}
+                                    onClick={() => changeStatus(p.id, "paid")}
+                                  >
+                                    Marcar como pago
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={busyId === p.id}
+                                    onClick={() => {
+                                      const v = window.prompt(
+                                        "Valor recebido (R$)",
+                                        (((p.amount_due_cents ?? 0) / 100) || 0).toFixed(2),
+                                      );
+                                      if (v == null) return;
+                                      const cents = Math.round(parseFloat(v.replace(",", ".")) * 100);
+                                      if (Number.isNaN(cents) || cents < 0) return toast.error("Valor inválido");
+                                      changeStatus(p.id, "paid", cents);
+                                    }}
+                                  >
+                                    Outro valor
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </div>
