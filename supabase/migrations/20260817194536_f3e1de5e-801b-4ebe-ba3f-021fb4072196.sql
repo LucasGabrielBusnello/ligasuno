@@ -1,0 +1,1 @@
+ALTER TABLE public.camed_course_documents ALTER COLUMN file_url DROP NOT NULL;
