@@ -175,6 +175,20 @@ function OpenActivitiesSection() {
           );
         })}
       </div>
+      {(canExpand || canCollapse) && (
+        <div className="flex justify-center gap-2 mt-6">
+          {canExpand && (
+            <Button variant="outline" onClick={() => setVisible((v) => Math.min(v + 6, items.length))}>
+              Ver mais
+            </Button>
+          )}
+          {canCollapse && (
+            <Button variant="ghost" onClick={() => setVisible((v) => Math.max(3, v - 6))}>
+              Esconder mais
+            </Button>
+          )}
+        </div>
+      )}
     </section>
   );
 }
