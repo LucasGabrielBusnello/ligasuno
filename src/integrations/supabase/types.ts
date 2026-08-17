@@ -1449,6 +1449,48 @@ export type Database = {
           },
         ]
       }
+      camed_course_documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          file_name: string | null
+          file_url: string | null
+          id: string
+          image_url: string | null
+          size_bytes: number | null
+          storage_path: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          image_url?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          file_name?: string | null
+          file_url?: string | null
+          id?: string
+          image_url?: string | null
+          size_bytes?: number | null
+          storage_path?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       camed_documents: {
         Row: {
           created_at: string

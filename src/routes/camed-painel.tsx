@@ -20,6 +20,7 @@ import { CamedScoringApprovals } from "@/components/camed-scoring-approvals";
 import { setCamedMaintenance } from "@/lib/athletic-extras.functions";
 import { Wrench, FolderOpen } from "lucide-react";
 import { CamedDocumentsTab } from "@/components/camed-documents";
+import { CamedCourseDocumentsManager } from "@/components/camed-course-documents";
 import { CamedOpenActivities } from "@/components/camed-open-activities";
 
 export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
@@ -83,7 +84,12 @@ function CamedPage() {
           {visible.includes("ligas") && <TabsContent value="ligas" className="mt-6"><LeaguesSettingsTab /></TabsContent>}
           {visible.includes("mensagens") && <TabsContent value="mensagens" className="mt-6"><MessagesTab /></TabsContent>}
           {visible.includes("horarios") && <TabsContent value="horarios" className="mt-6"><SlotsTab /></TabsContent>}
-          {visible.includes("documentos") && <TabsContent value="documentos" className="mt-6"><CamedDocumentsTab /></TabsContent>}
+          {visible.includes("documentos") && (
+            <TabsContent value="documentos" className="mt-6 space-y-6">
+              <CamedDocumentsTab />
+              <CamedCourseDocumentsManager />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
