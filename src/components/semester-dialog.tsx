@@ -82,7 +82,7 @@ export function SemesterDialog({
         setDueDate(r.cycle.due_date);
         setLateFee(((r.cycle.late_fee_cents ?? 0) / 100).toFixed(2));
       } else {
-        setLiganteAmount((((r.camed_default_cents ?? 0)) / 100).toFixed(2));
+        setLiganteAmount("");
         setDirectorAmount("0");
         setLateFee("0");
         // default vencimento = 30 dias
@@ -100,10 +100,11 @@ export function SemesterDialog({
   useEffect(() => { if (open) reload(); /* eslint-disable-next-line */ }, [open, league.id]);
 
   const [busyId, setBusyId] = useState<string | null>(null);
-  async function changeStatus(paymentId: string, status: "paid" | "pending") {
+  const [search, setSearch] = useState("");
+  async function changeStatus(paymentId: string, status: "paid" | "pending", amountPaidCents?: number) {
     setBusyId(paymentId);
     try {
-      await setStatus({ data: { payment_id: paymentId, status } });
+      await setStatus({ data: { payment_id: paymentId, status, ...(amountPaidCents != null ? { amount_paid_cents: amountPaidCents } : {}) } as any });
       toast.success(status === "paid" ? "Marcado como pago" : "Marcado como pendente");
       await reload();
       onUpdated?.();
@@ -215,12 +216,6 @@ export function SemesterDialog({
                   </div>
                 )}
 
-                <div className="p-3 rounded border bg-primary/5 text-sm">
-                  <div className="font-bold">Sugestão do CAMED: {brl(camedDefaultCents)}</div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Valor de referência. A liga pode definir livremente os valores de ligantes e diretores abaixo.
-                  </p>
-                </div>
 
                 <div className="p-4 rounded border space-y-3 bg-muted/30">
                   <h3 className="font-black text-sm">{cycle ? "Editar ciclo atual" : "Abrir novo ciclo"}</h3>
@@ -263,11 +258,27 @@ export function SemesterDialog({
                 {cycle && (
                   <div className="space-y-2">
                     <h3 className="font-black text-sm">Status dos ligantes</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Você pode dar baixa manualmente: use “Marcar como pago” (ou informe outro valor recebido).
+                    </p>
                     {payments.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Nenhum ligante na liga ainda.</p>
                     ) : (
                       <div className="space-y-1.5">
-                        {payments.map((p) => (
+                        <Input
+                          placeholder="Buscar ligante por nome ou e-mail…"
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                        />
+                        {payments
+                          .filter((p) => {
+                            const q = search.trim().toLowerCase();
+                            if (!q) return true;
+                            return `${p.profiles?.full_name ?? ""} ${p.profiles?.username ?? ""} ${p.profiles?.email ?? ""}`
+                              .toLowerCase()
+                              .includes(q);
+                          })
+                          .map((p) => (
                           <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded border text-sm">
                             <div>
                               <div className="font-bold">{p.profiles?.full_name || p.profiles?.username}</div>
@@ -286,13 +297,32 @@ export function SemesterDialog({
                                   Marcar pendente
                                 </Button>
                               ) : (
-                                <Button
-                                  size="sm"
-                                  disabled={busyId === p.id}
-                                  onClick={() => changeStatus(p.id, "paid")}
-                                >
-                                  Marcar como pago
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    disabled={busyId === p.id}
+                                    onClick={() => changeStatus(p.id, "paid")}
+                                  >
+                                    Marcar como pago
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={busyId === p.id}
+                                    onClick={() => {
+                                      const v = window.prompt(
+                                        "Valor recebido (R$)",
+                                        (((p.amount_due_cents ?? 0) / 100) || 0).toFixed(2),
+                                      );
+                                      if (v == null) return;
+                                      const cents = Math.round(parseFloat(v.replace(",", ".")) * 100);
+                                      if (Number.isNaN(cents) || cents < 0) return toast.error("Valor inválido");
+                                      changeStatus(p.id, "paid", cents);
+                                    }}
+                                  >
+                                    Outro valor
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </div>
