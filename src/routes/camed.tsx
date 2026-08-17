@@ -130,6 +130,9 @@ function OpenActivitiesSection() {
     })();
   }, []);
   if (items.length === 0) return null;
+  const shown = items.slice(0, visible);
+  const canExpand = visible < items.length;
+  const canCollapse = visible > 3;
   return (
     <section>
       <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-1 flex items-center gap-2">
@@ -137,7 +140,7 @@ function OpenActivitiesSection() {
       </h2>
       <p className="text-sm text-muted-foreground mb-6">Atividades interligas abertas a toda comunidade acadêmica.</p>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((a) => {
+        {shown.map((a) => {
           const host = leaguesMap[a.league_id];
           const partners = (a.participating_league_ids ?? []).map((id: string) => leaguesMap[id]).filter(Boolean);
           const all = [host, ...partners].filter(Boolean);
