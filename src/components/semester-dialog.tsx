@@ -82,7 +82,7 @@ export function SemesterDialog({
         setDueDate(r.cycle.due_date);
         setLateFee(((r.cycle.late_fee_cents ?? 0) / 100).toFixed(2));
       } else {
-        setLiganteAmount((((r.camed_default_cents ?? 0)) / 100).toFixed(2));
+        setLiganteAmount("");
         setDirectorAmount("0");
         setLateFee("0");
         // default vencimento = 30 dias
