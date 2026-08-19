@@ -481,9 +481,26 @@ function AuthPage() {
                       onChange={(v) => setSu({ ...su, confirmPassword: v })}
                     />
                   </div>
+                  <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-1 size-4 accent-primary"
+                    />
+                    <span className="text-muted-foreground">
+                      Li e aceito os{" "}
+                      <Link to="/termos" target="_blank" className="underline underline-offset-2 text-foreground">
+                        termos de uso e a política de privacidade
+                      </Link>
+                      , inclusive que esta plataforma não é canal oficial da instituição e que meus dados
+                      pessoais podem ser vistos pelas entidades das quais eu participar.
+                    </span>
+                  </label>
                   <Button type="submit" disabled={loading} className="w-full">
                     {loading ? "Cadastrando..." : "Criar conta"}
                   </Button>
+
                 </form>
               </TabsContent>
             </Tabs>
