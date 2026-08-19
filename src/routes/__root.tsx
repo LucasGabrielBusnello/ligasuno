@@ -138,7 +138,9 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </MaintenanceGate>
+      <TermsGate />
       <Toaster richColors position="top-center" />
+
     </QueryClientProvider>
   );
 }
