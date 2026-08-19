@@ -102,7 +102,9 @@ function CamedPublicPage() {
         <HistoryShowcase info={info} />
         <MembersSection />
       </main>
+      <NotOfficialNotice />
     </div>
+
   );
 }
 
