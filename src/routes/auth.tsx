@@ -293,9 +293,16 @@ function AuthPage() {
         patch.course = su.course;
       }
       try { await supabase.from("profiles").update(patch).eq("id", data.user.id); } catch {}
+      try {
+        await (supabase as any).from("terms_acceptances").upsert(
+          { user_id: data.user.id, version: TERMS_VERSION, user_agent: navigator.userAgent },
+          { onConflict: "user_id,version" },
+        );
+      } catch {}
       // não bloqueia o login: e-mail de boas-vindas é enviado em segundo plano
       void welcome({ data: { user_id: data.user.id } }).catch((e) => console.warn("welcome email failed", e));
     }
+
 
     // Como auto-confirm está ativo, a sessão já vem pronta
     if (data.session) {
