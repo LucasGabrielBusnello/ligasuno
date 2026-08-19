@@ -1164,7 +1164,7 @@ function EventManageCard({ event, expanded, onExpand, onToggle, onEdit, onDelete
               {regBusy === "search" && <p className="text-[11px] text-muted-foreground">Buscando…</p>}
               {!regSelected && regResults !== null && regResults.length === 0 && regBusy !== "search" && (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                  Nenhum usuário encontrado com esse termo. A pessoa precisa ter conta no MEDUNO para ser inscrita — peça o cadastro com o e-mail dela e busque novamente.
+                  Nenhum usuário encontrado com esse termo. A pessoa precisa ter conta no MEDHUB para ser inscrita — peça o cadastro com o e-mail dela e busque novamente.
                 </p>
               )}
               {!regSelected && (regResults ?? []).map((p: any) => (
@@ -2199,7 +2199,7 @@ function MembersTab({ league }: any) {
       const { data: profs, error: pe } = await (supabase as any)
         .rpc("find_profile_for_league", { _league_id: league.id, _query: q });
       if (pe) return toast.error(pe.message);
-      if (!profs || profs.length === 0) return toast.error("Nenhum usuário encontrado com esse e-mail/usuário. Confirme se a pessoa já criou uma conta no MEDUNO.");
+      if (!profs || profs.length === 0) return toast.error("Nenhum usuário encontrado com esse e-mail/usuário. Confirme se a pessoa já criou uma conta no MEDHUB.");
       if (profs.length > 1) return toast.error("Múltiplos usuários encontrados — selecione na lista de sugestões");
       prof = profs[0];
     }

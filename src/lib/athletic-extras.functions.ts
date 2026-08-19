@@ -421,7 +421,7 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
                 brandColor: brand,
                 leagueName: athName,
                 bodyHtml: `<p>A diretoria da <strong>${athName}</strong> te cadastrou como sócio(a) da atlética.</p>
-                  <p>Para acessar sua carteirinha digital, benefícios de sócio, comprar produtos e ingressos com desconto, crie sua conta no MEDUNO usando o mesmo e-mail deste convite (<strong>${email}</strong>). Seu vínculo de sócio será ativado automaticamente.</p>
+                  <p>Para acessar sua carteirinha digital, benefícios de sócio, comprar produtos e ingressos com desconto, crie sua conta no MEDHUB usando o mesmo e-mail deste convite (<strong>${email}</strong>). Seu vínculo de sócio será ativado automaticamente.</p>
                   ${emailInfoCard({
                     title: "Seu cadastro",
                     brandColor: brand,
@@ -432,7 +432,7 @@ export const bulkImportMembers = createServerFn({ method: "POST" })
                       ...(raw.semestre ? [{ label: "Semestre", value: raw.semestre }] : []),
                     ],
                   })}
-                  <p>Se você já tem conta no MEDUNO, é só entrar — o vínculo já aparece na aba <strong>Sócio</strong>.</p>`,
+                  <p>Se você já tem conta no MEDHUB, é só entrar — o vínculo já aparece na aba <strong>Sócio</strong>.</p>`,
                 ctaLabel: "Criar minha conta",
                 ctaUrl: "https://ligasuno.com.br/auth",
                 signature: `— Diretoria da ${athName}`,
@@ -509,7 +509,7 @@ export const resendMemberInvites = createServerFn({ method: "POST" })
             brandColor: brand,
             leagueName: athName,
             bodyHtml: `<p>A diretoria da <strong>${athName}</strong> te cadastrou como sócio(a) da atlética.</p>
-              <p>Para acessar sua carteirinha digital, benefícios de sócio, comprar produtos e ingressos com desconto, crie sua conta no MEDUNO usando este e-mail (<strong>${email}</strong>). Seu vínculo de sócio será ativado automaticamente.</p>
+              <p>Para acessar sua carteirinha digital, benefícios de sócio, comprar produtos e ingressos com desconto, crie sua conta no MEDHUB usando este e-mail (<strong>${email}</strong>). Seu vínculo de sócio será ativado automaticamente.</p>
               ${emailInfoCard({
                 title: "Seu cadastro",
                 brandColor: brand,

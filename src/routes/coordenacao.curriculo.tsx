@@ -6,7 +6,7 @@ import { CurriculumAdmin } from "@/components/curriculum-admin";
 export const Route = createFileRoute("/coordenacao/curriculo")({
   head: () => ({
     meta: [
-      { title: "Coordenação · Currículo — MEDUNO" },
+      { title: "Coordenação · Currículo — MEDHUB" },
       { name: "description", content: "Componentes curriculares e semestres letivos." },
       { name: "robots", content: "noindex" },
     ],

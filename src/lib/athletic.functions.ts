@@ -104,7 +104,7 @@ export const upsertAthleticMember = createServerFn({ method: "POST" })
             title: `Bem-vindo(a) à ${ath_name}!`,
             brandColor: brand,
             leagueName: ath_name,
-            bodyHtml: `<p>Olá, <strong>${data.full_name}</strong>! A diretoria da <strong>${ath_name}</strong> cadastrou você como sócio(a) no site do MEDUNO.</p>
+            bodyHtml: `<p>Olá, <strong>${data.full_name}</strong>! A diretoria da <strong>${ath_name}</strong> cadastrou você como sócio(a) no site do MEDHUB.</p>
               <p>Para acessar seus benefícios, agenda, carteirinha digital e todos os recursos da atlética, basta criar sua conta com este mesmo e-mail (<strong>${data.email}</strong>). Assim que você concluir o cadastro, sua condição de sócio(a) será ativada automaticamente.</p>
               ${emailInfoCard({
                 title: "Como acessar",

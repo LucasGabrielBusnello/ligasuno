@@ -35,12 +35,12 @@ function esc(s: string) {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 }
 
-export function buildIcs(events: IcsEvent[], calName = "MEDUNO — Cronograma") {
+export function buildIcs(events: IcsEvent[], calName = "MEDHUB — Cronograma") {
   const now = toStamp(new Date());
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//MEDUNO//Cronograma//PT-BR",
+    "PRODID:-//MEDHUB//Cronograma//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${esc(calName)}`,
