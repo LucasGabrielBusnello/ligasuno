@@ -241,6 +241,12 @@ function AuthPage() {
     } else if (!su.course) {
       const m = "Selecione qual curso você estuda/trabalha."; setError(m); toast.error(m); return;
     }
+    if (!acceptedTerms) {
+      const m = "É necessário ler e aceitar os termos de uso para criar a conta.";
+      setError(m); toast.error(m); return;
+    }
+
+
 
     setLoading(true);
     // Verifica disponibilidade do usuário (via função SECURITY DEFINER — não expõe emails)
