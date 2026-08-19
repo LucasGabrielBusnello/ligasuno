@@ -166,6 +166,7 @@ function AuthPage() {
   const nav = useNavigate();
   const welcome = useServerFn(sendWelcomeEmailForUser);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
