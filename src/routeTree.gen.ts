@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as PerfilRouteImport } from './routes/perfil'
 import { Route as ParceirosRouteImport } from './routes/parceiros'
 import { Route as PainelRouteImport } from './routes/painel'
@@ -42,6 +43,11 @@ import { Route as ApiPublicCronMarkOverdueRouteImport } from './routes/api/publi
 import { Route as ApiPublicCronEventSnapshotRouteImport } from './routes/api/public/cron/event-snapshot'
 import { Route as ApiPublicCronEventRemindersRouteImport } from './routes/api/public/cron/event-reminders'
 
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PerfilRoute = PerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
@@ -229,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/painel': typeof PainelRoute
   '/parceiros': typeof ParceirosRoute
   '/perfil': typeof PerfilRoute
+  '/termos': typeof TermosRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
   '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
   '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
@@ -263,6 +270,7 @@ export interface FileRoutesByTo {
   '/painel': typeof PainelRoute
   '/parceiros': typeof ParceirosRoute
   '/perfil': typeof PerfilRoute
+  '/termos': typeof TermosRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
   '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
   '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
@@ -298,6 +306,7 @@ export interface FileRoutesById {
   '/painel': typeof PainelRoute
   '/parceiros': typeof ParceirosRoute
   '/perfil': typeof PerfilRoute
+  '/termos': typeof TermosRoute
   '/coordenacao/cronograma': typeof CoordenacaoCronogramaRoute
   '/coordenacao/curriculo': typeof CoordenacaoCurriculoRoute
   '/coordenacao/feriados': typeof CoordenacaoFeriadosRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/parceiros'
     | '/perfil'
+    | '/termos'
     | '/coordenacao/cronograma'
     | '/coordenacao/curriculo'
     | '/coordenacao/feriados'
@@ -368,6 +378,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/parceiros'
     | '/perfil'
+    | '/termos'
     | '/coordenacao/cronograma'
     | '/coordenacao/curriculo'
     | '/coordenacao/feriados'
@@ -402,6 +413,7 @@ export interface FileRouteTypes {
     | '/painel'
     | '/parceiros'
     | '/perfil'
+    | '/termos'
     | '/coordenacao/cronograma'
     | '/coordenacao/curriculo'
     | '/coordenacao/feriados'
@@ -437,6 +449,7 @@ export interface RootRouteChildren {
   PainelRoute: typeof PainelRoute
   ParceirosRoute: typeof ParceirosRoute
   PerfilRoute: typeof PerfilRoute
+  TermosRoute: typeof TermosRoute
   CoordenacaoCronogramaRoute: typeof CoordenacaoCronogramaRoute
   CoordenacaoCurriculoRoute: typeof CoordenacaoCurriculoRoute
   CoordenacaoFeriadosRoute: typeof CoordenacaoFeriadosRoute
@@ -457,6 +470,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/perfil': {
       id: '/perfil'
       path: '/perfil'
@@ -701,6 +721,7 @@ const rootRouteChildren: RootRouteChildren = {
   PainelRoute: PainelRoute,
   ParceirosRoute: ParceirosRoute,
   PerfilRoute: PerfilRoute,
+  TermosRoute: TermosRoute,
   CoordenacaoCronogramaRoute: CoordenacaoCronogramaRoute,
   CoordenacaoCurriculoRoute: CoordenacaoCurriculoRoute,
   CoordenacaoFeriadosRoute: CoordenacaoFeriadosRoute,
