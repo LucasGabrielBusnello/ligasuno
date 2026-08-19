@@ -21,6 +21,7 @@ export function TermsGate() {
 
   useEffect(() => {
     let alive = true;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     async function check() {
       const { data } = await supabase.auth.getSession();
       if (!alive) return;
@@ -32,22 +33,49 @@ export function TermsGate() {
         const res = await status({});
         if (alive) setNeeds(!res.accepted);
       } catch {
-        /* ignora falhas transitórias */
+        // falha de rede: não libera o acesso por engano, tenta de novo
+        if (alive) retry = setTimeout(check, 5000);
       }
     }
     check();
+    const onFocus = () => check();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") check();
     });
     return () => {
       alive = false;
+      if (retry) clearTimeout(retry);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [pathname]);
 
-  if (!needs || EXEMPT.some((p) => pathname.startsWith(p)) || pathname.startsWith("/api/")) {
+  const blocking = needs && !EXEMPT.some((p) => pathname.startsWith(p)) && !pathname.startsWith("/api/");
+
+  useEffect(() => {
+    if (!blocking) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const trap = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", trap, true);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", trap, true);
+    };
+  }, [blocking]);
+
+  if (!blocking) {
     return null;
   }
+
 
   async function confirm() {
     if (!checked) return;

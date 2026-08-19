@@ -21,7 +21,8 @@ import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscrip
 import { ImageUpload } from "@/components/image-upload";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 import { LOG_CATEGORY_LABEL } from "@/lib/activity-log";
-import { listUsersAdmin, updateUserAdmin } from "@/lib/admin-users.functions";
+import { listUsersAdmin, updateUserAdmin, deleteUserAdmin, listTermsAcceptancesAdmin, getTermsCoverageAdmin, getUserTermsAdmin } from "@/lib/admin-users.functions";
+import { TERMS_VERSION } from "@/lib/terms";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -411,11 +412,28 @@ function CamedMemberDialog({ open, setOpen, member, onSaved }: any) {
 
 /* ===================== USUÁRIOS ===================== */
 function UsersAdmin() {
+  return (
+    <Tabs defaultValue="cadastros">
+      <TabsList>
+        <TabsTrigger value="cadastros">Cadastros</TabsTrigger>
+        <TabsTrigger value="termos">Termos de Uso</TabsTrigger>
+      </TabsList>
+      <TabsContent value="cadastros" className="mt-4"><UsersList /></TabsContent>
+      <TabsContent value="termos" className="mt-4"><TermsAdmin /></TabsContent>
+    </Tabs>
+  );
+}
+
+function UsersList() {
   const [users, setUsers] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any | null>(null);
+  const [removing, setRemoving] = useState<any | null>(null);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const listFn = useServerFn(listUsersAdmin);
+  const delFn = useServerFn(deleteUserAdmin);
 
   const reload = async (query?: string) => {
     setLoading(true);
@@ -432,6 +450,20 @@ function UsersAdmin() {
     const t = setTimeout(() => reload(q), 400);
     return () => clearTimeout(t);
   }, [q]);
+
+  async function confirmDelete() {
+    if (!removing) return;
+    setDeleting(true);
+    try {
+      await delFn({ data: { user_id: removing.id } });
+      toast.success("Usuário excluído");
+      setRemoving(null); setConfirmText("");
+      reload(q);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao excluir usuário");
+    }
+    setDeleting(false);
+  }
 
   return (
     <Card>
@@ -455,22 +487,171 @@ function UsersAdmin() {
                     {u.cpf ? ` · CPF ${u.cpf}` : ""}
                   </div>
                 </div>
-                <Button size="sm" variant="outline" onClick={() => setEditing(u)}><Edit className="size-4" /> Editar</Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button size="sm" variant="outline" onClick={() => setEditing(u)}><Edit className="size-4" /> Editar</Button>
+                  <Button size="sm" variant="destructive" onClick={() => { setRemoving(u); setConfirmText(""); }}><Trash2 className="size-4" /></Button>
+                </div>
               </div>
             ))}
           </div>
         )}
         <AdminUserDialog user={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(q); }} />
+
+        <Dialog open={!!removing} onOpenChange={(v) => { if (!v) { setRemoving(null); setConfirmText(""); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>Excluir usuário</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Esta ação remove a conta de login e o perfil de <strong>{removing?.full_name || removing?.username}</strong> permanentemente.
+              </p>
+              <div>
+                <Label>Digite <strong>{removing?.username}</strong> para confirmar</Label>
+                <Input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setRemoving(null); setConfirmText(""); }} disabled={deleting}>Cancelar</Button>
+              <Button variant="destructive" onClick={confirmDelete} disabled={deleting || confirmText.trim() !== (removing?.username ?? "")}>
+                {deleting ? "Excluindo..." : "Excluir definitivamente"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
 }
 
+function fmtDateTime(v: any) {
+  if (!v) return "—";
+  try {
+    return new Date(v).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  } catch { return String(v); }
+}
+
+function TermsAdmin() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [cov, setCov] = useState<any>(null);
+  const [q, setQ] = useState("");
+  const [version, setVersion] = useState("");
+  const [loading, setLoading] = useState(true);
+  const listFn = useServerFn(listTermsAcceptancesAdmin);
+  const covFn = useServerFn(getTermsCoverageAdmin);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const [a, c] = await Promise.all([
+        listFn({ data: { q, version: version || undefined } }),
+        covFn({ data: { current_version: TERMS_VERSION } }),
+      ]);
+      setRows(a as any[]);
+      setCov(c);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao carregar aceites");
+    }
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+  useEffect(() => { const t = setTimeout(load, 400); return () => clearTimeout(t); }, [q, version]);
+
+  function exportCsv() {
+    const head = ["Nome", "Usuario", "Email", "CPF", "Versao", "Data/Hora", "IP", "Navegador"];
+    const lines = rows.map((r) => [
+      r.profile?.full_name ?? "", r.profile?.username ?? "", r.profile?.email ?? "", r.profile?.cpf ?? "",
+      r.version, fmtDateTime(r.accepted_at), r.ip ?? "", (r.user_agent ?? "").replace(/[\r\n]+/g, " "),
+    ]);
+    const csv = [head, ...lines].map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
+    const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `aceites-termos-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const versions = Object.keys(cov?.by_version ?? {}).sort();
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader><CardTitle>Versões e cobertura</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <Badge className="bg-primary">Versão vigente: {TERMS_VERSION}</Badge>
+            <Link to="/termos" className="text-primary underline">Ver texto público dos termos</Link>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded border p-3"><div className="text-xs text-muted-foreground">Usuários</div><div className="text-2xl font-black">{cov?.total_users ?? "—"}</div></div>
+            <div className="rounded border p-3"><div className="text-xs text-muted-foreground">Aceitaram a versão atual</div><div className="text-2xl font-black text-primary">{cov?.accepted_current ?? "—"}</div></div>
+            <div className="rounded border p-3"><div className="text-xs text-muted-foreground">Pendentes</div><div className="text-2xl font-black text-destructive">{cov?.pending_count ?? "—"}</div></div>
+            <div className="rounded border p-3"><div className="text-xs text-muted-foreground">Versões registradas</div><div className="text-2xl font-black">{versions.length}</div></div>
+          </div>
+          {versions.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {versions.map((v) => <Badge key={v} variant="outline">v{v}: {cov.by_version[v]} aceites</Badge>)}
+            </div>
+          )}
+          {cov?.pending?.length ? (
+            <div>
+              <div className="text-sm font-bold mb-2">Pendentes da versão {TERMS_VERSION}</div>
+              <div className="max-h-56 overflow-y-auto space-y-1">
+                {cov.pending.map((p: any) => (
+                  <div key={p.id} className="text-xs text-muted-foreground border rounded px-2 py-1">
+                    {p.full_name || p.username} · @{p.username} · {p.email}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Aceites registrados</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-2 mb-4">
+            <Input placeholder="Buscar por nome, usuário, e-mail ou CPF..." value={q} onChange={(e) => setQ(e.target.value)} />
+            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={version} onChange={(e) => setVersion(e.target.value)}>
+              <option value="">Todas as versões</option>
+              {versions.map((v) => <option key={v} value={v}>Versão {v}</option>)}
+            </select>
+            <Button variant="outline" onClick={exportCsv} disabled={!rows.length}>Exportar CSV</Button>
+          </div>
+          {loading ? <p className="text-sm text-muted-foreground">Carregando...</p> : (
+            <div className="space-y-2">
+              {rows.length === 0 && <p className="text-sm text-muted-foreground">Nenhum aceite encontrado.</p>}
+              {rows.map((r) => (
+                <div key={r.id} className="rounded border p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold">{r.profile?.full_name || r.profile?.username || "Usuário removido"}</span>
+                    <Badge variant="outline">v{r.version}</Badge>
+                    <span className="text-xs text-muted-foreground">{fmtDateTime(r.accepted_at)}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground break-all">
+                    @{r.profile?.username ?? "—"} · {r.profile?.email ?? "—"}{r.profile?.cpf ? ` · CPF ${r.profile.cpf}` : ""}
+                  </div>
+                  <div className="text-xs text-muted-foreground break-all">IP: {r.ip ?? "—"} · {r.user_agent ?? "navegador não informado"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
 function AdminUserDialog({ user, onClose, onSaved }: { user: any | null; onClose: () => void; onSaved: () => void }) {
   const [f, setF] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const saveFn = useServerFn(updateUserAdmin);
-  useEffect(() => { if (user) setF({ ...user }); }, [user]);
+  const termsFn = useServerFn(getUserTermsAdmin);
+  const [terms, setTerms] = useState<any[]>([]);
+  useEffect(() => {
+    if (!user) { setTerms([]); return; }
+    setF({ ...user });
+    termsFn({ data: { user_id: user.id } }).then((r: any) => setTerms(r ?? [])).catch(() => setTerms([]));
+  }, [user]);
 
   async function save() {
     setSaving(true);
@@ -525,6 +706,16 @@ function AdminUserDialog({ user, onClose, onSaved }: { user: any | null; onClose
             <div><Label>Curso</Label><Input value={f.course ?? ""} onChange={(e) => setF({ ...f, course: e.target.value })} /></div>
           )}
           <div><Label>Registro / Matrícula (outros)</Label><Input value={f.registration_number ?? ""} onChange={(e) => setF({ ...f, registration_number: e.target.value })} /></div>
+          <div className="rounded border p-3">
+            <div className="text-sm font-bold mb-1">Aceite dos termos</div>
+            {terms.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhum aceite registrado para este usuário.</p>
+            ) : terms.map((t: any) => (
+              <div key={t.id} className="text-xs text-muted-foreground break-all">
+                Versão {t.version} · {fmtDateTime(t.accepted_at)} · IP {t.ip ?? "—"} · {t.user_agent ?? "navegador não informado"}
+              </div>
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground">A senha não pode ser visualizada nem alterada por aqui — o usuário deve usar "Esqueci minha senha".</p>
         </div>
         <DialogFooter>
