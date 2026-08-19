@@ -8,9 +8,9 @@ import { HubLogos } from "@/components/hub-logos";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "MEDHUB — Medicina Unochapecó" },
+      { title: "MEDHUB — Plataforma estudantil de Medicina" },
       { name: "description", content: "Plataforma integrada para estudantes, ligas acadêmicas, atlética e CAMED de Medicina da Unochapecó." },
-      { property: "og:title", content: "MEDHUB — Medicina Unochapecó" },
+      { property: "og:title", content: "MEDHUB — Plataforma estudantil de Medicina" },
       { property: "og:description", content: "Plataforma integrada para estudantes, ligas, atlética e CAMED." },
     ],
   }),
@@ -120,7 +120,7 @@ function HomePage() {
 
 
       <footer className="border-t border-border/50 py-8 text-center text-sm text-muted-foreground relative">
-        © {new Date().getFullYear()} MEDHUB · Medicina Unochapecó
+        © {new Date().getFullYear()} MEDHUB · Plataforma estudantil independente
       </footer>
     </div>
   );
