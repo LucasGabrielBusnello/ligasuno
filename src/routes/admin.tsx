@@ -21,7 +21,8 @@ import { deleteLeagueWithCancel, cancelLeagueSubscription } from "@/lib/subscrip
 import { ImageUpload } from "@/components/image-upload";
 import { deleteStorageFiles } from "@/lib/storage-delete.functions";
 import { LOG_CATEGORY_LABEL } from "@/lib/activity-log";
-import { listUsersAdmin, updateUserAdmin } from "@/lib/admin-users.functions";
+import { listUsersAdmin, updateUserAdmin, deleteUserAdmin, listTermsAcceptancesAdmin, getTermsCoverageAdmin, getUserTermsAdmin } from "@/lib/admin-users.functions";
+import { TERMS_VERSION } from "@/lib/terms";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -644,7 +645,13 @@ function AdminUserDialog({ user, onClose, onSaved }: { user: any | null; onClose
   const [f, setF] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const saveFn = useServerFn(updateUserAdmin);
-  useEffect(() => { if (user) setF({ ...user }); }, [user]);
+  const termsFn = useServerFn(getUserTermsAdmin);
+  const [terms, setTerms] = useState<any[]>([]);
+  useEffect(() => {
+    if (!user) { setTerms([]); return; }
+    setF({ ...user });
+    termsFn({ data: { user_id: user.id } }).then((r: any) => setTerms(r ?? [])).catch(() => setTerms([]));
+  }, [user]);
 
   async function save() {
     setSaving(true);
@@ -699,6 +706,16 @@ function AdminUserDialog({ user, onClose, onSaved }: { user: any | null; onClose
             <div><Label>Curso</Label><Input value={f.course ?? ""} onChange={(e) => setF({ ...f, course: e.target.value })} /></div>
           )}
           <div><Label>Registro / Matrícula (outros)</Label><Input value={f.registration_number ?? ""} onChange={(e) => setF({ ...f, registration_number: e.target.value })} /></div>
+          <div className="rounded border p-3">
+            <div className="text-sm font-bold mb-1">Aceite dos termos</div>
+            {terms.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Nenhum aceite registrado para este usuário.</p>
+            ) : terms.map((t: any) => (
+              <div key={t.id} className="text-xs text-muted-foreground break-all">
+                Versão {t.version} · {fmtDateTime(t.accepted_at)} · IP {t.ip ?? "—"} · {t.user_agent ?? "navegador não informado"}
+              </div>
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground">A senha não pode ser visualizada nem alterada por aqui — o usuário deve usar "Esqueci minha senha".</p>
         </div>
         <DialogFooter>
