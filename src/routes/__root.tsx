@@ -140,6 +140,7 @@ function RootComponent() {
         <Outlet />
       </MaintenanceGate>
       <TermsGate />
+      <GuestNoticeBar />
       <Toaster richColors position="top-center" />
 
     </QueryClientProvider>
