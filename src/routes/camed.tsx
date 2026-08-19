@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CamedCourseDocsSection } from "@/components/camed-course-docs-public";
+import { NotOfficialNotice } from "@/components/not-official-notice";
 import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send, BookOpen, Newspaper, ExternalLink, ArrowRight, Images } from "lucide-react";
 
 type HistoryItem = { url: string; caption?: string | null; date?: string | null };
