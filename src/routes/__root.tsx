@@ -14,6 +14,7 @@ import { SiteHeader } from "@/components/site-header";
 import { MaintenanceGate } from "@/components/maintenance-gate";
 import { GlobalLoading } from "@/components/global-loading";
 import { TermsGate } from "@/components/terms-gate";
+import { GuestNoticeBar } from "@/components/guest-notice-bar";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity-log";
 
@@ -139,6 +140,7 @@ function RootComponent() {
         <Outlet />
       </MaintenanceGate>
       <TermsGate />
+      <GuestNoticeBar />
       <Toaster richColors position="top-center" />
 
     </QueryClientProvider>
