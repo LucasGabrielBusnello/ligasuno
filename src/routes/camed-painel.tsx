@@ -228,7 +228,7 @@ function InfoTab() {
           <div>
             <Label className="flex items-center gap-1.5"><Mail className="size-4" /> E-mail do CAMED</Label>
             <Input type="email" placeholder="camed@exemplo.com" value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} />
-            <p className="text-xs text-muted-foreground mt-1">Para onde o MEDUNO envia mensagens anônimas e notificações de agendamento.</p>
+            <p className="text-xs text-muted-foreground mt-1">Para onde o MEDHUB envia mensagens anônimas e notificações de agendamento.</p>
           </div>
           <div className="pt-2">
             <ImageUpload

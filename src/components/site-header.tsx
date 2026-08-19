@@ -74,7 +74,7 @@ export function SiteHeader() {
               <div className="size-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-md">
                 <GraduationCap className="size-5 text-primary-foreground" />
               </div>
-              <div className="font-black text-lg tracking-tight leading-none">MEDUNO</div>
+              <div className="font-black text-lg tracking-tight leading-none">MEDHUB</div>
             </Link>
             <nav className="hidden md:flex items-center gap-1">
               {NAV.map((n) => {

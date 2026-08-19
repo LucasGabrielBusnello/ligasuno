@@ -1798,7 +1798,7 @@ function AtleticaSectionLayout({
             );
           })}
         </nav>
-        <div className="px-5 py-3 border-t border-white/10 text-[10px] opacity-50 font-mono">MEDUNO • AAAMD</div>
+        <div className="px-5 py-3 border-t border-white/10 text-[10px] opacity-50 font-mono">MEDHUB • AAAMD</div>
       </aside>
 
       {/* Horizontal chips (mobile) */}

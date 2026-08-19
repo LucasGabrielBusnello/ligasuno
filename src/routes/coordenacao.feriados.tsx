@@ -13,7 +13,7 @@ import { listHolidays, upsertHoliday, deleteHoliday } from "@/lib/schedule.funct
 export const Route = createFileRoute("/coordenacao/feriados")({
   head: () => ({
     meta: [
-      { title: "Coordenação · Feriados — MEDUNO" },
+      { title: "Coordenação · Feriados — MEDHUB" },
       { name: "description", content: "Gestão de feriados do semestre letivo." },
       { name: "robots", content: "noindex" },
     ],

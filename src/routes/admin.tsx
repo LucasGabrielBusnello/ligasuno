@@ -745,7 +745,7 @@ type AdPlacement = "home" | "ligas" | "logos" | "parceiros";
 const AD_PLACEMENTS: { key: AdPlacement; label: string; hint: string }[] = [
   { key: "home", label: "Hub Inicial", hint: "Carrossel de banners no topo do hub inicial." },
   { key: "ligas", label: "Página Ligas", hint: "Carrossel de banners na página de Ligas." },
-  { key: "logos", label: "Logos (Hub)", hint: "Pequenas logos horizontais logo abaixo do título MEDUNO." },
+  { key: "logos", label: "Logos (Hub)", hint: "Pequenas logos horizontais logo abaixo do título MEDHUB." },
   { key: "parceiros", label: "Parceiros", hint: "Cards clicáveis exibidos na página /parceiros." },
 ];
 

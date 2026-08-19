@@ -15,6 +15,7 @@ import { sendWelcomeEmailForUser } from "@/lib/registration.functions";
 import { requestPasswordResetCode, confirmPasswordResetCode } from "@/lib/password-reset.functions";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { formatBRPhone, isValidBRPhone, normalizePhone } from "@/lib/phone";
+import { TERMS_VERSION } from "@/lib/terms";
 
 
 function PasswordInput({ id, value, onChange, autoComplete, required }: { id: string; value: string; onChange: (v: string) => void; autoComplete?: string; required?: boolean }) {
@@ -166,6 +167,7 @@ function AuthPage() {
   const nav = useNavigate();
   const welcome = useServerFn(sendWelcomeEmailForUser);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -240,6 +242,12 @@ function AuthPage() {
     } else if (!su.course) {
       const m = "Selecione qual curso você estuda/trabalha."; setError(m); toast.error(m); return;
     }
+    if (!acceptedTerms) {
+      const m = "É necessário ler e aceitar os termos de uso para criar a conta.";
+      setError(m); toast.error(m); return;
+    }
+
+
 
     setLoading(true);
     // Verifica disponibilidade do usuário (via função SECURITY DEFINER — não expõe emails)
@@ -286,9 +294,16 @@ function AuthPage() {
         patch.course = su.course;
       }
       try { await supabase.from("profiles").update(patch).eq("id", data.user.id); } catch {}
+      try {
+        await (supabase as any).from("terms_acceptances").upsert(
+          { user_id: data.user.id, version: TERMS_VERSION, user_agent: navigator.userAgent },
+          { onConflict: "user_id,version" },
+        );
+      } catch {}
       // não bloqueia o login: e-mail de boas-vindas é enviado em segundo plano
       void welcome({ data: { user_id: data.user.id } }).catch((e) => console.warn("welcome email failed", e));
     }
+
 
     // Como auto-confirm está ativo, a sessão já vem pronta
     if (data.session) {
@@ -481,9 +496,26 @@ function AuthPage() {
                       onChange={(v) => setSu({ ...su, confirmPassword: v })}
                     />
                   </div>
+                  <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={acceptedTerms}
+                      onChange={(e) => setAcceptedTerms(e.target.checked)}
+                      className="mt-1 size-4 accent-primary"
+                    />
+                    <span className="text-muted-foreground">
+                      Li e aceito os{" "}
+                      <Link to="/termos" target="_blank" className="underline underline-offset-2 text-foreground">
+                        termos de uso e a política de privacidade
+                      </Link>
+                      , inclusive que esta plataforma não é canal oficial da instituição e que meus dados
+                      pessoais podem ser vistos pelas entidades das quais eu participar.
+                    </span>
+                  </label>
                   <Button type="submit" disabled={loading} className="w-full">
                     {loading ? "Cadastrando..." : "Criar conta"}
                   </Button>
+
                 </form>
               </TabsContent>
             </Tabs>

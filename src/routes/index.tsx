@@ -3,14 +3,15 @@ import { Sparkles, GraduationCap, Trophy, Building2, BookOpen, ArrowRight } from
 import { AdsBanner } from "@/components/ads-banner";
 import { InstallPrompt } from "@/components/install-prompt";
 import { HubLogos } from "@/components/hub-logos";
+import { NotOfficialNotice } from "@/components/not-official-notice";
 
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "MEDUNO — Medicina Unochapecó" },
+      { title: "MEDHUB — Plataforma estudantil de Medicina" },
       { name: "description", content: "Plataforma integrada para estudantes, ligas acadêmicas, atlética e CAMED de Medicina da Unochapecó." },
-      { property: "og:title", content: "MEDUNO — Medicina Unochapecó" },
+      { property: "og:title", content: "MEDHUB — Plataforma estudantil de Medicina" },
       { property: "og:description", content: "Plataforma integrada para estudantes, ligas, atlética e CAMED." },
     ],
   }),
@@ -66,14 +67,14 @@ function HomePage() {
         <div className="absolute bottom-0 left-1/3 size-[28rem] rounded-full bg-primary/15 blur-3xl animate-blob-3" />
       </div>
 
-      {/* Hero MEDUNO — elemento principal, primeiro da página */}
+      {/* Hero MEDHUB — elemento principal, primeiro da página */}
       <section className="hub-hero text-white relative overflow-hidden rounded-none">
         <div className="max-w-5xl mx-auto px-4 py-16 md:py-24 text-center animate-fade-up relative">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-6 backdrop-blur">
             <Sparkles className="size-3.5" /> Centro Integrado
           </div>
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-6 bg-gradient-to-br from-white via-white to-white/70 bg-clip-text text-transparent drop-shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-            MEDUNO
+            MEDHUB
           </h1>
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/85 font-medium">
             Plataforma integrada de Medicina da Unochapecó — cronograma, ligas acadêmicas,
@@ -119,9 +120,12 @@ function HomePage() {
       </section>
 
 
+      <NotOfficialNotice />
+
       <footer className="border-t border-border/50 py-8 text-center text-sm text-muted-foreground relative">
-        © {new Date().getFullYear()} MEDUNO · Medicina Unochapecó
+        © {new Date().getFullYear()} MEDHUB · Plataforma estudantil independente
       </footer>
+
     </div>
   );
 }

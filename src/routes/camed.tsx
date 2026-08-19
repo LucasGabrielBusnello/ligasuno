@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { CamedCourseDocsSection } from "@/components/camed-course-docs-public";
+import { NotOfficialNotice } from "@/components/not-official-notice";
 import { Building2, MessageSquare, Users as UsersIcon, Calendar as CalIcon, Clock, Video, MapPin, Lock, Send, BookOpen, Newspaper, ExternalLink, ArrowRight, Images } from "lucide-react";
 
 type HistoryItem = { url: string; caption?: string | null; date?: string | null };
@@ -24,9 +25,9 @@ function normalizeHistory(raw: any): HistoryItem[] {
 export const Route = createFileRoute("/camed")({
   head: () => ({
     meta: [
-      { title: "CAMED — MEDUNO" },
+      { title: "CAMED — MEDHUB" },
       { name: "description", content: "Centro Acadêmico de Medicina da Unochapecó — conheça os membros, envie mensagens anônimas e agende horários." },
-      { property: "og:title", content: "CAMED — MEDUNO" },
+      { property: "og:title", content: "CAMED — MEDHUB" },
       { property: "og:description", content: "Conheça a equipe, envie mensagens anônimas e agende horários com o CAMED." },
     ],
   }),
@@ -102,7 +103,9 @@ function CamedPublicPage() {
         <HistoryShowcase info={info} />
         <MembersSection />
       </main>
+      <NotOfficialNotice />
     </div>
+
   );
 }
 

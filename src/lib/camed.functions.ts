@@ -179,7 +179,7 @@ export const testCamedWhatsapp = createServerFn({ method: "POST" })
     return await sendCallMeBot(
       (info as any)?.whatsapp_phone,
       (info as any)?.whatsapp_apikey,
-      "✅ Teste do MEDUNO: as notificações de horários do CAMED estão funcionando.",
+      "✅ Teste do MEDHUB: as notificações de horários do CAMED estão funcionando.",
     );
   });
 
@@ -197,7 +197,7 @@ function buildBookingIcs(args: { id: string; start: Date; minutes: number; modal
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//MEDUNO//CAMED//PT-BR",
+    "PRODID:-//MEDHUB//CAMED//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:REQUEST",
     "BEGIN:VEVENT",

@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SiteHeader } from "@/components/site-header";
 import { MaintenanceGate } from "@/components/maintenance-gate";
 import { GlobalLoading } from "@/components/global-loading";
+import { TermsGate } from "@/components/terms-gate";
 import { supabase } from "@/integrations/supabase/client";
 import { logActivity } from "@/lib/activity-log";
 
@@ -82,19 +83,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "google", content: "notranslate" },
       { httpEquiv: "Content-Language", content: "pt-BR" },
-      { title: "MEDUNO — Medicina Unochapecó" },
+      { title: "MEDHUB — Plataforma estudantil de Medicina" },
       { name: "description", content: "Plataforma integrada para estudantes, ligas acadêmicas, atlética e CAMED de Medicina da Unochapecó." },
-      { property: "og:title", content: "MEDUNO — Medicina Unochapecó" },
+      { property: "og:title", content: "MEDHUB — Plataforma estudantil de Medicina" },
       { property: "og:description", content: "Plataforma integrada para estudantes, ligas, atlética e CAMED de Medicina da Unochapecó." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "MEDUNO — Medicina Unochapecó" },
+      { name: "twitter:title", content: "MEDHUB — Plataforma estudantil de Medicina" },
       { name: "twitter:description", content: "Plataforma integrada para estudantes, ligas, atlética e CAMED de Medicina da Unochapecó." },
       { name: "theme-color", content: "#1f5132" },
       { name: "mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "MEDUNO" },
+      { name: "apple-mobile-web-app-title", content: "MEDHUB" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -137,7 +138,9 @@ function RootComponent() {
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </MaintenanceGate>
+      <TermsGate />
       <Toaster richColors position="top-center" />
+
     </QueryClientProvider>
   );
 }
