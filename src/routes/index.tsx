@@ -21,43 +21,18 @@ export const Route = createFileRoute("/")({
 });
 
 const QUICK_ACCESS = [
-  {
-    to: "/aluno",
-    label: "Portal do Aluno",
-    description: "Cronograma, matérias, quizzes e desempenho.",
-    icon: GraduationCap,
-    gradient: "from-emerald-600 to-emerald-800",
-    ring: "ring-emerald-400/40",
-    iconClass: "bg-white/15 text-white",
-  },
-  {
-    to: "/atletica",
-    label: "AAAMD",
-    description: "Atlética, produtos, eventos e carteirinha.",
-    icon: Trophy,
-    gradient: "from-orange-600 to-amber-800",
-    ring: "ring-orange-400/40",
-    iconClass: "bg-white/15 text-white",
-  },
-  {
-    to: "/camed",
-    label: "CAMED",
-    description: "Centro acadêmico, notícias e agendamentos.",
-    icon: Building2,
-    gradient: "from-teal-600 to-teal-900",
-    ring: "ring-teal-400/40",
-    iconClass: "bg-white/15 text-white",
-  },
-  {
-    to: "/ligas",
-    label: "Ligas Acadêmicas",
-    description: "Encontre ligas, entre em processos seletivos.",
-    icon: BookOpen,
-    gradient: "from-primary to-primary/70",
-    ring: "ring-primary/40",
-    iconClass: "bg-white/15 text-white",
-  },
+  { to: "/aluno", label: "Portal do Aluno", description: "Cronograma, matérias, quizzes e desempenho.", icon: GraduationCap },
+  { to: "/atletica", label: "AAAMD", description: "Atlética, produtos, eventos e carteirinha.", icon: Trophy },
+  { to: "/camed", label: "CAMED", description: "Centro acadêmico, notícias e agendamentos.", icon: Building2 },
+  { to: "/ligas", label: "Ligas Acadêmicas", description: "Encontre ligas, entre em processos seletivos.", icon: BookOpen },
 ] as const;
+
+const HIGHLIGHTS = [
+  { title: "Sua semana organizada", text: "Cronograma sempre atualizado, com aulas, práticas e provas por turma.", icon: CalendarDays },
+  { title: "Toda a comunidade", text: "Ligas, atlética, CAMED e IFMSA reunidos em uma única plataforma.", icon: Users },
+  { title: "Inscrições sem atrito", text: "Eventos, minicursos e pagamentos com confirmação automática.", icon: ShieldCheck },
+] as const;
+
 
 function HomePage() {
   return (
