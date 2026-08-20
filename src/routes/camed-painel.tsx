@@ -21,6 +21,7 @@ import { setCamedMaintenance } from "@/lib/athletic-extras.functions";
 import { Wrench, FolderOpen } from "lucide-react";
 import { CamedDocumentsTab } from "@/components/camed-documents";
 import { CamedCourseDocumentsManager } from "@/components/camed-course-documents";
+import { CamedCourseInfoManager } from "@/components/camed-course-info";
 import { CamedOpenActivities } from "@/components/camed-open-activities";
 
 export const Route = createFileRoute("/camed-painel")({ component: CamedPage });
@@ -88,6 +89,7 @@ function CamedPage() {
             <TabsContent value="documentos" className="mt-6 space-y-6">
               <CamedDocumentsTab />
               <CamedCourseDocumentsManager />
+              <CamedCourseInfoManager />
             </TabsContent>
           )}
         </Tabs>
