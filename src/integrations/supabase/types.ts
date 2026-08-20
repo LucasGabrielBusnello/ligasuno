@@ -1449,6 +1449,33 @@ export type Database = {
           },
         ]
       }
+      camed_contact_buttons: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          label: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          label: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          label?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       camed_course_documents: {
         Row: {
           created_at: string
@@ -1486,6 +1513,39 @@ export type Database = {
           image_url?: string | null
           size_bytes?: number | null
           storage_path?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      camed_course_infos: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          id: string
+          image_url: string | null
+          link_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          id?: string
+          image_url?: string | null
+          link_url?: string | null
           title?: string
           updated_at?: string
         }
