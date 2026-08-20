@@ -3,7 +3,6 @@ import { useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollText } from "lucide-react";
 import { toast } from "sonner";
 import { TERMS_CLAUSES, TERMS_TITLE, TERMS_VERSION } from "@/lib/terms";
@@ -121,30 +120,23 @@ export function TermsGate() {
         </div>
 
         <div className="shrink-0 space-y-3 border-t border-border p-5">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setChecked((v) => !v)}
-            onKeyDown={(e) => {
-              if (e.key === " " || e.key === "Enter") {
-                e.preventDefault();
-                setChecked((v) => !v);
-              }
-            }}
-            className="flex cursor-pointer select-none items-start gap-2.5 text-sm"
+          <label
+            htmlFor="terms-consent"
+            className="flex min-h-12 cursor-pointer select-none items-start gap-3 text-sm"
           >
-            <Checkbox
+            <input
+              id="terms-consent"
+              type="checkbox"
               checked={checked}
-              onCheckedChange={(v: boolean | "indeterminate") => setChecked(v === true)}
-              onClick={(e) => e.stopPropagation()}
-              className="mt-0.5"
+              onChange={(e) => setChecked(e.currentTarget.checked)}
+              className="mt-0.5 size-7 shrink-0 cursor-pointer rounded-none accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
             <span>
               Li e aceito os termos de uso e a política de privacidade, inclusive que o MEDPLEX não é
               canal oficial da instituição e que meus dados pessoais podem ser vistos pelas entidades
               das quais eu participar.
             </span>
-          </div>
+          </label>
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button onClick={confirm} disabled={!checked || busy} className="flex-1">

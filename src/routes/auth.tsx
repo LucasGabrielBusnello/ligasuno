@@ -496,12 +496,13 @@ function AuthPage() {
                       onChange={(v) => setSu({ ...su, confirmPassword: v })}
                     />
                   </div>
-                  <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                  <label htmlFor="signup-terms-consent" className="flex min-h-12 cursor-pointer items-start gap-3 text-sm">
                     <input
+                      id="signup-terms-consent"
                       type="checkbox"
                       checked={acceptedTerms}
                       onChange={(e) => setAcceptedTerms(e.target.checked)}
-                      className="mt-1 size-4 accent-primary"
+                      className="mt-0.5 size-7 shrink-0 cursor-pointer rounded-none accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     />
                     <span className="text-muted-foreground">
                       Li e aceito os{" "}
