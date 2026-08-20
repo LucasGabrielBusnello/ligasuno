@@ -71,7 +71,7 @@ function HomePage() {
               to="/aluno"
               className="group inline-flex items-center gap-2 rounded-full bg-copper px-6 py-3 text-sm font-bold text-accent-foreground shadow-lg transition-all hover:scale-[1.03]"
             >
-              Entrar no portal <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              Portal do Aluno <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link
               to="/ligas"
