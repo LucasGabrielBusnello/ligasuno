@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Sparkles, GraduationCap, Trophy, Building2, BookOpen, ArrowRight } from "lucide-react";
+import { Sparkles, GraduationCap, Trophy, Building2, BookOpen, ArrowRight, CalendarDays, Users, ShieldCheck } from "lucide-react";
 import { AdsBanner } from "@/components/ads-banner";
 import { InstallPrompt } from "@/components/install-prompt";
 import { HubLogos } from "@/components/hub-logos";
 import { NotOfficialNotice } from "@/components/not-official-notice";
+import { Reveal } from "@/components/reveal";
+
 
 
 export const Route = createFileRoute("/")({
