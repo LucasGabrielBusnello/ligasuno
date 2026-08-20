@@ -75,7 +75,7 @@ function MaintenanceScreen({ signedInAs }: { signedInAs: string | null }) {
         <div className="space-y-2">
           <h1 className="text-3xl font-black tracking-tight text-white">Site em Manutenção</h1>
           <p className="text-sm text-neutral-400">
-            Estamos preparando uma nova versão do MEDHUB. Voltamos em breve.
+            Estamos preparando uma nova versão do MEDPLEX. Voltamos em breve.
           </p>
         </div>
 

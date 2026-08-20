@@ -6,9 +6,9 @@ import { Handshake, ArrowUpRight } from "lucide-react";
 export const Route = createFileRoute("/parceiros")({
   head: () => ({
     meta: [
-      { title: "Parceiros — MEDHUB" },
+      { title: "Parceiros — MEDPLEX" },
       { name: "description", content: "Conheça os parceiros e apoiadores da Medicina Unochapecó: descontos, serviços e oportunidades para estudantes." },
-      { property: "og:title", content: "Parceiros — MEDHUB" },
+      { property: "og:title", content: "Parceiros — MEDPLEX" },
       { property: "og:description", content: "Parceiros e apoiadores da Medicina Unochapecó." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -48,7 +48,7 @@ function PartnersPage() {
       <section className="hub-hero text-white relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-4 py-14 md:py-20 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs uppercase tracking-widest mb-5 backdrop-blur">
-            <Handshake className="size-3.5" /> Rede MEDHUB
+            <Handshake className="size-3.5" /> Rede MEDPLEX
           </div>
           <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4">Parceiros</h1>
           <p className="max-w-2xl mx-auto text-base md:text-lg text-white/85 font-medium">

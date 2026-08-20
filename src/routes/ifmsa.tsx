@@ -45,13 +45,13 @@ import {
 export const Route = createFileRoute("/ifmsa")({
   head: () => ({
     meta: [
-      { title: "IFMSA Brazil Unochapecó — MEDHUB" },
+      { title: "IFMSA Brazil Unochapecó — MEDPLEX" },
       {
         name: "description",
         content:
           "Conheça a IFMSA Brazil Unochapecó: comitês, intercâmbios nacionais e internacionais, projetos sociais, diretoria e a Cartilha do Calouro para download.",
       },
-      { property: "og:title", content: "IFMSA Brazil Unochapecó — MEDHUB" },
+      { property: "og:title", content: "IFMSA Brazil Unochapecó — MEDPLEX" },
       {
         property: "og:description",
         content: "Comitês, intercâmbios, projetos e a Cartilha do Calouro da IFMSA Brazil Unochapecó.",

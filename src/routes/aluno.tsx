@@ -20,9 +20,9 @@ import { ScheduleGrid, ScheduleLegend, getMonday, toISODate, type ExtraEvent } f
 export const Route = createFileRoute("/aluno")({
   head: () => ({
     meta: [
-      { title: "Aluno — MEDHUB" },
+      { title: "Aluno — MEDPLEX" },
       { name: "description", content: "Painel do estudante de Medicina da Unochapecó: matérias, professores e agenda pessoal." },
-      { property: "og:title", content: "Aluno — MEDHUB" },
+      { property: "og:title", content: "Aluno — MEDPLEX" },
       { property: "og:description", content: "Painel do estudante de Medicina da Unochapecó." },
     ],
   }),

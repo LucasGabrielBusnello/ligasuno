@@ -35,7 +35,7 @@ export const requestPasswordResetCode = createServerFn({ method: "POST" })
     try {
       const delivery = await sendGmail({
         to: email,
-        subject: "Seu código de redefinição de senha — MEDHUB",
+        subject: "Seu código de redefinição de senha — MEDPLEX",
         html: resetCodeEmailHtml(code, prof.full_name || prof.username || null),
       });
       console.info("password reset email accepted", { messageId: delivery.id });
