@@ -82,7 +82,7 @@ export function ProfileReviewDialog({
           </div>
           <DialogTitle className="text-center">Atualizar cadastro</DialogTitle>
           <DialogDescription className="text-center">
-            Adicionamos novas informações ao MEDHUB. Confirme seus dados para continuar.
+            Adicionamos novas informações ao MEDPLEX. Confirme seus dados para continuar.
           </DialogDescription>
         </DialogHeader>
 

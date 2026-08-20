@@ -25,9 +25,9 @@ function normalizeHistory(raw: any): HistoryItem[] {
 export const Route = createFileRoute("/camed")({
   head: () => ({
     meta: [
-      { title: "CAMED — MEDHUB" },
+      { title: "CAMED — MEDPLEX" },
       { name: "description", content: "Centro Acadêmico de Medicina da Unochapecó — conheça os membros, envie mensagens anônimas e agende horários." },
-      { property: "og:title", content: "CAMED — MEDHUB" },
+      { property: "og:title", content: "CAMED — MEDPLEX" },
       { property: "og:description", content: "Conheça a equipe, envie mensagens anônimas e agende horários com o CAMED." },
     ],
   }),

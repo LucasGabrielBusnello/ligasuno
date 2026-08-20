@@ -10,9 +10,9 @@ import { AdsBanner } from "@/components/ads-banner";
 export const Route = createFileRoute("/ligas")({
   head: () => ({
     meta: [
-      { title: "Ligas Acadêmicas — MEDHUB" },
+      { title: "Ligas Acadêmicas — MEDPLEX" },
       { name: "description", content: "Conheça todas as ligas acadêmicas de medicina da Unochapecó." },
-      { property: "og:title", content: "Ligas Acadêmicas — MEDHUB" },
+      { property: "og:title", content: "Ligas Acadêmicas — MEDPLEX" },
       { property: "og:description", content: "Todas as ligas acadêmicas de medicina em um só lugar." },
     ],
   }),

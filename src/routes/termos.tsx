@@ -6,16 +6,16 @@ export const Route = createFileRoute("/termos")({
   component: TermsPage,
   head: () => ({
     meta: [
-      { title: "Termos de Uso e Privacidade — MEDHUB" },
+      { title: "Termos de Uso e Privacidade — MEDPLEX" },
       {
         name: "description",
         content:
-          "Termos de uso e política de privacidade do MEDHUB, plataforma estudantil independente para ligas acadêmicas, atlética, CAMED e IFMSA.",
+          "Termos de uso e política de privacidade do MEDPLEX, plataforma estudantil independente para ligas acadêmicas, atlética, CAMED e IFMSA.",
       },
-      { property: "og:title", content: "Termos de Uso e Privacidade — MEDHUB" },
+      { property: "og:title", content: "Termos de Uso e Privacidade — MEDPLEX" },
       {
         property: "og:description",
-        content: "Leia os termos de uso e a política de privacidade da plataforma MEDHUB.",
+        content: "Leia os termos de uso e a política de privacidade da plataforma MEDPLEX.",
       },
       { property: "og:type", content: "article" },
       { name: "twitter:card", content: "summary" },

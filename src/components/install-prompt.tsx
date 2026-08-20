@@ -133,7 +133,7 @@ export function InstallPrompt() {
       ? "No Safari, toque em Compartilhar e depois em “Adicionar à Tela de Início”."
       : help === "android"
         ? "No Chrome, toque no menu ⋮ e escolha “Adicionar à tela inicial” / “Instalar app”."
-        : "No navegador, abra o menu e escolha “Instalar MEDHUB” (ou o ícone de instalar na barra de endereço).";
+        : "No navegador, abra o menu e escolha “Instalar MEDPLEX” (ou o ícone de instalar na barra de endereço).";
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[60] p-3 sm:p-4 pointer-events-none">
@@ -149,7 +149,7 @@ export function InstallPrompt() {
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
               {help
                 ? helpText
-                : "Crie um ícone do MEDHUB na tela inicial do seu aparelho e acesse o hub com um toque."}
+                : "Crie um ícone do MEDPLEX na tela inicial do seu aparelho e acesse o hub com um toque."}
             </p>
             {help === "ios" && (
               <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-primary">

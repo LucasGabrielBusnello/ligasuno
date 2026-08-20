@@ -140,7 +140,7 @@ export function TermsGate() {
               className="mt-0.5"
             />
             <span>
-              Li e aceito os termos de uso e a política de privacidade, inclusive que o MEDHUB não é
+              Li e aceito os termos de uso e a política de privacidade, inclusive que o MEDPLEX não é
               canal oficial da instituição e que meus dados pessoais podem ser vistos pelas entidades
               das quais eu participar.
             </span>

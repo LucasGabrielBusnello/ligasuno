@@ -32,7 +32,7 @@ const CLASSES = ["ATM31", "ATM30", "ATM29", "ATM28", "ATM27", "ATM26"] as const;
 export const Route = createFileRoute("/coordenacao/cronograma")({
   head: () => ({
     meta: [
-      { title: "Coordenação · Cronograma — MEDHUB" },
+      { title: "Coordenação · Cronograma — MEDPLEX" },
       { name: "description", content: "Edição do cronograma semanal das turmas de Medicina." },
       { name: "robots", content: "noindex" },
     ],

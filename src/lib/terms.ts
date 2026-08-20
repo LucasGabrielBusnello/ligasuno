@@ -1,9 +1,9 @@
 export const TERMS_VERSION = "1.0";
 
-export const TERMS_TITLE = "Termos de Uso e Política de Privacidade — MEDHUB";
+export const TERMS_TITLE = "Termos de Uso e Política de Privacidade — MEDPLEX";
 
 export const NOT_OFFICIAL_NOTICE =
-  "MEDHUB é uma plataforma independente, criada e mantida por estudantes. Não é um canal oficial de comunicação da Unochapecó, do curso de Medicina, do CAMED, da atlética ou de qualquer entidade. O conteúdo publicado é de responsabilidade de quem o envia e não reflete o posicionamento dessas instituições.";
+  "MEDPLEX é uma plataforma independente, criada e mantida por estudantes. Não é um canal oficial de comunicação da Unochapecó, do curso de Medicina, do CAMED, da atlética ou de qualquer entidade. O conteúdo publicado é de responsabilidade de quem o envia e não reflete o posicionamento dessas instituições.";
 
 export type TermsClause = { n: number; title: string; body: string };
 
@@ -11,12 +11,12 @@ export const TERMS_CLAUSES: TermsClause[] = [
   {
     n: 1,
     title: "Natureza da plataforma",
-    body: "O MEDHUB é uma plataforma estudantil independente, sem vínculo institucional, societário ou representativo com a Unochapecó ou com qualquer instituição de ensino. Não constitui via oficial de comunicação da universidade, do curso de Medicina, da coordenação, do CAMED, das ligas acadêmicas, da atlética ou de qualquer outra entidade citada. Informações aqui publicadas não substituem os canais oficiais dessas entidades, e o usuário se compromete a confirmar nos canais oficiais qualquer informação de caráter acadêmico, financeiro ou institucional.",
+    body: "O MEDPLEX é uma plataforma estudantil independente, sem vínculo institucional, societário ou representativo com a Unochapecó ou com qualquer instituição de ensino. Não constitui via oficial de comunicação da universidade, do curso de Medicina, da coordenação, do CAMED, das ligas acadêmicas, da atlética ou de qualquer outra entidade citada. Informações aqui publicadas não substituem os canais oficiais dessas entidades, e o usuário se compromete a confirmar nos canais oficiais qualquer informação de caráter acadêmico, financeiro ou institucional.",
   },
   {
     n: 2,
     title: "Conteúdo de terceiros",
-    body: "Grande parte do conteúdo (cronogramas, notícias, documentos, eventos, anúncios, valores, imagens) é enviada por usuários, diretores, ligas, atlética, CAMED, IFMSA e parceiros. Esse conteúdo é de responsabilidade exclusiva de quem o publicou e não reflete a opinião ou o posicionamento do MEDHUB, de seus mantenedores ou das instituições mencionadas.",
+    body: "Grande parte do conteúdo (cronogramas, notícias, documentos, eventos, anúncios, valores, imagens) é enviada por usuários, diretores, ligas, atlética, CAMED, IFMSA e parceiros. Esse conteúdo é de responsabilidade exclusiva de quem o publicou e não reflete a opinião ou o posicionamento do MEDPLEX, de seus mantenedores ou das instituições mencionadas.",
   },
   {
     n: 3,
@@ -31,7 +31,7 @@ export const TERMS_CLAUSES: TermsClause[] = [
   {
     n: 5,
     title: "Compartilhamento com ligas e entidades",
-    body: "Você entende e concorda que, ao se inscrever, se associar ou participar de uma liga acadêmica, da atlética, do CAMED, da IFMSA, de eventos, minicursos ou processos seletivos, seus dados pessoais — inclusive nome, e-mail, telefone, CPF, data de nascimento, matrícula, curso, turma, semestre, foto, situação de pagamento, presença e desempenho em provas — ficam visíveis para os diretores, presidentes e administradores dessas entidades, para fins de gestão, cobrança, emissão de certificados, controle de presença e comunicação. O MEDHUB não controla o uso posterior que essas pessoas fazem desses dados e não se responsabiliza por ele; cada entidade é controladora independente dos dados que acessa.",
+    body: "Você entende e concorda que, ao se inscrever, se associar ou participar de uma liga acadêmica, da atlética, do CAMED, da IFMSA, de eventos, minicursos ou processos seletivos, seus dados pessoais — inclusive nome, e-mail, telefone, CPF, data de nascimento, matrícula, curso, turma, semestre, foto, situação de pagamento, presença e desempenho em provas — ficam visíveis para os diretores, presidentes e administradores dessas entidades, para fins de gestão, cobrança, emissão de certificados, controle de presença e comunicação. O MEDPLEX não controla o uso posterior que essas pessoas fazem desses dados e não se responsabiliza por ele; cada entidade é controladora independente dos dados que acessa.",
   },
   {
     n: 6,
@@ -41,7 +41,7 @@ export const TERMS_CLAUSES: TermsClause[] = [
   {
     n: 7,
     title: "Pagamentos",
-    body: "Cobranças de semestralidade, ingressos, produtos, associações e inscrições são definidas e recebidas diretamente pelas ligas, atlética ou entidade organizadora, por meio de seus próprios provedores de pagamento. O MEDHUB apenas intermedeia tecnicamente o registro da cobrança e não é parte da relação de consumo, não retém os valores e não é responsável por reembolsos, estornos, cancelamentos, taxas cobradas pelos provedores ou pela entrega do produto/serviço contratado.",
+    body: "Cobranças de semestralidade, ingressos, produtos, associações e inscrições são definidas e recebidas diretamente pelas ligas, atlética ou entidade organizadora, por meio de seus próprios provedores de pagamento. O MEDPLEX apenas intermedeia tecnicamente o registro da cobrança e não é parte da relação de consumo, não retém os valores e não é responsável por reembolsos, estornos, cancelamentos, taxas cobradas pelos provedores ou pela entrega do produto/serviço contratado.",
   },
   {
     n: 8,
@@ -51,17 +51,17 @@ export const TERMS_CLAUSES: TermsClause[] = [
   {
     n: 9,
     title: "Conteúdo enviado por você",
-    body: "Ao enviar textos, imagens ou arquivos, você declara ter os direitos necessários e concede ao MEDHUB licença gratuita e não exclusiva para armazenar e exibir esse conteúdo dentro da plataforma. O MEDHUB pode remover conteúdo e suspender ou excluir contas que violem estes termos, a qualquer tempo e sem aviso prévio.",
+    body: "Ao enviar textos, imagens ou arquivos, você declara ter os direitos necessários e concede ao MEDPLEX licença gratuita e não exclusiva para armazenar e exibir esse conteúdo dentro da plataforma. O MEDPLEX pode remover conteúdo e suspender ou excluir contas que violem estes termos, a qualquer tempo e sem aviso prévio.",
   },
   {
     n: 10,
     title: "Propriedade intelectual de terceiros",
-    body: "Logos, marcas e materiais da Unochapecó, ligas, atlética, CAMED, IFMSA e parceiros pertencem a seus respectivos titulares e são exibidos apenas para identificação, sem implicar patrocínio, endosso ou parceria com o MEDHUB.",
+    body: "Logos, marcas e materiais da Unochapecó, ligas, atlética, CAMED, IFMSA e parceiros pertencem a seus respectivos titulares e são exibidos apenas para identificação, sem implicar patrocínio, endosso ou parceria com o MEDPLEX.",
   },
   {
     n: 11,
     title: "Limitação de responsabilidade",
-    body: "Na máxima extensão permitida pela legislação, o MEDHUB e seus mantenedores não respondem por danos diretos, indiretos, lucros cessantes, perda de dados, prejuízos acadêmicos ou financeiros decorrentes do uso ou da impossibilidade de uso da plataforma, de informações incorretas, de indisponibilidade, de conteúdo de terceiros, de conduta de outros usuários ou de falhas de provedores externos. Se alguma responsabilidade for reconhecida, ela fica limitada ao valor eventualmente pago por você diretamente ao MEDHUB, que hoje é zero.",
+    body: "Na máxima extensão permitida pela legislação, o MEDPLEX e seus mantenedores não respondem por danos diretos, indiretos, lucros cessantes, perda de dados, prejuízos acadêmicos ou financeiros decorrentes do uso ou da impossibilidade de uso da plataforma, de informações incorretas, de indisponibilidade, de conteúdo de terceiros, de conduta de outros usuários ou de falhas de provedores externos. Se alguma responsabilidade for reconhecida, ela fica limitada ao valor eventualmente pago por você diretamente ao MEDPLEX, que hoje é zero.",
   },
   {
     n: 12,
