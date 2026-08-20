@@ -93,8 +93,8 @@ export function TermsGate() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
-        <div className="flex items-start gap-3 border-b border-border p-5">
+      <div className="flex h-[90vh] max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl">
+        <div className="flex shrink-0 items-start gap-3 border-b border-border p-5">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <ScrollText className="size-5" />
           </div>
@@ -106,7 +106,10 @@ export function TermsGate() {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+        <div
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5"
+          style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
+        >
           {TERMS_CLAUSES.map((c) => (
             <section key={c.n}>
               <h3 className="text-sm font-bold">
@@ -117,11 +120,23 @@ export function TermsGate() {
           ))}
         </div>
 
-        <div className="space-y-3 border-t border-border p-5">
-          <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+        <div className="shrink-0 space-y-3 border-t border-border p-5">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setChecked((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === " " || e.key === "Enter") {
+                e.preventDefault();
+                setChecked((v) => !v);
+              }
+            }}
+            className="flex cursor-pointer select-none items-start gap-2.5 text-sm"
+          >
             <Checkbox
               checked={checked}
               onCheckedChange={(v: boolean | "indeterminate") => setChecked(v === true)}
+              onClick={(e) => e.stopPropagation()}
               className="mt-0.5"
             />
             <span>
@@ -129,7 +144,8 @@ export function TermsGate() {
               canal oficial da instituição e que meus dados pessoais podem ser vistos pelas entidades
               das quais eu participar.
             </span>
-          </label>
+          </div>
+
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button onClick={confirm} disabled={!checked || busy} className="flex-1">
               {busy ? "Registrando..." : "Li e aceito"}
