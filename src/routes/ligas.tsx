@@ -29,11 +29,22 @@ function LigasPage() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [myLeagues, setMyLeagues] = useState<MyLeague[]>([]);
   const [points, setPoints] = useState<Record<string, number>>({});
+  const [openActs, setOpenActs] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.from("public_leagues").select("*").order("name").then(({ data }) => {
       setLeagues((data as League[]) ?? []);
     });
+  }, []);
+
+  useEffect(() => {
+    supabase
+      .from("league_activities")
+      .select("*")
+      .eq("is_open", true)
+      .order("created_at", { ascending: false })
+      .limit(6)
+      .then(({ data }) => setOpenActs((data as any[]) ?? []));
   }, []);
 
   useEffect(() => {
@@ -43,6 +54,7 @@ function LigasPage() {
       setPoints(map);
     });
   }, []);
+
 
   useEffect(() => {
     if (!user) { setMyLeagues([]); return; }
