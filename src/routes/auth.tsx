@@ -383,6 +383,15 @@ function AuthPage() {
                   <ForgotPasswordDialog defaultEmail={li.email} />
                 </form>
 
+                <div className="my-4 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-[11px] uppercase tracking-widest text-muted-foreground">ou</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <GoogleButton />
+
+
+
               </TabsContent>
               <TabsContent value="signup" className="mt-4">
                 <form onSubmit={handleSignup} className="space-y-4" noValidate>
