@@ -2384,6 +2384,7 @@ export type Database = {
           is_open: boolean
           league_id: string
           participating_league_ids: string[]
+          starts_at: string | null
           title: string | null
         }
         Insert: {
@@ -2396,6 +2397,7 @@ export type Database = {
           is_open?: boolean
           league_id: string
           participating_league_ids?: string[]
+          starts_at?: string | null
           title?: string | null
         }
         Update: {
@@ -2408,6 +2410,7 @@ export type Database = {
           is_open?: boolean
           league_id?: string
           participating_league_ids?: string[]
+          starts_at?: string | null
           title?: string | null
         }
         Relationships: [

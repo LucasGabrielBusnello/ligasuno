@@ -1,0 +1,1 @@
+ALTER TABLE public.league_activities ADD COLUMN IF NOT EXISTS starts_at timestamp with time zone;
