@@ -151,6 +151,11 @@ function LigasPage() {
                         Aberta
                       </span>
                       <h3 className="font-black text-base mt-2 leading-tight">{a.title ?? a.caption}</h3>
+                      {a.starts_at && (
+                        <p className="text-xs font-bold text-primary mt-1">
+                          {new Date(a.starts_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                        </p>
+                      )}
                       {a.description && (
                         <p className="text-sm text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-4">{a.description}</p>
                       )}
