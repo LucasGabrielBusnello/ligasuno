@@ -1972,16 +1972,15 @@ export function ActivitiesTab({ league }: any) {
   }
   async function addOpen(e: React.FormEvent) {
     e.preventDefault();
-    if (!openForm.image_url) return toast.error("Imagem obrigatória");
     if (!openForm.title.trim()) return toast.error("Título obrigatório");
-    if (!openForm.description.trim()) return toast.error("Descrição obrigatória");
     const { error } = await (supabase.from("league_activities") as any).insert({
       league_id: league.id,
       display_order: list.length,
-      image_url: openForm.image_url,
+      image_url: openForm.image_url || null,
       caption: openForm.title.trim(),
       title: openForm.title.trim(),
-      description: openForm.description.trim(),
+      description: openForm.description.trim() || null,
+
       is_open: true,
       participating_league_ids: openForm.participating_league_ids,
     });
@@ -2049,7 +2048,8 @@ export function ActivitiesTab({ league }: any) {
           <div className="grid sm:grid-cols-3 gap-3">
             {opens.map((a: any) => (
               <Card key={a.id} className="overflow-hidden relative group">
-                <img src={a.image_url} className="aspect-video w-full object-cover" />
+                {a.image_url && <img src={a.image_url} className="aspect-video w-full object-cover" />}
+
                 <Badge className="absolute top-2 left-2 bg-emerald-600 text-white border-0">Aberta</Badge>
                 <div className="p-2 space-y-1">
                   {a.title && <p className="text-sm font-black leading-tight">{a.title}</p>}
@@ -2083,7 +2083,7 @@ export function ActivitiesTab({ league }: any) {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Registrar atividade aberta</DialogTitle></DialogHeader>
           <form onSubmit={addOpen} className="space-y-4">
-            <ImageUpload label="Imagem da atividade" folder="activities" value={openForm.image_url} onChange={(url) => setOpenForm({ ...openForm, image_url: url })} />
+            <ImageUpload label="Imagem da atividade (opcional)" folder="activities" value={openForm.image_url} onChange={(url) => setOpenForm({ ...openForm, image_url: url })} />
             <div>
               <Label>Título</Label>
               <Input value={openForm.title} onChange={(e) => setOpenForm({ ...openForm, title: e.target.value })} placeholder="Ex.: Simulação interligas" />

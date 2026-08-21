@@ -29,11 +29,22 @@ function LigasPage() {
   const [leagues, setLeagues] = useState<League[]>([]);
   const [myLeagues, setMyLeagues] = useState<MyLeague[]>([]);
   const [points, setPoints] = useState<Record<string, number>>({});
+  const [openActs, setOpenActs] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.from("public_leagues").select("*").order("name").then(({ data }) => {
       setLeagues((data as League[]) ?? []);
     });
+  }, []);
+
+  useEffect(() => {
+    supabase
+      .from("league_activities")
+      .select("*")
+      .eq("is_open", true)
+      .order("created_at", { ascending: false })
+      .limit(6)
+      .then(({ data }) => setOpenActs((data as any[]) ?? []));
   }, []);
 
   useEffect(() => {
@@ -43,6 +54,7 @@ function LigasPage() {
       setPoints(map);
     });
   }, []);
+
 
   useEffect(() => {
     if (!user) { setMyLeagues([]); return; }
@@ -97,7 +109,7 @@ function LigasPage() {
               "radial-gradient(60% 80% at 15% 0%, var(--primary) 0%, transparent 60%), radial-gradient(50% 70% at 90% 10%, var(--accent) 0%, transparent 60%)",
           }}
         />
-        <div className="relative max-w-7xl mx-auto px-4 pt-12 pb-14 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 pt-12 pb-8 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-4">
             <Users className="size-3.5" /> Ligas Acadêmicas
           </div>
@@ -107,18 +119,59 @@ function LigasPage() {
           <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
             Explore as ligas ativas de Medicina da Unochapecó, acompanhe o ranking de pontuação e conheça o trabalho de cada uma.
           </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <Stat value={leagues.length} label="Ligas ativas" />
-            <Stat value={Object.values(points).reduce((a, b) => a + b, 0)} label="Pontos atribuídos" />
             {myLeagues.length > 0 && <Stat value={myLeagues.length} label="Minhas ligas" />}
+          </div>
+          <div className="mt-6 text-left">
+            <AdsBanner placement="ligas" />
           </div>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-10">
-        <div className="mb-10">
-          <AdsBanner placement="ligas" />
-        </div>
+      <div className="max-w-7xl mx-auto px-4 pt-8 pb-10">
+        {openActs.length > 0 && (
+          <section className="mb-14">
+            <SectionTitle
+              icon={Activity}
+              kicker="Interligas"
+              title="Próximas atividades abertas"
+              subtitle="Atividades abertas divulgadas pelas ligas acadêmicas."
+            />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {openActs.map((a) => {
+                const lg = leagues.find((l) => l.id === a.league_id);
+                return (
+                  <Card key={a.id} className="overflow-hidden h-full flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+                    {a.image_url && (
+                      <img src={a.image_url} alt={a.title ?? "Atividade aberta"} className="aspect-video w-full object-cover" loading="lazy" />
+                    )}
+                    <CardContent className="p-4 flex-1">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">
+                        Aberta
+                      </span>
+                      <h3 className="font-black text-base mt-2 leading-tight">{a.title ?? a.caption}</h3>
+                      {a.description && (
+                        <p className="text-sm text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-4">{a.description}</p>
+                      )}
+                      {lg && (
+                        <div className="flex items-center gap-2 mt-3 text-xs font-semibold text-muted-foreground">
+                          {lg.icon_url ? (
+                            <img src={lg.icon_url} className="size-5 rounded object-contain" alt="" />
+                          ) : (
+                            <span className="size-5 rounded" style={{ background: lg.theme_color }} />
+                          )}
+                          <span className="truncate">{lg.name}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
 
         {user && myLeagues.length > 0 && (
           <section className="mb-14">
