@@ -1,0 +1,1 @@
+ALTER TABLE public.league_activities ALTER COLUMN image_url DROP NOT NULL;

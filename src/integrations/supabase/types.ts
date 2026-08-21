@@ -2380,7 +2380,7 @@ export type Database = {
           description: string | null
           display_order: number
           id: string
-          image_url: string
+          image_url: string | null
           is_open: boolean
           league_id: string
           participating_league_ids: string[]
@@ -2392,7 +2392,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
-          image_url: string
+          image_url?: string | null
           is_open?: boolean
           league_id: string
           participating_league_ids?: string[]
@@ -2404,7 +2404,7 @@ export type Database = {
           description?: string | null
           display_order?: number
           id?: string
-          image_url?: string
+          image_url?: string | null
           is_open?: boolean
           league_id?: string
           participating_league_ids?: string[]
