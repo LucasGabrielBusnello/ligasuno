@@ -528,6 +528,14 @@ function AuthPage() {
                   </Button>
 
                 </form>
+
+                <div className="my-4 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-[11px] uppercase tracking-widest text-muted-foreground">ou</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <GoogleButton />
+
               </TabsContent>
             </Tabs>
           </CardContent>
