@@ -2089,6 +2089,11 @@ export function ActivitiesTab({ league }: any) {
               <Input value={openForm.title} onChange={(e) => setOpenForm({ ...openForm, title: e.target.value })} placeholder="Ex.: Simulação interligas" />
             </div>
             <div>
+              <Label>Data e hora da atividade</Label>
+              <Input type="datetime-local" required value={openForm.starts_at} onChange={(e) => setOpenForm({ ...openForm, starts_at: e.target.value })} />
+              <p className="text-xs text-muted-foreground mt-1">A atividade aparece na página de Ligas até essa data e hora; depois sai automaticamente.</p>
+            </div>
+            <div>
               <Label>Descrição</Label>
               <Textarea rows={4} value={openForm.description} onChange={(e) => setOpenForm({ ...openForm, description: e.target.value })} placeholder="Conte sobre a atividade, público-alvo e como participar" />
             </div>
