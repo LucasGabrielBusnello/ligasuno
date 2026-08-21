@@ -2048,7 +2048,8 @@ export function ActivitiesTab({ league }: any) {
           <div className="grid sm:grid-cols-3 gap-3">
             {opens.map((a: any) => (
               <Card key={a.id} className="overflow-hidden relative group">
-                <img src={a.image_url} className="aspect-video w-full object-cover" />
+                {a.image_url && <img src={a.image_url} className="aspect-video w-full object-cover" />}
+
                 <Badge className="absolute top-2 left-2 bg-emerald-600 text-white border-0">Aberta</Badge>
                 <div className="p-2 space-y-1">
                   {a.title && <p className="text-sm font-black leading-tight">{a.title}</p>}
