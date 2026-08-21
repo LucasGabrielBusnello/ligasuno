@@ -1972,16 +1972,15 @@ export function ActivitiesTab({ league }: any) {
   }
   async function addOpen(e: React.FormEvent) {
     e.preventDefault();
-    if (!openForm.image_url) return toast.error("Imagem obrigatória");
     if (!openForm.title.trim()) return toast.error("Título obrigatório");
-    if (!openForm.description.trim()) return toast.error("Descrição obrigatória");
     const { error } = await (supabase.from("league_activities") as any).insert({
       league_id: league.id,
       display_order: list.length,
-      image_url: openForm.image_url,
+      image_url: openForm.image_url || null,
       caption: openForm.title.trim(),
       title: openForm.title.trim(),
-      description: openForm.description.trim(),
+      description: openForm.description.trim() || null,
+
       is_open: true,
       participating_league_ids: openForm.participating_league_ids,
     });
