@@ -89,6 +89,8 @@ function PresidentePage() {
   const nav = useNavigate();
   const [league, setLeague] = useState<League | null>(null);
   const [settings, setSettings] = useState<any>(null);
+  const [isPresidentMember, setIsPresidentMember] = useState(false);
+  const [accessChecked, setAccessChecked] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -96,14 +98,29 @@ function PresidentePage() {
       setLeague(data as League | null);
       const { data: s } = await supabase.from("app_settings").select("*").eq("id", 1).maybeSingle();
       setSettings(s);
+      if (data && user) {
+        const { data: mem } = await supabase
+          .from("league_memberships")
+          .select("role")
+          .eq("league_id", (data as any).id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        setIsPresidentMember(((mem as any)?.role ?? "") === "presidente");
+      }
+      setAccessChecked(true);
     })();
-  }, [slug]);
+  }, [slug, user?.id]);
 
   useEffect(() => { if (!loading && !user) nav({ to: "/auth" }); }, [loading, user]);
 
-  if (!league || !user) return <div className="p-12 text-center">Carregando...</div>;
-  const isOwner = league.president_id === user.id || (league as any).president2_id === user.id || isAdminMaster;
+  if (loading || !league || !user || !accessChecked) return <div className="p-12 text-center">Carregando...</div>;
+  const isOwner =
+    league.president_id === user.id ||
+    (league as any).president2_id === user.id ||
+    isPresidentMember ||
+    isAdminMaster;
   if (!isOwner) return <div className="p-12 text-center"><h1 className="text-2xl font-black">Acesso negado</h1></div>;
+
 
 
   const paid = !!(league.paid_until && new Date(league.paid_until) >= new Date());
