@@ -38,13 +38,13 @@ function LigasPage() {
   }, []);
 
   useEffect(() => {
-    supabase
-      .from("league_activities")
+    (supabase.from("league_activities") as any)
       .select("*")
       .eq("is_open", true)
-      .order("created_at", { ascending: false })
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
       .limit(6)
-      .then(({ data }) => setOpenActs((data as any[]) ?? []));
+      .then(({ data }: any) => setOpenActs((data as any[]) ?? []));
   }, []);
 
   useEffect(() => {
