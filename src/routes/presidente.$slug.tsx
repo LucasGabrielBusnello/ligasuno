@@ -2082,7 +2082,7 @@ export function ActivitiesTab({ league }: any) {
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>Registrar atividade aberta</DialogTitle></DialogHeader>
           <form onSubmit={addOpen} className="space-y-4">
-            <ImageUpload label="Imagem da atividade" folder="activities" value={openForm.image_url} onChange={(url) => setOpenForm({ ...openForm, image_url: url })} />
+            <ImageUpload label="Imagem da atividade (opcional)" folder="activities" value={openForm.image_url} onChange={(url) => setOpenForm({ ...openForm, image_url: url })} />
             <div>
               <Label>Título</Label>
               <Input value={openForm.title} onChange={(e) => setOpenForm({ ...openForm, title: e.target.value })} placeholder="Ex.: Simulação interligas" />
