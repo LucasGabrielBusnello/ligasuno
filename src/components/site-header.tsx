@@ -129,7 +129,9 @@ export function SiteHeader() {
                     {profile?.full_name ?? profile?.username ?? user.email}
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>Editar dados</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                    <UserCircle className="size-4" /> Editar dados
+                  </DropdownMenuItem>
                   {isCoordination && (
                     <DropdownMenuItem onClick={() => nav({ to: "/coordenacao/cronograma" })}>
                       <Settings2 className="size-4" /> Painel da Coordenação
