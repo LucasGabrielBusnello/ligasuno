@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { League } from "@/hooks/use-auth";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,15 +11,18 @@ export const Route = createFileRoute("/ligas")({
   head: () => ({
     meta: [
       { title: "Ligas Acadêmicas — MEDPLEX" },
-      { name: "description", content: "Conheça todas as ligas acadêmicas de medicina da Unochapecó." },
+      { name: "description", content: "Conheça todas as ligas acadêmicas de medicina da Unochapecó e o ranking de pontuação." },
       { property: "og:title", content: "Ligas Acadêmicas — MEDPLEX" },
-      { property: "og:description", content: "Todas as ligas acadêmicas de medicina em um só lugar." },
+      { property: "og:description", content: "Ranking e perfil de todas as ligas acadêmicas de medicina em um só lugar." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: LigasPage,
 });
 
 type MyLeague = League & { my_role: "presidente" | "diretor" | "ligante" };
+type RankedLeague = League & { total: number; rank: number };
 
 function LigasPage() {
   const { user } = useAuth();
@@ -59,6 +62,19 @@ function LigasPage() {
     })();
   }, [user?.id]);
 
+  const ranked = useMemo<RankedLeague[]>(
+    () =>
+      leagues
+        .map((l) => ({ ...l, total: points[l.id] ?? 0 }))
+        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+        .map((l, i) => ({ ...l, rank: i + 1 })),
+    [leagues, points],
+  );
+
+  const hasScores = ranked.some((l) => l.total > 0);
+  const podium = hasScores ? ranked.slice(0, 3) : [];
+  const rest = hasScores ? ranked.slice(3) : ranked;
+
   const roleMeta: Record<MyLeague["my_role"], { label: string; icon: any; className: string }> = {
     presidente: { label: "Presidente", icon: Star, className: "bg-amber-500/15 text-amber-600 border-amber-500/30" },
     diretor: { label: "Diretor", icon: ShieldCheck, className: "bg-primary/15 text-primary border-primary/30" },
@@ -71,160 +87,239 @@ function LigasPage() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-12">
-      <div className="mb-10">
-        <AdsBanner placement="ligas" className="" />
-      </div>
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-3">
-          <Users className="size-3.5" /> Ligas
+    <main className="relative">
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-border/50">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.18]"
+          style={{
+            background:
+              "radial-gradient(60% 80% at 15% 0%, var(--primary) 0%, transparent 60%), radial-gradient(50% 70% at 90% 10%, var(--accent) 0%, transparent 60%)",
+          }}
+        />
+        <div className="relative max-w-7xl mx-auto px-4 pt-12 pb-14 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest mb-4">
+            <Users className="size-3.5" /> Ligas Acadêmicas
+          </div>
+          <h1 className="text-4xl md:text-6xl font-black tracking-tight">
+            Onde a medicina <span className="text-primary">acontece</span>
+          </h1>
+          <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
+            Explore as ligas ativas de Medicina da Unochapecó, acompanhe o ranking de pontuação e conheça o trabalho de cada uma.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+            <Stat value={leagues.length} label="Ligas ativas" />
+            <Stat value={Object.values(points).reduce((a, b) => a + b, 0)} label="Pontos atribuídos" />
+            {myLeagues.length > 0 && <Stat value={myLeagues.length} label="Minhas ligas" />}
+          </div>
         </div>
-        <h1 className="text-4xl md:text-5xl font-black tracking-tight">Ligas Acadêmicas</h1>
-        <p className="text-muted-foreground mt-3 max-w-2xl mx-auto">
-          Explore as ligas ativas de Medicina da Unochapecó e conheça o trabalho de cada uma.
-        </p>
-      </div>
+      </section>
 
-      {user && myLeagues.length > 0 && (
-        <section className="mb-12">
-          <div className="flex items-center gap-2 mb-4">
-            <Star className="size-4 text-primary" />
-            <h2 className="text-lg font-black tracking-tight">Minhas ligas</h2>
-            <span className="text-xs text-muted-foreground">({myLeagues.length})</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myLeagues.map((league) => {
-              const meta = roleMeta[league.my_role];
-              const Icon = meta.icon;
-              return (
-                <Link key={league.id} to={rolePath[league.my_role]} params={{ slug: league.slug }} className="block min-w-0">
-                  <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 h-full border-primary/20">
-                    <div className="flex items-center gap-3 p-4 min-w-0" style={{ background: `linear-gradient(135deg, ${league.theme_color}22, transparent)` }}>
-                      {league.icon_url ? (
-                        <img src={league.icon_url} className="size-14 shrink-0 rounded-xl border bg-background object-contain" alt={league.name} />
-                      ) : (
-                        <div className="size-14 shrink-0 rounded-xl flex items-center justify-center" style={{ background: league.theme_color }}>
-                          <Activity className="size-7 text-white/80" />
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        <div className="mb-10">
+          <AdsBanner placement="ligas" />
+        </div>
+
+        {user && myLeagues.length > 0 && (
+          <section className="mb-14">
+            <SectionTitle icon={Star} kicker="Acesso rápido" title="Minhas ligas" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myLeagues.map((league) => {
+                const meta = roleMeta[league.my_role];
+                const Icon = meta.icon;
+                return (
+                  <Link key={league.id} to={rolePath[league.my_role]} params={{ slug: league.slug }} className="block min-w-0 group">
+                    <Card className="overflow-hidden h-full border-primary/20 transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
+                      <div
+                        className="flex items-center gap-3 p-4 min-w-0"
+                        style={{ background: `linear-gradient(135deg, ${league.theme_color}22, transparent)` }}
+                      >
+                        {league.icon_url ? (
+                          <img src={league.icon_url} className="size-14 shrink-0 rounded-xl border bg-background object-contain" alt={league.name} />
+                        ) : (
+                          <div className="size-14 shrink-0 rounded-xl flex items-center justify-center" style={{ background: league.theme_color }}>
+                            <Activity className="size-7 text-white/80" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-black text-base truncate">{league.name}</h3>
+                          <span className={`mt-1 inline-flex max-w-full items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${meta.className}`}>
+                            <Icon className="size-3 shrink-0" /> <span className="truncate">{meta.label}</span>
+                          </span>
                         </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-black text-base truncate">{league.name}</h3>
-                        <span className={`mt-1 inline-flex max-w-full items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${meta.className}`}>
-                          <Icon className="size-3 shrink-0" /> <span className="truncate">{meta.label}</span>
-                        </span>
+                        <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
                       </div>
-                      <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
-        </section>
-      )}
+        {leagues.length === 0 ? (
+          <Card className="p-12 text-center text-muted-foreground">Nenhuma liga publicada ainda.</Card>
+        ) : (
+          <>
+            {podium.length > 0 && (
+              <section className="mb-14">
+                <SectionTitle
+                  icon={Trophy}
+                  kicker="Ranking"
+                  title="Pódio das ligas"
+                  subtitle="Pontuação acumulada atribuída pelo CAMED."
+                />
+                <div className="grid gap-4 sm:grid-cols-3 items-end">
+                  {podium.map((l, i) => (
+                    <PodiumCard key={l.id} league={l} place={i + 1} />
+                  ))}
+                </div>
+              </section>
+            )}
 
-      {leagues.length === 0 ? (
-        <Card className="p-12 text-center text-muted-foreground">Nenhuma liga publicada ainda.</Card>
-      ) : (
-        <>
-          {user && myLeagues.length > 0 && (
-            <h2 className="text-lg font-black tracking-tight mb-4">Todas as ligas</h2>
-          )}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {leagues.map((league) => (
-              <Link key={league.id} to="/$slug" params={{ slug: league.slug }}>
-                <Card className="overflow-hidden hover:-translate-y-1 hover:shadow-xl transition-all duration-300 h-full">
-                  <div className="h-32 relative" style={{ background: `linear-gradient(135deg, ${league.theme_color}, ${league.theme_color}aa)` }}>
-                    {league.icon_url && <img src={league.icon_url} className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 size-20 rounded-2xl border-4 border-background bg-background object-contain" alt={league.name} />}
-                    {!league.icon_url && <Activity className="absolute bottom-3 right-3 size-16 text-white/30" />}
-                  </div>
-                  <CardContent className="pt-12 text-center">
-                    <h3 className="font-black text-xl">{league.name}</h3>
-                    {league.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{league.description}</p>}
-                    <div className="flex items-center justify-center gap-1 mt-3 text-xs text-primary font-bold uppercase tracking-widest">
-                      Acessar <ArrowRight className="size-3" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
-
-      <LeagueRanking leagues={leagues} points={points} />
+            {rest.length > 0 && (
+              <section>
+                <SectionTitle
+                  icon={Users}
+                  kicker={hasScores ? "Classificação" : "Todas as ligas"}
+                  title={hasScores ? "Demais ligas" : "Todas as ligas"}
+                />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {rest.map((l) => (
+                    <LeagueCard key={l.id} league={l} showRank={hasScores} />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </div>
     </main>
   );
 }
 
-function LeagueRanking({ leagues, points }: { leagues: League[]; points: Record<string, number> }) {
-  if (leagues.length === 0) return null;
-  const ranked = leagues
-    .map((l) => ({ ...l, total: points[l.id] ?? 0 }))
-    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
-
-  const podium = [
-    { icon: Crown, ring: "border-amber-400", badge: "bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950", glow: "shadow-[0_0_0_4px_rgba(251,191,36,.15)]" },
-    { icon: Medal, ring: "border-slate-300", badge: "bg-gradient-to-r from-slate-300 to-slate-400 text-slate-900", glow: "shadow-[0_0_0_4px_rgba(148,163,184,.15)]" },
-    { icon: Trophy, ring: "border-orange-400", badge: "bg-gradient-to-r from-orange-400 to-amber-600 text-orange-950", glow: "shadow-[0_0_0_4px_rgba(251,146,60,.15)]" },
-  ];
-
+function Stat({ value, label }: { value: number; label: string }) {
   return (
-    <section className="mt-16">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-xs font-bold uppercase tracking-widest mb-3">
-          <Trophy className="size-3.5" /> Classificação
+    <div className="rounded-2xl border border-border/60 bg-card/70 backdrop-blur px-5 py-3 text-left">
+      <div className="text-2xl font-black tabular-nums leading-none">{value}</div>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{label}</div>
+    </div>
+  );
+}
+
+function SectionTitle({
+  icon: Icon,
+  kicker,
+  title,
+  subtitle,
+}: {
+  icon: any;
+  kicker: string;
+  title: string;
+  subtitle?: string;
+}) {
+  return (
+    <div className="mb-6">
+      <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+        <Icon className="size-3.5" /> {kicker}
+      </div>
+      <h2 className="text-2xl md:text-3xl font-black tracking-tight mt-1">{title}</h2>
+      {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+    </div>
+  );
+}
+
+const PODIUM_STYLE = [
+  {
+    icon: Crown,
+    ring: "border-amber-400/70",
+    badge: "bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950",
+    glow: "shadow-[0_18px_40px_-18px_rgba(251,191,36,.55)]",
+    lift: "sm:-mt-4",
+  },
+  {
+    icon: Medal,
+    ring: "border-slate-300/70",
+    badge: "bg-gradient-to-r from-slate-300 to-slate-400 text-slate-900",
+    glow: "shadow-[0_14px_34px_-18px_rgba(148,163,184,.55)]",
+    lift: "",
+  },
+  {
+    icon: Trophy,
+    ring: "border-orange-400/70",
+    badge: "bg-gradient-to-r from-orange-400 to-amber-600 text-orange-950",
+    glow: "shadow-[0_14px_34px_-18px_rgba(251,146,60,.55)]",
+    lift: "",
+  },
+];
+
+function PodiumCard({ league, place }: { league: RankedLeague; place: number }) {
+  const st = PODIUM_STYLE[place - 1] ?? PODIUM_STYLE[2];
+  const Icon = st.icon;
+  return (
+    <Link to="/$slug" params={{ slug: league.slug }} className="block min-w-0 group">
+      <Card className={`relative h-full overflow-hidden border-2 ${st.ring} ${st.glow} ${st.lift} p-6 text-center transition-all duration-300 group-hover:-translate-y-1.5`}>
+        <div
+          className="pointer-events-none absolute inset-x-0 -top-16 h-32 opacity-40 blur-2xl"
+          style={{ background: league.theme_color }}
+        />
+        <div className={`relative inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black ${st.badge}`}>
+          <Icon className="size-3.5" /> {place}º lugar
         </div>
-        <h2 className="text-3xl md:text-4xl font-black tracking-tight">Ranking das Ligas</h2>
-        <p className="text-muted-foreground mt-2 text-sm">Pontuação acumulada atribuída pelo CAMED.</p>
-      </div>
+        <div className="relative mt-5 flex justify-center">
+          {league.icon_url ? (
+            <img src={league.icon_url} alt={league.name} className="size-20 rounded-2xl border-4 border-background bg-background object-contain shadow-lg" />
+          ) : (
+            <div className="size-20 rounded-2xl flex items-center justify-center border-4 border-background shadow-lg" style={{ background: league.theme_color }}>
+              <Activity className="size-9 text-white/80" />
+            </div>
+          )}
+        </div>
+        <h3 className="relative mt-4 font-black text-lg truncate">{league.name}</h3>
+        {league.description && (
+          <p className="relative text-xs text-muted-foreground mt-1 line-clamp-2">{league.description}</p>
+        )}
+        <div className="relative mt-4 text-4xl font-black tabular-nums leading-none">{league.total}</div>
+        <div className="relative text-[10px] uppercase tracking-widest text-muted-foreground mt-1">pontos</div>
+        <div className="relative mt-4 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-widest text-primary">
+          Acessar <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" />
+        </div>
+      </Card>
+    </Link>
+  );
+}
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-6">
-        {ranked.slice(0, 3).map((l, i) => {
-          const st = podium[i];
-          const Icon = st.icon;
-          return (
-            <Link key={l.id} to="/$slug" params={{ slug: l.slug }} className="block min-w-0">
-              <Card className={`h-full p-5 text-center border-2 ${st.ring} ${st.glow} hover:-translate-y-1 transition-all`}>
-                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black ${st.badge}`}>
-                  <Icon className="size-3.5" /> {i + 1}º lugar
-                </div>
-                <div className="mt-4 flex justify-center">
-                  {l.icon_url ? (
-                    <img src={l.icon_url} alt={l.name} className="size-16 rounded-2xl border bg-background object-contain" />
-                  ) : (
-                    <div className="size-16 rounded-2xl flex items-center justify-center" style={{ background: l.theme_color }}>
-                      <Activity className="size-8 text-white/80" />
-                    </div>
-                  )}
-                </div>
-                <h3 className="mt-3 font-black text-base truncate">{l.name}</h3>
-                <div className="mt-1 text-3xl font-black tabular-nums">{l.total}</div>
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">pontos</div>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-
-      {ranked.length > 3 && (
-        <Card className="divide-y">
-          {ranked.slice(3).map((l, i) => (
-            <Link key={l.id} to="/$slug" params={{ slug: l.slug }} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-              <span className="w-8 shrink-0 text-center font-black text-muted-foreground tabular-nums">{i + 4}º</span>
-              {l.icon_url ? (
-                <img src={l.icon_url} alt={l.name} className="size-9 rounded-lg border bg-background object-contain shrink-0" />
-              ) : (
-                <span className="size-9 rounded-lg shrink-0" style={{ background: l.theme_color }} />
-              )}
-              <span className="flex-1 min-w-0 font-semibold truncate">{l.name}</span>
-              <span className="font-black tabular-nums">{l.total}</span>
-              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">pts</span>
-            </Link>
-          ))}
-        </Card>
-      )}
-    </section>
+function LeagueCard({ league, showRank }: { league: RankedLeague; showRank: boolean }) {
+  return (
+    <Link to="/$slug" params={{ slug: league.slug }} className="block group min-w-0">
+      <Card className="overflow-hidden h-full transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-xl">
+        <div className="h-28 relative" style={{ background: `linear-gradient(135deg, ${league.theme_color}, ${league.theme_color}aa)` }}>
+          {showRank && (
+            <span className="absolute top-3 left-3 rounded-full bg-background/85 backdrop-blur px-2.5 py-1 text-[11px] font-black tabular-nums">
+              {league.rank}º
+            </span>
+          )}
+          <span className="absolute top-3 right-3 rounded-full bg-background/85 backdrop-blur px-2.5 py-1 text-[11px] font-black tabular-nums">
+            {league.total} pts
+          </span>
+          {league.icon_url ? (
+            <img
+              src={league.icon_url}
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 size-20 rounded-2xl border-4 border-background bg-background object-contain"
+              alt={league.name}
+            />
+          ) : (
+            <Activity className="absolute bottom-3 right-3 size-14 text-white/30" />
+          )}
+        </div>
+        <CardContent className="pt-12 text-center">
+          <h3 className="font-black text-lg truncate">{league.name}</h3>
+          {league.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{league.description}</p>}
+          <div className="flex items-center justify-center gap-1 mt-4 text-xs text-primary font-bold uppercase tracking-widest">
+            Acessar <ArrowRight className="size-3 transition-transform group-hover:translate-x-1" />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

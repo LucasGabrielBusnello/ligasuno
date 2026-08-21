@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -161,6 +162,38 @@ function translateError(msg: string): string {
     return "Muitas tentativas. Aguarde alguns segundos e tente novamente.";
   if (m.includes("network")) return "Falha de conexão. Verifique sua internet.";
   return msg;
+}
+
+function GoogleButton() {
+  const [busy, setBusy] = useState(false);
+  async function go() {
+    setBusy(true);
+    try {
+      const res: any = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (res?.error) {
+        toast.error(res.error.message ?? "Não foi possível entrar com o Google.");
+        setBusy(false);
+        return;
+      }
+      if (!res?.redirected) window.location.assign("/");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao entrar com o Google.");
+      setBusy(false);
+    }
+  }
+  return (
+    <Button type="button" variant="outline" className="w-full gap-2" disabled={busy} onClick={go}>
+      <svg className="size-4" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.5 2.4 30.1 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.3 17.6 9.5 24 9.5z" />
+        <path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-2.8-.4-4.1H24v8.3h12.7c-.3 2.1-1.7 5.2-4.9 7.3l7.6 5.9c4.5-4.2 7.1-10.3 7.1-17.4z" />
+        <path fill="#FBBC05" d="M10.4 28.7A14.5 14.5 0 0 1 9.6 24c0-1.6.3-3.2.8-4.7l-7.8-6.1A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.8-6.1z" />
+        <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2 1.4-4.8 2.4-8.3 2.4-6.4 0-11.7-3.8-13.6-9.1l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
+      </svg>
+      {busy ? "Conectando..." : "Continuar com Google"}
+    </Button>
+  );
 }
 
 function AuthPage() {
@@ -382,6 +415,15 @@ function AuthPage() {
                   <ForgotPasswordDialog defaultEmail={li.email} />
                 </form>
 
+                <div className="my-4 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-[11px] uppercase tracking-widest text-muted-foreground">ou</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <GoogleButton />
+
+
+
               </TabsContent>
               <TabsContent value="signup" className="mt-4">
                 <form onSubmit={handleSignup} className="space-y-4" noValidate>
@@ -518,6 +560,14 @@ function AuthPage() {
                   </Button>
 
                 </form>
+
+                <div className="my-4 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-[11px] uppercase tracking-widest text-muted-foreground">ou</span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+                <GoogleButton />
+
               </TabsContent>
             </Tabs>
           </CardContent>
