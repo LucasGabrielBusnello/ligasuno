@@ -1942,7 +1942,7 @@ export function ActivitiesTab({ league }: any) {
   const emptyInternal = { image_url: "", caption: "" };
   const [internalForm, setInternalForm] = useState(emptyInternal);
   const [internalDlg, setInternalDlg] = useState(false);
-  const emptyOpen = { image_url: "", title: "", description: "", participating_league_ids: [] as string[] };
+  const emptyOpen = { image_url: "", title: "", description: "", starts_at: "", participating_league_ids: [] as string[] };
   const [openForm, setOpenForm] = useState(emptyOpen);
   const [openDlg, setOpenDlg] = useState(false);
   const deleteFiles = useServerFn(deleteStorageFiles);
@@ -1973,6 +1973,7 @@ export function ActivitiesTab({ league }: any) {
   async function addOpen(e: React.FormEvent) {
     e.preventDefault();
     if (!openForm.title.trim()) return toast.error("Título obrigatório");
+    if (!openForm.starts_at) return toast.error("Informe a data e hora da atividade");
     const { error } = await (supabase.from("league_activities") as any).insert({
       league_id: league.id,
       display_order: list.length,
@@ -1980,7 +1981,7 @@ export function ActivitiesTab({ league }: any) {
       caption: openForm.title.trim(),
       title: openForm.title.trim(),
       description: openForm.description.trim() || null,
-
+      starts_at: new Date(openForm.starts_at).toISOString(),
       is_open: true,
       participating_league_ids: openForm.participating_league_ids,
     });
@@ -2011,14 +2012,14 @@ export function ActivitiesTab({ league }: any) {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h3 className="font-black text-lg">Atividades da liga</h3>
-          <p className="text-sm text-muted-foreground">Registre momentos internos da liga ou <b>atividades abertas</b> (interligas) exibidas no painel do CAMED.</p>
+          <p className="text-sm text-muted-foreground">Registre momentos internos da liga ou <b>próximas atividades abertas</b> (com data e hora), exibidas na página de Ligas até acontecerem.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" onClick={() => setInternalDlg(true)}>
             <Plus className="size-4 mr-1" /> Adicionar atividade
           </Button>
           <Button type="button" variant="secondary" onClick={() => setOpenDlg(true)}>
-            <Plus className="size-4 mr-1" /> Registrar atividade aberta
+            <Plus className="size-4 mr-1" /> Nova próxima atividade aberta
           </Button>
         </div>
       </div>
@@ -2041,7 +2042,7 @@ export function ActivitiesTab({ league }: any) {
       </section>
 
       <section className="space-y-3">
-        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Atividades abertas (interligas)</h4>
+        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Próximas atividades abertas (interligas)</h4>
         {opens.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma atividade aberta registrada.</p>
         ) : (
@@ -2050,9 +2051,14 @@ export function ActivitiesTab({ league }: any) {
               <Card key={a.id} className="overflow-hidden relative group">
                 {a.image_url && <img src={a.image_url} className="aspect-video w-full object-cover" />}
 
-                <Badge className="absolute top-2 left-2 bg-emerald-600 text-white border-0">Aberta</Badge>
+                {a.starts_at && new Date(a.starts_at).getTime() < Date.now() ? (
+                  <Badge variant="secondary" className="absolute top-2 left-2">Encerrada</Badge>
+                ) : (
+                  <Badge className="absolute top-2 left-2 bg-emerald-600 text-white border-0">Aberta</Badge>
+                )}
                 <div className="p-2 space-y-1">
                   {a.title && <p className="text-sm font-black leading-tight">{a.title}</p>}
+                  {a.starts_at && <p className="text-[11px] font-bold text-primary">{new Date(a.starts_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}</p>}
                   {a.description && <p className="text-xs text-muted-foreground line-clamp-3 whitespace-pre-line">{a.description}</p>}
                 </div>
                 <Button size="sm" variant="destructive" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100" onClick={() => del(a.id)}><Trash2 className="size-3" /></Button>
@@ -2081,12 +2087,17 @@ export function ActivitiesTab({ league }: any) {
 
       <Dialog open={openDlg} onOpenChange={setOpenDlg}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Registrar atividade aberta</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Nova próxima atividade aberta</DialogTitle></DialogHeader>
           <form onSubmit={addOpen} className="space-y-4">
             <ImageUpload label="Imagem da atividade (opcional)" folder="activities" value={openForm.image_url} onChange={(url) => setOpenForm({ ...openForm, image_url: url })} />
             <div>
               <Label>Título</Label>
               <Input value={openForm.title} onChange={(e) => setOpenForm({ ...openForm, title: e.target.value })} placeholder="Ex.: Simulação interligas" />
+            </div>
+            <div>
+              <Label>Data e hora da atividade</Label>
+              <Input type="datetime-local" required value={openForm.starts_at} onChange={(e) => setOpenForm({ ...openForm, starts_at: e.target.value })} />
+              <p className="text-xs text-muted-foreground mt-1">A atividade aparece na página de Ligas até essa data e hora; depois sai automaticamente.</p>
             </div>
             <div>
               <Label>Descrição</Label>

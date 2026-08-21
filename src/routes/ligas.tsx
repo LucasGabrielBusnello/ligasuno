@@ -38,13 +38,13 @@ function LigasPage() {
   }, []);
 
   useEffect(() => {
-    supabase
-      .from("league_activities")
+    (supabase.from("league_activities") as any)
       .select("*")
       .eq("is_open", true)
-      .order("created_at", { ascending: false })
+      .gte("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: true })
       .limit(6)
-      .then(({ data }) => setOpenActs((data as any[]) ?? []));
+      .then(({ data }: any) => setOpenActs((data as any[]) ?? []));
   }, []);
 
   useEffect(() => {
@@ -151,6 +151,11 @@ function LigasPage() {
                         Aberta
                       </span>
                       <h3 className="font-black text-base mt-2 leading-tight">{a.title ?? a.caption}</h3>
+                      {a.starts_at && (
+                        <p className="text-xs font-bold text-primary mt-1">
+                          {new Date(a.starts_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                        </p>
+                      )}
                       {a.description && (
                         <p className="text-sm text-muted-foreground mt-1.5 whitespace-pre-line line-clamp-4">{a.description}</p>
                       )}
