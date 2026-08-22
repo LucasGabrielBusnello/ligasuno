@@ -130,7 +130,7 @@ export async function recordUsage(args: {
   });
   const { data: balance } = await supabaseAdmin.rpc("sim_debit_credits", {
     _user_id: args.userId,
-    _session_id: args.sessionId ?? null,
+    _session_id: (args.sessionId ?? null) as string,
     _credits: Number(credits.toFixed(4)),
     _tokens: u.total_tokens,
     _cost: Number(cost.toFixed(6)),

@@ -241,7 +241,7 @@ export const adminSaveSimFinanceSettings = createServerFn({ method: "POST" })
     if (data.mp_access_token) patch.mp_access_token_enc = await encryptString(data.mp_access_token);
     if (data.openai_key) patch.openai_key_enc = await encryptString(data.openai_key);
     if (data.anthropic_key) patch.anthropic_key_enc = await encryptString(data.anthropic_key);
-    const { error } = await supabaseAdmin.from("sim_settings").update(patch).eq("id", true);
+    const { error } = await supabaseAdmin.from("sim_settings").update(patch as never).eq("id", true);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
