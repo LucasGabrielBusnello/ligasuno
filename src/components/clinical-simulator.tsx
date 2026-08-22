@@ -178,10 +178,16 @@ export function ClinicalSimulator() {
                     </div>
                     {h.diagnosis && <div className="text-[11px] text-primary truncate">Diagnóstico: {h.diagnosis}</div>}
                   </div>
-                  <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs font-bold" onClick={() => setDetailId(h.id)}>
+                      <History className="size-3.5 mr-1" /> Ver histórico
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
+
           </div>
         )}
       </div>
