@@ -4486,6 +4486,249 @@ export type Database = {
           },
         ]
       }
+      sim_ai_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          rule: string
+          source_feedback_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          rule: string
+          source_feedback_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          rule?: string
+          source_feedback_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sim_ai_rules_source_feedback_id_fkey"
+            columns: ["source_feedback_id"]
+            isOneToOne: false
+            referencedRelation: "sim_feedback"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sim_auscultation_sounds: {
+        Row: {
+          audio_url: string | null
+          category: string
+          created_at: string
+          description: string | null
+          finding_key: string
+          id: string
+          label: string
+          license: string | null
+          region: string
+          updated_at: string
+        }
+        Insert: {
+          audio_url?: string | null
+          category: string
+          created_at?: string
+          description?: string | null
+          finding_key: string
+          id?: string
+          label: string
+          license?: string | null
+          region: string
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          finding_key?: string
+          id?: string
+          label?: string
+          license?: string | null
+          region?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sim_cases: {
+        Row: {
+          area: string
+          created_at: string
+          created_by: string | null
+          diagnosis: string
+          exams: Json
+          expected_conduct: string | null
+          findings: Json
+          hidden_history: string | null
+          id: string
+          level: number
+          patient: Json
+          patient_image_url: string | null
+          published: boolean
+          summary: string | null
+          title: string
+          triage: Json
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          created_by?: string | null
+          diagnosis: string
+          exams?: Json
+          expected_conduct?: string | null
+          findings?: Json
+          hidden_history?: string | null
+          id?: string
+          level: number
+          patient?: Json
+          patient_image_url?: string | null
+          published?: boolean
+          summary?: string | null
+          title: string
+          triage?: Json
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          created_by?: string | null
+          diagnosis?: string
+          exams?: Json
+          expected_conduct?: string | null
+          findings?: Json
+          hidden_history?: string | null
+          id?: string
+          level?: number
+          patient?: Json
+          patient_image_url?: string | null
+          published?: boolean
+          summary?: string | null
+          title?: string
+          triage?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sim_feedback: {
+        Row: {
+          ai_review: Json | null
+          comment: string | null
+          created_at: string
+          id: string
+          rating: string
+          session_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_review?: Json | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating: string
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_review?: Json | null
+          comment?: string | null
+          created_at?: string
+          id?: string
+          rating?: string
+          session_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sim_feedback_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sim_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sim_sessions: {
+        Row: {
+          anamnese: string | null
+          area: string | null
+          case_id: string
+          created_at: string
+          exam_requests: Json
+          finished_at: string | null
+          hypothesis: string | null
+          id: string
+          level: number | null
+          physical_findings: Json
+          review: Json | null
+          score: number | null
+          status: string
+          transcript: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          anamnese?: string | null
+          area?: string | null
+          case_id: string
+          created_at?: string
+          exam_requests?: Json
+          finished_at?: string | null
+          hypothesis?: string | null
+          id?: string
+          level?: number | null
+          physical_findings?: Json
+          review?: Json | null
+          score?: number | null
+          status?: string
+          transcript?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          anamnese?: string | null
+          area?: string | null
+          case_id?: string
+          created_at?: string
+          exam_requests?: Json
+          finished_at?: string | null
+          hypothesis?: string | null
+          id?: string
+          level?: number | null
+          physical_findings?: Json
+          review?: Json | null
+          score?: number | null
+          status?: string
+          transcript?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sim_sessions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "sim_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_visits: {
         Row: {
           created_at: string
