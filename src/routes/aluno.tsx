@@ -308,10 +308,10 @@ function AlunoPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="inline-flex rounded-full border border-primary/25 p-0.5 bg-card">
-              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-primary text-primary-foreground text-primary-foreground" : "text-muted-foreground"}`}>Dia</button>
-              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-primary text-primary-foreground text-primary-foreground" : "text-muted-foreground"}`}>Semana</button>
+              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Dia</button>
+              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Semana</button>
             </div>
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary text-primary-foreground" onClick={() => setExportOpen(true)}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setExportOpen(true)}>
               <CalendarPlus className="size-4" /> Enviar cronograma para a agenda
             </Button>
           </div>
@@ -376,7 +376,7 @@ function AlunoPage() {
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setExportOpen(false)}>Cancelar</Button>
-            <Button className="bg-primary text-primary-foreground hover:bg-primary text-primary-foreground" onClick={doExportAgenda}>Exportar agora</Button>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={doExportAgenda}>Exportar agora</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

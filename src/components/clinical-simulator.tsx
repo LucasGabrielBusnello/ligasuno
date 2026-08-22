@@ -117,7 +117,7 @@ export function ClinicalSimulator() {
                   key={l}
                   onClick={() => { setLevel(l); setArea(""); }}
                   className={`px-4 py-2 rounded-xl text-sm font-bold ring-1 transition-colors ${
-                    level === l ? "bg-primary text-primary-foreground text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"
+                    level === l ? "bg-primary text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"
                   }`}
                 >
                   {l}º ano
@@ -134,7 +134,7 @@ export function ClinicalSimulator() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setArea("")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === "" ? "bg-primary text-primary-foreground text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === "" ? "bg-primary text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"}`}
                 >
                   Surpreenda-me
                 </button>
@@ -142,7 +142,7 @@ export function ClinicalSimulator() {
                   <button
                     key={a.area}
                     onClick={() => setArea(a.area)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === a.area ? "bg-primary text-primary-foreground text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === a.area ? "bg-primary text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"}`}
                   >
                     {a.area}
                   </button>
@@ -350,7 +350,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
             )}
             {chat.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground text-primary-foreground" : "bg-muted"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
                   {m.content}
                 </div>
               </div>
