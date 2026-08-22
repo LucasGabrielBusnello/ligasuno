@@ -118,6 +118,38 @@ async function handlePayment(paymentId: string) {
 
   const approved = status === "approved";
 
+  if (category === "credits") {
+    await supabaseAdmin.from("sim_purchases")
+      .update({ status: approved ? "paid" : status })
+      .eq("id", refId);
+    if (approved) {
+      const { data: purchase } = await supabaseAdmin
+        .from("sim_purchases")
+        .select("user_id, credits, amount_brl, status")
+        .eq("id", refId)
+        .maybeSingle();
+      if (purchase) {
+        // idempotência: só credita se ainda não houver lançamento dessa compra
+        const { data: already } = await supabaseAdmin
+          .from("sim_credit_ledger")
+          .select("id")
+          .eq("user_id", (purchase as any).user_id)
+          .eq("kind", "purchase")
+          .eq("description", `compra:${refId}`)
+          .maybeSingle();
+        if (!already) {
+          await supabaseAdmin.rpc("sim_add_credits", {
+            _user_id: (purchase as any).user_id,
+            _credits: Number((purchase as any).credits),
+            _amount: Number((purchase as any).amount_brl),
+            _description: `compra:${refId}`,
+          });
+        }
+      }
+    }
+    return;
+  }
+
   if (category === "event") {
     await supabaseAdmin.from("event_registrations")
       .update({ status: approved ? "paid" : (status === "rejected" || status === "cancelled" ? "pending" : "pending") })
