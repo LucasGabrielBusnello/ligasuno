@@ -293,24 +293,20 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
             {data.review && (
               <div className="rounded-xl ring-1 ring-primary/25 bg-primary/5 p-3 space-y-2">
                 <h3 className="font-black">Parecer da IA</h3>
-                {data.review.summary && <p className="whitespace-pre-wrap text-foreground/90">{data.review.summary}</p>}
-                {Array.isArray(data.review.strengths) && data.review.strengths.length > 0 && (
-                  <div>
-                    <p className="font-bold text-xs uppercase tracking-wide text-muted-foreground">Pontos fortes</p>
-                    <ul className="list-disc pl-5">{data.review.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
-                  </div>
-                )}
-                {Array.isArray(data.review.gaps) && data.review.gaps.length > 0 && (
-                  <div>
-                    <p className="font-bold text-xs uppercase tracking-wide text-muted-foreground">O que faltou</p>
-                    <ul className="list-disc pl-5">{data.review.gaps.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
-                  </div>
-                )}
-                {Array.isArray(data.review.improvements) && data.review.improvements.length > 0 && (
-                  <div>
-                    <p className="font-bold text-xs uppercase tracking-wide text-muted-foreground">Como melhorar</p>
-                    <ul className="list-disc pl-5">{data.review.improvements.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
-                  </div>
+                {data.review.veredito && <p className="font-bold text-foreground">{data.review.veredito}</p>}
+                {data.review.comentario && <p className="whitespace-pre-wrap text-foreground/90">{data.review.comentario}</p>}
+                {([
+                  ["Acertos", data.review.acertos],
+                  ["O que faltou", data.review.faltou],
+                  ["Exames desnecessários", data.review.exames_desnecessarios],
+                  ["Como melhorar", data.review.melhorias],
+                ] as [string, string[]][]).map(([label, list]) =>
+                  Array.isArray(list) && list.length > 0 ? (
+                    <div key={label}>
+                      <p className="font-bold text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                      <ul className="list-disc pl-5">{list.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+                    </div>
+                  ) : null,
                 )}
               </div>
             )}
