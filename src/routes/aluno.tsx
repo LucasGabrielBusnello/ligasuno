@@ -15,43 +15,79 @@ import { buildIcs, downloadIcs, type IcsEvent } from "@/lib/ics";
 import { listSubjects, listPersonalItems, upsertPersonalItem, deletePersonalItem } from "@/lib/curriculum.functions";
 import { listScheduleWeek } from "@/lib/schedule.functions";
 import { ScheduleGrid, ScheduleLegend, getMonday, toISODate, type ExtraEvent } from "@/components/schedule-grid";
+import { ClinicalSimulator } from "@/components/clinical-simulator";
+
 
 
 export const Route = createFileRoute("/aluno")({
   head: () => ({
     meta: [
-      { title: "Aluno — MEDPLEX" },
-      { name: "description", content: "Painel do estudante de Medicina da Unochapecó: matérias, professores e agenda pessoal." },
-      { property: "og:title", content: "Aluno — MEDPLEX" },
-      { property: "og:description", content: "Painel do estudante de Medicina da Unochapecó." },
+      { title: "Treino de Semiologia — MEDPLEX" },
+      { name: "description", content: "Simulador clínico para treinar anamnese, exame físico, ausculta e raciocínio diagnóstico com casos no estilo ENAMED." },
+      { property: "og:title", content: "Treino de Semiologia — MEDPLEX" },
+      { property: "og:description", content: "Treine anamnese, exame físico e diagnóstico em estações clínicas simuladas." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AlunoGate,
 });
 
+const TESTE_EMAILS = ["lucassgabrielbusnello@gmail.com.br", "lucassgabrielbusnello@gmail.com"];
+
 function AlunoGate() {
-  const { isAdminMaster, loading } = useAuth();
+  const { user, loading } = useAuth();
+  const [testArea, setTestArea] = useState(false);
   if (loading) return null;
-  if (!isAdminMaster) {
+
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950">
         <div className="max-w-md w-full text-center space-y-4">
           <div className="size-16 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto ring-1 ring-emerald-500/30">
             <Stethoscope className="size-8" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">Aba em manutenção</h1>
-          <p className="text-sm text-neutral-400">
-            A área do Aluno está temporariamente em manutenção. Voltaremos em breve com novidades.
-          </p>
-          <Button asChild variant="outline" className="border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10">
-            <Link to="/">Voltar ao início</Link>
+          <h1 className="text-3xl font-black tracking-tight text-white">Entre para treinar</h1>
+          <p className="text-sm text-neutral-400">Faça login para acessar o simulador de semiologia e clínica médica.</p>
+          <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+            <Link to="/auth"><LogIn className="size-4 mr-2" /> Entrar</Link>
           </Button>
         </div>
       </div>
     );
   }
-  return <AlunoPage />;
+
+  const canTest = TESTE_EMAILS.includes((user.email ?? "").toLowerCase());
+
+  if (testArea && canTest) {
+    return (
+      <div className="min-h-screen bg-neutral-950">
+        <div className="max-w-6xl mx-auto px-4 pt-6">
+          <Button variant="outline" size="sm" onClick={() => setTestArea(false)}>
+            <ChevronLeft className="size-4 mr-1" /> Voltar ao treino
+          </Button>
+        </div>
+        <AlunoPage />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-950">
+      <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 space-y-6">
+        {canTest && (
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => setTestArea(true)}>
+              <BookOpen className="size-4 mr-2" /> Área de Testes
+            </Button>
+          </div>
+        )}
+        <ClinicalSimulator />
+      </div>
+    </div>
+  );
 }
+
 
 type Subject = {
   id: string; name: string; class_codes: string[]; subdivisions: string[];
