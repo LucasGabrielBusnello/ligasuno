@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 import {
   startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish,
-  simTranscribe, listMySimSessions, sendSimFeedback,
+  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail,
 } from "@/lib/sim.functions";
+
 
 type PublicCase = {
   id: string; title: string; area: string; level: number;
