@@ -11,9 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3, BookOpen, Wrench, ScrollText, Stethoscope } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit, Calendar, DollarSign, User as UserIcon, Building2, Users, Settings, Megaphone, UserCog, GraduationCap, BarChart3, BookOpen, Wrench, ScrollText, Stethoscope, Coins } from "lucide-react";
 import { CurriculumAdmin } from "@/components/curriculum-admin";
 import { SimAdmin } from "@/components/sim-admin";
+import { SimFinanceAdmin } from "@/components/sim-finance-admin";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area, Legend } from "recharts";
 
 import { Switch } from "@/components/ui/switch";
@@ -49,13 +50,14 @@ function AdminPage() {
         <h1 className="text-3xl md:text-4xl font-black mb-8">Painel ADMIN</h1>
         <Tabs defaultValue="ligas">
           <div className="w-full overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0">
-            <TabsList className="inline-flex md:grid md:grid-cols-10 w-max md:w-full h-auto gap-1">
+            <TabsList className="inline-flex md:grid md:grid-cols-11 w-max md:w-full h-auto gap-1">
               <TabsTrigger value="ligas" className="whitespace-nowrap"><Building2 className="size-4 mr-1.5" />Ligas</TabsTrigger>
               <TabsTrigger value="camed" className="whitespace-nowrap"><Users className="size-4 mr-1.5" />CAMED</TabsTrigger>
               <TabsTrigger value="coord" className="whitespace-nowrap"><UserCog className="size-4 mr-1.5" />Coordenação</TabsTrigger>
               <TabsTrigger value="curriculo" className="whitespace-nowrap"><BookOpen className="size-4 mr-1.5" />Currículo</TabsTrigger>
               <TabsTrigger value="ads" className="whitespace-nowrap"><Megaphone className="size-4 mr-1.5" />Anúncios</TabsTrigger>
               <TabsTrigger value="simulador" className="whitespace-nowrap"><Stethoscope className="size-4 mr-1.5" />Simulador</TabsTrigger>
+              <TabsTrigger value="ia-financeiro" className="whitespace-nowrap"><Coins className="size-4 mr-1.5" />IA e Financeiro</TabsTrigger>
               <TabsTrigger value="logs" className="whitespace-nowrap"><ScrollText className="size-4 mr-1.5" />Logs</TabsTrigger>
               <TabsTrigger value="visitas" className="whitespace-nowrap"><BarChart3 className="size-4 mr-1.5" />Visitas</TabsTrigger>
               <TabsTrigger value="usuarios" className="whitespace-nowrap"><UserIcon className="size-4 mr-1.5" />Usuários</TabsTrigger>
@@ -69,6 +71,7 @@ function AdminPage() {
           <TabsContent value="curriculo" className="mt-6"><CurriculumAdmin /></TabsContent>
           <TabsContent value="ads" className="mt-6"><AdsAdmin /></TabsContent>
           <TabsContent value="simulador" className="mt-6"><SimAdmin /></TabsContent>
+          <TabsContent value="ia-financeiro" className="mt-6"><SimFinanceAdmin /></TabsContent>
           <TabsContent value="logs" className="mt-6"><LogsAdmin /></TabsContent>
           <TabsContent value="visitas" className="mt-6"><VisitsAdmin /></TabsContent>
           <TabsContent value="usuarios" className="mt-6"><UsersAdmin /></TabsContent>

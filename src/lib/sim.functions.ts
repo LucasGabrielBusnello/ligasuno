@@ -65,8 +65,18 @@ export const simSay = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid(), message: z.string().min(1).max(1500) }).parse(v))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
+    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
     const { patientTurn } = await import("./sim.server");
     const out = await patientTurn(sim, session.transcript ?? [], data.message);
+    const billing = await recordUsage({
+      userId: context.userId,
+      sessionId: session.id,
+      phase: "chat",
+      model: out.model,
+      usage: out.usage,
+      tier: "chat",
+    });
 
     const transcript = [
       ...(session.transcript ?? []),
@@ -78,7 +88,7 @@ export const simSay = createServerFn({ method: "POST" })
     for (const f of out.findings as any[]) if (!merged.some((m) => m.key === f.key)) merged.push(f);
 
     await supabaseAdmin.from("sim_sessions").update({ transcript, physical_findings: merged }).eq("id", session.id);
-    return { reply: out.reply, findings: out.findings };
+    return { reply: out.reply, findings: out.findings, balance: billing.balance };
   });
 
 export const simExam = createServerFn({ method: "POST" })
@@ -87,10 +97,20 @@ export const simExam = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
     const { examResult } = await import("./sim.server");
+    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
     const result = await examResult(sim, data.examName);
+    const billing = await recordUsage({
+      userId: context.userId,
+      sessionId: session.id,
+      phase: "exame_complementar",
+      model: result.model,
+      usage: result.usage,
+      tier: "chat",
+    });
     const list = [...((session.exam_requests ?? []) as any[]), { ...result, at: new Date().toISOString() }];
     await supabaseAdmin.from("sim_sessions").update({ exam_requests: list }).eq("id", session.id);
-    return result;
+    return { ...result, balance: billing.balance };
   });
 
 export const simRevealFinding = createServerFn({ method: "POST" })
@@ -136,6 +156,8 @@ export const simFinish = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
+    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
     const { data: rules } = await supabaseAdmin.from("sim_ai_rules").select("rule").eq("active", true).limit(50);
     const { gradeSession } = await import("./sim.server");
     const review = await gradeSession({
@@ -146,6 +168,14 @@ export const simFinish = createServerFn({ method: "POST" })
       anamnese: data.anamnese,
       hypothesis: data.hypothesis,
       rules: (rules ?? []).map((r: any) => r.rule),
+    });
+    const billing = await recordUsage({
+      userId: context.userId,
+      sessionId: session.id,
+      phase: "correcao_preceptor",
+      model: review.model,
+      usage: review.usage,
+      tier: "grade",
     });
     await supabaseAdmin
       .from("sim_sessions")
@@ -158,7 +188,7 @@ export const simFinish = createServerFn({ method: "POST" })
         finished_at: new Date().toISOString(),
       })
       .eq("id", session.id);
-    return { ...review, case: { title: sim.title, diagnosis: sim.diagnosis, expected_conduct: sim.expected_conduct, hidden_history: sim.hidden_history } };
+    return { ...review, balance: billing.balance, case: { title: sim.title, diagnosis: sim.diagnosis, expected_conduct: sim.expected_conduct, hidden_history: sim.hidden_history } };
   });
 
 export const simTranscribe = createServerFn({ method: "POST" })
@@ -166,9 +196,19 @@ export const simTranscribe = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) =>
     z.object({ audio: z.string().min(50).max(9_000_000), format: z.enum(["webm", "m4a", "mp3", "wav", "ogg"]) }).parse(v),
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
     const { transcribeAudio } = await import("./sim.server");
-    return { text: await transcribeAudio(data.audio, data.format) };
+    const out = await transcribeAudio(data.audio, data.format);
+    const billing = await recordUsage({
+      userId: context.userId,
+      phase: "transcricao",
+      model: out.model,
+      usage: out.usage,
+      tier: "chat",
+    });
+    return { text: out.text, balance: billing.balance };
   });
 
 export const listMySimSessions = createServerFn({ method: "POST" })

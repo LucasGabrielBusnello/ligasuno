@@ -4620,6 +4620,113 @@ export type Database = {
         }
         Relationships: []
       }
+      sim_credit_balances: {
+        Row: {
+          created_at: string
+          credits: number
+          total_purchased: number
+          total_spent: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          total_purchased?: number
+          total_spent?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          total_purchased?: number
+          total_spent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sim_credit_ledger: {
+        Row: {
+          amount_brl: number
+          cost_brl: number
+          created_at: string
+          credits: number
+          description: string | null
+          id: string
+          kind: string
+          session_id: string | null
+          tokens: number
+          user_id: string
+        }
+        Insert: {
+          amount_brl?: number
+          cost_brl?: number
+          created_at?: string
+          credits: number
+          description?: string | null
+          id?: string
+          kind: string
+          session_id?: string | null
+          tokens?: number
+          user_id: string
+        }
+        Update: {
+          amount_brl?: number
+          cost_brl?: number
+          created_at?: string
+          credits?: number
+          description?: string | null
+          id?: string
+          kind?: string
+          session_id?: string | null
+          tokens?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sim_credit_ledger_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sim_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sim_credit_packages: {
+        Row: {
+          active: boolean
+          created_at: string
+          credits: number
+          id: string
+          name: string
+          price_brl: number
+          sort: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          credits: number
+          id?: string
+          name: string
+          price_brl: number
+          sort?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          credits?: number
+          id?: string
+          name?: string
+          price_brl?: number
+          sort?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sim_feedback: {
         Row: {
           ai_review: Json | null
@@ -4660,6 +4767,56 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "sim_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sim_purchases: {
+        Row: {
+          amount_brl: number
+          checkout_url: string | null
+          created_at: string
+          credits: number
+          external_id: string | null
+          id: string
+          package_id: string | null
+          provider: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_brl: number
+          checkout_url?: string | null
+          created_at?: string
+          credits: number
+          external_id?: string | null
+          id?: string
+          package_id?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_brl?: number
+          checkout_url?: string | null
+          created_at?: string
+          credits?: number
+          external_id?: string | null
+          id?: string
+          package_id?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sim_purchases_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "sim_credit_packages"
             referencedColumns: ["id"]
           },
         ]
@@ -4725,6 +4882,110 @@ export type Database = {
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "sim_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sim_settings: {
+        Row: {
+          anthropic_key_enc: string | null
+          chat_cost_in_brl_per_mtok: number
+          chat_cost_out_brl_per_mtok: number
+          chat_model: string
+          free_credits: number
+          gateway_fee_pct: number
+          grade_cost_in_brl_per_mtok: number
+          grade_cost_out_brl_per_mtok: number
+          grade_model: string
+          id: boolean
+          mp_access_token_enc: string | null
+          openai_key_enc: string | null
+          price_divisor: number
+          tokens_per_credit: number
+          updated_at: string
+        }
+        Insert: {
+          anthropic_key_enc?: string | null
+          chat_cost_in_brl_per_mtok?: number
+          chat_cost_out_brl_per_mtok?: number
+          chat_model?: string
+          free_credits?: number
+          gateway_fee_pct?: number
+          grade_cost_in_brl_per_mtok?: number
+          grade_cost_out_brl_per_mtok?: number
+          grade_model?: string
+          id?: boolean
+          mp_access_token_enc?: string | null
+          openai_key_enc?: string | null
+          price_divisor?: number
+          tokens_per_credit?: number
+          updated_at?: string
+        }
+        Update: {
+          anthropic_key_enc?: string | null
+          chat_cost_in_brl_per_mtok?: number
+          chat_cost_out_brl_per_mtok?: number
+          chat_model?: string
+          free_credits?: number
+          gateway_fee_pct?: number
+          grade_cost_in_brl_per_mtok?: number
+          grade_cost_out_brl_per_mtok?: number
+          grade_model?: string
+          id?: boolean
+          mp_access_token_enc?: string | null
+          openai_key_enc?: string | null
+          price_divisor?: number
+          tokens_per_credit?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sim_usage_events: {
+        Row: {
+          completion_tokens: number
+          cost_brl: number
+          created_at: string
+          credits: number
+          id: string
+          model: string
+          phase: string
+          prompt_tokens: number
+          session_id: string | null
+          total_tokens: number
+          user_id: string
+        }
+        Insert: {
+          completion_tokens?: number
+          cost_brl?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          model: string
+          phase: string
+          prompt_tokens?: number
+          session_id?: string | null
+          total_tokens?: number
+          user_id: string
+        }
+        Update: {
+          completion_tokens?: number
+          cost_brl?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          model?: string
+          phase?: string
+          prompt_tokens?: number
+          session_id?: string | null
+          total_tokens?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sim_usage_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sim_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -5048,6 +5309,26 @@ export type Database = {
           quiz_id: string
           selected: number
         }[]
+      }
+      sim_add_credits: {
+        Args: {
+          _amount: number
+          _credits: number
+          _description: string
+          _user_id: string
+        }
+        Returns: number
+      }
+      sim_debit_credits: {
+        Args: {
+          _cost: number
+          _credits: number
+          _description: string
+          _session_id: string
+          _tokens: number
+          _user_id: string
+        }
+        Returns: number
       }
       submit_quiz_answer: {
         Args: { _answer: number; _quiz_id: string }
