@@ -16,6 +16,7 @@ import { listSubjects, listPersonalItems, upsertPersonalItem, deletePersonalItem
 import { listScheduleWeek } from "@/lib/schedule.functions";
 import { ScheduleGrid, ScheduleLegend, getMonday, toISODate, type ExtraEvent } from "@/components/schedule-grid";
 import { ClinicalSimulator } from "@/components/clinical-simulator";
+import { SimCreditsPanel } from "@/components/sim-credits-panel";
 
 
 
@@ -82,6 +83,7 @@ function AlunoGate() {
             </Button>
           </div>
         )}
+        <SimCreditsPanel />
         <ClinicalSimulator />
       </div>
     </div>
