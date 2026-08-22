@@ -88,7 +88,7 @@ export const simSay = createServerFn({ method: "POST" })
     for (const f of out.findings as any[]) if (!merged.some((m) => m.key === f.key)) merged.push(f);
 
     await supabaseAdmin.from("sim_sessions").update({ transcript, physical_findings: merged }).eq("id", session.id);
-    return { reply: out.reply, findings: out.findings };
+    return { reply: out.reply, findings: out.findings, balance: billing.balance };
   });
 
 export const simExam = createServerFn({ method: "POST" })
