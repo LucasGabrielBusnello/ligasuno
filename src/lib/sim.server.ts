@@ -3,7 +3,6 @@
 import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-3.7-flash";
 
 export type AiResult<T> = T & { usage: Usage | null; model: string };
 
