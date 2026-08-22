@@ -53,17 +53,17 @@ export function SimCreditsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
   return (
     <div className="space-y-4">
-      <Card className={`border ${low ? "border-amber-500/40 bg-amber-500/5" : "border-emerald-500/20 bg-emerald-500/5"}`}>
+      <Card className={`border ${low ? "border-amber-500/40 bg-amber-500/5" : "border-primary/20 bg-primary/5"}`}>
         <CardContent className="p-4 flex flex-wrap items-center gap-4 justify-between">
           <div className="flex items-center gap-3">
-            <div className="size-11 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center ring-1 ring-emerald-500/30">
+            <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/25">
               <Coins className="size-5" />
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-neutral-400">Seus créditos de treino</p>
-              <p className="text-2xl font-black text-white leading-tight">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Seus créditos de treino</p>
+              <p className="text-2xl font-black text-foreground leading-tight">
                 {balance.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                <span className="text-xs font-medium text-neutral-400 ml-2">
+                <span className="text-xs font-medium text-muted-foreground ml-2">
                   1 crédito = {credits?.tokensPerCredit ?? 1000} tokens
                 </span>
               </p>
@@ -76,7 +76,7 @@ export function SimCreditsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                 size="sm"
                 onClick={() => buy(p.id)}
                 disabled={buying === p.id}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
               >
                 {buying === p.id ? <Loader2 className="size-4 mr-1.5 animate-spin" /> : <Sparkles className="size-4 mr-1.5" />}
                 {p.credits} créditos · {brl(Number(p.price_brl))}
@@ -99,7 +99,7 @@ export function SimCreditsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
             size="sm"
             variant={period === p.key ? "default" : "outline"}
             onClick={() => setPeriod(p.key)}
-            className={period === p.key ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+            className={period === p.key ? "bg-primary hover:bg-primary/90 text-primary-foreground" : ""}
           >
             {p.label}
           </Button>
@@ -122,8 +122,8 @@ export function SimCreditsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
       {!!progress?.areas?.length && (
         <div className="flex flex-wrap gap-2">
           {progress.areas.slice(0, 8).map((a: any) => (
-            <Badge key={a.area} variant="outline" className="border-neutral-700 text-neutral-300">
-              {a.area}: <span className="ml-1 font-bold text-white">{a.average}</span> ({a.count})
+            <Badge key={a.area} variant="outline" className="border-border text-muted-foreground">
+              {a.area}: <span className="ml-1 font-bold text-foreground">{a.average}</span> ({a.count})
             </Badge>
           ))}
         </div>
@@ -134,19 +134,19 @@ export function SimCreditsPanel({ refreshKey = 0 }: { refreshKey?: number }) {
 
 function StatCard({ label, value, hint, icon, tone }: { label: string; value: string; hint?: string; icon: React.ReactNode; tone: "green" | "amber" | "red" | "neutral" }) {
   const tones: Record<string, string> = {
-    green: "text-emerald-400 bg-emerald-500/10 ring-emerald-500/30",
+    green: "text-primary bg-primary/10 ring-primary/25",
     amber: "text-amber-400 bg-amber-500/10 ring-amber-500/30",
     red: "text-rose-400 bg-rose-500/10 ring-rose-500/30",
-    neutral: "text-neutral-300 bg-neutral-800 ring-neutral-700",
+    neutral: "text-muted-foreground bg-muted ring-border",
   };
   return (
-    <Card className="border-neutral-800 bg-neutral-900/60">
+    <Card className="border-border bg-card">
       <CardContent className="p-4 flex items-center gap-3">
         <div className={`size-10 rounded-xl flex items-center justify-center ring-1 ${tones[tone]}`}>{icon}</div>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-neutral-400">{label}</p>
-          <p className="text-xl font-black text-white leading-tight">{value}</p>
-          {hint && <p className="text-[11px] text-neutral-500">{hint}</p>}
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="text-xl font-black text-foreground leading-tight">{value}</p>
+          {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
         </div>
       </CardContent>
     </Card>

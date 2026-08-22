@@ -31,13 +31,13 @@ type ExamOut = { name: string; justified: boolean; result_text: string; report: 
 const LEVELS = [1, 2, 3, 4, 5, 6];
 
 function scoreColor(n: number) {
-  if (n >= 85) return "text-emerald-400";
+  if (n >= 85) return "text-primary";
   if (n >= 70) return "text-lime-400";
   if (n >= 50) return "text-amber-400";
   return "text-red-400";
 }
 function scoreRing(n: number) {
-  if (n >= 85) return "ring-emerald-500/40 bg-emerald-500/10";
+  if (n >= 85) return "ring-primary/30 bg-primary/10";
   if (n >= 70) return "ring-lime-500/40 bg-lime-500/10";
   if (n >= 50) return "ring-amber-500/40 bg-amber-500/10";
   return "ring-red-500/40 bg-red-500/10";
@@ -95,14 +95,14 @@ export function ClinicalSimulator() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl overflow-hidden ring-1 ring-emerald-500/25 bg-gradient-to-br from-emerald-950 via-neutral-950 to-neutral-950 p-6 md:p-10">
+      <div className="rounded-3xl overflow-hidden ring-1 ring-primary/25 bg-gradient-to-br from-primary/10 via-background to-background p-6 md:p-10">
         <div className="flex items-center gap-3 mb-3">
-          <div className="size-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center ring-1 ring-emerald-500/30">
+          <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/25">
             <Stethoscope className="size-6" />
           </div>
           <div>
-            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">Treino de Semiologia</h1>
-            <p className="text-sm text-neutral-400">Converse com o paciente, examine, peça exames e feche o diagnóstico.</p>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">Treino de Semiologia</h1>
+            <p className="text-sm text-muted-foreground">Converse com o paciente, examine, peça exames e feche o diagnóstico.</p>
           </div>
         </div>
       </div>
@@ -117,7 +117,7 @@ export function ClinicalSimulator() {
                   key={l}
                   onClick={() => { setLevel(l); setArea(""); }}
                   className={`px-4 py-2 rounded-xl text-sm font-bold ring-1 transition-colors ${
-                    level === l ? "bg-emerald-600 text-white ring-emerald-500" : "bg-muted/40 ring-border hover:bg-muted"
+                    level === l ? "bg-primary text-primary-foreground text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"
                   }`}
                 >
                   {l}º ano
@@ -134,7 +134,7 @@ export function ClinicalSimulator() {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setArea("")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === "" ? "bg-emerald-600 text-white ring-emerald-500" : "bg-muted/40 ring-border hover:bg-muted"}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === "" ? "bg-primary text-primary-foreground text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"}`}
                 >
                   Surpreenda-me
                 </button>
@@ -142,7 +142,7 @@ export function ClinicalSimulator() {
                   <button
                     key={a.area}
                     onClick={() => setArea(a.area)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === a.area ? "bg-emerald-600 text-white ring-emerald-500" : "bg-muted/40 ring-border hover:bg-muted"}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ring-1 ${area === a.area ? "bg-primary text-primary-foreground text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"}`}
                   >
                     {a.area}
                   </button>
@@ -151,7 +151,7 @@ export function ClinicalSimulator() {
             )}
           </div>
 
-          <Button size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold w-full md:w-auto" onClick={begin} disabled={starting || availableAreas.length === 0}>
+          <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold w-full md:w-auto" onClick={begin} disabled={starting || availableAreas.length === 0}>
             {starting ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Play className="size-4 mr-2" />}
             Iniciar treino completo
           </Button>
@@ -159,7 +159,7 @@ export function ClinicalSimulator() {
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-lg font-black flex items-center gap-2"><History className="size-5 text-emerald-500" /> Meus treinos</h2>
+        <h2 className="text-lg font-black flex items-center gap-2"><History className="size-5 text-primary" /> Meus treinos</h2>
         {history.length === 0 ? (
           <Card><CardContent className="p-6 text-sm text-muted-foreground text-center">Você ainda não fez nenhum treino.</CardContent></Card>
         ) : (
@@ -175,7 +175,7 @@ export function ClinicalSimulator() {
                     <div className="text-xs text-muted-foreground truncate">
                       {h.area} · {h.level}º ano · {new Date(h.created_at).toLocaleDateString("pt-BR")}
                     </div>
-                    {h.diagnosis && <div className="text-[11px] text-emerald-500 truncate">Diagnóstico: {h.diagnosis}</div>}
+                    {h.diagnosis && <div className="text-[11px] text-primary truncate">Diagnóstico: {h.diagnosis}</div>}
                   </div>
                   <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
                 </CardContent>
@@ -297,14 +297,14 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
         <Button variant="outline" size="sm" onClick={onExit}>Sair do treino</Button>
         <Badge variant="secondary">{c.area}</Badge>
         <Badge variant="outline">{c.level}º ano</Badge>
-        <Button size="sm" className="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold" onClick={() => setFinishOpen(true)}>
+        <Button size="sm" className="ml-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold" onClick={() => setFinishOpen(true)}>
           Encerrar e diagnosticar
         </Button>
       </div>
 
       <Card className="overflow-hidden">
         <CardContent className="p-4 flex flex-wrap items-center gap-4">
-          <div className="size-14 rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-lg overflow-hidden">
+          <div className="size-14 rounded-2xl bg-primary/10 ring-1 ring-primary/25 flex items-center justify-center text-primary font-black text-lg overflow-hidden">
             {c.patient_image_url ? <img src={c.patient_image_url} alt="" className="size-full object-cover" /> : (c.patient.name ?? "P").slice(0, 1)}
           </div>
           <div className="min-w-0">
@@ -326,9 +326,9 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
       </Card>
 
       {t.chief_complaint && (
-        <Card className="border-emerald-500/30">
+        <Card className="border-primary/25">
           <CardContent className="p-4 text-sm">
-            <span className="text-xs uppercase font-bold text-emerald-500">Triagem · </span>
+            <span className="text-xs uppercase font-bold text-primary">Triagem · </span>
             {t.chief_complaint}
             {t.observacoes ? <span className="text-muted-foreground"> — {t.observacoes}</span> : null}
           </CardContent>
@@ -339,7 +339,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
         {/* CHAT */}
         <Card className="flex flex-col overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border/60 text-xs font-bold uppercase tracking-wide flex items-center gap-2">
-            <HeartPulse className="size-4 text-emerald-500" /> Consulta
+            <HeartPulse className="size-4 text-primary" /> Consulta
           </div>
           <div ref={chatRef} className="flex-1 min-h-[320px] max-h-[52vh] overflow-y-auto p-4 space-y-3">
             {chat.length === 0 && (
@@ -350,7 +350,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
             )}
             {chat.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${m.role === "user" ? "bg-emerald-600 text-white" : "bg-muted"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground text-primary-foreground" : "bg-muted"}`}>
                   {m.content}
                 </div>
               </div>
@@ -366,7 +366,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
               placeholder="Fale com o paciente..."
               disabled={busy}
             />
-            <Button onClick={() => send(input)} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+            <Button onClick={() => send(input)} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <Send className="size-4" />
             </Button>
           </div>
@@ -380,7 +380,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
                 key={id}
                 onClick={() => setTab(id as any)}
                 className={`px-4 py-2.5 text-xs font-bold whitespace-nowrap flex items-center gap-1.5 border-b-2 ${
-                  tab === id ? "border-emerald-500 text-emerald-500" : "border-transparent text-muted-foreground hover:text-foreground"
+                  tab === id ? "border-primary/40 text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon className="size-3.5" /> {label}
@@ -397,7 +397,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
                       key={m.key}
                       onClick={() => reveal(m.key)}
                       className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold ring-1 ${
-                        m.revealed ? "bg-emerald-500/10 ring-emerald-500/40 text-emerald-400" : "bg-muted/40 ring-border hover:bg-muted"
+                        m.revealed ? "bg-primary/10 ring-primary/30 text-primary" : "bg-muted/40 ring-border hover:bg-muted"
                       }`}
                     >
                       {m.label}
@@ -407,7 +407,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
                 {findings.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma manobra realizada ainda.</p>}
                 {findings.map((f) => (
                   <div key={f.key} className="rounded-xl ring-1 ring-border p-3 space-y-2">
-                    <div className="text-xs font-black uppercase text-emerald-500">{f.label}</div>
+                    <div className="text-xs font-black uppercase text-primary">{f.label}</div>
                     <p className="text-sm">{f.text}</p>
                     <SoundPlayer finding={f} sounds={sounds} />
                   </div>
@@ -425,12 +425,12 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
                     placeholder="Ex.: hemograma, ECG, radiografia de tórax..."
                     disabled={busy}
                   />
-                  <Button onClick={askExam} disabled={busy} className="bg-emerald-600 hover:bg-emerald-700 text-white">Solicitar</Button>
+                  <Button onClick={askExam} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">Solicitar</Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground">Peça só o que você justificaria: exames desnecessários descontam pontos.</p>
                 {exams.map((e, i) => (
                   <div key={i} className="rounded-xl ring-1 ring-border p-3 space-y-1">
-                    <div className="text-xs font-black uppercase text-emerald-500 flex items-center gap-2">{e.name}</div>
+                    <div className="text-xs font-black uppercase text-primary flex items-center gap-2">{e.name}</div>
                     {e.image_url && <img src={e.image_url} alt={e.name} className="rounded-lg w-full object-cover" />}
                     <p className="text-sm whitespace-pre-wrap">{e.result_text}</p>
                     {e.report && <p className="text-xs text-muted-foreground whitespace-pre-wrap"><b>Laudo:</b> {e.report}</p>}
@@ -461,7 +461,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFinishOpen(false)}>Voltar</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={finish} disabled={grading}>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={finish} disabled={grading}>
               {grading ? <Loader2 className="size-4 mr-2 animate-spin" /> : null} Corrigir estação
             </Button>
           </DialogFooter>
@@ -574,21 +574,21 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
       {review.comentario && <Card><CardContent className="p-5 text-sm whitespace-pre-wrap">{review.comentario}</CardContent></Card>}
 
       <div className="grid md:grid-cols-2 gap-3">
-        <ListCard title="Você acertou" items={review.acertos} icon={<CheckCircle2 className="size-4 text-emerald-500" />} />
+        <ListCard title="Você acertou" items={review.acertos} icon={<CheckCircle2 className="size-4 text-primary" />} />
         <ListCard title="Faltou" items={review.faltou} icon={<XCircle className="size-4 text-red-500" />} />
         <ListCard title="Exames desnecessários" items={review.exames_desnecessarios} icon={<FlaskConical className="size-4 text-amber-500" />} />
-        <ListCard title="Como melhorar" items={review.melhorias} icon={<Activity className="size-4 text-emerald-500" />} />
+        <ListCard title="Como melhorar" items={review.melhorias} icon={<Activity className="size-4 text-primary" />} />
       </div>
 
       {review.case?.expected_conduct && (
-        <Card><CardContent className="p-5 text-sm"><b className="text-emerald-500">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
+        <Card><CardContent className="p-5 text-sm"><b className="text-primary">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
       )}
 
       <Card>
         <CardContent className="p-5 space-y-3">
           <div className="text-sm font-bold">A correção fez sentido para você?</div>
           {sent ? (
-            <p className="text-sm text-emerald-500">Feedback enviado. Obrigado!</p>
+            <p className="text-sm text-primary">Feedback enviado. Obrigado!</p>
           ) : (
             <>
               <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Se discordou de algo, explique aqui (opcional)." />
