@@ -14,8 +14,9 @@ import {
 } from "lucide-react";
 import {
   startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish,
-  simTranscribe, listMySimSessions, sendSimFeedback,
+  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail,
 } from "@/lib/sim.functions";
+
 
 type PublicCase = {
   id: string; title: string; area: string; level: number;
@@ -50,6 +51,8 @@ export function ClinicalSimulator() {
   const [starting, setStarting] = useState(false);
   const [session, setSession] = useState<{ id: string; case: PublicCase } | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [detailId, setDetailId] = useState<string | null>(null);
+
 
   const start = useServerFn(startSimSession);
   const listSessions = useServerFn(listMySimSessions);
@@ -177,16 +180,151 @@ export function ClinicalSimulator() {
                     </div>
                     {h.diagnosis && <div className="text-[11px] text-primary truncate">Diagnóstico: {h.diagnosis}</div>}
                   </div>
-                  <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
+                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs font-bold" onClick={() => setDetailId(h.id)}>
+                      <History className="size-3.5 mr-1" /> Ver histórico
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
+
           </div>
         )}
       </div>
+
+      <SessionHistoryDialog sessionId={detailId} onClose={() => setDetailId(null)} />
     </div>
   );
 }
+
+/* ============ HISTÓRICO DO CASO ============ */
+function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null; onClose: () => void }) {
+  const detailFn = useServerFn(getSimSessionDetail);
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!sessionId) { setData(null); return; }
+    setLoading(true);
+    detailFn({ data: { sessionId } })
+      .then((r: any) => setData(r))
+      .catch((e: any) => toast.error(e?.message ?? "Não foi possível carregar o histórico."))
+      .finally(() => setLoading(false));
+  }, [sessionId]);
+
+  const timeline = useMemo(() => {
+    if (!data) return [] as any[];
+    const items: any[] = [];
+    (data.transcript ?? []).forEach((m: any) => items.push({ kind: m.role === "user" ? "voce" : "paciente", at: m.at, text: m.content }));
+    (data.physical_findings ?? []).forEach((f: any) => items.push({ kind: "exame_fisico", at: f.at, text: `${f.label}: ${f.text}` }));
+    (data.exam_requests ?? []).forEach((e: any) =>
+      items.push({ kind: "exame_comp", at: e.at, text: `${e.name}${e.result_text ? ` — ${e.result_text}` : ""}${e.report ? `\nLaudo: ${e.report}` : ""}` }),
+    );
+    return items.sort((a, b) => new Date(a.at ?? 0).getTime() - new Date(b.at ?? 0).getTime());
+  }, [data]);
+
+  const LABEL: Record<string, string> = {
+    voce: "Você",
+    paciente: "Paciente",
+    exame_fisico: "Exame físico",
+    exame_comp: "Exame complementar",
+  };
+
+  return (
+    <Dialog open={!!sessionId} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <History className="size-4 text-primary" /> {data?.title ?? "Histórico do caso"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {loading || !data ? (
+          <div className="py-10 flex justify-center"><Loader2 className="size-6 animate-spin text-primary" /></div>
+        ) : (
+          <div className="space-y-5 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">{data.area}</Badge>
+              <Badge variant="secondary">{data.level}º ano</Badge>
+              <Badge variant={data.status === "finished" ? "default" : "secondary"}>
+                {data.status === "finished" ? "Concluído" : "Em aberto"}
+              </Badge>
+              {data.score != null && (
+                <span className={`font-black ${scoreColor(data.score)}`}>Nota {data.score}</span>
+              )}
+              <span className="text-xs text-muted-foreground">{new Date(data.created_at).toLocaleString("pt-BR")}</span>
+            </div>
+
+            <div>
+              <h3 className="font-black mb-2">Sequência do atendimento</h3>
+              {timeline.length === 0 ? (
+                <p className="text-muted-foreground text-xs">Nenhuma interação registrada.</p>
+              ) : (
+                <ol className="space-y-2">
+                  {timeline.map((it, i) => (
+                    <li key={i} className="rounded-xl ring-1 ring-border bg-muted/30 p-3">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[11px] uppercase tracking-wide font-bold text-primary">{LABEL[it.kind]}</span>
+                        {it.at && <span className="text-[10px] text-muted-foreground">{new Date(it.at).toLocaleTimeString("pt-BR")}</span>}
+                      </div>
+                      <p className="whitespace-pre-wrap text-foreground/90">{it.text}</p>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
+
+            {data.anamnese && (
+              <div>
+                <h3 className="font-black mb-1">Sua anamnese</h3>
+                <p className="whitespace-pre-wrap text-foreground/90 rounded-xl ring-1 ring-border bg-muted/30 p-3">{data.anamnese}</p>
+              </div>
+            )}
+
+            {data.hypothesis && (
+              <div>
+                <h3 className="font-black mb-1">Sua hipótese</h3>
+                <p className="text-foreground/90">{data.hypothesis}</p>
+              </div>
+            )}
+
+            {data.review && (
+              <div className="rounded-xl ring-1 ring-primary/25 bg-primary/5 p-3 space-y-2">
+                <h3 className="font-black">Parecer da IA</h3>
+                {data.review.veredito && <p className="font-bold text-foreground">{data.review.veredito}</p>}
+                {data.review.comentario && <p className="whitespace-pre-wrap text-foreground/90">{data.review.comentario}</p>}
+                {([
+                  ["Acertos", data.review.acertos],
+                  ["O que faltou", data.review.faltou],
+                  ["Exames desnecessários", data.review.exames_desnecessarios],
+                  ["Como melhorar", data.review.melhorias],
+                ] as [string, string[]][]).map(([label, list]) =>
+                  Array.isArray(list) && list.length > 0 ? (
+                    <div key={label}>
+                      <p className="font-bold text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                      <ul className="list-disc pl-5">{list.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+                    </div>
+                  ) : null,
+                )}
+              </div>
+            )}
+
+            {data.diagnosis && (
+              <div>
+                <h3 className="font-black mb-1">Diagnóstico do caso</h3>
+                <p className="text-foreground/90">{data.diagnosis}</p>
+                {data.expected_conduct && <p className="mt-1 text-foreground/80"><span className="font-bold">Conduta esperada:</span> {data.expected_conduct}</p>}
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 /* ============ ESTAÇÃO ============ */
 function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase; onExit: () => void }) {

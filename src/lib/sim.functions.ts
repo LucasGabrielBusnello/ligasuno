@@ -236,6 +236,41 @@ export const listMySimSessions = createServerFn({ method: "POST" })
     }));
   });
 
+export const getSimSessionDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: s, error } = await supabaseAdmin
+      .from("sim_sessions")
+      .select("*, sim_cases(title, area, diagnosis, expected_conduct)")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!s || (s as any).user_id !== context.userId) throw new Error("Sessão não encontrada.");
+    const row: any = s;
+    const finished = row.status === "finished";
+    return {
+      id: row.id,
+      status: row.status,
+      score: row.score,
+      area: row.area,
+      level: row.level,
+      created_at: row.created_at,
+      finished_at: row.finished_at,
+      title: row.sim_cases?.title ?? "Caso clínico",
+      transcript: (row.transcript ?? []) as any[],
+      physical_findings: (row.physical_findings ?? []) as any[],
+      exam_requests: (row.exam_requests ?? []) as any[],
+      anamnese: row.anamnese ?? "",
+      hypothesis: row.hypothesis ?? "",
+      review: row.review ?? null,
+      diagnosis: finished ? row.sim_cases?.diagnosis ?? null : null,
+      expected_conduct: finished ? row.sim_cases?.expected_conduct ?? null : null,
+    };
+  });
+
+
 export const sendSimFeedback = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
