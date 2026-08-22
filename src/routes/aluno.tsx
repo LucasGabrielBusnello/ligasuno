@@ -43,14 +43,14 @@ function AlunoGate() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950">
+      <div className="min-h-screen flex items-center justify-center px-4 py-16 bg-gradient-to-b from-primary/10 via-background to-background">
         <div className="max-w-md w-full text-center space-y-4">
-          <div className="size-16 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto ring-1 ring-emerald-500/30">
+          <div className="size-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto ring-1 ring-primary/25">
             <Stethoscope className="size-8" />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-white">Entre para treinar</h1>
-          <p className="text-sm text-neutral-400">Faça login para acessar o simulador de semiologia e clínica médica.</p>
-          <Button asChild className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+          <h1 className="text-3xl font-black tracking-tight text-foreground">Entre para treinar</h1>
+          <p className="text-sm text-muted-foreground">Faça login para acessar o simulador de semiologia e clínica médica.</p>
+          <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold">
             <Link to="/auth"><LogIn className="size-4 mr-2" /> Entrar</Link>
           </Button>
         </div>
@@ -62,7 +62,7 @@ function AlunoGate() {
 
   if (testArea && canTest) {
     return (
-      <div className="min-h-screen bg-neutral-950">
+      <div className="min-h-screen bg-background">
         <div className="max-w-6xl mx-auto px-4 pt-6">
           <Button variant="outline" size="sm" onClick={() => setTestArea(false)}>
             <ChevronLeft className="size-4 mr-1" /> Voltar ao treino
@@ -74,7 +74,7 @@ function AlunoGate() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12 space-y-6">
         {canTest && (
           <div className="flex justify-end">
@@ -294,24 +294,24 @@ function AlunoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-950 via-neutral-950 to-neutral-950 text-neutral-100 dark">
+    <div className="min-h-screen bg-gradient-to-b from-primary/10 via-background to-background text-foreground dark">
       <section className="max-w-6xl mx-auto px-4 pt-10 pb-6">
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <div className="flex items-center gap-3">
-            <div className="size-12 rounded-2xl bg-gradient-to-br from-emerald-700 to-emerald-500 text-white flex items-center justify-center shadow-lg"><Stethoscope className="size-6" /></div>
+            <div className="size-12 rounded-2xl bg-gradient-to-br from-primary to-primary-glow text-foreground flex items-center justify-center shadow-lg"><Stethoscope className="size-6" /></div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-white">Painel do Aluno</h1>
-              <p className="text-sm text-emerald-200/70">
+              <h1 className="text-3xl font-black tracking-tight text-foreground">Painel do Aluno</h1>
+              <p className="text-sm text-primary/80">
                 Olá, {profile?.full_name ?? profile?.username}{classCode ? ` · Turma ${classCode}` : ""}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-full border border-emerald-500/30 p-0.5 bg-neutral-900">
-              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-emerald-600 text-white" : "text-neutral-400"}`}>Dia</button>
-              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-emerald-600 text-white" : "text-neutral-400"}`}>Semana</button>
+            <div className="inline-flex rounded-full border border-primary/25 p-0.5 bg-card">
+              <button onClick={() => setView("day")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "day" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Dia</button>
+              <button onClick={() => setView("week")} className={`px-3 py-1 text-xs font-bold rounded-full ${view === "week" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Semana</button>
             </div>
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white" onClick={() => setExportOpen(true)}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setExportOpen(true)}>
               <CalendarPlus className="size-4" /> Enviar cronograma para a agenda
             </Button>
           </div>
@@ -342,17 +342,17 @@ function AlunoPage() {
           />
 
           <div className="flex justify-center pt-2">
-            <Button variant="outline" size="sm" onClick={() => setExpanded((v) => !v)} className="border-emerald-500/40">
+            <Button variant="outline" size="sm" onClick={() => setExpanded((v) => !v)} className="border-primary/30">
               {expanded ? <><ChevronUp className="size-4" /> Recolher</> : <><ChevronDown className="size-4" /> Expandir (+4 semanas)</>}
             </Button>
           </div>
 
           {expanded && (
             <div className="space-y-6 pt-2">
-              {extraWeeks.length === 0 && <p className="text-center text-sm text-neutral-400">Carregando semanas…</p>}
+              {extraWeeks.length === 0 && <p className="text-center text-sm text-muted-foreground">Carregando semanas…</p>}
               {extraWeeks.map((w) => (
                 <div key={w.monday.toISOString()} className="space-y-2">
-                  <div className="text-sm font-bold text-emerald-300">
+                  <div className="text-sm font-bold text-primary">
                     {w.monday.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} — {new Date(w.monday.getTime() + 5 * 86400000).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
                   </div>
                   <ScheduleGrid
@@ -376,7 +376,7 @@ function AlunoPage() {
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setExportOpen(false)}>Cancelar</Button>
-            <Button className="bg-emerald-600 hover:bg-emerald-500 text-white" onClick={doExportAgenda}>Exportar agora</Button>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={doExportAgenda}>Exportar agora</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -386,10 +386,10 @@ function AlunoPage() {
       <section className="max-w-6xl mx-auto px-4 grid md:grid-cols-3 gap-4 pb-16">
         {/* Agenda pessoal - hoje */}
         <div className="md:col-span-1 space-y-4">
-          <Card className="border-emerald-200/60 dark:border-emerald-900/40">
+          <Card className="border-primary/20 dark:border-primary/25">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2"><CalIcon className="size-4 text-emerald-600" /><h2 className="font-black">Hoje</h2></div>
+                <div className="flex items-center gap-2"><CalIcon className="size-4 text-primary" /><h2 className="font-black">Hoje</h2></div>
                 <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}><Plus className="size-4" /></Button>
               </div>
               {todayItems.length === 0 && <p className="text-sm text-muted-foreground">Nada agendado para hoje.</p>}
@@ -430,13 +430,13 @@ function AlunoPage() {
           <Card>
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-4">
-                <BookOpen className="size-4 text-emerald-600" />
+                <BookOpen className="size-4 text-primary" />
                 <h2 className="font-black">Minhas matérias {classCode && <span className="text-muted-foreground font-normal text-sm">· Turma {classCode}</span>}</h2>
               </div>
               {mySubjects.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">Nenhum componente cadastrado para sua turma ainda.</p>}
               <div className="grid sm:grid-cols-2 gap-3">
                 {mySubjects.map((s) => (
-                  <div key={s.id} className="rounded-xl border border-border/60 p-4 hover:border-emerald-500/50 transition">
+                  <div key={s.id} className="rounded-xl border border-border/60 p-4 hover:border-primary/35 transition">
                     <div className="flex items-start justify-between gap-2">
                       <div className="font-bold">{s.name}</div>
                       {s.workload_hours && <Badge variant="outline">{s.workload_hours}h</Badge>}
@@ -445,7 +445,7 @@ function AlunoPage() {
                       <div className="text-sm text-muted-foreground mt-1">Prof. {s.professor}</div>
                     )}
                     {s.professor_contact && (
-                      <a href={`mailto:${s.professor_contact}`} className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400 mt-1 hover:underline">
+                      <a href={`mailto:${s.professor_contact}`} className="inline-flex items-center gap-1 text-xs text-primary dark:text-primary mt-1 hover:underline">
                         <Mail className="size-3" /> {s.professor_contact}
                       </a>
                     )}
