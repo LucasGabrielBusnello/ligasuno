@@ -51,6 +51,8 @@ export function ClinicalSimulator() {
   const [starting, setStarting] = useState(false);
   const [session, setSession] = useState<{ id: string; case: PublicCase } | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [detailId, setDetailId] = useState<string | null>(null);
+
 
   const start = useServerFn(startSimSession);
   const listSessions = useServerFn(listMySimSessions);
