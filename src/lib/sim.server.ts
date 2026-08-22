@@ -1,7 +1,19 @@
 /** Simulador clínico — chamadas de IA (Lovable AI Gateway). Server-only. */
 
+import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
+
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3.7-flash";
+
+export type AiResult<T> = T & { usage: Usage | null; model: string };
+
+function readUsage(data: any): Usage | null {
+  const u = data?.usage;
+  if (!u) return null;
+  const pt = Number(u.prompt_tokens ?? u.input_tokens ?? 0);
+  const ct = Number(u.completion_tokens ?? u.output_tokens ?? 0);
+  return { prompt_tokens: pt, completion_tokens: ct, total_tokens: Number(u.total_tokens ?? pt + ct) };
+}
 
 function apiKey() {
   const key = process.env["LOVABLE_API_KEY"];
@@ -11,12 +23,15 @@ function apiKey() {
 
 type Msg = { role: "system" | "user" | "assistant"; content: any };
 
-async function chat(messages: Msg[], json = true): Promise<string> {
+async function chat(messages: Msg[], json = true, tier: Tier = "chat"): Promise<{ text: string; usage: Usage | null; model: string }> {
+  const s = await loadSimSettings();
+  // Roteamento híbrido: conversa no modelo rápido/barato, correção no modelo avançado.
+  const model = tier === "grade" ? s.grade_model : s.chat_model;
   const resp = await fetch(AI_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       messages,
       ...(json ? { response_format: { type: "json_object" } } : {}),
     }),
@@ -25,7 +40,7 @@ async function chat(messages: Msg[], json = true): Promise<string> {
   if (resp.status === 402) throw new Error("Os créditos de IA do workspace acabaram. Adicione créditos para continuar o treino.");
   if (!resp.ok) throw new Error(`Falha na IA (${resp.status}): ${(await resp.text()).slice(0, 200)}`);
   const data: any = await resp.json();
-  return data?.choices?.[0]?.message?.content ?? "";
+  return { text: data?.choices?.[0]?.message?.content ?? "", usage: readUsage(data), model };
 }
 
 function parseJson(raw: string): any {
@@ -89,18 +104,18 @@ export async function patientTurn(c: SimCase, transcript: any[], userMessage: st
     .slice(-24)
     .map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: String(m.content ?? "") }));
 
-  const raw = await chat([
+  const res = await chat([
     { role: "system", content: patientSystem(c) },
     ...history,
     { role: "user", content: userMessage },
   ]);
-  const out = parseJson(raw);
+  const out = parseJson(res.text);
   const keys: string[] = Array.isArray(out.exam_keys) ? out.exam_keys.map(String) : [];
   const findings = (Array.isArray(c.findings) ? c.findings : []) as any[];
   const revealed = keys
     .map((k) => findings.find((f) => f.key === k))
     .filter(Boolean);
-  return { reply: String(out.reply ?? "..."), findings: revealed };
+  return { reply: String(out.reply ?? "..."), findings: revealed, usage: res.usage, model: res.model };
 }
 
 export async function examResult(c: SimCase, examName: string) {
@@ -115,9 +130,11 @@ export async function examResult(c: SimCase, examName: string) {
       report: String(hit.report ?? ""),
       is_image: !!hit.is_image,
       image_url: hit.image_url ?? null,
+      usage: null as Usage | null,
+      model: "local",
     };
   }
-  const raw = await chat([
+  const res = await chat([
     {
       role: "system",
       content: `Você gera o resultado de um exame complementar em uma simulação clínica.
@@ -128,7 +145,7 @@ Responda em JSON: {"name":"...","justified":true,"result_text":"...","report":""
     },
     { role: "user", content: `Exame solicitado: ${examName}` },
   ]);
-  const out = parseJson(raw);
+  const out = parseJson(res.text);
   return {
     name: String(out.name ?? examName),
     justified: !!out.justified,
@@ -136,6 +153,8 @@ Responda em JSON: {"name":"...","justified":true,"result_text":"...","report":""
     report: String(out.report ?? ""),
     is_image: !!out.is_image,
     image_url: null as string | null,
+    usage: res.usage,
+    model: res.model,
   };
 }
 
@@ -175,11 +194,15 @@ Responda em JSON:
     anamnese_escrita: anamnese,
     hipotese_diagnostica: hypothesis,
   };
-  const raw = await chat([
-    { role: "system", content: system },
-    { role: "user", content: JSON.stringify(payload) },
-  ]);
-  const out = parseJson(raw);
+  const res = await chat(
+    [
+      { role: "system", content: system },
+      { role: "user", content: JSON.stringify(payload) },
+    ],
+    true,
+    "grade",
+  );
+  const out = parseJson(res.text);
   const score = Math.max(0, Math.min(100, Number(out.score ?? 0)));
   return {
     score,
@@ -190,15 +213,19 @@ Responda em JSON:
     melhorias: Array.isArray(out.melhorias) ? out.melhorias.map(String) : [],
     diagnostico_correto: String(out.diagnostico_correto ?? c.diagnosis),
     comentario: String(out.comentario ?? ""),
+    usage: res.usage,
+    model: res.model,
   };
 }
 
 export async function transcribeAudio(base64: string, format: string) {
+  const settings = await loadSimSettings();
+  const model = settings.chat_model;
   const resp = await fetch(AI_URL, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       messages: [
         {
           role: "user",
@@ -214,18 +241,22 @@ export async function transcribeAudio(base64: string, format: string) {
   if (resp.status === 402) throw new Error("Os créditos de IA do workspace acabaram.");
   if (!resp.ok) throw new Error(`Falha ao transcrever (${resp.status}).`);
   const data: any = await resp.json();
-  return String(data?.choices?.[0]?.message?.content ?? "").trim();
+  return {
+    text: String(data?.choices?.[0]?.message?.content ?? "").trim(),
+    usage: readUsage(data),
+    model,
+  };
 }
 
 export async function generateCases(area: string, level: number, count: number) {
   const system = `Você é professor de semiologia que escreve casos clínicos ORIGINAIS em português do Brasil, no estilo e dificuldade das provas ENAMED/Revalida (nunca copie enunciados existentes).
 Responda em JSON: {"casos":[{"title":"","level":${level},"summary":"","patient":{"name":"","age":0,"gender":"masculino|feminino","occupation":"","personality":"","lay_level":0,"speech_style":""},"triage":{"chief_complaint":"","pa":"","fc":"","fr":"","temp":"","spo2":"","dor":"","peso":"","alergias":"","medicacoes":"","observacoes":""},"hidden_history":"","findings":[{"key":"ausculta_cardiaca","label":"Ausculta cardíaca","text":"","sound_category":"cardiaca|pulmonar|abdominal|carotida|percussao|nenhum","sound_finding":""}],"exams":[{"name":"","category":"","justified":true,"result_text":"","report":"","is_image":false}],"diagnosis":"","expected_conduct":""}]}
 Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, palpacao_abdome e inspecao_geral); 6 a 10 exames, alguns com justified=false (supérfluos); hidden_history detalhada (HDA, antecedentes, hábitos, familiares); triagem coerente com o diagnóstico; lay_level entre 0 e 10 variando entre os casos.`;
-  const raw = await chat([
+  const res = await chat([
     { role: "system", content: system },
     { role: "user", content: `Gere ${count} caso(s) da área "${area}" para o ${level}º ano da graduação em Medicina.` },
   ]);
-  const out = parseJson(raw);
+  const out = parseJson(res.text);
   const casos = Array.isArray(out.casos) ? out.casos : [];
   return casos.map((c: any) => ({ ...c, area, level }));
 }
