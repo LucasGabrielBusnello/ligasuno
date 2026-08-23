@@ -468,6 +468,8 @@ export const adminSimFinance = createServerFn({ method: "POST" })
         totalCharged: Number(totalCharged.toFixed(2)),
         totalProfit: Number(totalProfit.toFixed(2)),
         totalCredits: Number((rows.reduce((x, r) => x + r.credits, 0) + orphanCredits).toFixed(2)),
+        totalPaidCredits: Number(totalPaidCredits.toFixed(2)),
+
         revenue: Number(revenue.toFixed(2)),
         cases: rows.length,
       },
