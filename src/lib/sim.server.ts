@@ -316,33 +316,24 @@ Responda em JSON:
 
 export async function transcribeAudio(base64: string, format: string) {
   const settings = await loadSimSettings();
-  const model = settings.chat_model;
-  const resp = await fetch(AI_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Transcreva exatamente a fala deste áudio em português do Brasil. Responda somente com a transcrição, sem comentários." },
-            { type: "input_audio", input_audio: { data: base64, format } },
-          ],
-        },
-      ],
-    }),
-  });
-  if (resp.status === 429) throw new Error("Muitas requisições à IA agora. Aguarde alguns segundos.");
-  if (resp.status === 402) throw new Error("Os créditos de IA do workspace acabaram.");
-  if (!resp.ok) throw new Error(`Falha ao transcrever (${resp.status}).`);
-  const data: any = await resp.json();
-  return {
-    text: String(data?.choices?.[0]?.message?.content ?? "").trim(),
-    usage: readUsage(data),
+  // Áudio só é suportado pelos modelos Gemini; se o chat estiver em Claude, usa o Gemini padrão.
+  const model = /claude|anthropic/i.test(settings.chat_model) ? "google/gemini-2.5-flash" : settings.chat_model;
+  const res = await callModel(
     model,
-  };
+    [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Transcreva exatamente a fala deste áudio em português do Brasil. Responda somente com a transcrição, sem comentários." },
+          { type: "input_audio", input_audio: { data: base64, format } },
+        ],
+      },
+    ],
+    false,
+  );
+  return { text: String(res.text ?? "").trim(), usage: res.usage, model: res.model };
 }
+
 
 export function levelGuidance(level: number): string {
   switch (Number(level)) {
