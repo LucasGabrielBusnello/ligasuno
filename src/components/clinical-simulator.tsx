@@ -466,17 +466,25 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
 
   const finish = async () => {
     if (hypothesis.trim().length < 3) { toast.error("Escreva sua hipótese diagnóstica."); return; }
+    setFinishOpen(false);
+    setResultOpen(true);
     setGrading(true);
-    try {
-      const r: any = await finishFn({ data: { sessionId, anamnese: notes, hypothesis } });
-      setReview(r);
-      setFinishOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao corrigir a estação.");
-    } finally {
-      setGrading(false);
-    }
+    setTheoryLoading(true);
+    // Orquestração dupla: preceptor (Claude/fallback) e livro-texto (Gemini Flash) em paralelo.
+    const a = finishFn({ data: { sessionId, anamnese: notes, hypothesis } })
+      .then((r: any) => setReview(r))
+      .catch((e: any) => {
+        toast.error(e?.message ?? "Falha ao corrigir a estação.");
+        setResultOpen(false);
+      })
+      .finally(() => setGrading(false));
+    const b = theoryFn({ data: { sessionId } })
+      .then((r: any) => setTheory(String(r?.aula ?? "")))
+      .catch(() => setTheory(""))
+      .finally(() => setTheoryLoading(false));
+    await Promise.all([a, b]);
   };
+
 
   if (resultOpen)
     return (
