@@ -47,7 +47,7 @@ type PublicCase = {
   patient_image_url: string | null;
 };
 type ChatMsg = { role: "user" | "patient"; content: string };
-type MenuItem = { key: string; label: string; sound_category: string; revealed: boolean };
+type MenuItem = { key: string; label: string; group?: string; sound_category: string; revealed: boolean };
 type Finding = { key: string; label: string; text: string; sound_category?: string; sound_finding?: string };
 type ExamOut = { name: string; justified: boolean; result_text: string; report: string; is_image: boolean; image_url: string | null };
 
@@ -454,11 +454,14 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   };
 
   const reveal = async (key: string) => {
+    setBusy(true);
     try {
       const f: any = await revealFn({ data: { sessionId, key } });
       pushFindings([f]);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha no exame físico.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -639,19 +642,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
           <CardContent className="p-4 max-h-[52vh] overflow-y-auto space-y-3">
             {tab === "exame" && (
               <>
-                <div className="flex flex-wrap gap-1.5">
-                  {menu.map((m) => (
-                    <button
-                      key={m.key}
-                      onClick={() => reveal(m.key)}
-                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold ring-1 ${
-                        m.revealed ? "bg-primary/10 ring-primary/30 text-primary" : "bg-muted/40 ring-border hover:bg-muted"
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                <ExamMenu menu={menu} onPick={reveal} busy={busy} />
                 {findings.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma manobra realizada ainda.</p>}
                 {findings.map((f) => (
                   <div key={f.key} className="rounded-xl ring-1 ring-border p-3 space-y-2">
@@ -670,12 +661,12 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
                     value={examName}
                     onChange={(e) => setExamName(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") askExam(); }}
-                    placeholder="Ex.: hemograma, ECG, radiografia de tórax..."
+                    placeholder="Escreva o exame que deseja solicitar..."
                     disabled={busy}
                   />
                   <Button onClick={askExam} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">Solicitar</Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Peça só o que você justificaria: exames desnecessários descontam pontos.</p>
+                <p className="text-[11px] text-muted-foreground">Nenhum exame é sugerido: peça só o que você justificaria — exames desnecessários descontam pontos.</p>
                 {exams.map((e, i) => (
                   <div key={i} className="rounded-xl ring-1 ring-border p-3 space-y-1">
                     <div className="text-xs font-black uppercase text-primary flex items-center gap-2">{e.name}</div>
@@ -719,21 +710,85 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   );
 }
 
+function ExamMenu({ menu, onPick, busy }: { menu: MenuItem[]; onPick: (k: string) => void; busy?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!menu.length) return null;
+  const groups = [...new Set(menu.map((m) => m.group ?? "Manobras"))];
+  const preview = menu.slice(0, 8);
+  const rest = menu.length - preview.length;
+
+  const Chip = (m: MenuItem) => (
+    <button
+      key={m.key}
+      onClick={() => onPick(m.key)}
+      disabled={busy}
+      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold ring-1 disabled:opacity-50 ${
+        m.revealed ? "bg-primary/10 ring-primary/30 text-primary" : "bg-muted/40 ring-border hover:bg-muted"
+      }`}
+    >
+      {m.label}
+    </button>
+  );
+
+  return (
+    <div className="space-y-2">
+      {!expanded ? (
+        <div className="flex flex-wrap gap-1.5">{preview.map(Chip)}</div>
+      ) : (
+        <div className="space-y-3">
+          {groups.map((g) => (
+            <div key={g} className="space-y-1.5">
+              <div className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">{g}</div>
+              <div className="flex flex-wrap gap-1.5">{menu.filter((m) => (m.group ?? "Manobras") === g).map(Chip)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {rest > 0 && (
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="text-[11px] font-bold text-primary hover:underline"
+        >
+          {expanded ? "Ver menos manobras" : `Ver todas as manobras (+${rest})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+const SOUND_LABEL: Record<string, string> = {
+  cardiaca: "Ausculta cardíaca",
+  pulmonar: "Ausculta pulmonar",
+  abdominal: "Ausculta abdominal",
+  carotida: "Ausculta de carótidas",
+  percussao: "Percussão",
+};
+
+const normKey = (s: string) =>
+  String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_");
+
 function SoundPlayer({ finding, sounds }: { finding: Finding; sounds: any[] }) {
   const cat = finding.sound_category ?? "nenhum";
   if (!cat || cat === "nenhum") return null;
-  const key = (finding.sound_finding ?? "").toLowerCase();
-  const match = sounds.find((s) => s.category === cat && String(s.finding_key).toLowerCase() === key);
+  const key = normKey(finding.sound_finding ?? "normal");
+  const sameCat = sounds.filter((s) => s.category === cat);
+  const match =
+    sameCat.find((s) => normKey(s.finding_key) === key) ??
+    sameCat.find((s) => key.includes(normKey(s.finding_key)) || normKey(s.finding_key).includes(key)) ??
+    sameCat.find((s) => normKey(s.finding_key) === "normal");
   return (
     <div className="rounded-lg bg-muted/40 ring-1 ring-border p-2.5 space-y-2">
       <div className="text-[11px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-        <Volume2 className="size-3.5" /> Ausculta — {cat}
+        <Volume2 className="size-3.5" /> {SOUND_LABEL[cat] ?? cat} — {(finding.sound_finding ?? "normal").replace(/_/g, " ")}
       </div>
       {match?.audio_url ? (
-        <audio controls src={match.audio_url} className="w-full h-9" />
+        <>
+          <audio controls src={match.audio_url} className="w-full h-9" />
+          {match.description && <p className="text-[11px] text-muted-foreground">{match.description}</p>}
+        </>
       ) : (
         <p className="text-xs text-muted-foreground">
-          {match?.description ?? `Som característico: ${(finding.sound_finding ?? "normal").replace(/_/g, " ")}. (áudio ainda não cadastrado nesta biblioteca)`}
+          Som característico: {(finding.sound_finding ?? "normal").replace(/_/g, " ")}.
         </p>
       )}
     </div>

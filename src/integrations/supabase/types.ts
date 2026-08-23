@@ -4727,6 +4727,33 @@ export type Database = {
         }
         Relationships: []
       }
+      sim_exam_images: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string
+          label: string
+          pattern: string
+          report_hint: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url: string
+          label: string
+          pattern: string
+          report_hint?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string
+          label?: string
+          pattern?: string
+          report_hint?: string | null
+        }
+        Relationships: []
+      }
       sim_feedback: {
         Row: {
           ai_review: Json | null
