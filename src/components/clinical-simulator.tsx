@@ -311,6 +311,9 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
               </div>
             )}
 
+            {data.review?.resumo && <ResumoFixacao resumo={data.review.resumo} />}
+
+
             {data.diagnosis && (
               <div>
                 <h3 className="font-black mb-1">Diagnóstico do caso</h3>
