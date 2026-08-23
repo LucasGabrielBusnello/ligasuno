@@ -338,6 +338,31 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   const examFn = useServerFn(simExam);
   const finishFn = useServerFn(simFinish);
   const transcribeFn = useServerFn(simTranscribe);
+  const hintFn = useServerFn(simPreceptorHint);
+  const hintEnabled = Number(c.level) <= 2;
+  const actionsRef = useRef(0);
+  const hintsRef = useRef<string[]>([]);
+  const [hint, setHint] = useState<string | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+
+  const maybeHint = async () => {
+    if (!hintEnabled) return;
+    actionsRef.current += 1;
+    if (actionsRef.current < 3) return;
+    actionsRef.current = 0;
+    setHintLoading(true);
+    try {
+      const r: any = await hintFn({ data: { sessionId, previousHints: hintsRef.current } });
+      if (r?.off_track && r.hint) {
+        hintsRef.current = [...hintsRef.current, r.hint].slice(-6);
+        setHint(r.hint);
+      }
+    } catch {
+      /* dica é opcional, nunca interrompe o treino */
+    } finally {
+      setHintLoading(false);
+    }
+  };
 
   const [tab, setTab] = useState<"exame" | "exames" | "notas">("exame");
   const [chat, setChat] = useState<ChatMsg[]>([]);
