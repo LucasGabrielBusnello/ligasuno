@@ -47,6 +47,31 @@ export const startSimSession = createServerFn({ method: "POST" })
     return { sessionId: session.id as string, case: publicCase(chosen) };
   });
 
+export const resumeSimSession = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: s, error } = await supabaseAdmin
+      .from("sim_sessions")
+      .select("*, sim_cases(*)")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!s || (s as any).user_id !== context.userId) throw new Error("Sessão não encontrada.");
+    const row: any = s;
+    if (row.status !== "active") throw new Error("Esta sessão de treino já foi encerrada.");
+    return {
+      sessionId: row.id as string,
+      case: publicCase(row.sim_cases),
+      transcript: (row.transcript ?? []) as any[],
+      physical_findings: (row.physical_findings ?? []) as any[],
+      exam_requests: (row.exam_requests ?? []) as any[],
+      anamnese: row.anamnese ?? "",
+      hypothesis: row.hypothesis ?? "",
+    };
+  });
+
 async function loadSession(userId: string, sessionId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
