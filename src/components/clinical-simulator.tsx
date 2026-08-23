@@ -478,7 +478,18 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
     }
   };
 
-  if (review) return <SimResult sessionId={sessionId} review={review} onExit={onExit} />;
+  if (resultOpen)
+    return (
+      <SimResult
+        sessionId={sessionId}
+        review={review}
+        reviewLoading={grading}
+        theory={theory}
+        theoryLoading={theoryLoading}
+        onExit={onExit}
+      />
+    );
+
 
   const t = c.triage ?? {};
   return (
