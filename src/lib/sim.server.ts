@@ -266,10 +266,32 @@ export async function transcribeAudio(base64: string, format: string) {
   };
 }
 
+export function levelGuidance(level: number): string {
+  switch (Number(level)) {
+    case 1:
+      return `1º ANO — semiologia inicial. SOMENTE quadros simples e muito prevalentes, com sinais clínicos clássicos e diretos (resfriado/IVAS, faringoamigdalite, gastroenterite aguda, cefaleia tensional, lombalgia mecânica, ITU não complicada, celulite/ferida simples, asma leve, anemia ferropriva, dor abdominal inespecífica, hipertensão recém-descoberta assintomática, entorse). PROIBIDO: doenças raras, síndromes complexas, terapia intensiva, casos com múltiplas comorbidades ou diagnóstico por exclusão. Exames complementares básicos (hemograma, EAS, glicemia, radiografia simples). Foco em anamnese bem feita e exame físico básico.`;
+    case 2:
+      return `2º ANO — mesmos casos simples do 1º ano, podendo incluir quadros que exijam algum raciocínio clínico e exame físico um pouco mais específico: HAS e suas repercussões, diabetes mellitus e descompensações simples, IAM, AVC, insuficiência cardíaca, DPOC, pneumonia, TEP/TEV, hipertensão pulmonar, síndromes genéticas simples (Down, Turner, Marfan), lesões corporais/traumas não complexos, dislipidemia, hipo/hipertireoidismo. Ainda sem casos raros ou de alta complexidade em UTI.`;
+    case 3:
+      return `3º ANO — clínica médica intermediária: doenças prevalentes com diagnóstico diferencial real, interpretação de exames laboratoriais e de imagem, comorbidades associadas. Sem raridades.`;
+    case 4:
+      return `4º ANO — casos de complexidade moderada a alta, incluindo emergências, doenças sistêmicas (reumatológicas, hematológicas, infecciosas), interpretação avançada de exames e decisões de conduta.`;
+    case 5:
+      return `5º ANO — internato: casos complexos, pacientes com múltiplas comorbidades, apresentações atípicas, urgência/emergência e definição completa de conduta e seguimento.`;
+    default:
+      return `6º ANO — nível de internato final/prova de residência: casos complexos e atípicos, diagnóstico diferencial exigente, manejo completo incluindo terapia intensiva, critérios diagnósticos formais e condutas baseadas em diretrizes.`;
+  }
+}
+
 export async function generateCases(area: string, level: number, count: number) {
   const system = `Você é professor de semiologia que escreve casos clínicos ORIGINAIS em português do Brasil, no estilo e dificuldade das provas ENAMED/Revalida (nunca copie enunciados existentes).
+
+DIFICULDADE OBRIGATÓRIA PARA ESTE LOTE (respeite à risca, a complexidade deve ser proporcional ao ano):
+${levelGuidance(level)}
+
 Responda em JSON: {"casos":[{"title":"","level":${level},"summary":"","patient":{"name":"","age":0,"gender":"masculino|feminino","occupation":"","personality":"","lay_level":0,"speech_style":""},"triage":{"chief_complaint":"","pa":"","fc":"","fr":"","temp":"","spo2":"","dor":"","peso":"","alergias":"","medicacoes":"","observacoes":""},"hidden_history":"","findings":[{"key":"ausculta_cardiaca","label":"Ausculta cardíaca","text":"","sound_category":"cardiaca|pulmonar|abdominal|carotida|percussao|nenhum","sound_finding":""}],"exams":[{"name":"","category":"","justified":true,"result_text":"","report":"","is_image":false}],"diagnosis":"","expected_conduct":""}]}
 Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, palpacao_abdome e inspecao_geral); 6 a 10 exames, alguns com justified=false (supérfluos); hidden_history detalhada (HDA, antecedentes, hábitos, familiares); triagem coerente com o diagnóstico; lay_level entre 0 e 10 variando entre os casos.`;
+
   const res = await chat([
     { role: "system", content: system },
     { role: "user", content: `Gere ${count} caso(s) da área "${area}" para o ${level}º ano da graduação em Medicina.` },
