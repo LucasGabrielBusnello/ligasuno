@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
-  startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
+  startSimSession, resumeSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
   simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
 } from "@/lib/sim.functions";
 
@@ -50,6 +50,13 @@ type ChatMsg = { role: "user" | "patient"; content: string };
 type MenuItem = { key: string; label: string; group?: string; sound_category: string; revealed: boolean };
 type Finding = { key: string; label: string; text: string; sound_category?: string; sound_finding?: string };
 type ExamOut = { name: string; justified: boolean; result_text: string; report: string; is_image: boolean; image_url: string | null };
+type SimResumeState = {
+  transcript: any[];
+  physical_findings: any[];
+  exam_requests: any[];
+  anamnese: string;
+  hypothesis: string;
+};
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
 
@@ -71,12 +78,13 @@ export function ClinicalSimulator() {
   const [level, setLevel] = useState<number>(1);
   const [area, setArea] = useState<string>("");
   const [starting, setStarting] = useState(false);
-  const [session, setSession] = useState<{ id: string; case: PublicCase } | null>(null);
+  const [session, setSession] = useState<{ id: string; case: PublicCase; resume?: SimResumeState } | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
-
+  const [resumingId, setResumingId] = useState<string | null>(null);
 
   const start = useServerFn(startSimSession);
+  const resume = useServerFn(resumeSimSession);
   const listSessions = useServerFn(listMySimSessions);
 
   useEffect(() => {
@@ -110,6 +118,7 @@ export function ClinicalSimulator() {
       <SimStation
         sessionId={session.id}
         c={session.case}
+        initial={session.resume}
         onExit={() => {
           setSession(null);
           listSessions().then((r: any) => setHistory(r ?? [])).catch(() => {});
@@ -204,9 +213,37 @@ export function ClinicalSimulator() {
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs font-bold" onClick={() => setDetailId(h.id)}>
-                      <History className="size-3.5 mr-1" /> Ver histórico
-                    </Button>
+                    {h.status === "active" ? (
+                      <Button
+                        size="sm"
+                        className="h-7 px-2 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                        disabled={resumingId === h.id}
+                        onClick={async () => {
+                          setResumingId(h.id);
+                          try {
+                            const r: any = await resume({ data: { sessionId: h.id } });
+                            setSession({ id: r.sessionId, case: r.case, resume: {
+                              transcript: r.transcript,
+                              physical_findings: r.physical_findings,
+                              exam_requests: r.exam_requests,
+                              anamnese: r.anamnese,
+                              hypothesis: r.hypothesis,
+                            }});
+                          } catch (e: any) {
+                            toast.error(e?.message ?? "Não foi possível retomar o treino.");
+                          } finally {
+                            setResumingId(null);
+                          }
+                        }}
+                      >
+                        {resumingId === h.id ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Play className="size-3.5 mr-1" />}
+                        Continuar treino
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs font-bold" onClick={() => setDetailId(h.id)}>
+                        <History className="size-3.5 mr-1" /> Ver histórico
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -360,7 +397,7 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
 
 
 /* ============ ESTAÇÃO ============ */
-function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase; onExit: () => void }) {
+function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: PublicCase; initial?: SimResumeState; onExit: () => void }) {
   const say = useServerFn(simSay);
   const menuFn = useServerFn(simExamMenu);
   const revealFn = useServerFn(simRevealFinding);
@@ -396,17 +433,19 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   };
 
   const [tab, setTab] = useState<"exame" | "exames" | "notas">("exame");
-  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chat, setChat] = useState<ChatMsg[]>(() =>
+    (initial?.transcript ?? []).map((m: any) => ({ role: m.role === "user" ? "user" : "patient", content: String(m.content ?? "") }))
+  );
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<MenuItem[]>([]);
-  const [findings, setFindings] = useState<Finding[]>([]);
+  const [findings, setFindings] = useState<Finding[]>(initial?.physical_findings ?? []);
   const [examName, setExamName] = useState("");
-  const [exams, setExams] = useState<ExamOut[]>([]);
-  const [notes, setNotes] = useState("");
+  const [exams, setExams] = useState<ExamOut[]>(initial?.exam_requests ?? []);
+  const [notes, setNotes] = useState(initial?.anamnese ?? "");
   const [sounds, setSounds] = useState<any[]>([]);
   const [finishOpen, setFinishOpen] = useState(false);
-  const [hypothesis, setHypothesis] = useState("");
+  const [hypothesis, setHypothesis] = useState(initial?.hypothesis ?? "");
   const [grading, setGrading] = useState(false);
   const [review, setReview] = useState<any>(null);
   const [resultOpen, setResultOpen] = useState(false);
@@ -416,7 +455,11 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    menuFn({ data: { sessionId } }).then((r: any) => setMenu(r ?? [])).catch(() => {});
+    menuFn({ data: { sessionId } }).then((r: any) => {
+      const items = (r ?? []) as MenuItem[];
+      const revealed = new Set((initial?.physical_findings ?? []).map((f: any) => f.key));
+      setMenu(items.map((m) => (revealed.has(m.key) ? { ...m, revealed: true } : m)));
+    }).catch(() => {});
     supabase.from("sim_auscultation_sounds").select("*").then(({ data }) => setSounds(data ?? []));
   }, [sessionId]);
 
