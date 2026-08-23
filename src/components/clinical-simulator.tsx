@@ -453,6 +453,14 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   const [theory, setTheory] = useState<string | null>(null);
   const [theoryLoading, setTheoryLoading] = useState(false);
 
+  // Autosave da anamnese e hipótese com debounce para persistir entre sessões.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      void saveNotesFn({ data: { sessionId, anamnese: notes, hypothesis } });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [notes, hypothesis, sessionId, saveNotesFn]);
+
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
