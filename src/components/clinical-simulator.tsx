@@ -399,6 +399,10 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   const [hypothesis, setHypothesis] = useState("");
   const [grading, setGrading] = useState(false);
   const [review, setReview] = useState<any>(null);
+  const [resultOpen, setResultOpen] = useState(false);
+  const [theory, setTheory] = useState<string | null>(null);
+  const [theoryLoading, setTheoryLoading] = useState(false);
+
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
