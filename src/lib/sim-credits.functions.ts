@@ -357,7 +357,7 @@ export const adminSimFinance = createServerFn({ method: "POST" })
 
     const { data: usage } = await supabaseAdmin
       .from("sim_usage_events")
-      .select("session_id, user_id, total_tokens, cost_brl, credits, created_at")
+      .select("session_id, user_id, prompt_tokens, completion_tokens, total_tokens, cost_brl, credits, created_at")
       .gte("created_at", since)
       .limit(20000);
 
@@ -374,19 +374,25 @@ export const adminSimFinance = createServerFn({ method: "POST" })
       : { data: [] as any[] };
     const nameOf = new Map((profiles ?? []).map((p: any) => [p.id, p.full_name || p.email]));
 
-    const agg = new Map<string, { tokens: number; cost: number; credits: number }>();
+    const agg = new Map<string, { tokens: number; tokensIn: number; tokensOut: number; cost: number; credits: number }>();
     let orphanTokens = 0;
+    let orphanTokensIn = 0;
+    let orphanTokensOut = 0;
     let orphanCost = 0;
     let orphanCredits = 0;
     for (const u of (usage ?? []) as any[]) {
       if (!u.session_id) {
         orphanTokens += Number(u.total_tokens);
+        orphanTokensIn += Number(u.prompt_tokens ?? 0);
+        orphanTokensOut += Number(u.completion_tokens ?? 0);
         orphanCost += Number(u.cost_brl);
         orphanCredits += Number(u.credits);
         continue;
       }
-      const cur = agg.get(u.session_id) ?? { tokens: 0, cost: 0, credits: 0 };
+      const cur = agg.get(u.session_id) ?? { tokens: 0, tokensIn: 0, tokensOut: 0, cost: 0, credits: 0 };
       cur.tokens += Number(u.total_tokens);
+      cur.tokensIn += Number(u.prompt_tokens ?? 0);
+      cur.tokensOut += Number(u.completion_tokens ?? 0);
       cur.cost += Number(u.cost_brl);
       cur.credits += Number(u.credits);
       agg.set(u.session_id, cur);
@@ -423,7 +429,7 @@ export const adminSimFinance = createServerFn({ method: "POST" })
     }
 
     const rows = (sessions ?? []).map((s: any) => {
-      const a = agg.get(s.id) ?? { tokens: 0, cost: 0, credits: 0 };
+      const a = agg.get(s.id) ?? { tokens: 0, tokensIn: 0, tokensOut: 0, cost: 0, credits: 0 };
       const info = paidInfo.get(s.user_id) ?? { ratio: 0, revPerCredit: 0 };
       const paidCredits = a.credits * info.ratio;
       const charged = paidCredits * info.revPerCredit; // receita reconhecida (créditos pagos usados)
@@ -438,6 +444,8 @@ export const adminSimFinance = createServerFn({ method: "POST" })
         status: s.status,
         score: s.score,
         tokens: a.tokens,
+        tokens_in: a.tokensIn,
+        tokens_out: a.tokensOut,
         cost: Number(a.cost.toFixed(4)),
         credits: Number(a.credits.toFixed(2)),
         paid_credits: Number(paidCredits.toFixed(2)),
@@ -447,6 +455,8 @@ export const adminSimFinance = createServerFn({ method: "POST" })
     });
 
     const totalTokens = rows.reduce((x, r) => x + r.tokens, 0) + orphanTokens;
+    const totalTokensIn = rows.reduce((x, r) => x + r.tokens_in, 0) + orphanTokensIn;
+    const totalTokensOut = rows.reduce((x, r) => x + r.tokens_out, 0) + orphanTokensOut;
     const totalCost = rows.reduce((x, r) => x + r.cost, 0) + orphanCost;
     const totalCharged = rows.reduce((x, r) => x + r.charged, 0);
     const totalProfit = rows.reduce((x, r) => x + r.profit, 0);
@@ -464,6 +474,8 @@ export const adminSimFinance = createServerFn({ method: "POST" })
       settings: { tokensPerCredit: settings.tokens_per_credit, feePct: settings.gateway_fee_pct, divisor: settings.price_divisor },
       kpis: {
         totalTokens,
+        totalTokensIn,
+        totalTokensOut,
         totalCost: Number(totalCost.toFixed(2)),
         totalCharged: Number(totalCharged.toFixed(2)),
         totalProfit: Number(totalProfit.toFixed(2)),
