@@ -658,12 +658,12 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
                     value={examName}
                     onChange={(e) => setExamName(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") askExam(); }}
-                    placeholder="Ex.: hemograma, ECG, radiografia de tórax..."
+                    placeholder="Escreva o exame que deseja solicitar..."
                     disabled={busy}
                   />
                   <Button onClick={askExam} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">Solicitar</Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Peça só o que você justificaria: exames desnecessários descontam pontos.</p>
+                <p className="text-[11px] text-muted-foreground">Nenhum exame é sugerido: peça só o que você justificaria — exames desnecessários descontam pontos.</p>
                 {exams.map((e, i) => (
                   <div key={i} className="rounded-xl ring-1 ring-border p-3 space-y-1">
                     <div className="text-xs font-black uppercase text-primary flex items-center gap-2">{e.name}</div>
