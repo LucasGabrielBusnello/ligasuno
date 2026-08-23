@@ -13,10 +13,31 @@ import {
   HeartPulse, Volume2, CheckCircle2, XCircle, ThumbsUp, ThumbsDown, History, Play,
   Lightbulb, ArrowLeft, X,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import {
-  startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish,
+  startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
   simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
 } from "@/lib/sim.functions";
+
+/** Renderiza Markdown com o padrão visual do site. */
+export function MarkdownView({ text }: { text: string }) {
+  return (
+    <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-black prose-headings:text-foreground prose-strong:text-foreground prose-li:marker:text-primary text-foreground/90">
+      <ReactMarkdown>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+function SectionSkeleton() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      {[90, 100, 75, 95, 60].map((w, i) => (
+        <div key={i} className="h-3 rounded bg-muted" style={{ width: `${w}%` }} />
+      ))}
+    </div>
+  );
+}
+
 
 
 type PublicCase = {
@@ -314,6 +335,14 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
 
             {data.review?.resumo && <ResumoFixacao resumo={data.review.resumo} />}
 
+            {data.review?.aula && (
+              <div className="rounded-xl ring-1 ring-amber-500/25 bg-amber-500/5 p-3 space-y-2">
+                <h3 className="font-black">Revisão Teórica</h3>
+                <MarkdownView text={data.review.aula} />
+              </div>
+            )}
+
+
 
             {data.diagnosis && (
               <div>
@@ -337,6 +366,8 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   const revealFn = useServerFn(simRevealFinding);
   const examFn = useServerFn(simExam);
   const finishFn = useServerFn(simFinish);
+  const theoryFn = useServerFn(simTheory);
+
   const transcribeFn = useServerFn(simTranscribe);
   const hintFn = useServerFn(simPreceptorHint);
   const hintEnabled = Number(c.level) <= 2;
@@ -378,6 +409,10 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   const [hypothesis, setHypothesis] = useState("");
   const [grading, setGrading] = useState(false);
   const [review, setReview] = useState<any>(null);
+  const [resultOpen, setResultOpen] = useState(false);
+  const [theory, setTheory] = useState<string | null>(null);
+  const [theoryLoading, setTheoryLoading] = useState(false);
+
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -445,19 +480,38 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
 
   const finish = async () => {
     if (hypothesis.trim().length < 3) { toast.error("Escreva sua hipótese diagnóstica."); return; }
+    setFinishOpen(false);
+    setResultOpen(true);
     setGrading(true);
-    try {
-      const r: any = await finishFn({ data: { sessionId, anamnese: notes, hypothesis } });
-      setReview(r);
-      setFinishOpen(false);
-    } catch (e: any) {
-      toast.error(e?.message ?? "Falha ao corrigir a estação.");
-    } finally {
-      setGrading(false);
-    }
+    setTheoryLoading(true);
+    // Orquestração dupla: preceptor (Claude/fallback) e livro-texto (Gemini Flash) em paralelo.
+    const a = finishFn({ data: { sessionId, anamnese: notes, hypothesis } })
+      .then((r: any) => setReview(r))
+      .catch((e: any) => {
+        toast.error(e?.message ?? "Falha ao corrigir a estação.");
+        setResultOpen(false);
+      })
+      .finally(() => setGrading(false));
+    const b = theoryFn({ data: { sessionId } })
+      .then((r: any) => setTheory(String(r?.aula ?? "")))
+      .catch(() => setTheory(""))
+      .finally(() => setTheoryLoading(false));
+    await Promise.all([a, b]);
   };
 
-  if (review) return <SimResult sessionId={sessionId} review={review} onExit={onExit} />;
+
+  if (resultOpen)
+    return (
+      <SimResult
+        sessionId={sessionId}
+        review={review}
+        reviewLoading={grading}
+        theory={theory}
+        theoryLoading={theoryLoading}
+        onExit={onExit}
+      />
+    );
+
 
   const t = c.triage ?? {};
   return (
@@ -732,7 +786,16 @@ function MicButton({ onText, transcribe, disabled }: { onText: (t: string) => vo
   );
 }
 
-function SimResult({ sessionId, review, onExit }: { sessionId: string; review: any; onExit: () => void }) {
+function SimResult({
+  sessionId, review, reviewLoading, theory, theoryLoading, onExit,
+}: {
+  sessionId: string;
+  review: any;
+  reviewLoading?: boolean;
+  theory?: string | null;
+  theoryLoading?: boolean;
+  onExit: () => void;
+}) {
   const fbFn = useServerFn(sendSimFeedback);
   const [sent, setSent] = useState(false);
   const [comment, setComment] = useState("");
@@ -751,15 +814,21 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
 
   return (
     <div className="space-y-4">
-      <Card className={`ring-1 ${scoreRing(review.score)}`}>
+      <Card className={`ring-1 ${review ? scoreRing(review.score) : "ring-border"}`}>
         <CardContent className="p-6 flex flex-wrap items-center gap-6">
           <div className="text-center">
-            <div className={`text-6xl font-black ${scoreColor(review.score)}`}>{review.score}</div>
+            {review ? (
+              <div className={`text-6xl font-black ${scoreColor(review.score)}`}>{review.score}</div>
+            ) : (
+              <Loader2 className="size-10 animate-spin text-primary" />
+            )}
             <div className="text-[11px] uppercase tracking-wide text-muted-foreground">de 100</div>
           </div>
           <div className="flex-1 min-w-[220px]">
-            <div className="font-black text-lg">{review.veredito}</div>
-            <div className="text-sm text-muted-foreground">Diagnóstico correto: <b className="text-foreground">{review.diagnostico_correto}</b></div>
+            <div className="font-black text-lg">{review ? review.veredito : "Corrigindo sua estação…"}</div>
+            {review && (
+              <div className="text-sm text-muted-foreground">Diagnóstico correto: <b className="text-foreground">{review.diagnostico_correto}</b></div>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={onExit}><ArrowLeft className="size-4 mr-2" /> Voltar às informações gerais</Button>
@@ -768,20 +837,56 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
         </CardContent>
       </Card>
 
-      {review.comentario && <Card><CardContent className="p-5 text-sm whitespace-pre-wrap">{review.comentario}</CardContent></Card>}
+      {/* Card 1 — Parecer do Preceptor (CHAMADA A) */}
+      <Card className="ring-1 ring-primary/25">
+        <CardContent className="p-5 space-y-3">
+          <h3 className="font-black flex items-center gap-2"><Stethoscope className="size-4 text-primary" /> Parecer do Preceptor</h3>
+          {reviewLoading || !review ? (
+            <SectionSkeleton />
+          ) : review.parecer_md ? (
+            <MarkdownView text={review.parecer_md} />
+          ) : (
+            review.comentario && <p className="text-sm whitespace-pre-wrap text-foreground/90">{review.comentario}</p>
+          )}
+        </CardContent>
+      </Card>
 
-      <div className="grid md:grid-cols-2 gap-3">
-        <ListCard title="Você acertou" items={review.acertos} icon={<CheckCircle2 className="size-4 text-primary" />} />
-        <ListCard title="Faltou" items={review.faltou} icon={<XCircle className="size-4 text-red-500" />} />
-        <ListCard title="Exames desnecessários" items={review.exames_desnecessarios} icon={<FlaskConical className="size-4 text-amber-500" />} />
-        <ListCard title="Como melhorar" items={review.melhorias} icon={<Activity className="size-4 text-primary" />} />
-      </div>
+      {review && (
+        <>
+          {review.parecer_md && review.comentario && (
+            <Card><CardContent className="p-5 text-sm whitespace-pre-wrap">{review.comentario}</CardContent></Card>
+          )}
 
-      {review.case?.expected_conduct && (
-        <Card><CardContent className="p-5 text-sm"><b className="text-primary">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
+          <div className="grid md:grid-cols-2 gap-3">
+            <ListCard title="Você acertou" items={review.acertos} icon={<CheckCircle2 className="size-4 text-primary" />} />
+            <ListCard title="Faltou" items={review.faltou} icon={<XCircle className="size-4 text-red-500" />} />
+            <ListCard title="Exames desnecessários" items={review.exames_desnecessarios} icon={<FlaskConical className="size-4 text-amber-500" />} />
+            <ListCard title="Como melhorar" items={review.melhorias} icon={<Activity className="size-4 text-primary" />} />
+          </div>
+
+          {review.case?.expected_conduct && (
+            <Card><CardContent className="p-5 text-sm"><b className="text-primary">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
+          )}
+
+          {review.resumo && <ResumoFixacao resumo={review.resumo} />}
+        </>
       )}
 
-      <ResumoFixacao resumo={review.resumo} />
+      {/* Card 2 — Revisão Teórica (CHAMADA B) */}
+      <Card className="ring-1 ring-amber-500/25">
+        <CardContent className="p-5 space-y-3">
+          <h3 className="font-black flex items-center gap-2"><ClipboardList className="size-4 text-amber-500" /> Revisão Teórica</h3>
+          {theoryLoading ? (
+            <SectionSkeleton />
+          ) : theory ? (
+            <MarkdownView text={theory} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Aula teórica indisponível para este caso.</p>
+          )}
+        </CardContent>
+      </Card>
+
+
 
 
       <Card>

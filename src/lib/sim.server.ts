@@ -31,26 +31,41 @@ function apiKey() {
 type Msg = { role: "system" | "user" | "assistant"; content: any };
 
 function httpError(resp: Response, body: string): Error {
-  if (resp.status === 429) return new Error("Muitas requisições à IA agora. Aguarde alguns segundos e tente de novo.");
-  if (resp.status === 401 || resp.status === 403) return new Error("Chave de API inválida ou sem permissão para este modelo.");
-  if (resp.status === 402) return new Error("Os créditos de IA acabaram. Adicione créditos para continuar o treino.");
-  return new Error(`Falha na IA (${resp.status}): ${body.slice(0, 200)}`);
+  let e: Error;
+  if (resp.status === 429) e = new Error("Muitas requisições à IA agora. Aguarde alguns segundos e tente de novo.");
+  else if (resp.status === 401 || resp.status === 403) e = new Error("Chave de API inválida ou sem permissão para este modelo.");
+  else if (resp.status === 402) e = new Error("Os créditos de IA acabaram. Adicione créditos para continuar o treino.");
+  else e = new Error(`Falha na IA (${resp.status}): ${body.slice(0, 200)}`);
+  (e as any).status = resp.status;
+  return e;
 }
+
+export type CallOpts = { json?: boolean; maxTokens?: number; cacheSystem?: boolean };
 
 /** Chamada bruta ao modelo, escolhendo o provedor pelo prefixo do nome. */
 export async function callModel(
   model: string,
   messages: Msg[],
-  json = true,
+  json: boolean | CallOpts = true,
 ): Promise<{ text: string; usage: Usage | null; model: string }> {
+  const opts: CallOpts = typeof json === "boolean" ? { json } : json;
+  const wantJson = opts.json !== false;
+
   const geminiKey = process.env["GEMINI_API_KEY"];
   const anthropicKey = process.env["ANTHROPIC_API_KEY"];
 
   // Anthropic (Claude/Sonnet) com chave própria
   if (model.startsWith("anthropic/") || model.startsWith("claude")) {
-    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY não configurada.");
+    if (!anthropicKey) {
+      const e = new Error("ANTHROPIC_API_KEY não configurada.");
+      (e as any).status = 401;
+      throw e;
+    }
     const id = model.replace(/^anthropic\//, "");
-    const system = messages.filter((m) => m.role === "system").map((m) => String(m.content)).join("\n\n");
+    const systemText = messages.filter((m) => m.role === "system").map((m) => String(m.content)).join("\n\n");
+    const finalSystem = systemText && wantJson
+      ? `${systemText}\n\nResponda SOMENTE com um JSON válido, sem texto fora do JSON.`
+      : systemText;
     const rest = messages
       .filter((m) => m.role !== "system")
       .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content) }));
@@ -63,8 +78,15 @@ export async function callModel(
       },
       body: JSON.stringify({
         model: id,
-        max_tokens: 8000,
-        ...(system ? { system: json ? `${system}\n\nResponda SOMENTE com um JSON válido, sem texto fora do JSON.` : system } : {}),
+        max_tokens: opts.maxTokens ?? 8000,
+        ...(finalSystem
+          ? {
+              // Prompt caching efêmero: o prompt de sistema é estável entre alunos.
+              system: opts.cacheSystem
+                ? [{ type: "text", text: finalSystem, cache_control: { type: "ephemeral" } }]
+                : finalSystem,
+            }
+          : {}),
         messages: rest.length ? rest : [{ role: "user", content: "..." }],
       }),
     });
@@ -81,17 +103,17 @@ export async function callModel(
   const useGemini = geminiKey && (model.startsWith("google/") || model.startsWith("gemini"));
   const url = useGemini ? GEMINI_URL : AI_URL;
   const id = useGemini ? model.replace(/^google\//, "") : model;
+  const extra = {
+    ...(wantJson ? { response_format: { type: "json_object" } } : {}),
+    ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+  };
   const resp = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${useGemini ? geminiKey : apiKey()}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: id,
-      messages,
-      ...(json ? { response_format: { type: "json_object" } } : {}),
-    }),
+    body: JSON.stringify({ model: id, messages, ...extra }),
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -100,7 +122,7 @@ export async function callModel(
       const fb = await fetch(AI_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, ...(json ? { response_format: { type: "json_object" } } : {}) }),
+        body: JSON.stringify({ model, messages, ...extra }),
       });
       if (!fb.ok) throw httpError(fb, await fb.text());
       const d: any = await fb.json();
@@ -110,6 +132,7 @@ export async function callModel(
   }
   const data: any = await resp.json();
   return { text: data?.choices?.[0]?.message?.content ?? "", usage: readUsage(data), model };
+
 }
 
 async function chat(messages: Msg[], json = true, tier: Tier = "chat") {
@@ -235,6 +258,35 @@ Responda em JSON: {"name":"...","justified":true,"result_text":"...","report":""
   };
 }
 
+/**
+ * Data pruning: transforma o histórico bruto do chat em texto limpo
+ * "Aluno: ... / Paciente: ...", sem metadados, timestamps ou instruções de sistema.
+ */
+export function cleanTranscript(transcript: any[]): string {
+  return (Array.isArray(transcript) ? transcript : [])
+    .filter((m: any) => m?.role === "user" || m?.role === "patient" || m?.role === "assistant")
+    .map((m: any) => {
+      const who = m.role === "user" ? "Aluno" : "Paciente";
+      const text = String(m.content ?? "").replace(/\s+/g, " ").trim();
+      return text ? `${who}: ${text}` : "";
+    })
+    .filter(Boolean)
+    .join("\n")
+    .slice(0, 12000);
+}
+
+const PRECEPTOR_MODEL = "anthropic/claude-3-5-sonnet-latest";
+const FLASH_MODEL = "google/gemini-2.5-flash";
+
+function isProviderBlocked(e: any) {
+  const s = Number(e?.status ?? 0);
+  return s === 401 || s === 402 || s === 403 || /credit balance|api key|não configurada/i.test(String(e?.message ?? ""));
+}
+
+/**
+ * CHAMADA A — Preceptor clínico (Anthropic, com fallback automático no Gemini Flash).
+ * Só avalia a atuação do aluno; a teoria da doença é da CHAMADA B.
+ */
 export async function gradeSession(opts: {
   c: SimCase;
   transcript: any[];
@@ -245,46 +297,49 @@ export async function gradeSession(opts: {
   rules: string[];
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
-  const system = `Você é professor de semiologia e clínica médica corrigindo uma estação simulada, em português do Brasil.
+  const system = `Você é um preceptor médico rigoroso avaliando um aluno do ${c.level}º ano em uma estação simulada, em português do Brasil.
+Analise a transcrição fornecida. Aponte, em formato de checklist curto: 1) Omissões críticas na anamnese. 2) Avaliação da hipótese diagnóstica do aluno.
+REGRA DE OURO: NÃO explique a doença e não cite a fisiopatologia. Foque apenas no feedback da atuação do aluno.
 
-CASO (gabarito): ${c.title} | área ${c.area} | nível ${c.level}º ano
+CASO (gabarito, uso interno): ${c.title} | área ${c.area}
 Diagnóstico correto: ${c.diagnosis}
 Conduta esperada: ${c.expected_conduct ?? "-"}
-História real: ${c.hidden_history ?? c.summary ?? ""}
-Exames pertinentes do caso: ${(Array.isArray(c.exams) ? c.exams : []).filter((e: any) => e.justified).map((e: any) => e.name).join(", ")}
+Exames pertinentes: ${(Array.isArray(c.exams) ? c.exams : []).filter((e: any) => e.justified).map((e: any) => e.name).join(", ")}
 
 COMO PONTUAR (0 a 100):
-- 100: chegou ao diagnóstico, colheu a anamnese de forma completa e organizada, examinou o que era necessário e pediu SOMENTE os exames necessários — resolutivo, sem desgastar o paciente.
-- ~70: chegou ao diagnóstico, mas pediu exames desnecessários ou deixou lacunas na anamnese.
-- Cada exame pedido sem sentido para o caso (nem para confirmar nem para afastar hipótese) desconta pontos.
-- Abaixo de 40: diagnóstico errado ou raciocínio clínico desorganizado.
-- Ajuste a exigência ao nível do aluno (${c.level}º ano): ${levelGuidance(c.level)}
-${rules.length ? `\nREGRAS ADICIONAIS DE CORREÇÃO DEFINIDAS PELO PROFESSOR RESPONSÁVEL (siga à risca):\n- ${rules.join("\n- ")}` : ""}
-
-RESUMO DE FIXAÇÃO (obrigatório): ao final, escreva um resumo padronizado da doença do caso, no mesmo formato SEMPRE, feito para o aluno memorizar: definição, epidemiologia/fatores de risco, fisiopatologia em 2-3 frases simples, quadro clínico, sinais/sintomas-chave ("red flags"), diagnóstico (exames e critérios), tratamento/conduta, principais diagnósticos diferenciais, complicações, pegadinhas de prova e um bordão final de 1 frase para fixar. Linguagem objetiva, em tópicos curtos, adequada ao ${c.level}º ano.
+- 100: chegou ao diagnóstico, anamnese completa e organizada, exame físico adequado e SOMENTE os exames necessários.
+- ~70: chegou ao diagnóstico, mas pediu exames desnecessários ou deixou lacunas.
+- Abaixo de 40: diagnóstico errado ou raciocínio desorganizado.
+- Exigência proporcional ao nível: ${levelGuidance(c.level)}
+${rules.length ? `\nREGRAS ADICIONAIS DO PROFESSOR (siga à risca):\n- ${rules.join("\n- ")}` : ""}
 
 Responda em JSON:
-{"score":0-100,"veredito":"frase curta","acertos":["..."],"faltou":["..."],"exames_desnecessarios":["..."],"melhorias":["..."],"diagnostico_correto":"...","comentario":"parágrafo com o parecer geral e o raciocínio clínico esperado","resumo":{"doenca":"","definicao":"","epidemiologia":["..."],"fisiopatologia":"","quadro_clinico":["..."],"sinais_chave":["..."],"diagnostico":["..."],"tratamento":["..."],"diferenciais":["..."],"complicacoes":["..."],"pegadinhas":["..."],"bordao":""}}`;
+{"score":0-100,"veredito":"frase curta","acertos":["..."],"faltou":["..."],"exames_desnecessarios":["..."],"melhorias":["..."],"diagnostico_correto":"...","comentario":"parecer geral curto sobre a atuação","parecer_md":"checklist em Markdown com as seções **Omissões críticas na anamnese** e **Hipótese diagnóstica**"}`;
 
-  const payload = {
-    conversa: (transcript ?? []).map((m: any) => `${m.role === "user" ? "Estudante" : "Paciente"}: ${m.content}`).join("\n").slice(0, 12000),
-    exame_fisico_realizado: (findings ?? []).map((f: any) => f.label),
-    exames_solicitados: (exams ?? []).map((e: any) => ({ nome: e.name, pertinente: e.justified })),
-    anamnese_escrita: anamnese,
-    hipotese_diagnostica: hypothesis,
-  };
-  const res = await chat(
-    [
-      { role: "system", content: system },
-      { role: "user", content: JSON.stringify(payload) },
-    ],
-    true,
-    "grade",
-  );
+  const payload = [
+    `TRANSCRIÇÃO:\n${cleanTranscript(transcript)}`,
+    `EXAME FÍSICO REALIZADO: ${(findings ?? []).map((f: any) => f.label).join(", ") || "nenhum"}`,
+    `EXAMES SOLICITADOS: ${(exams ?? []).map((e: any) => `${e.name}${e.justified ? "" : " (supérfluo)"}`).join(", ") || "nenhum"}`,
+    `ANAMNESE ESCRITA: ${anamnese || "-"}`,
+    `HIPÓTESE DIAGNÓSTICA DO ALUNO: ${hypothesis}`,
+  ].join("\n\n");
+
+  const messages: Msg[] = [
+    { role: "system", content: system },
+    { role: "user", content: payload },
+  ];
+
+  let res: { text: string; usage: Usage | null; model: string };
+  try {
+    res = await callModel(PRECEPTOR_MODEL, messages, { json: true, maxTokens: 1000, cacheSystem: true });
+  } catch (e: any) {
+    if (!isProviderBlocked(e)) throw e;
+    res = await callModel(FLASH_MODEL, messages, { json: true, maxTokens: 1500 });
+  }
+
   const out = parseJson(res.text);
   const score = Math.max(0, Math.min(100, Number(out.score ?? 0)));
   const arr = (v: any) => (Array.isArray(v) ? v.map(String) : []);
-  const r = out.resumo ?? {};
   return {
     score,
     veredito: String(out.veredito ?? ""),
@@ -294,24 +349,28 @@ Responda em JSON:
     melhorias: arr(out.melhorias),
     diagnostico_correto: String(out.diagnostico_correto ?? c.diagnosis),
     comentario: String(out.comentario ?? ""),
-    resumo: {
-      doenca: String(r.doenca ?? c.diagnosis),
-      definicao: String(r.definicao ?? ""),
-      epidemiologia: arr(r.epidemiologia),
-      fisiopatologia: String(r.fisiopatologia ?? ""),
-      quadro_clinico: arr(r.quadro_clinico),
-      sinais_chave: arr(r.sinais_chave),
-      diagnostico: arr(r.diagnostico),
-      tratamento: arr(r.tratamento),
-      diferenciais: arr(r.diferenciais),
-      complicacoes: arr(r.complicacoes),
-      pegadinhas: arr(r.pegadinhas),
-      bordao: String(r.bordao ?? ""),
-    },
+    parecer_md: String(out.parecer_md ?? ""),
     usage: res.usage,
     model: res.model,
   };
 }
+
+/** CHAMADA B — Livro-texto (Gemini Flash): aula completa em Markdown sobre a patologia. */
+export async function theoryLesson(c: { diagnosis: string; area: string; level: number }) {
+  const res = await callModel(
+    FLASH_MODEL,
+    [
+      {
+        role: "system",
+        content: `Aja como um livro-texto de medicina. Escreva uma aula completa, formatada em Markdown, sobre a patologia principal deste caso. Inclua: Fisiopatologia, Epidemiologia, Quadro Clínico, Exames Padrão-Ouro e Tratamento. Português do Brasil, objetivo, com títulos e tópicos, adequado ao ${c.level}º ano da graduação.`,
+      },
+      { role: "user", content: `Patologia: ${c.diagnosis} (área: ${c.area}).` },
+    ],
+    { json: false, maxTokens: 2500 },
+  );
+  return { aula: String(res.text ?? "").trim(), usage: res.usage, model: res.model };
+}
+
 
 
 export async function transcribeAudio(base64: string, format: string) {

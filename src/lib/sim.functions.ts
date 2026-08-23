@@ -191,6 +191,45 @@ export const simFinish = createServerFn({ method: "POST" })
     return { ...review, balance: billing.balance, case: { title: sim.title, diagnosis: sim.diagnosis, expected_conduct: sim.expected_conduct, hidden_history: sim.hidden_history } };
   });
 
+/** CHAMADA B — aula teórica (Gemini Flash), disparada em paralelo com a correção. */
+export const simTheory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
+    const { recordUsage } = await import("./sim-billing.server");
+    const { theoryLesson } = await import("./sim.server");
+    const out = await theoryLesson({ diagnosis: sim.diagnosis, area: sim.area, level: sim.level });
+    await recordUsage({
+      userId: context.userId,
+      sessionId: session.id,
+      phase: "revisao_teorica",
+      model: out.model,
+      usage: out.usage,
+      tier: "chat",
+    });
+    // A correção (chamada A) roda em paralelo e também grava `review`.
+    // Espera ela terminar (ou 20s) antes de mesclar, para não sobrescrever.
+    let fresh: any = null;
+    for (let i = 0; i < 20; i++) {
+      const { data: row } = await supabaseAdmin
+        .from("sim_sessions")
+        .select("review, status")
+        .eq("id", session.id)
+        .maybeSingle();
+      fresh = (row as any)?.review ?? null;
+      if ((row as any)?.status === "finished") break;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    await supabaseAdmin
+      .from("sim_sessions")
+      .update({ review: { ...(fresh ?? {}), aula: out.aula } })
+      .eq("id", session.id);
+    return { aula: out.aula };
+
+  });
+
+
 export const simTranscribe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
