@@ -119,6 +119,7 @@ export function ClinicalSimulator() {
       <SimStation
         sessionId={session.id}
         c={session.case}
+        initial={session.resume}
         onExit={() => {
           setSession(null);
           listSessions().then((r: any) => setHistory(r ?? [])).catch(() => {});
