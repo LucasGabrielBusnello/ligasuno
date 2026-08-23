@@ -358,6 +358,8 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   const revealFn = useServerFn(simRevealFinding);
   const examFn = useServerFn(simExam);
   const finishFn = useServerFn(simFinish);
+  const theoryFn = useServerFn(simTheory);
+
   const transcribeFn = useServerFn(simTranscribe);
   const hintFn = useServerFn(simPreceptorHint);
   const hintEnabled = Number(c.level) <= 2;
