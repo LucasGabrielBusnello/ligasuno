@@ -13,10 +13,31 @@ import {
   HeartPulse, Volume2, CheckCircle2, XCircle, ThumbsUp, ThumbsDown, History, Play,
   Lightbulb, ArrowLeft, X,
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import {
-  startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish,
+  startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
   simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
 } from "@/lib/sim.functions";
+
+/** Renderiza Markdown com o padrão visual do site. */
+export function MarkdownView({ text }: { text: string }) {
+  return (
+    <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-black prose-headings:text-foreground prose-strong:text-foreground prose-li:marker:text-primary text-foreground/90">
+      <ReactMarkdown>{text}</ReactMarkdown>
+    </div>
+  );
+}
+
+function SectionSkeleton() {
+  return (
+    <div className="space-y-2 animate-pulse">
+      {[90, 100, 75, 95, 60].map((w, i) => (
+        <div key={i} className="h-3 rounded bg-muted" style={{ width: `${w}%` }} />
+      ))}
+    </div>
+  );
+}
+
 
 
 type PublicCase = {
