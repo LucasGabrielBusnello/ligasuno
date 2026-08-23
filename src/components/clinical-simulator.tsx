@@ -455,7 +455,11 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    menuFn({ data: { sessionId } }).then((r: any) => setMenu(r ?? [])).catch(() => {});
+    menuFn({ data: { sessionId } }).then((r: any) => {
+      const items = (r ?? []) as MenuItem[];
+      const revealed = new Set((initial?.physical_findings ?? []).map((f: any) => f.key));
+      setMenu(items.map((m) => (revealed.has(m.key) ? { ...m, revealed: true } : m)));
+    }).catch(() => {});
     supabase.from("sim_auscultation_sounds").select("*").then(({ data }) => setSounds(data ?? []));
   }, [sessionId]);
 
