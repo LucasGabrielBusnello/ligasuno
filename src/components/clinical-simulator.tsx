@@ -11,10 +11,11 @@ import { toast } from "sonner";
 import {
   Stethoscope, Send, Mic, Square, Activity, FlaskConical, ClipboardList, Loader2,
   HeartPulse, Volume2, CheckCircle2, XCircle, ThumbsUp, ThumbsDown, History, Play,
+  Lightbulb, ArrowLeft, X,
 } from "lucide-react";
 import {
   startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish,
-  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail,
+  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
 } from "@/lib/sim.functions";
 
 
@@ -337,6 +338,31 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   const examFn = useServerFn(simExam);
   const finishFn = useServerFn(simFinish);
   const transcribeFn = useServerFn(simTranscribe);
+  const hintFn = useServerFn(simPreceptorHint);
+  const hintEnabled = Number(c.level) <= 2;
+  const actionsRef = useRef(0);
+  const hintsRef = useRef<string[]>([]);
+  const [hint, setHint] = useState<string | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
+
+  const maybeHint = async () => {
+    if (!hintEnabled) return;
+    actionsRef.current += 1;
+    if (actionsRef.current < 3) return;
+    actionsRef.current = 0;
+    setHintLoading(true);
+    try {
+      const r: any = await hintFn({ data: { sessionId, previousHints: hintsRef.current } });
+      if (r?.off_track && r.hint) {
+        hintsRef.current = [...hintsRef.current, r.hint].slice(-6);
+        setHint(r.hint);
+      }
+    } catch {
+      /* dica é opcional, nunca interrompe o treino */
+    } finally {
+      setHintLoading(false);
+    }
+  };
 
   const [tab, setTab] = useState<"exame" | "exames" | "notas">("exame");
   const [chat, setChat] = useState<ChatMsg[]>([]);
@@ -384,6 +410,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
       setChat((p) => [...p, { role: "patient", content: r.reply }]);
       pushFindings(r.findings ?? []);
       if (r.findings?.length) setTab("exame");
+      void maybeHint();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao falar com o paciente.");
     } finally {
@@ -408,6 +435,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
     try {
       const r: any = await examFn({ data: { sessionId, examName: name } });
       setExams((p) => [...p, r]);
+      void maybeHint();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao solicitar exame.");
     } finally {
@@ -475,6 +503,31 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
           </CardContent>
         </Card>
       )}
+
+      {hintEnabled && hintLoading && !hint && (
+        <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+          <Loader2 className="size-3 animate-spin" /> o preceptor está acompanhando seu atendimento...
+        </div>
+      )}
+
+      {hint && (
+        <Card className="border-amber-500/40 bg-amber-500/10">
+          <CardContent className="p-4 flex gap-3">
+            <div className="size-9 shrink-0 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center ring-1 ring-amber-500/30">
+              <Lightbulb className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-black uppercase tracking-wide text-amber-600 dark:text-amber-400">Dica do Preceptor</div>
+              <p className="text-sm text-foreground mt-0.5">{hint}</p>
+            </div>
+            <button onClick={() => setHint(null)} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Fechar dica">
+              <X className="size-4" />
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
+
 
       <div className="grid lg:grid-cols-[1.1fr_1fr] gap-4">
         {/* CHAT */}
@@ -708,7 +761,10 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
             <div className="font-black text-lg">{review.veredito}</div>
             <div className="text-sm text-muted-foreground">Diagnóstico correto: <b className="text-foreground">{review.diagnostico_correto}</b></div>
           </div>
-          <Button variant="outline" onClick={onExit}>Novo treino</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={onExit}><ArrowLeft className="size-4 mr-2" /> Voltar às informações gerais</Button>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold" onClick={onExit}><Play className="size-4 mr-2" /> Novo treino</Button>
+          </div>
         </CardContent>
       </Card>
 

@@ -300,3 +300,40 @@ Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, 
   const casos = Array.isArray(out.casos) ? out.casos : [];
   return casos.map((c: any) => ({ ...c, area, level }));
 }
+
+/** Dica do Preceptor — só para 1º e 2º ano, guia sem entregar o diagnóstico. */
+export async function preceptorHint(opts: {
+  c: SimCase;
+  transcript: any[];
+  exams: any[];
+  findings: any[];
+  previousHints: string[];
+}) {
+  const { c, transcript, exams, findings, previousHints } = opts;
+  const system = `Você é um preceptor observando um estudante do ${c.level}º ano em uma estação simulada de semiologia, em português do Brasil.
+
+GABARITO (NUNCA revele): diagnóstico ${c.diagnosis}. História real: ${c.hidden_history ?? c.summary ?? ""}.
+Exames pertinentes: ${(Array.isArray(c.exams) ? c.exams : []).filter((e: any) => e.justified).map((e: any) => e.name).join(", ") || "-"}
+
+Sua tarefa: avaliar se o estudante está indo por um caminho razoável.
+- Se ele está no caminho certo, ou o desvio é pequeno/normal para o nível, responda off_track=false e hint="".
+- Se ele está claramente perdido (perguntas repetidas, sem caracterizar a queixa principal, ignorando um sinal vital alterado, pedindo exames sem sentido, insistindo em uma linha errada), responda off_track=true e escreva UMA dica curta (máx. 2 frases) que oriente o PRÓXIMO passo (o que perguntar ou examinar) SEM citar o diagnóstico, sem nomear a doença e sem entregar a resposta.
+- Nunca repita dicas já dadas: ${previousHints.length ? previousHints.join(" | ") : "nenhuma"}
+- Tom acolhedor de preceptor, tratando o aluno por "você".
+
+Responda em JSON: {"off_track":true|false,"hint":"..."}`;
+
+  const payload = {
+    triagem: c.triage ?? {},
+    conversa: (transcript ?? []).map((m: any) => `${m.role === "user" ? "Estudante" : "Paciente"}: ${m.content}`).join("\n").slice(0, 6000),
+    exame_fisico_realizado: (findings ?? []).map((f: any) => f.label),
+    exames_solicitados: (exams ?? []).map((e: any) => e.name),
+  };
+  const res = await chat([
+    { role: "system", content: system },
+    { role: "user", content: JSON.stringify(payload) },
+  ]);
+  const out = parseJson(res.text);
+  const hint = String(out.hint ?? "").trim();
+  return { off_track: !!out.off_track && hint.length > 0, hint, usage: res.usage, model: res.model };
+}
