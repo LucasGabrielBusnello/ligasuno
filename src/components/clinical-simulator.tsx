@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
-  startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
+  startSimSession, resumeSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
   simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
 } from "@/lib/sim.functions";
 
