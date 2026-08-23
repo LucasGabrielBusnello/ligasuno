@@ -504,6 +504,31 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
         </Card>
       )}
 
+      {hintEnabled && hintLoading && !hint && (
+        <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+          <Loader2 className="size-3 animate-spin" /> o preceptor está acompanhando seu atendimento...
+        </div>
+      )}
+
+      {hint && (
+        <Card className="border-amber-500/40 bg-amber-500/10">
+          <CardContent className="p-4 flex gap-3">
+            <div className="size-9 shrink-0 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center ring-1 ring-amber-500/30">
+              <Lightbulb className="size-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-black uppercase tracking-wide text-amber-600 dark:text-amber-400">Dica do Preceptor</div>
+              <p className="text-sm text-foreground mt-0.5">{hint}</p>
+            </div>
+            <button onClick={() => setHint(null)} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Fechar dica">
+              <X className="size-4" />
+            </button>
+          </CardContent>
+        </Card>
+      )}
+
+
+
       <div className="grid lg:grid-cols-[1.1fr_1fr] gap-4">
         {/* CHAT */}
         <Card className="flex flex-col overflow-hidden">
