@@ -205,19 +205,36 @@ Responda em JSON:
   );
   const out = parseJson(res.text);
   const score = Math.max(0, Math.min(100, Number(out.score ?? 0)));
+  const arr = (v: any) => (Array.isArray(v) ? v.map(String) : []);
+  const r = out.resumo ?? {};
   return {
     score,
     veredito: String(out.veredito ?? ""),
-    acertos: Array.isArray(out.acertos) ? out.acertos.map(String) : [],
-    faltou: Array.isArray(out.faltou) ? out.faltou.map(String) : [],
-    exames_desnecessarios: Array.isArray(out.exames_desnecessarios) ? out.exames_desnecessarios.map(String) : [],
-    melhorias: Array.isArray(out.melhorias) ? out.melhorias.map(String) : [],
+    acertos: arr(out.acertos),
+    faltou: arr(out.faltou),
+    exames_desnecessarios: arr(out.exames_desnecessarios),
+    melhorias: arr(out.melhorias),
     diagnostico_correto: String(out.diagnostico_correto ?? c.diagnosis),
     comentario: String(out.comentario ?? ""),
+    resumo: {
+      doenca: String(r.doenca ?? c.diagnosis),
+      definicao: String(r.definicao ?? ""),
+      epidemiologia: arr(r.epidemiologia),
+      fisiopatologia: String(r.fisiopatologia ?? ""),
+      quadro_clinico: arr(r.quadro_clinico),
+      sinais_chave: arr(r.sinais_chave),
+      diagnostico: arr(r.diagnostico),
+      tratamento: arr(r.tratamento),
+      diferenciais: arr(r.diferenciais),
+      complicacoes: arr(r.complicacoes),
+      pegadinhas: arr(r.pegadinhas),
+      bordao: String(r.bordao ?? ""),
+    },
     usage: res.usage,
     model: res.model,
   };
 }
+
 
 export async function transcribeAudio(base64: string, format: string) {
   const settings = await loadSimSettings();
