@@ -398,7 +398,7 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
 
 
 /* ============ ESTAÇÃO ============ */
-function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase; onExit: () => void }) {
+function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: PublicCase; initial?: SimResumeState; onExit: () => void }) {
   const say = useServerFn(simSay);
   const menuFn = useServerFn(simExamMenu);
   const revealFn = useServerFn(simRevealFinding);
