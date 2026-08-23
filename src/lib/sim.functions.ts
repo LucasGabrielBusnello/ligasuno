@@ -191,6 +191,32 @@ export const simFinish = createServerFn({ method: "POST" })
     return { ...review, balance: billing.balance, case: { title: sim.title, diagnosis: sim.diagnosis, expected_conduct: sim.expected_conduct, hidden_history: sim.hidden_history } };
   });
 
+/** CHAMADA B — aula teórica (Gemini Flash), disparada em paralelo com a correção. */
+export const simTheory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
+    const { recordUsage } = await import("./sim-billing.server");
+    const { theoryLesson } = await import("./sim.server");
+    const out = await theoryLesson({ diagnosis: sim.diagnosis, area: sim.area, level: sim.level });
+    await recordUsage({
+      userId: context.userId,
+      sessionId: session.id,
+      phase: "revisao_teorica",
+      model: out.model,
+      usage: out.usage,
+      tier: "chat",
+    });
+    const prev = (session.review ?? {}) as any;
+    await supabaseAdmin
+      .from("sim_sessions")
+      .update({ review: { ...prev, aula: out.aula } })
+      .eq("id", session.id);
+    return { aula: out.aula };
+  });
+
+
 export const simTranscribe = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
