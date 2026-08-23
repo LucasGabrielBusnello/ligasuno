@@ -96,7 +96,7 @@ export async function callModel(
   if (!resp.ok) {
     const body = await resp.text();
     // Se a chave própria falhar por modelo inexistente, tenta o gateway como reserva.
-    if (useGemini && (resp.status === 404 || resp.status === 400)) {
+    if (useGemini && [400, 404, 429, 500, 503].includes(resp.status)) {
       const fb = await fetch(AI_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
