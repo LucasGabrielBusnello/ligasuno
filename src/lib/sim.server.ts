@@ -1,8 +1,16 @@
-/** Simulador clínico — chamadas de IA (Lovable AI Gateway). Server-only. */
+/**
+ * Simulador clínico — chamadas de IA. Server-only.
+ * Roteamento por provedor a partir do nome do modelo:
+ *  - "google/..."     → API própria do Google Gemini (GEMINI_API_KEY), com fallback no gateway
+ *  - "anthropic/..."  → API própria da Anthropic (ANTHROPIC_API_KEY)
+ *  - qualquer outro   → Lovable AI Gateway
+ */
 
 import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 
 export type AiResult<T> = T & { usage: Usage | null; model: string };
 
@@ -22,25 +30,95 @@ function apiKey() {
 
 type Msg = { role: "system" | "user" | "assistant"; content: any };
 
-async function chat(messages: Msg[], json = true, tier: Tier = "chat"): Promise<{ text: string; usage: Usage | null; model: string }> {
-  const s = await loadSimSettings();
-  // Roteamento híbrido: conversa no modelo rápido/barato, correção no modelo avançado.
-  const model = tier === "grade" ? s.grade_model : s.chat_model;
-  const resp = await fetch(AI_URL, {
+function httpError(resp: Response, body: string): Error {
+  if (resp.status === 429) return new Error("Muitas requisições à IA agora. Aguarde alguns segundos e tente de novo.");
+  if (resp.status === 401 || resp.status === 403) return new Error("Chave de API inválida ou sem permissão para este modelo.");
+  if (resp.status === 402) return new Error("Os créditos de IA acabaram. Adicione créditos para continuar o treino.");
+  return new Error(`Falha na IA (${resp.status}): ${body.slice(0, 200)}`);
+}
+
+/** Chamada bruta ao modelo, escolhendo o provedor pelo prefixo do nome. */
+export async function callModel(
+  model: string,
+  messages: Msg[],
+  json = true,
+): Promise<{ text: string; usage: Usage | null; model: string }> {
+  const geminiKey = process.env["GEMINI_API_KEY"];
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"];
+
+  // Anthropic (Claude/Sonnet) com chave própria
+  if (model.startsWith("anthropic/") || model.startsWith("claude")) {
+    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY não configurada.");
+    const id = model.replace(/^anthropic\//, "");
+    const system = messages.filter((m) => m.role === "system").map((m) => String(m.content)).join("\n\n");
+    const rest = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content) }));
+    const resp = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: id,
+        max_tokens: 8000,
+        ...(system ? { system: json ? `${system}\n\nResponda SOMENTE com um JSON válido, sem texto fora do JSON.` : system } : {}),
+        messages: rest.length ? rest : [{ role: "user", content: "..." }],
+      }),
+    });
+    if (!resp.ok) throw httpError(resp, await resp.text());
+    const data: any = await resp.json();
+    const text = (Array.isArray(data?.content) ? data.content : [])
+      .filter((c: any) => c?.type === "text")
+      .map((c: any) => c.text)
+      .join("");
+    return { text, usage: readUsage(data), model };
+  }
+
+  // Google Gemini com chave própria (endpoint compatível com OpenAI)
+  const useGemini = geminiKey && (model.startsWith("google/") || model.startsWith("gemini"));
+  const url = useGemini ? GEMINI_URL : AI_URL;
+  const id = useGemini ? model.replace(/^google\//, "") : model;
+  const resp = await fetch(url, {
     method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${useGemini ? geminiKey : apiKey()}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
-      model,
+      model: id,
       messages,
       ...(json ? { response_format: { type: "json_object" } } : {}),
     }),
   });
-  if (resp.status === 429) throw new Error("Muitas requisições à IA agora. Aguarde alguns segundos e tente de novo.");
-  if (resp.status === 402) throw new Error("Os créditos de IA do workspace acabaram. Adicione créditos para continuar o treino.");
-  if (!resp.ok) throw new Error(`Falha na IA (${resp.status}): ${(await resp.text()).slice(0, 200)}`);
+  if (!resp.ok) {
+    const body = await resp.text();
+    // Se a chave própria falhar por modelo inexistente, tenta o gateway como reserva.
+    if (useGemini && [400, 404, 429, 500, 503].includes(resp.status)) {
+      const fb = await fetch(AI_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model, messages, ...(json ? { response_format: { type: "json_object" } } : {}) }),
+      });
+      if (!fb.ok) throw httpError(fb, await fb.text());
+      const d: any = await fb.json();
+      return { text: d?.choices?.[0]?.message?.content ?? "", usage: readUsage(d), model };
+    }
+    throw httpError(resp, body);
+  }
   const data: any = await resp.json();
   return { text: data?.choices?.[0]?.message?.content ?? "", usage: readUsage(data), model };
 }
+
+async function chat(messages: Msg[], json = true, tier: Tier = "chat") {
+  const s = await loadSimSettings();
+  // Roteamento híbrido: conversa no modelo rápido/barato, correção no modelo avançado.
+  const model = tier === "grade" ? s.grade_model : s.chat_model;
+  return callModel(model, messages, json);
+}
+
 
 function parseJson(raw: string): any {
   try {
@@ -238,33 +316,24 @@ Responda em JSON:
 
 export async function transcribeAudio(base64: string, format: string) {
   const settings = await loadSimSettings();
-  const model = settings.chat_model;
-  const resp = await fetch(AI_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Transcreva exatamente a fala deste áudio em português do Brasil. Responda somente com a transcrição, sem comentários." },
-            { type: "input_audio", input_audio: { data: base64, format } },
-          ],
-        },
-      ],
-    }),
-  });
-  if (resp.status === 429) throw new Error("Muitas requisições à IA agora. Aguarde alguns segundos.");
-  if (resp.status === 402) throw new Error("Os créditos de IA do workspace acabaram.");
-  if (!resp.ok) throw new Error(`Falha ao transcrever (${resp.status}).`);
-  const data: any = await resp.json();
-  return {
-    text: String(data?.choices?.[0]?.message?.content ?? "").trim(),
-    usage: readUsage(data),
+  // Áudio só é suportado pelos modelos Gemini; se o chat estiver em Claude, usa o Gemini padrão.
+  const model = /claude|anthropic/i.test(settings.chat_model) ? "google/gemini-2.5-flash" : settings.chat_model;
+  const res = await callModel(
     model,
-  };
+    [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: "Transcreva exatamente a fala deste áudio em português do Brasil. Responda somente com a transcrição, sem comentários." },
+          { type: "input_audio", input_audio: { data: base64, format } },
+        ],
+      },
+    ],
+    false,
+  );
+  return { text: String(res.text ?? "").trim(), usage: res.usage, model: res.model };
 }
+
 
 export function levelGuidance(level: number): string {
   switch (Number(level)) {
