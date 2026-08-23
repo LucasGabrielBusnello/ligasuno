@@ -298,8 +298,8 @@ export async function gradeSession(opts: {
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
   const system = `Você é um preceptor médico rigoroso avaliando um aluno do ${c.level}º ano em uma estação simulada, em português do Brasil.
-Analise a transcrição fornecida. Aponte, em formato de checklist curto: 1) Omissões críticas na anamnese. 2) Avaliação da hipótese diagnóstica do aluno.
-REGRA DE OURO: NÃO explique a doença e não cite a fisiopatologia. Foque apenas no feedback da atuação do aluno.
+Avalie a HMA do aluno lendo a transcrição. Retorne APENAS um checklist curto com bullet points focado em: 1) Omissões críticas na investigação; 2) Avaliação da conduta e hipótese.
+REGRA ABSOLUTA: NÃO explique a doença e não cite fisiopatologia. Foque 100% no feedback de performance em formato de tópicos rápidos.
 
 CASO (gabarito, uso interno): ${c.title} | área ${c.area}
 Diagnóstico correto: ${c.diagnosis}
@@ -331,7 +331,7 @@ Responda em JSON:
 
   let res: { text: string; usage: Usage | null; model: string };
   try {
-    res = await callModel(PRECEPTOR_MODEL, messages, { json: true, maxTokens: 1000, cacheSystem: true });
+    res = await callModel(PRECEPTOR_MODEL, messages, { json: true, maxTokens: 1500, cacheSystem: true });
   } catch (e: any) {
     if (!isProviderBlocked(e)) throw e;
     res = await callModel(FLASH_MODEL, messages, { json: true, maxTokens: 1500 });
@@ -362,7 +362,7 @@ export async function theoryLesson(c: { diagnosis: string; area: string; level: 
     [
       {
         role: "system",
-        content: `Aja como um livro-texto de medicina. Escreva uma aula completa, formatada em Markdown, sobre a patologia principal deste caso. Inclua: Fisiopatologia, Epidemiologia, Quadro Clínico, Exames Padrão-Ouro e Tratamento. Português do Brasil, objetivo, com títulos e tópicos, adequado ao ${c.level}º ano da graduação.`,
+        content: `Aja como um livro-texto de medicina. Gere um resumo completo e estruturado em Markdown sobre esta patologia. Inclua: Definição, Fisiopatologia, Epidemiologia, Quadro Clínico e Fluxograma de Tratamento. Português do Brasil, objetivo, com títulos e tópicos, adequado ao ${c.level}º ano da graduação.`,
       },
       { role: "user", content: `Patologia: ${c.diagnosis} (área: ${c.area}).` },
     ],

@@ -20,8 +20,8 @@ export type SimSettings = {
 };
 
 const DEFAULTS: SimSettings = {
-  chat_model: "google/gemini-3.7-flash",
-  grade_model: "google/gemini-3.1-pro-preview",
+  chat_model: "google/gemini-2.5-flash",
+  grade_model: "anthropic/claude-3-5-sonnet-latest",
   chat_cost_in_brl_per_mtok: 1.8,
   chat_cost_out_brl_per_mtok: 7.2,
   grade_cost_in_brl_per_mtok: 18,
