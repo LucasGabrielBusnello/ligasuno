@@ -208,12 +208,25 @@ export const simTheory = createServerFn({ method: "POST" })
       usage: out.usage,
       tier: "chat",
     });
-    const prev = (session.review ?? {}) as any;
+    // A correção (chamada A) roda em paralelo e também grava `review`.
+    // Espera ela terminar (ou 20s) antes de mesclar, para não sobrescrever.
+    let fresh: any = null;
+    for (let i = 0; i < 20; i++) {
+      const { data: row } = await supabaseAdmin
+        .from("sim_sessions")
+        .select("review, status")
+        .eq("id", session.id)
+        .maybeSingle();
+      fresh = (row as any)?.review ?? null;
+      if ((row as any)?.status === "finished") break;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
     await supabaseAdmin
       .from("sim_sessions")
-      .update({ review: { ...prev, aula: out.aula } })
+      .update({ review: { ...(fresh ?? {}), aula: out.aula } })
       .eq("id", session.id);
     return { aula: out.aula };
+
   });
 
 
