@@ -198,6 +198,54 @@ CHAVES DE EXAME FÍSICO DISPONÍVEIS: ${findings.map((f) => `${f.key} (${f.label
 Responda SEMPRE em JSON: {"reply":"fala do paciente","exam_keys":["chave1"]}. exam_keys vazio quando não houve manobra de exame físico.`;
 }
 
+/**
+ * Gera achados coerentes para manobras que o caso não descreve
+ * (ex.: aluno percutiu o tórax e o caso só trazia ausculta).
+ */
+export async function generatedFindings(c: SimCase, keys: string[]) {
+  const wanted = keys.map((k) => catalogItem(k)).filter(Boolean) as NonNullable<ReturnType<typeof catalogItem>>[];
+  if (!wanted.length) return { findings: [] as any[], usage: null as Usage | null, model: "local" };
+  const res = await chat([
+    {
+      role: "system",
+      content: `Você descreve achados de EXAME FÍSICO em uma simulação clínica, em português do Brasil.
+Caso (confidencial): ${c.title} — diagnóstico verdadeiro: ${c.diagnosis}. História: ${c.hidden_history ?? c.summary ?? ""}.
+Para cada manobra pedida, escreva o achado REAL e coerente com esse diagnóstico (a maioria será normal; altere só o que a doença justifica). Uma a duas frases objetivas, com dados semiológicos.
+sound_category deve ser exatamente uma de: cardiaca, pulmonar, abdominal, carotida, percussao, nenhum (use a sugerida).
+sound_finding em snake_case (ex.: normal, macicez, submacicez, timpanico, estertores_crepitantes, sibilos, sopro_sistolico).
+Responda em JSON: {"findings":[{"key":"","label":"","text":"","sound_category":"","sound_finding":""}]}`,
+    },
+    {
+      role: "user",
+      content: wanted.map((w) => `${w.key} | ${w.label} | categoria sugerida: ${w.sound_category}`).join("\n"),
+    },
+  ]);
+  const out = parseJson(res.text);
+  const list = (Array.isArray(out.findings) ? out.findings : [])
+    .map((f: any) => {
+      const item = catalogItem(String(f.key ?? ""));
+      if (!item) return null;
+      return {
+        key: item.key,
+        label: item.label,
+        text: String(f.text ?? "Sem alterações."),
+        sound_category: String(f.sound_category ?? item.sound_category),
+        sound_finding: String(f.sound_finding ?? "normal"),
+      };
+    })
+    .filter(Boolean);
+  return { findings: list as any[], usage: res.usage, model: res.model };
+}
+
+/** Resolve manobras: usa o achado do caso quando existe, senão gera um coerente. */
+export async function resolveFindings(c: SimCase, keys: string[]) {
+  const caseFindings = (Array.isArray(c.findings) ? c.findings : []) as any[];
+  const known = keys.map((k) => caseFindings.find((f) => f.key === k)).filter(Boolean);
+  const missing = keys.filter((k) => !caseFindings.some((f) => f.key === k) && catalogItem(k));
+  const gen = await generatedFindings(c, missing);
+  return { findings: [...known, ...gen.findings], usage: gen.usage, model: gen.model };
+}
+
 export async function patientTurn(c: SimCase, transcript: any[], userMessage: string) {
   const history: Msg[] = (transcript ?? [])
     .filter((m: any) => m.role === "user" || m.role === "patient")
@@ -210,12 +258,11 @@ export async function patientTurn(c: SimCase, transcript: any[], userMessage: st
     { role: "user", content: userMessage },
   ]);
   const out = parseJson(res.text);
-  const keys: string[] = Array.isArray(out.exam_keys) ? out.exam_keys.map(String) : [];
-  const findings = (Array.isArray(c.findings) ? c.findings : []) as any[];
-  const revealed = keys
-    .map((k) => findings.find((f) => f.key === k))
-    .filter(Boolean);
-  return { reply: String(out.reply ?? "..."), findings: revealed, usage: res.usage, model: res.model };
+  const aiKeys: string[] = Array.isArray(out.exam_keys) ? out.exam_keys.map(String) : [];
+  // Detecção local garante que percussão/palpação ditas pelo aluno sempre aconteçam.
+  const keys = [...new Set([...aiKeys, ...detectExamKeys(userMessage)])];
+  const resolved = await resolveFindings(c, keys);
+  return { reply: String(out.reply ?? "..."), findings: resolved.findings, usage: res.usage, model: res.model };
 }
 
 export async function examResult(c: SimCase, examName: string) {
