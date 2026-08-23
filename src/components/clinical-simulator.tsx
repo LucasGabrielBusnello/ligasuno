@@ -454,11 +454,14 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
   };
 
   const reveal = async (key: string) => {
+    setBusy(true);
     try {
       const f: any = await revealFn({ data: { sessionId, key } });
       pushFindings([f]);
     } catch (e: any) {
       toast.error(e?.message ?? "Falha no exame físico.");
+    } finally {
+      setBusy(false);
     }
   };
 
