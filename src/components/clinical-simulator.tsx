@@ -722,6 +722,9 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
         <Card><CardContent className="p-5 text-sm"><b className="text-primary">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
       )}
 
+      <ResumoFixacao resumo={review.resumo} />
+
+
       <Card>
         <CardContent className="p-5 space-y-3">
           <div className="text-sm font-bold">A correção fez sentido para você?</div>
