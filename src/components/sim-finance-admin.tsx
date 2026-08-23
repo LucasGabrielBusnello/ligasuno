@@ -69,13 +69,13 @@ function FinanceLog({ period }: { period: Period }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Lucro total acumulado" value={brl(k.totalProfit)} icon={<TrendingUp className="size-5" />} tone="green" />
+        <Kpi label="Lucro (créditos pagos usados)" value={brl(k.totalProfit)} icon={<TrendingUp className="size-5" />} tone="green" />
         <Kpi label="Tokens processados" value={Number(k.totalTokens || 0).toLocaleString("pt-BR")} icon={<Cpu className="size-5" />} tone="blue" />
         <Kpi label="Custo total de API" value={brl(k.totalCost)} icon={<DollarSign className="size-5" />} tone="red" />
         <Kpi label="Créditos consumidos" value={Number(k.totalCredits || 0).toLocaleString("pt-BR")} icon={<Coins className="size-5" />} tone="amber" />
       </div>
       <p className="text-xs text-muted-foreground">
-        Receita de pacotes pagos no período: <b className="text-muted-foreground">{brl(k.revenue)}</b> · {k.cases} casos ·
+        Receita de pacotes pagos no período: <b className="text-muted-foreground">{brl(k.revenue)}</b> · {k.cases} casos · {Number(k.totalPaidCredits || 0).toLocaleString("pt-BR")} créditos pagos consumidos ·
         preço = custo ÷ {data?.settings?.divisor} (taxa gateway {data?.settings?.feePct}%)
       </p>
 
