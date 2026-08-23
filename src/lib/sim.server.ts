@@ -327,7 +327,7 @@ export function cleanTranscript(transcript: any[]): string {
     .slice(0, 12000);
 }
 
-const PRECEPTOR_MODEL = "anthropic/claude-3-5-sonnet-latest";
+const PRECEPTOR_MODEL = "anthropic/claude-3-5-sonnet-20241022";
 const FLASH_MODEL = "google/gemini-2.5-flash";
 
 function isProviderBlocked(e: any) {
