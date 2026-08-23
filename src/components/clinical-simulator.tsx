@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
-  startSimSession, resumeSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
+  startSimSession, resumeSimSession, saveSimNotes, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
   simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
 } from "@/lib/sim.functions";
 
@@ -404,6 +404,7 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   const examFn = useServerFn(simExam);
   const finishFn = useServerFn(simFinish);
   const theoryFn = useServerFn(simTheory);
+  const saveNotesFn = useServerFn(saveSimNotes);
 
   const transcribeFn = useServerFn(simTranscribe);
   const hintFn = useServerFn(simPreceptorHint);
@@ -451,6 +452,14 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   const [resultOpen, setResultOpen] = useState(false);
   const [theory, setTheory] = useState<string | null>(null);
   const [theoryLoading, setTheoryLoading] = useState(false);
+
+  // Autosave da anamnese e hipótese com debounce para persistir entre sessões.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      void saveNotesFn({ data: { sessionId, anamnese: notes, hypothesis } });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [notes, hypothesis, sessionId, saveNotesFn]);
 
   const chatRef = useRef<HTMLDivElement>(null);
 
