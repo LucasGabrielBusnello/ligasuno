@@ -11,10 +11,11 @@ import { toast } from "sonner";
 import {
   Stethoscope, Send, Mic, Square, Activity, FlaskConical, ClipboardList, Loader2,
   HeartPulse, Volume2, CheckCircle2, XCircle, ThumbsUp, ThumbsDown, History, Play,
+  Lightbulb, ArrowLeft, X,
 } from "lucide-react";
 import {
   startSimSession, simSay, simExam, simExamMenu, simRevealFinding, simFinish,
-  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail,
+  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
 } from "@/lib/sim.functions";
 
 
