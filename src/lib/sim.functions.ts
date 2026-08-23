@@ -119,8 +119,24 @@ export const simRevealFinding = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
     const findings = (Array.isArray(sim.findings) ? sim.findings : []) as any[];
-    const f = findings.find((x) => x.key === data.key);
-    if (!f) throw new Error("Esse exame não se aplica a este paciente.");
+    let f = findings.find((x) => x.key === data.key);
+    if (!f) {
+      // Manobra do catálogo padrão que este caso não descreve: gera achado coerente.
+      const { resolveFindings } = await import("./sim.server");
+      const { assertCredits, recordUsage } = await import("./sim-billing.server");
+      await assertCredits(context.userId);
+      const out = await resolveFindings(sim, [data.key]);
+      f = out.findings[0];
+      if (!f) throw new Error("Essa manobra não está disponível.");
+      await recordUsage({
+        userId: context.userId,
+        sessionId: session.id,
+        phase: "exame_fisico",
+        model: out.model,
+        usage: out.usage,
+        tier: "chat",
+      });
+    }
     const prev = (session.physical_findings ?? []) as any[];
     if (!prev.some((m) => m.key === f.key)) {
       await supabaseAdmin.from("sim_sessions").update({ physical_findings: [...prev, f] }).eq("id", session.id);
@@ -133,14 +149,32 @@ export const simExamMenu = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     const { session, sim } = await loadSession(context.userId, data.sessionId);
+    const { PHYSICAL_EXAM_CATALOG } = await import("./sim-exam-catalog");
     const findings = (Array.isArray(sim.findings) ? sim.findings : []) as any[];
     const revealed = new Set(((session.physical_findings ?? []) as any[]).map((f) => f.key));
-    return findings.map((f) => ({
-      key: f.key,
-      label: f.label,
-      sound_category: f.sound_category ?? "nenhum",
-      revealed: revealed.has(f.key),
-    }));
+    // Catálogo completo de manobras + eventuais manobras exclusivas deste caso.
+    const items = PHYSICAL_EXAM_CATALOG.map((i) => {
+      const own = findings.find((f) => f.key === i.key);
+      return {
+        key: i.key,
+        label: own?.label ?? i.label,
+        group: i.group,
+        sound_category: own?.sound_category ?? i.sound_category,
+        revealed: revealed.has(i.key),
+      };
+    });
+    for (const f of findings) {
+      if (!items.some((i) => i.key === f.key)) {
+        items.push({
+          key: f.key,
+          label: f.label,
+          group: "Específicas do caso",
+          sound_category: f.sound_category ?? "nenhum",
+          revealed: revealed.has(f.key),
+        });
+      }
+    }
+    return items;
   });
 
 export const simFinish = createServerFn({ method: "POST" })
