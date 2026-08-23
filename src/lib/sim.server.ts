@@ -298,8 +298,8 @@ export async function gradeSession(opts: {
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
   const system = `Você é um preceptor médico rigoroso avaliando um aluno do ${c.level}º ano em uma estação simulada, em português do Brasil.
-Analise a transcrição fornecida. Aponte, em formato de checklist curto: 1) Omissões críticas na anamnese. 2) Avaliação da hipótese diagnóstica do aluno.
-REGRA DE OURO: NÃO explique a doença e não cite a fisiopatologia. Foque apenas no feedback da atuação do aluno.
+Avalie a HMA do aluno lendo a transcrição. Retorne APENAS um checklist curto com bullet points focado em: 1) Omissões críticas na investigação; 2) Avaliação da conduta e hipótese.
+REGRA ABSOLUTA: NÃO explique a doença e não cite fisiopatologia. Foque 100% no feedback de performance em formato de tópicos rápidos.
 
 CASO (gabarito, uso interno): ${c.title} | área ${c.area}
 Diagnóstico correto: ${c.diagnosis}
