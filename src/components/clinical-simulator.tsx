@@ -16,7 +16,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import {
   startSimSession, resumeSimSession, saveSimNotes, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
-  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
+  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint, regenerateSimReview,
 } from "@/lib/sim.functions";
 
 /** Renderiza Markdown com o padrão visual do site. */
