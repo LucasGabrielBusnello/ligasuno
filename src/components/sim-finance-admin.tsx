@@ -78,12 +78,16 @@ function FinanceLog({ period }: { period: Period }) {
         Receita de pacotes pagos no período: <b className="text-muted-foreground">{brl(k.revenue)}</b> · {k.cases} casos · {Number(k.totalPaidCredits || 0).toLocaleString("pt-BR")} créditos pagos consumidos ·
         preço = custo ÷ {data?.settings?.divisor} (taxa gateway {data?.settings?.feePct}%)
       </p>
+      <p className="text-xs text-muted-foreground">
+        Tokens de entrada: <b className="text-foreground">{Number(k.totalTokensIn || 0).toLocaleString("pt-BR")}</b> ·
+        tokens de saída: <b className="text-foreground">{Number(k.totalTokensOut || 0).toLocaleString("pt-BR")}</b>
+      </p>
 
       <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full text-sm">
           <thead className="bg-card text-muted-foreground">
             <tr>
-              {["Caso", "Aluno", "Tokens", "Custo API", "Debitado", "Lucro líquido", "Avaliação"].map((h) => (
+              {["Caso", "Aluno", "Tokens (entrada/saída)", "Custo API", "Debitado", "Lucro líquido", "Avaliação"].map((h) => (
                 <th key={h} className="text-left font-semibold px-3 py-2 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -96,7 +100,12 @@ function FinanceLog({ period }: { period: Period }) {
                   <div className="text-[11px] text-muted-foreground">{r.area} · {r.level}º ano · {new Date(r.created_at).toLocaleDateString("pt-BR")}</div>
                 </td>
                 <td className="px-3 py-2 text-muted-foreground">{r.student}</td>
-                <td className="px-3 py-2 tabular-nums">{r.tokens.toLocaleString("pt-BR")}</td>
+                <td className="px-3 py-2 tabular-nums">
+                  <div className="font-medium text-foreground">{r.tokens.toLocaleString("pt-BR")}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    ↓ {Number(r.tokens_in || 0).toLocaleString("pt-BR")} entrada · ↑ {Number(r.tokens_out || 0).toLocaleString("pt-BR")} saída
+                  </div>
+                </td>
                 <td className="px-3 py-2 tabular-nums text-rose-400">{brl(r.cost)}</td>
                 <td className="px-3 py-2 tabular-nums">{r.credits} cr · {brl(r.charged)}</td>
                 <td className={`px-3 py-2 tabular-nums font-semibold ${r.profit >= 0 ? "text-primary" : "text-rose-400"}`}>{brl(r.profit)}</td>
