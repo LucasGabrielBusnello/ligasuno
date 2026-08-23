@@ -435,6 +435,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
     try {
       const r: any = await examFn({ data: { sessionId, examName: name } });
       setExams((p) => [...p, r]);
+      void maybeHint();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao solicitar exame.");
     } finally {
