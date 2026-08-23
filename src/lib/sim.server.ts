@@ -56,9 +56,16 @@ export async function callModel(
 
   // Anthropic (Claude/Sonnet) com chave própria
   if (model.startsWith("anthropic/") || model.startsWith("claude")) {
-    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY não configurada.");
+    if (!anthropicKey) {
+      const e = new Error("ANTHROPIC_API_KEY não configurada.");
+      (e as any).status = 401;
+      throw e;
+    }
     const id = model.replace(/^anthropic\//, "");
-    const system = messages.filter((m) => m.role === "system").map((m) => String(m.content)).join("\n\n");
+    const systemText = messages.filter((m) => m.role === "system").map((m) => String(m.content)).join("\n\n");
+    const finalSystem = systemText && wantJson
+      ? `${systemText}\n\nResponda SOMENTE com um JSON válido, sem texto fora do JSON.`
+      : systemText;
     const rest = messages
       .filter((m) => m.role !== "system")
       .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content) }));
@@ -71,8 +78,15 @@ export async function callModel(
       },
       body: JSON.stringify({
         model: id,
-        max_tokens: 8000,
-        ...(system ? { system: json ? `${system}\n\nResponda SOMENTE com um JSON válido, sem texto fora do JSON.` : system } : {}),
+        max_tokens: opts.maxTokens ?? 8000,
+        ...(finalSystem
+          ? {
+              // Prompt caching efêmero: o prompt de sistema é estável entre alunos.
+              system: opts.cacheSystem
+                ? [{ type: "text", text: finalSystem, cache_control: { type: "ephemeral" } }]
+                : finalSystem,
+            }
+          : {}),
         messages: rest.length ? rest : [{ role: "user", content: "..." }],
       }),
     });
@@ -89,17 +103,17 @@ export async function callModel(
   const useGemini = geminiKey && (model.startsWith("google/") || model.startsWith("gemini"));
   const url = useGemini ? GEMINI_URL : AI_URL;
   const id = useGemini ? model.replace(/^google\//, "") : model;
+  const extra = {
+    ...(wantJson ? { response_format: { type: "json_object" } } : {}),
+    ...(opts.maxTokens ? { max_tokens: opts.maxTokens } : {}),
+  };
   const resp = await fetch(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${useGemini ? geminiKey : apiKey()}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: id,
-      messages,
-      ...(json ? { response_format: { type: "json_object" } } : {}),
-    }),
+    body: JSON.stringify({ model: id, messages, ...extra }),
   });
   if (!resp.ok) {
     const body = await resp.text();
@@ -108,7 +122,7 @@ export async function callModel(
       const fb = await fetch(AI_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, ...(json ? { response_format: { type: "json_object" } } : {}) }),
+        body: JSON.stringify({ model, messages, ...extra }),
       });
       if (!fb.ok) throw httpError(fb, await fb.text());
       const d: any = await fb.json();
@@ -118,6 +132,7 @@ export async function callModel(
   }
   const data: any = await resp.json();
   return { text: data?.choices?.[0]?.message?.content ?? "", usage: readUsage(data), model };
+
 }
 
 async function chat(messages: Msg[], json = true, tier: Tier = "chat") {
