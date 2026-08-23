@@ -116,9 +116,71 @@ function FinanceLog({ period }: { period: Period }) {
   );
 }
 
+function GrantCreditsBox({ onDone }: { onDone: () => void }) {
+  const search = useServerFn(adminSearchSimUsers);
+  const grant = useServerFn(adminGrantCredits);
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    try { setRows((await search({ data: { query: q } })) as any[]); }
+    catch (e: any) { toast.error(e?.message); }
+    finally { setBusy(false); }
+  }, [search, q]);
+  useEffect(() => { run(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function give(userId: string) {
+    const n = Number((amounts[userId] ?? "").replace(",", "."));
+    if (!Number.isFinite(n) || n === 0) return toast.error("Informe a quantidade de créditos.");
+    try {
+      await grant({ data: { userId, credits: n, note: "Créditos concedidos pelo admin (cortesia)" } });
+      toast.success("Saldo atualizado. Cortesias não entram como receita.");
+      setAmounts({ ...amounts, [userId]: "" });
+      run();
+      onDone();
+    } catch (e: any) { toast.error(e?.message); }
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div>
+          <div className="text-sm font-bold text-foreground">Adicionar créditos manualmente</div>
+          <p className="text-xs text-muted-foreground">Cortesias não contam como dinheiro recebido nem geram lucro quando usadas.</p>
+        </div>
+        <div className="flex gap-2">
+          <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} placeholder="Buscar por nome, e-mail ou usuário" />
+          <Button onClick={run} disabled={busy}>{busy ? <Loader2 className="size-4 animate-spin" /> : "Buscar"}</Button>
+        </div>
+        <div className="space-y-2">
+          {rows.map((u) => (
+            <div key={u.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-2">
+              <div className="min-w-40 flex-1">
+                <div className="text-sm text-foreground">{u.name}</div>
+                <div className="text-[11px] text-muted-foreground">{u.email} · saldo {Number(u.credits).toFixed(2)} cr</div>
+              </div>
+              <Input
+                className="w-28" inputMode="decimal" placeholder="créditos"
+                value={amounts[u.id] ?? ""}
+                onChange={(e) => setAmounts({ ...amounts, [u.id]: e.target.value })}
+              />
+              <Button size="sm" onClick={() => give(u.id)}><Plus className="size-4 mr-1" /> Conceder</Button>
+            </div>
+          ))}
+          {!rows.length && !busy && <p className="text-xs text-muted-foreground">Nenhum usuário encontrado.</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function StudentsTable({ period }: { period: Period }) {
   const load = useServerFn(adminSimStudents);
   const grant = useServerFn(adminGrantCredits);
+
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
