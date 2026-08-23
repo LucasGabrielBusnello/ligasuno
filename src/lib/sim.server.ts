@@ -296,13 +296,15 @@ Responda em JSON: {"name":"...","justified":true,"result_text":"...","report":""
     { role: "user", content: `Exame solicitado: ${examName}` },
   ]);
   const out = parseJson(res.text);
+  const name = String(out.name ?? examName);
+  const img = imageForExam(name, `${c.diagnosis} ${out.report ?? ""} ${out.result_text ?? ""}`);
   return {
-    name: String(out.name ?? examName),
+    name,
     justified: !!out.justified,
     result_text: String(out.result_text ?? "Resultado indisponível."),
     report: String(out.report ?? ""),
-    is_image: !!out.is_image,
-    image_url: null as string | null,
+    is_image: !!out.is_image || !!img,
+    image_url: img?.url ?? null,
     usage: res.usage,
     model: res.model,
   };
