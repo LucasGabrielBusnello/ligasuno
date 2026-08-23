@@ -290,3 +290,33 @@ export const sendSimFeedback = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const simPreceptorHint = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ sessionId: z.string().uuid(), previousHints: z.array(z.string().max(600)).max(10).default([]) }).parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
+    if (Number(sim.level) > 2) return { off_track: false, hint: "" };
+    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
+    const { preceptorHint } = await import("./sim.server");
+    const out = await preceptorHint({
+      c: sim,
+      transcript: session.transcript ?? [],
+      exams: session.exam_requests ?? [],
+      findings: session.physical_findings ?? [],
+      previousHints: data.previousHints,
+    });
+    await recordUsage({
+      userId: context.userId,
+      sessionId: session.id,
+      phase: "dica_preceptor",
+      model: out.model,
+      usage: out.usage,
+      tier: "chat",
+    });
+    void supabaseAdmin;
+    return { off_track: out.off_track, hint: out.hint };
+  });
