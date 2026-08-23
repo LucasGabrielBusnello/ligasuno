@@ -335,6 +335,14 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
 
             {data.review?.resumo && <ResumoFixacao resumo={data.review.resumo} />}
 
+            {data.review?.aula && (
+              <div className="rounded-xl ring-1 ring-amber-500/25 bg-amber-500/5 p-3 space-y-2">
+                <h3 className="font-black">Revisão Teórica</h3>
+                <MarkdownView text={data.review.aula} />
+              </div>
+            )}
+
+
 
             {data.diagnosis && (
               <div>
