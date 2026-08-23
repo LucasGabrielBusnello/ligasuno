@@ -336,6 +336,44 @@ function isProviderBlocked(e: any) {
 }
 
 /**
+ * CHAMADA A — Preceptor clínico (Anthropic Messages API).
+ * Implementação estrita conforme documentação oficial da Anthropic:
+ * endpoint /v1/messages, headers x-api-key + anthropic-version,
+ * body com model, max_tokens, system (string) e messages [{role,user,content}].
+ */
+async function callAnthropicPreceptor(system: string, userContent: string): Promise<{ text: string; usage: Usage | null; model: string }> {
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"];
+  if (!anthropicKey) {
+    const e = new Error("ANTHROPIC_API_KEY não configurada.");
+    (e as any).status = 401;
+    throw e;
+  }
+
+  const resp = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: {
+      "x-api-key": anthropicKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-3-5-sonnet-20240620",
+      max_tokens: 1500,
+      system,
+      messages: [{ role: "user", content: userContent }],
+    }),
+  });
+
+  if (!resp.ok) throw httpError(resp, await resp.text());
+  const data: any = await resp.json();
+  const text = (Array.isArray(data?.content) ? data.content : [])
+    .filter((c: any) => c?.type === "text")
+    .map((c: any) => c.text)
+    .join("");
+  return { text, usage: readUsage(data), model: PRECEPTOR_MODEL };
+}
+
+/**
  * CHAMADA A — Preceptor clínico (Anthropic, com fallback automático no Gemini Flash).
  * Só avalia a atuação do aluno; a teoria da doença é da CHAMADA B.
  */
@@ -376,17 +414,17 @@ Responda em JSON:
     `HIPÓTESE DIAGNÓSTICA DO ALUNO: ${hypothesis}`,
   ].join("\n\n");
 
-  const messages: Msg[] = [
+  const fallbackMessages: Msg[] = [
     { role: "system", content: system },
     { role: "user", content: payload },
   ];
 
   let res: { text: string; usage: Usage | null; model: string };
   try {
-    res = await callModel(PRECEPTOR_MODEL, messages, { json: true, maxTokens: 1500, cacheSystem: true });
+    res = await callAnthropicPreceptor(system, payload);
   } catch (e: any) {
     if (!isProviderBlocked(e)) throw e;
-    res = await callModel(FLASH_MODEL, messages, { json: true, maxTokens: 1500 });
+    res = await callModel(FLASH_MODEL, fallbackMessages, { json: true, maxTokens: 1500 });
   }
 
   const out = parseJson(res.text);
