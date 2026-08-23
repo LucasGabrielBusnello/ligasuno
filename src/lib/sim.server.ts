@@ -7,6 +7,7 @@
  */
 
 import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
+import { catalogItem, detectExamKeys } from "./sim-exam-catalog";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
