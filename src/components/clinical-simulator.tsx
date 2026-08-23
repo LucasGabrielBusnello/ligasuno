@@ -410,6 +410,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
       setChat((p) => [...p, { role: "patient", content: r.reply }]);
       pushFindings(r.findings ?? []);
       if (r.findings?.length) setTab("exame");
+      void maybeHint();
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao falar com o paciente.");
     } finally {
