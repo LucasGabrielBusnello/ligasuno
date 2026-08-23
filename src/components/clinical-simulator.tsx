@@ -19,14 +19,43 @@ import {
   simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint, regenerateSimReview,
 } from "@/lib/sim.functions";
 
+/** Normaliza o Markdown vindo da IA para ficar legível (títulos e listas em linhas próprias). */
+function normalizeMd(text: string) {
+  let t = String(text ?? "").replace(/\r/g, "");
+  // "**TÍTULO EM CAIXA ALTA**" vira um heading de seção
+  t = t.replace(/\*\*\s*([A-ZÀ-Ú0-9][^*\n]{2,60}?)\s*\*\*\s*(?=$|\n|\*|\s\*)/gm, (_m, title: string) => {
+    const isTitle = title === title.toUpperCase();
+    return isTitle ? `\n\n## ${title.trim()}\n\n` : `**${title}**`;
+  });
+  // bullets colados na mesma linha: " * item" vira lista
+  t = t.replace(/[ \t]+\*[ \t]+/g, "\n* ");
+  // remove colchetes de template eventualmente devolvidos pela IA
+  t = t.replace(/^\s*\[(.+)\]\s*$/gm, "$1");
+  return t.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /** Renderiza Markdown com o padrão visual do site. */
 export function MarkdownView({ text }: { text: string }) {
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-black prose-headings:text-foreground prose-strong:text-foreground prose-li:marker:text-primary text-foreground/90">
-      <ReactMarkdown>{text}</ReactMarkdown>
+    <div
+      className="max-w-none text-[15px] leading-relaxed text-foreground/90 space-y-3
+        [&_h1]:text-base [&_h1]:font-black [&_h1]:uppercase [&_h1]:tracking-wide [&_h1]:text-primary
+        [&_h2]:mt-5 [&_h2]:mb-2 [&_h2]:text-[13px] [&_h2]:font-black [&_h2]:uppercase [&_h2]:tracking-widest
+        [&_h2]:text-primary [&_h2]:border-l-4 [&_h2]:border-primary/60 [&_h2]:pl-3
+        [&_h3]:mt-4 [&_h3]:mb-1 [&_h3]:font-black [&_h3]:text-foreground
+        [&_p]:my-2 [&_strong]:text-foreground [&_strong]:font-bold
+        [&_ul]:my-2 [&_ul]:space-y-1.5 [&_ul]:pl-1 [&_ol]:my-2 [&_ol]:space-y-1.5 [&_ol]:pl-5 [&_ol]:list-decimal
+        [&_ul>li]:relative [&_ul>li]:pl-5
+        [&_ul>li]:before:content-[''] [&_ul>li]:before:absolute [&_ul>li]:before:left-0 [&_ul>li]:before:top-[0.55em]
+        [&_ul>li]:before:size-1.5 [&_ul>li]:before:rounded-full [&_ul>li]:before:bg-primary
+        [&_table]:w-full [&_table]:text-sm [&_th]:text-left [&_th]:font-bold [&_td]:py-1 [&_td]:pr-3
+        [&_hr]:my-4 [&_hr]:border-border [&_code]:text-primary"
+    >
+      <ReactMarkdown>{normalizeMd(text)}</ReactMarkdown>
     </div>
   );
 }
+
 
 function SectionSkeleton() {
   return (
