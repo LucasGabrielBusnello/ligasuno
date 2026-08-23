@@ -180,11 +180,13 @@ COMO PONTUAR (0 a 100):
 - ~70: chegou ao diagnóstico, mas pediu exames desnecessários ou deixou lacunas na anamnese.
 - Cada exame pedido sem sentido para o caso (nem para confirmar nem para afastar hipótese) desconta pontos.
 - Abaixo de 40: diagnóstico errado ou raciocínio clínico desorganizado.
-- Ajuste a exigência ao nível do aluno (${c.level}º ano).
+- Ajuste a exigência ao nível do aluno (${c.level}º ano): ${levelGuidance(c.level)}
 ${rules.length ? `\nREGRAS ADICIONAIS DE CORREÇÃO DEFINIDAS PELO PROFESSOR RESPONSÁVEL (siga à risca):\n- ${rules.join("\n- ")}` : ""}
 
+RESUMO DE FIXAÇÃO (obrigatório): ao final, escreva um resumo padronizado da doença do caso, no mesmo formato SEMPRE, feito para o aluno memorizar: definição, epidemiologia/fatores de risco, fisiopatologia em 2-3 frases simples, quadro clínico, sinais/sintomas-chave ("red flags"), diagnóstico (exames e critérios), tratamento/conduta, principais diagnósticos diferenciais, complicações, pegadinhas de prova e um bordão final de 1 frase para fixar. Linguagem objetiva, em tópicos curtos, adequada ao ${c.level}º ano.
+
 Responda em JSON:
-{"score":0-100,"veredito":"frase curta","acertos":["..."],"faltou":["..."],"exames_desnecessarios":["..."],"melhorias":["..."],"diagnostico_correto":"...","comentario":"parágrafo com o parecer geral e o raciocínio clínico esperado"}`;
+{"score":0-100,"veredito":"frase curta","acertos":["..."],"faltou":["..."],"exames_desnecessarios":["..."],"melhorias":["..."],"diagnostico_correto":"...","comentario":"parágrafo com o parecer geral e o raciocínio clínico esperado","resumo":{"doenca":"","definicao":"","epidemiologia":["..."],"fisiopatologia":"","quadro_clinico":["..."],"sinais_chave":["..."],"diagnostico":["..."],"tratamento":["..."],"diferenciais":["..."],"complicacoes":["..."],"pegadinhas":["..."],"bordao":""}}`;
 
   const payload = {
     conversa: (transcript ?? []).map((m: any) => `${m.role === "user" ? "Estudante" : "Paciente"}: ${m.content}`).join("\n").slice(0, 12000),
