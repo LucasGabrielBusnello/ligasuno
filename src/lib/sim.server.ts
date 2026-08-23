@@ -331,7 +331,7 @@ Responda em JSON:
 
   let res: { text: string; usage: Usage | null; model: string };
   try {
-    res = await callModel(PRECEPTOR_MODEL, messages, { json: true, maxTokens: 1000, cacheSystem: true });
+    res = await callModel(PRECEPTOR_MODEL, messages, { json: true, maxTokens: 1500, cacheSystem: true });
   } catch (e: any) {
     if (!isProviderBlocked(e)) throw e;
     res = await callModel(FLASH_MODEL, messages, { json: true, maxTokens: 1500 });
