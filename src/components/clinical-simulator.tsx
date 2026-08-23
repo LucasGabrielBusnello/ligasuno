@@ -639,19 +639,7 @@ function SimStation({ sessionId, c, onExit }: { sessionId: string; c: PublicCase
           <CardContent className="p-4 max-h-[52vh] overflow-y-auto space-y-3">
             {tab === "exame" && (
               <>
-                <div className="flex flex-wrap gap-1.5">
-                  {menu.map((m) => (
-                    <button
-                      key={m.key}
-                      onClick={() => reveal(m.key)}
-                      className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold ring-1 ${
-                        m.revealed ? "bg-primary/10 ring-primary/30 text-primary" : "bg-muted/40 ring-border hover:bg-muted"
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+                <ExamMenu menu={menu} onPick={reveal} busy={busy} />
                 {findings.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma manobra realizada ainda.</p>}
                 {findings.map((f) => (
                   <div key={f.key} className="rounded-xl ring-1 ring-border p-3 space-y-2">
