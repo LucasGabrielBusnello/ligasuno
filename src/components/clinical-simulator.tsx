@@ -761,7 +761,10 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
             <div className="font-black text-lg">{review.veredito}</div>
             <div className="text-sm text-muted-foreground">Diagnóstico correto: <b className="text-foreground">{review.diagnostico_correto}</b></div>
           </div>
-          <Button variant="outline" onClick={onExit}>Novo treino</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={onExit}><ArrowLeft className="size-4 mr-2" /> Voltar às informações gerais</Button>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold" onClick={onExit}><Play className="size-4 mr-2" /> Novo treino</Button>
+          </div>
         </CardContent>
       </Card>
 
