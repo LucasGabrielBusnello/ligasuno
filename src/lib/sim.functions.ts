@@ -269,6 +269,49 @@ export const simFinish = createServerFn({ method: "POST" })
     return { ...review, balance: billing.balance, case: { title: sim.title, diagnosis: sim.diagnosis, expected_conduct: sim.expected_conduct, hidden_history: sim.hidden_history } };
   });
 
+export const regenerateSimReview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: s, error } = await supabaseAdmin
+      .from("sim_sessions")
+      .select("*, sim_cases(*)")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!s || (s as any).user_id !== context.userId) throw new Error("Sessão não encontrada.");
+    const row: any = s;
+    if (row.status !== "finished") throw new Error("Só é possível gerar parecer novamente para treinos finalizados.");
+
+    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
+    const { data: rules } = await supabaseAdmin.from("sim_ai_rules").select("rule").eq("active", true).limit(50);
+    const { gradeSession } = await import("./sim.server");
+    const review = await gradeSession({
+      c: row.sim_cases,
+      transcript: row.transcript ?? [],
+      exams: row.exam_requests ?? [],
+      findings: row.physical_findings ?? [],
+      anamnese: row.anamnese ?? "",
+      hypothesis: row.hypothesis ?? "",
+      rules: (rules ?? []).map((r: any) => r.rule),
+    });
+    const billing = await recordUsage({
+      userId: context.userId,
+      sessionId: row.id,
+      phase: "correcao_preceptor",
+      model: review.model,
+      usage: review.usage,
+      tier: "grade",
+    });
+    await supabaseAdmin
+      .from("sim_sessions")
+      .update({ score: review.score, review })
+      .eq("id", row.id);
+    return { review, balance: billing.balance };
+  });
+
 /** CHAMADA B — aula teórica (Gemini Flash), disparada em paralelo com a correção. */
 export const simTheory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
