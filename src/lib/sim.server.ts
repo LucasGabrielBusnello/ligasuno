@@ -387,26 +387,23 @@ export async function gradeSession(opts: {
   rules: string[];
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
-  const system = `Você é um preceptor médico rigoroso avaliando um aluno do ${c.level}º ano em uma estação simulada, em português do Brasil.
-Avalie a HMA do aluno lendo a transcrição. Retorne APENAS um checklist curto com bullet points focado em: 1) Omissões críticas na investigação; 2) Avaliação da conduta e hipótese.
-REGRA ABSOLUTA: NÃO explique a doença e não cite fisiopatologia. Foque 100% no feedback de performance em formato de tópicos rápidos.
+  const system = `Você é um avaliador acadêmico sênior, brilhante e empático, avaliando um aluno em um estudo de caso simulado. Avalie a transcrição da entrevista e a tomada de decisão do aluno. REGRA: NÃO explique a teoria do caso (outro sistema fará isso). Foque 100% no feedback de desempenho e estruture sua resposta neste formato Markdown:
 
-CASO (gabarito, uso interno): ${c.title} | área ${c.area}
-Diagnóstico correto: ${c.diagnosis}
-Conduta esperada: ${c.expected_conduct ?? "-"}
-Exames pertinentes: ${(Array.isArray(c.exams) ? c.exams : []).filter((e: any) => e.justified).map((e: any) => e.name).join(", ")}
+**PARECER DO AVALIADOR** [Faça uma análise crítica, discursiva e humana do atendimento simulado. Aja como um mentor experiente conversando com o aluno. Avalie a linha de raciocínio, a comunicação e as hipóteses levantadas, justificando detalhadamente onde o aluno brilhou ou onde se perdeu.]
 
-COMO PONTUAR (0 a 100):
-- 100: chegou ao diagnóstico, anamnese completa e organizada, exame físico adequado e SOMENTE os exames necessários.
-- ~70: chegou ao diagnóstico, mas pediu exames desnecessários ou deixou lacunas.
-- Abaixo de 40: diagnóstico errado ou raciocínio desorganizado.
-- Exigência proporcional ao nível: ${levelGuidance(c.level)}
-${rules.length ? `\nREGRAS ADICIONAIS DO PROFESSOR (siga à risca):\n- ${rules.join("\n- ")}` : ""}
+**ACERTOS NA CONDUTA** * [Liste em bullet points as perguntas e ações corretas]
 
-Responda em JSON:
-{"score":0-100,"veredito":"frase curta","acertos":["..."],"faltou":["..."],"exames_desnecessarios":["..."],"melhorias":["..."],"diagnostico_correto":"...","comentario":"parecer geral curto sobre a atuação","parecer_md":"checklist em Markdown com as seções **Omissões críticas na anamnese** e **Hipótese diagnóstica**"}`;
+**PONTOS DE ATENÇÃO (O QUE FALTOU)** * [Liste em bullet points as omissões críticas na investigação ou erros de tomada de decisão]
+
+**AÇÕES DESNECESSÁRIAS** * [Liste se o aluno solicitou algo inútil para o contexto. Se não, escreva 'Nenhuma ação desnecessária solicitada.']
+
+**DICA DE OURO** * [Forneça uma dica prática e direta de raciocínio para o aluno levar para a vida real]`;
 
   const payload = [
+    `CASO: ${c.title} | área ${c.area} | nível ${c.level}º ano`,
+    `Diagnóstico correto (uso interno do avaliador): ${c.diagnosis}`,
+    `Conduta esperada: ${c.expected_conduct ?? "-"}`,
+    `Ações pertinentes: ${(Array.isArray(c.exams) ? c.exams : []).filter((e: any) => e.justified).map((e: any) => e.name).join(", ")}`,
     `TRANSCRIÇÃO:\n${cleanTranscript(transcript)}`,
     `EXAME FÍSICO REALIZADO: ${(findings ?? []).map((f: any) => f.label).join(", ") || "nenhum"}`,
     `EXAMES SOLICITADOS: ${(exams ?? []).map((e: any) => `${e.name}${e.justified ? "" : " (supérfluo)"}`).join(", ") || "nenhum"}`,
@@ -424,14 +421,18 @@ Responda em JSON:
     res = await callAnthropicPreceptor(system, payload);
   } catch (e: any) {
     if (!isProviderBlocked(e)) throw e;
-    res = await callModel(FLASH_MODEL, fallbackMessages, { json: true, maxTokens: 1500 });
+    res = await callModel(FLASH_MODEL, fallbackMessages, { json: false, maxTokens: 4096 });
   }
 
-  const out = parseJson(res.text);
-  const score = Math.max(0, Math.min(100, Number(out.score ?? 0)));
+  const raw = String(res.text ?? "").trim();
+  const out = parseJson(raw);
+
+  // O novo prompt retorna Markdown livre. Se não houver campos estruturados,
+  // guardamos o texto completo em parecer_md e mantemos os demais campos vazios.
+  const hasStructured = out.score != null || out.veredito || out.comentario || out.parecer_md;
   const arr = (v: any) => (Array.isArray(v) ? v.map(String) : []);
   return {
-    score,
+    score: hasStructured ? Math.max(0, Math.min(100, Number(out.score ?? 0))) : 0,
     veredito: String(out.veredito ?? ""),
     acertos: arr(out.acertos),
     faltou: arr(out.faltou),
@@ -439,7 +440,7 @@ Responda em JSON:
     melhorias: arr(out.melhorias),
     diagnostico_correto: String(out.diagnostico_correto ?? c.diagnosis),
     comentario: String(out.comentario ?? ""),
-    parecer_md: String(out.parecer_md ?? ""),
+    parecer_md: hasStructured ? String(out.parecer_md ?? "") : raw,
     usage: res.usage,
     model: res.model,
   };
