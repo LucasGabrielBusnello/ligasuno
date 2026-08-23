@@ -16,6 +16,7 @@ import {
   adminSaveCreditPackage,
   adminDeleteCreditPackage,
   adminGrantCredits,
+  adminSearchSimUsers,
 } from "@/lib/sim-credits.functions";
 
 type Period = "month" | "quarter" | "year" | "all";
@@ -205,6 +206,8 @@ function StudentsTable({ period }: { period: Period }) {
   if (loading) return <div className="py-10 text-center text-muted-foreground"><Loader2 className="size-5 animate-spin inline mr-2" />Carregando…</div>;
 
   return (
+    <div className="space-y-4">
+    <GrantCreditsBox onDone={refresh} />
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full text-sm">
         <thead className="bg-card text-muted-foreground">
@@ -232,6 +235,7 @@ function StudentsTable({ period }: { period: Period }) {
           {!rows.length && <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Nenhum aluno no período.</td></tr>}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
