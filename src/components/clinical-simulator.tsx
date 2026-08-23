@@ -83,14 +83,6 @@ export function ClinicalSimulator() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [resumingId, setResumingId] = useState<string | null>(null);
 
-  type SimResumeState = {
-    transcript: any[];
-    physical_findings: any[];
-    exam_requests: any[];
-    anamnese: string;
-    hypothesis: string;
-  };
-
   const start = useServerFn(startSimSession);
   const resume = useServerFn(resumeSimSession);
   const listSessions = useServerFn(listMySimSessions);
