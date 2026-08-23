@@ -404,6 +404,7 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   const examFn = useServerFn(simExam);
   const finishFn = useServerFn(simFinish);
   const theoryFn = useServerFn(simTheory);
+  const saveNotesFn = useServerFn(saveSimNotes);
 
   const transcribeFn = useServerFn(simTranscribe);
   const hintFn = useServerFn(simPreceptorHint);
