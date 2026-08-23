@@ -272,13 +272,14 @@ export async function examResult(c: SimCase, examName: string) {
   const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const hit = exams.find((e) => norm(e.name).includes(norm(examName)) || norm(examName).includes(norm(e.name)));
   if (hit) {
+    const img = hit.image_url ? null : imageForExam(String(hit.name ?? examName), `${c.diagnosis} ${hit.report ?? ""} ${hit.result_text ?? ""}`);
     return {
       name: hit.name,
       justified: !!hit.justified,
       result_text: String(hit.result_text ?? ""),
       report: String(hit.report ?? ""),
-      is_image: !!hit.is_image,
-      image_url: hit.image_url ?? null,
+      is_image: !!hit.is_image || !!img,
+      image_url: hit.image_url ?? img?.url ?? null,
       usage: null as Usage | null,
       model: "local",
     };
