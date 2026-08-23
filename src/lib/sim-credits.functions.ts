@@ -287,6 +287,34 @@ export const adminDeleteCreditPackage = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Busca de usuários para concessão manual de créditos. */
+export const adminSearchSimUsers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ query: z.string().max(120).default("") }).parse(v))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const q = data.query.trim();
+    let sel = supabaseAdmin.from("profiles").select("id, full_name, email, username").limit(15);
+    if (q) sel = sel.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,username.ilike.%${q}%`);
+    const { data: profiles } = await sel;
+    const ids = (profiles ?? []).map((p: any) => p.id);
+    const { data: balances } = ids.length
+      ? await supabaseAdmin.from("sim_credit_balances").select("user_id, credits").in("user_id", ids)
+      : { data: [] as any[] };
+    const bal = new Map((balances ?? []).map((b: any) => [b.user_id, Number(b.credits)]));
+    return (profiles ?? []).map((p: any) => ({
+      id: p.id,
+      name: p.full_name || p.username || p.email,
+      email: p.email,
+      credits: bal.get(p.id) ?? 0,
+    }));
+  });
+
+/**
+ * Ajuste manual de créditos. NÃO conta como dinheiro recebido: entra no
+ * ledger como "grant" (cortesia) e não incrementa os créditos comprados.
+ */
 export const adminGrantCredits = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
@@ -295,15 +323,24 @@ export const adminGrantCredits = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: balance, error } = await supabaseAdmin.rpc("sim_add_credits", {
-      _user_id: data.userId,
-      _credits: data.credits,
-      _amount: 0,
-      _description: data.note,
-    });
+    const { ensureBalance } = await import("./sim-billing.server");
+    const current = await ensureBalance(data.userId);
+    const next = Math.max(0, Number((current + data.credits).toFixed(4)));
+    const { error } = await supabaseAdmin
+      .from("sim_credit_balances")
+      .update({ credits: next })
+      .eq("user_id", data.userId);
     if (error) throw new Error(error.message);
-    return { balance: Number(balance ?? 0) };
+    await supabaseAdmin.from("sim_credit_ledger").insert({
+      user_id: data.userId,
+      kind: "grant",
+      credits: Number(data.credits.toFixed(4)),
+      amount_brl: 0,
+      description: data.note,
+    });
+    return { balance: next };
   });
+
 
 /** Log financeiro: um registro por caso clínico + KPIs do período. */
 export const adminSimFinance = createServerFn({ method: "POST" })
@@ -356,10 +393,41 @@ export const adminSimFinance = createServerFn({ method: "POST" })
     }
 
     const fee = settings.gateway_fee_pct / 100;
+
+    /* Parcela PAGA de cada aluno: créditos comprados (dinheiro de verdade) vs
+       cortesias/boas-vindas. Só o consumo coberto por créditos comprados vira lucro. */
+    const allIds = [...new Set([...(usage ?? []).map((u: any) => u.user_id), ...userIds])].filter(Boolean);
+    const paidInfo = new Map<string, { ratio: number; revPerCredit: number }>();
+    if (allIds.length) {
+      const [{ data: buys }, { data: grants }, { data: spends }] = await Promise.all([
+        supabaseAdmin.from("sim_purchases").select("user_id, credits, amount_brl").eq("status", "paid").in("user_id", allIds),
+        supabaseAdmin.from("sim_credit_ledger").select("user_id, credits, kind").eq("kind", "grant").in("user_id", allIds),
+        supabaseAdmin.from("sim_usage_events").select("user_id, credits").in("user_id", allIds).limit(50000),
+      ]);
+      const acc = new Map<string, { bought: number; revenue: number; granted: number; spent: number }>();
+      const get = (id: string) => {
+        const cur = acc.get(id) ?? { bought: 0, revenue: 0, granted: 0, spent: 0 };
+        acc.set(id, cur);
+        return cur;
+      };
+      for (const b of (buys ?? []) as any[]) { const a = get(b.user_id); a.bought += Number(b.credits); a.revenue += Number(b.amount_brl); }
+      for (const g of (grants ?? []) as any[]) get(g.user_id).granted += Number(g.credits);
+      for (const s of (spends ?? []) as any[]) get(s.user_id).spent += Number(s.credits);
+      for (const [id, a] of acc) {
+        const paidSpent = Math.max(0, Math.min(a.spent - a.granted, a.bought));
+        paidInfo.set(id, {
+          ratio: a.spent > 0 ? paidSpent / a.spent : 0,
+          revPerCredit: a.bought > 0 ? a.revenue / a.bought : 0,
+        });
+      }
+    }
+
     const rows = (sessions ?? []).map((s: any) => {
       const a = agg.get(s.id) ?? { tokens: 0, cost: 0, credits: 0 };
-      const charged = priceFromCost(a.cost, settings); // R$ equivalente cobrado do aluno
-      const profit = charged - charged * fee - a.cost;
+      const info = paidInfo.get(s.user_id) ?? { ratio: 0, revPerCredit: 0 };
+      const paidCredits = a.credits * info.ratio;
+      const charged = paidCredits * info.revPerCredit; // receita reconhecida (créditos pagos usados)
+      const profit = charged - charged * fee - a.cost * info.ratio;
       return {
         id: s.id,
         title: s.sim_cases?.title ?? "Caso clínico",
@@ -372,6 +440,7 @@ export const adminSimFinance = createServerFn({ method: "POST" })
         tokens: a.tokens,
         cost: Number(a.cost.toFixed(4)),
         credits: Number(a.credits.toFixed(2)),
+        paid_credits: Number(paidCredits.toFixed(2)),
         charged: Number(charged.toFixed(2)),
         profit: Number(profit.toFixed(2)),
       };
@@ -379,8 +448,9 @@ export const adminSimFinance = createServerFn({ method: "POST" })
 
     const totalTokens = rows.reduce((x, r) => x + r.tokens, 0) + orphanTokens;
     const totalCost = rows.reduce((x, r) => x + r.cost, 0) + orphanCost;
-    const totalCharged = rows.reduce((x, r) => x + r.charged, 0) + priceFromCost(orphanCost, settings);
-    const totalProfit = totalCharged - totalCharged * fee - totalCost;
+    const totalCharged = rows.reduce((x, r) => x + r.charged, 0);
+    const totalProfit = rows.reduce((x, r) => x + r.profit, 0);
+    const totalPaidCredits = rows.reduce((x, r) => x + r.paid_credits, 0);
 
     const { data: purchases } = await supabaseAdmin
       .from("sim_purchases")
@@ -388,6 +458,7 @@ export const adminSimFinance = createServerFn({ method: "POST" })
       .eq("status", "paid")
       .gte("created_at", since);
     const revenue = (purchases ?? []).reduce((x: number, p: any) => x + Number(p.amount_brl), 0);
+
 
     return {
       settings: { tokensPerCredit: settings.tokens_per_credit, feePct: settings.gateway_fee_pct, divisor: settings.price_divisor },
@@ -397,6 +468,8 @@ export const adminSimFinance = createServerFn({ method: "POST" })
         totalCharged: Number(totalCharged.toFixed(2)),
         totalProfit: Number(totalProfit.toFixed(2)),
         totalCredits: Number((rows.reduce((x, r) => x + r.credits, 0) + orphanCredits).toFixed(2)),
+        totalPaidCredits: Number(totalPaidCredits.toFixed(2)),
+
         revenue: Number(revenue.toFixed(2)),
         cases: rows.length,
       },

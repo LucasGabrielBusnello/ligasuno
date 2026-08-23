@@ -311,6 +311,9 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
               </div>
             )}
 
+            {data.review?.resumo && <ResumoFixacao resumo={data.review.resumo} />}
+
+
             {data.diagnosis && (
               <div>
                 <h3 className="font-black mb-1">Diagnóstico do caso</h3>
@@ -722,6 +725,9 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
         <Card><CardContent className="p-5 text-sm"><b className="text-primary">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
       )}
 
+      <ResumoFixacao resumo={review.resumo} />
+
+
       <Card>
         <CardContent className="p-5 space-y-3">
           <div className="text-sm font-bold">A correção fez sentido para você?</div>
@@ -742,7 +748,56 @@ function SimResult({ sessionId, review, onExit }: { sessionId: string; review: a
   );
 }
 
+export function ResumoFixacao({ resumo }: { resumo?: any }) {
+  if (!resumo || (!resumo.definicao && !resumo.quadro_clinico?.length)) return null;
+  const blocks: [string, string[] | string][] = [
+    ["Definição", resumo.definicao],
+    ["Epidemiologia e fatores de risco", resumo.epidemiologia],
+    ["Fisiopatologia", resumo.fisiopatologia],
+    ["Quadro clínico", resumo.quadro_clinico],
+    ["Sinais-chave / red flags", resumo.sinais_chave],
+    ["Diagnóstico", resumo.diagnostico],
+    ["Tratamento e conduta", resumo.tratamento],
+    ["Diagnósticos diferenciais", resumo.diferenciais],
+    ["Complicações", resumo.complicacoes],
+    ["Pegadinhas de prova", resumo.pegadinhas],
+  ];
+  return (
+    <Card className="ring-1 ring-primary/25 bg-primary/5">
+      <CardContent className="p-5 space-y-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-black">Resumo para fixação</div>
+          <div className="text-lg font-black text-foreground">{resumo.doenca}</div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+          {blocks.map(([label, value]) => {
+            const list = Array.isArray(value) ? value.filter(Boolean) : [];
+            const text = typeof value === "string" ? value.trim() : "";
+            if (!list.length && !text) return null;
+            return (
+              <div key={label}>
+                <p className="font-bold text-xs uppercase tracking-wide text-primary">{label}</p>
+                {text ? (
+                  <p className="text-foreground/90 whitespace-pre-wrap">{text}</p>
+                ) : (
+                  <ul className="list-disc pl-4 text-foreground/90 space-y-0.5">
+                    {list.map((i: string, k: number) => <li key={k}>{i}</li>)}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {resumo.bordao && (
+          <p className="rounded-lg bg-background/70 ring-1 ring-primary/20 p-3 text-sm font-bold text-foreground">💡 {resumo.bordao}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ListCard({ title, items, icon }: { title: string; items?: string[]; icon: React.ReactNode }) {
+
   if (!items?.length) return null;
   return (
     <Card>

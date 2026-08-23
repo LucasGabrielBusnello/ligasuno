@@ -180,11 +180,13 @@ COMO PONTUAR (0 a 100):
 - ~70: chegou ao diagnóstico, mas pediu exames desnecessários ou deixou lacunas na anamnese.
 - Cada exame pedido sem sentido para o caso (nem para confirmar nem para afastar hipótese) desconta pontos.
 - Abaixo de 40: diagnóstico errado ou raciocínio clínico desorganizado.
-- Ajuste a exigência ao nível do aluno (${c.level}º ano).
+- Ajuste a exigência ao nível do aluno (${c.level}º ano): ${levelGuidance(c.level)}
 ${rules.length ? `\nREGRAS ADICIONAIS DE CORREÇÃO DEFINIDAS PELO PROFESSOR RESPONSÁVEL (siga à risca):\n- ${rules.join("\n- ")}` : ""}
 
+RESUMO DE FIXAÇÃO (obrigatório): ao final, escreva um resumo padronizado da doença do caso, no mesmo formato SEMPRE, feito para o aluno memorizar: definição, epidemiologia/fatores de risco, fisiopatologia em 2-3 frases simples, quadro clínico, sinais/sintomas-chave ("red flags"), diagnóstico (exames e critérios), tratamento/conduta, principais diagnósticos diferenciais, complicações, pegadinhas de prova e um bordão final de 1 frase para fixar. Linguagem objetiva, em tópicos curtos, adequada ao ${c.level}º ano.
+
 Responda em JSON:
-{"score":0-100,"veredito":"frase curta","acertos":["..."],"faltou":["..."],"exames_desnecessarios":["..."],"melhorias":["..."],"diagnostico_correto":"...","comentario":"parágrafo com o parecer geral e o raciocínio clínico esperado"}`;
+{"score":0-100,"veredito":"frase curta","acertos":["..."],"faltou":["..."],"exames_desnecessarios":["..."],"melhorias":["..."],"diagnostico_correto":"...","comentario":"parágrafo com o parecer geral e o raciocínio clínico esperado","resumo":{"doenca":"","definicao":"","epidemiologia":["..."],"fisiopatologia":"","quadro_clinico":["..."],"sinais_chave":["..."],"diagnostico":["..."],"tratamento":["..."],"diferenciais":["..."],"complicacoes":["..."],"pegadinhas":["..."],"bordao":""}}`;
 
   const payload = {
     conversa: (transcript ?? []).map((m: any) => `${m.role === "user" ? "Estudante" : "Paciente"}: ${m.content}`).join("\n").slice(0, 12000),
@@ -203,19 +205,36 @@ Responda em JSON:
   );
   const out = parseJson(res.text);
   const score = Math.max(0, Math.min(100, Number(out.score ?? 0)));
+  const arr = (v: any) => (Array.isArray(v) ? v.map(String) : []);
+  const r = out.resumo ?? {};
   return {
     score,
     veredito: String(out.veredito ?? ""),
-    acertos: Array.isArray(out.acertos) ? out.acertos.map(String) : [],
-    faltou: Array.isArray(out.faltou) ? out.faltou.map(String) : [],
-    exames_desnecessarios: Array.isArray(out.exames_desnecessarios) ? out.exames_desnecessarios.map(String) : [],
-    melhorias: Array.isArray(out.melhorias) ? out.melhorias.map(String) : [],
+    acertos: arr(out.acertos),
+    faltou: arr(out.faltou),
+    exames_desnecessarios: arr(out.exames_desnecessarios),
+    melhorias: arr(out.melhorias),
     diagnostico_correto: String(out.diagnostico_correto ?? c.diagnosis),
     comentario: String(out.comentario ?? ""),
+    resumo: {
+      doenca: String(r.doenca ?? c.diagnosis),
+      definicao: String(r.definicao ?? ""),
+      epidemiologia: arr(r.epidemiologia),
+      fisiopatologia: String(r.fisiopatologia ?? ""),
+      quadro_clinico: arr(r.quadro_clinico),
+      sinais_chave: arr(r.sinais_chave),
+      diagnostico: arr(r.diagnostico),
+      tratamento: arr(r.tratamento),
+      diferenciais: arr(r.diferenciais),
+      complicacoes: arr(r.complicacoes),
+      pegadinhas: arr(r.pegadinhas),
+      bordao: String(r.bordao ?? ""),
+    },
     usage: res.usage,
     model: res.model,
   };
 }
+
 
 export async function transcribeAudio(base64: string, format: string) {
   const settings = await loadSimSettings();
@@ -247,10 +266,32 @@ export async function transcribeAudio(base64: string, format: string) {
   };
 }
 
+export function levelGuidance(level: number): string {
+  switch (Number(level)) {
+    case 1:
+      return `1º ANO — semiologia inicial. SOMENTE quadros simples e muito prevalentes, com sinais clínicos clássicos e diretos (resfriado/IVAS, faringoamigdalite, gastroenterite aguda, cefaleia tensional, lombalgia mecânica, ITU não complicada, celulite/ferida simples, asma leve, anemia ferropriva, dor abdominal inespecífica, hipertensão recém-descoberta assintomática, entorse). PROIBIDO: doenças raras, síndromes complexas, terapia intensiva, casos com múltiplas comorbidades ou diagnóstico por exclusão. Exames complementares básicos (hemograma, EAS, glicemia, radiografia simples). Foco em anamnese bem feita e exame físico básico.`;
+    case 2:
+      return `2º ANO — mesmos casos simples do 1º ano, podendo incluir quadros que exijam algum raciocínio clínico e exame físico um pouco mais específico: HAS e suas repercussões, diabetes mellitus e descompensações simples, IAM, AVC, insuficiência cardíaca, DPOC, pneumonia, TEP/TEV, hipertensão pulmonar, síndromes genéticas simples (Down, Turner, Marfan), lesões corporais/traumas não complexos, dislipidemia, hipo/hipertireoidismo. Ainda sem casos raros ou de alta complexidade em UTI.`;
+    case 3:
+      return `3º ANO — clínica médica intermediária: doenças prevalentes com diagnóstico diferencial real, interpretação de exames laboratoriais e de imagem, comorbidades associadas. Sem raridades.`;
+    case 4:
+      return `4º ANO — casos de complexidade moderada a alta, incluindo emergências, doenças sistêmicas (reumatológicas, hematológicas, infecciosas), interpretação avançada de exames e decisões de conduta.`;
+    case 5:
+      return `5º ANO — internato: casos complexos, pacientes com múltiplas comorbidades, apresentações atípicas, urgência/emergência e definição completa de conduta e seguimento.`;
+    default:
+      return `6º ANO — nível de internato final/prova de residência: casos complexos e atípicos, diagnóstico diferencial exigente, manejo completo incluindo terapia intensiva, critérios diagnósticos formais e condutas baseadas em diretrizes.`;
+  }
+}
+
 export async function generateCases(area: string, level: number, count: number) {
   const system = `Você é professor de semiologia que escreve casos clínicos ORIGINAIS em português do Brasil, no estilo e dificuldade das provas ENAMED/Revalida (nunca copie enunciados existentes).
+
+DIFICULDADE OBRIGATÓRIA PARA ESTE LOTE (respeite à risca, a complexidade deve ser proporcional ao ano):
+${levelGuidance(level)}
+
 Responda em JSON: {"casos":[{"title":"","level":${level},"summary":"","patient":{"name":"","age":0,"gender":"masculino|feminino","occupation":"","personality":"","lay_level":0,"speech_style":""},"triage":{"chief_complaint":"","pa":"","fc":"","fr":"","temp":"","spo2":"","dor":"","peso":"","alergias":"","medicacoes":"","observacoes":""},"hidden_history":"","findings":[{"key":"ausculta_cardiaca","label":"Ausculta cardíaca","text":"","sound_category":"cardiaca|pulmonar|abdominal|carotida|percussao|nenhum","sound_finding":""}],"exams":[{"name":"","category":"","justified":true,"result_text":"","report":"","is_image":false}],"diagnosis":"","expected_conduct":""}]}
 Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, palpacao_abdome e inspecao_geral); 6 a 10 exames, alguns com justified=false (supérfluos); hidden_history detalhada (HDA, antecedentes, hábitos, familiares); triagem coerente com o diagnóstico; lay_level entre 0 e 10 variando entre os casos.`;
+
   const res = await chat([
     { role: "system", content: system },
     { role: "user", content: `Gere ${count} caso(s) da área "${area}" para o ${level}º ano da graduação em Medicina.` },

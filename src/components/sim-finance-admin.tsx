@@ -16,6 +16,7 @@ import {
   adminSaveCreditPackage,
   adminDeleteCreditPackage,
   adminGrantCredits,
+  adminSearchSimUsers,
 } from "@/lib/sim-credits.functions";
 
 type Period = "month" | "quarter" | "year" | "all";
@@ -68,13 +69,13 @@ function FinanceLog({ period }: { period: Period }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Lucro total acumulado" value={brl(k.totalProfit)} icon={<TrendingUp className="size-5" />} tone="green" />
+        <Kpi label="Lucro (créditos pagos usados)" value={brl(k.totalProfit)} icon={<TrendingUp className="size-5" />} tone="green" />
         <Kpi label="Tokens processados" value={Number(k.totalTokens || 0).toLocaleString("pt-BR")} icon={<Cpu className="size-5" />} tone="blue" />
         <Kpi label="Custo total de API" value={brl(k.totalCost)} icon={<DollarSign className="size-5" />} tone="red" />
         <Kpi label="Créditos consumidos" value={Number(k.totalCredits || 0).toLocaleString("pt-BR")} icon={<Coins className="size-5" />} tone="amber" />
       </div>
       <p className="text-xs text-muted-foreground">
-        Receita de pacotes pagos no período: <b className="text-muted-foreground">{brl(k.revenue)}</b> · {k.cases} casos ·
+        Receita de pacotes pagos no período: <b className="text-muted-foreground">{brl(k.revenue)}</b> · {k.cases} casos · {Number(k.totalPaidCredits || 0).toLocaleString("pt-BR")} créditos pagos consumidos ·
         preço = custo ÷ {data?.settings?.divisor} (taxa gateway {data?.settings?.feePct}%)
       </p>
 
@@ -116,9 +117,71 @@ function FinanceLog({ period }: { period: Period }) {
   );
 }
 
+function GrantCreditsBox({ onDone }: { onDone: () => void }) {
+  const search = useServerFn(adminSearchSimUsers);
+  const grant = useServerFn(adminGrantCredits);
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [amounts, setAmounts] = useState<Record<string, string>>({});
+
+  const run = useCallback(async () => {
+    setBusy(true);
+    try { setRows((await search({ data: { query: q } })) as any[]); }
+    catch (e: any) { toast.error(e?.message); }
+    finally { setBusy(false); }
+  }, [search, q]);
+  useEffect(() => { run(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function give(userId: string) {
+    const n = Number((amounts[userId] ?? "").replace(",", "."));
+    if (!Number.isFinite(n) || n === 0) return toast.error("Informe a quantidade de créditos.");
+    try {
+      await grant({ data: { userId, credits: n, note: "Créditos concedidos pelo admin (cortesia)" } });
+      toast.success("Saldo atualizado. Cortesias não entram como receita.");
+      setAmounts({ ...amounts, [userId]: "" });
+      run();
+      onDone();
+    } catch (e: any) { toast.error(e?.message); }
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div>
+          <div className="text-sm font-bold text-foreground">Adicionar créditos manualmente</div>
+          <p className="text-xs text-muted-foreground">Cortesias não contam como dinheiro recebido nem geram lucro quando usadas.</p>
+        </div>
+        <div className="flex gap-2">
+          <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && run()} placeholder="Buscar por nome, e-mail ou usuário" />
+          <Button onClick={run} disabled={busy}>{busy ? <Loader2 className="size-4 animate-spin" /> : "Buscar"}</Button>
+        </div>
+        <div className="space-y-2">
+          {rows.map((u) => (
+            <div key={u.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-border p-2">
+              <div className="min-w-40 flex-1">
+                <div className="text-sm text-foreground">{u.name}</div>
+                <div className="text-[11px] text-muted-foreground">{u.email} · saldo {Number(u.credits).toFixed(2)} cr</div>
+              </div>
+              <Input
+                className="w-28" inputMode="decimal" placeholder="créditos"
+                value={amounts[u.id] ?? ""}
+                onChange={(e) => setAmounts({ ...amounts, [u.id]: e.target.value })}
+              />
+              <Button size="sm" onClick={() => give(u.id)}><Plus className="size-4 mr-1" /> Conceder</Button>
+            </div>
+          ))}
+          {!rows.length && !busy && <p className="text-xs text-muted-foreground">Nenhum usuário encontrado.</p>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function StudentsTable({ period }: { period: Period }) {
   const load = useServerFn(adminSimStudents);
   const grant = useServerFn(adminGrantCredits);
+
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -143,6 +206,8 @@ function StudentsTable({ period }: { period: Period }) {
   if (loading) return <div className="py-10 text-center text-muted-foreground"><Loader2 className="size-5 animate-spin inline mr-2" />Carregando…</div>;
 
   return (
+    <div className="space-y-4">
+    <GrantCreditsBox onDone={refresh} />
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full text-sm">
         <thead className="bg-card text-muted-foreground">
@@ -170,6 +235,7 @@ function StudentsTable({ period }: { period: Period }) {
           {!rows.length && <tr><td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">Nenhum aluno no período.</td></tr>}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
