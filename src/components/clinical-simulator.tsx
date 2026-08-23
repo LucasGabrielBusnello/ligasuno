@@ -213,9 +213,37 @@ export function ClinicalSimulator() {
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
-                    <Button size="sm" variant="outline" className="h-7 px-2 text-xs font-bold" onClick={() => setDetailId(h.id)}>
-                      <History className="size-3.5 mr-1" /> Ver histórico
-                    </Button>
+                    {h.status === "active" ? (
+                      <Button
+                        size="sm"
+                        className="h-7 px-2 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                        disabled={resumingId === h.id}
+                        onClick={async () => {
+                          setResumingId(h.id);
+                          try {
+                            const r: any = await resume({ data: { sessionId: h.id } });
+                            setSession({ id: r.sessionId, case: r.case, resume: {
+                              transcript: r.transcript,
+                              physical_findings: r.physical_findings,
+                              exam_requests: r.exam_requests,
+                              anamnese: r.anamnese,
+                              hypothesis: r.hypothesis,
+                            }});
+                          } catch (e: any) {
+                            toast.error(e?.message ?? "Não foi possível retomar o treino.");
+                          } finally {
+                            setResumingId(null);
+                          }
+                        }}
+                      >
+                        {resumingId === h.id ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Play className="size-3.5 mr-1" />}
+                        Continuar treino
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs font-bold" onClick={() => setDetailId(h.id)}>
+                        <History className="size-3.5 mr-1" /> Ver histórico
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
