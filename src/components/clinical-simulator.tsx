@@ -16,7 +16,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import {
   startSimSession, resumeSimSession, saveSimNotes, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
-  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint,
+  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint, regenerateSimReview,
 } from "@/lib/sim.functions";
 
 /** Renderiza Markdown com o padrão visual do site. */
@@ -261,17 +261,21 @@ export function ClinicalSimulator() {
 /* ============ HISTÓRICO DO CASO ============ */
 function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null; onClose: () => void }) {
   const detailFn = useServerFn(getSimSessionDetail);
+  const regenerateFn = useServerFn(regenerateSimReview);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
-  useEffect(() => {
+  const load = () => {
     if (!sessionId) { setData(null); return; }
     setLoading(true);
     detailFn({ data: { sessionId } })
       .then((r: any) => setData(r))
       .catch((e: any) => toast.error(e?.message ?? "Não foi possível carregar o histórico."))
       .finally(() => setLoading(false));
-  }, [sessionId]);
+  };
+
+  useEffect(() => { load(); }, [sessionId]);
 
   const timeline = useMemo(() => {
     if (!data) return [] as any[];
@@ -310,7 +314,7 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
               <Badge variant={data.status === "finished" ? "default" : "secondary"}>
                 {data.status === "finished" ? "Concluído" : "Em aberto"}
               </Badge>
-              {data.score != null && (
+              {data.score != null && data.score > 0 && (
                 <span className={`font-black ${scoreColor(data.score)}`}>Nota {data.score}</span>
               )}
               <span className="text-xs text-muted-foreground">{new Date(data.created_at).toLocaleString("pt-BR")}</span>
@@ -349,7 +353,38 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
               </div>
             )}
 
-            {data.review && (
+            {data.status === "finished" && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-3 text-xs font-bold border-primary/30"
+                  disabled={regenerating}
+                  onClick={async () => {
+                    setRegenerating(true);
+                    try {
+                      await regenerateFn({ data: { sessionId: data.id } });
+                      toast.success("Parecer regenerado com sucesso!");
+                      load();
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Não foi possível regenerar o parecer.");
+                    } finally {
+                      setRegenerating(false);
+                    }
+                  }}
+                >
+                  {regenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <History className="size-3.5 mr-1.5" />}
+                  Gerar parecer novamente
+                </Button>
+              </div>
+            )}
+
+            {data.review?.parecer_md ? (
+              <div className="rounded-xl ring-1 ring-primary/25 bg-primary/5 p-3 space-y-2">
+                <h3 className="font-black">Parecer da IA</h3>
+                <MarkdownView text={data.review.parecer_md} />
+              </div>
+            ) : data.review ? (
               <div className="rounded-xl ring-1 ring-primary/25 bg-primary/5 p-3 space-y-2">
                 <h3 className="font-black">Parecer da IA</h3>
                 {data.review.veredito && <p className="font-bold text-foreground">{data.review.veredito}</p>}
@@ -368,7 +403,7 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
                   ) : null,
                 )}
               </div>
-            )}
+            ) : null}
 
             {data.review?.resumo && <ResumoFixacao resumo={data.review.resumo} />}
 
@@ -378,8 +413,6 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
                 <MarkdownView text={data.review.aula} />
               </div>
             )}
-
-
 
             {data.diagnosis && (
               <div>
