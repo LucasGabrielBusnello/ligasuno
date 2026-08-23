@@ -358,7 +358,7 @@ async function callAnthropicPreceptor(system: string, userContent: string): Prom
     },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 1500,
+      max_tokens: 4096,
       system,
       messages: [{ role: "user", content: userContent }],
     }),
