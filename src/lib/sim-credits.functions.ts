@@ -287,6 +287,34 @@ export const adminDeleteCreditPackage = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Busca de usuários para concessão manual de créditos. */
+export const adminSearchSimUsers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ query: z.string().max(120).default("") }).parse(v))
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const q = data.query.trim();
+    let sel = supabaseAdmin.from("profiles").select("id, full_name, email, username").limit(15);
+    if (q) sel = sel.or(`email.ilike.%${q}%,full_name.ilike.%${q}%,username.ilike.%${q}%`);
+    const { data: profiles } = await sel;
+    const ids = (profiles ?? []).map((p: any) => p.id);
+    const { data: balances } = ids.length
+      ? await supabaseAdmin.from("sim_credit_balances").select("user_id, credits").in("user_id", ids)
+      : { data: [] as any[] };
+    const bal = new Map((balances ?? []).map((b: any) => [b.user_id, Number(b.credits)]));
+    return (profiles ?? []).map((p: any) => ({
+      id: p.id,
+      name: p.full_name || p.username || p.email,
+      email: p.email,
+      credits: bal.get(p.id) ?? 0,
+    }));
+  });
+
+/**
+ * Ajuste manual de créditos. NÃO conta como dinheiro recebido: entra no
+ * ledger como "grant" (cortesia) e não incrementa os créditos comprados.
+ */
 export const adminGrantCredits = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
@@ -295,15 +323,24 @@ export const adminGrantCredits = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await requireAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: balance, error } = await supabaseAdmin.rpc("sim_add_credits", {
-      _user_id: data.userId,
-      _credits: data.credits,
-      _amount: 0,
-      _description: data.note,
-    });
+    const { ensureBalance } = await import("./sim-billing.server");
+    const current = await ensureBalance(data.userId);
+    const next = Math.max(0, Number((current + data.credits).toFixed(4)));
+    const { error } = await supabaseAdmin
+      .from("sim_credit_balances")
+      .update({ credits: next })
+      .eq("user_id", data.userId);
     if (error) throw new Error(error.message);
-    return { balance: Number(balance ?? 0) };
+    await supabaseAdmin.from("sim_credit_ledger").insert({
+      user_id: data.userId,
+      kind: "grant",
+      credits: Number(data.credits.toFixed(4)),
+      amount_brl: 0,
+      description: data.note,
+    });
+    return { balance: next };
   });
+
 
 /** Log financeiro: um registro por caso clínico + KPIs do período. */
 export const adminSimFinance = createServerFn({ method: "POST" })
