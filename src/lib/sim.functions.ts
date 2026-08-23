@@ -72,6 +72,25 @@ export const resumeSimSession = createServerFn({ method: "POST" })
     };
   });
 
+export const saveSimNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ sessionId: z.string().uuid(), anamnese: z.string().max(8000).default(""), hypothesis: z.string().max(500).default("") }).parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: s, error } = await supabaseAdmin.from("sim_sessions").select("id, user_id, status").eq("id", data.sessionId).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!s || (s as any).user_id !== context.userId) throw new Error("Sessão não encontrada.");
+    if ((s as any).status !== "active") throw new Error("Esta sessão de treino já foi encerrada.");
+    const update: any = {};
+    if (data.anamnese !== undefined) update.anamnese = data.anamnese;
+    if (data.hypothesis !== undefined) update.hypothesis = data.hypothesis;
+    const { error: e2 } = await supabaseAdmin.from("sim_sessions").update(update).eq("id", data.sessionId);
+    if (e2) throw new Error(e2.message);
+    return { ok: true };
+  });
+
 async function loadSession(userId: string, sessionId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data, error } = await supabaseAdmin
