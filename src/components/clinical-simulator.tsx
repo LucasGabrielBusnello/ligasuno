@@ -47,7 +47,7 @@ type PublicCase = {
   patient_image_url: string | null;
 };
 type ChatMsg = { role: "user" | "patient"; content: string };
-type MenuItem = { key: string; label: string; sound_category: string; revealed: boolean };
+type MenuItem = { key: string; label: string; group?: string; sound_category: string; revealed: boolean };
 type Finding = { key: string; label: string; text: string; sound_category?: string; sound_finding?: string };
 type ExamOut = { name: string; justified: boolean; result_text: string; report: string; is_image: boolean; image_url: string | null };
 
