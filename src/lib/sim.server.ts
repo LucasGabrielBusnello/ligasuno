@@ -31,18 +31,26 @@ function apiKey() {
 type Msg = { role: "system" | "user" | "assistant"; content: any };
 
 function httpError(resp: Response, body: string): Error {
-  if (resp.status === 429) return new Error("Muitas requisições à IA agora. Aguarde alguns segundos e tente de novo.");
-  if (resp.status === 401 || resp.status === 403) return new Error("Chave de API inválida ou sem permissão para este modelo.");
-  if (resp.status === 402) return new Error("Os créditos de IA acabaram. Adicione créditos para continuar o treino.");
-  return new Error(`Falha na IA (${resp.status}): ${body.slice(0, 200)}`);
+  let e: Error;
+  if (resp.status === 429) e = new Error("Muitas requisições à IA agora. Aguarde alguns segundos e tente de novo.");
+  else if (resp.status === 401 || resp.status === 403) e = new Error("Chave de API inválida ou sem permissão para este modelo.");
+  else if (resp.status === 402) e = new Error("Os créditos de IA acabaram. Adicione créditos para continuar o treino.");
+  else e = new Error(`Falha na IA (${resp.status}): ${body.slice(0, 200)}`);
+  (e as any).status = resp.status;
+  return e;
 }
+
+export type CallOpts = { json?: boolean; maxTokens?: number; cacheSystem?: boolean };
 
 /** Chamada bruta ao modelo, escolhendo o provedor pelo prefixo do nome. */
 export async function callModel(
   model: string,
   messages: Msg[],
-  json = true,
+  json: boolean | CallOpts = true,
 ): Promise<{ text: string; usage: Usage | null; model: string }> {
+  const opts: CallOpts = typeof json === "boolean" ? { json } : json;
+  const wantJson = opts.json !== false;
+
   const geminiKey = process.env["GEMINI_API_KEY"];
   const anthropicKey = process.env["ANTHROPIC_API_KEY"];
 
