@@ -362,7 +362,7 @@ export async function theoryLesson(c: { diagnosis: string; area: string; level: 
     [
       {
         role: "system",
-        content: `Aja como um livro-texto de medicina. Escreva uma aula completa, formatada em Markdown, sobre a patologia principal deste caso. Inclua: Fisiopatologia, Epidemiologia, Quadro Clínico, Exames Padrão-Ouro e Tratamento. Português do Brasil, objetivo, com títulos e tópicos, adequado ao ${c.level}º ano da graduação.`,
+        content: `Aja como um livro-texto de medicina. Gere um resumo completo e estruturado em Markdown sobre esta patologia. Inclua: Definição, Fisiopatologia, Epidemiologia, Quadro Clínico e Fluxograma de Tratamento. Português do Brasil, objetivo, com títulos e tópicos, adequado ao ${c.level}º ano da graduação.`,
       },
       { role: "user", content: `Patologia: ${c.diagnosis} (área: ${c.area}).` },
     ],
