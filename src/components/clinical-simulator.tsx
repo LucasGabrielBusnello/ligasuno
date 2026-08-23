@@ -433,17 +433,19 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   };
 
   const [tab, setTab] = useState<"exame" | "exames" | "notas">("exame");
-  const [chat, setChat] = useState<ChatMsg[]>([]);
+  const [chat, setChat] = useState<ChatMsg[]>(() =>
+    (initial?.transcript ?? []).map((m: any) => ({ role: m.role === "user" ? "user" : "patient", content: String(m.content ?? "") }))
+  );
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [menu, setMenu] = useState<MenuItem[]>([]);
-  const [findings, setFindings] = useState<Finding[]>([]);
+  const [findings, setFindings] = useState<Finding[]>(initial?.physical_findings ?? []);
   const [examName, setExamName] = useState("");
-  const [exams, setExams] = useState<ExamOut[]>([]);
-  const [notes, setNotes] = useState("");
+  const [exams, setExams] = useState<ExamOut[]>(initial?.exam_requests ?? []);
+  const [notes, setNotes] = useState(initial?.anamnese ?? "");
   const [sounds, setSounds] = useState<any[]>([]);
   const [finishOpen, setFinishOpen] = useState(false);
-  const [hypothesis, setHypothesis] = useState("");
+  const [hypothesis, setHypothesis] = useState(initial?.hypothesis ?? "");
   const [grading, setGrading] = useState(false);
   const [review, setReview] = useState<any>(null);
   const [resultOpen, setResultOpen] = useState(false);
