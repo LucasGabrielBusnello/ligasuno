@@ -71,12 +71,21 @@ export function ClinicalSimulator() {
   const [level, setLevel] = useState<number>(1);
   const [area, setArea] = useState<string>("");
   const [starting, setStarting] = useState(false);
-  const [session, setSession] = useState<{ id: string; case: PublicCase } | null>(null);
+  const [session, setSession] = useState<{ id: string; case: PublicCase; resume?: SimResumeState } | null>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [resumingId, setResumingId] = useState<string | null>(null);
 
+  type SimResumeState = {
+    transcript: any[];
+    physical_findings: any[];
+    exam_requests: any[];
+    anamnese: string;
+    hypothesis: string;
+  };
 
   const start = useServerFn(startSimSession);
+  const resume = useServerFn(resumeSimSession);
   const listSessions = useServerFn(listMySimSessions);
 
   useEffect(() => {
