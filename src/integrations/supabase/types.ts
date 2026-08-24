@@ -4853,16 +4853,19 @@ export type Database = {
           anamnese: string | null
           area: string | null
           case_id: string
+          clarifications: Json
           created_at: string
           exam_requests: Json
           finished_at: string | null
           hypothesis: string | null
           id: string
           level: number | null
+          persona: Json
           physical_findings: Json
           review: Json | null
           score: number | null
           status: string
+          tokens_used: number
           transcript: Json
           updated_at: string
           user_id: string
@@ -4871,16 +4874,19 @@ export type Database = {
           anamnese?: string | null
           area?: string | null
           case_id: string
+          clarifications?: Json
           created_at?: string
           exam_requests?: Json
           finished_at?: string | null
           hypothesis?: string | null
           id?: string
           level?: number | null
+          persona?: Json
           physical_findings?: Json
           review?: Json | null
           score?: number | null
           status?: string
+          tokens_used?: number
           transcript?: Json
           updated_at?: string
           user_id: string
@@ -4889,16 +4895,19 @@ export type Database = {
           anamnese?: string | null
           area?: string | null
           case_id?: string
+          clarifications?: Json
           created_at?: string
           exam_requests?: Json
           finished_at?: string | null
           hypothesis?: string | null
           id?: string
           level?: number | null
+          persona?: Json
           physical_findings?: Json
           review?: Json | null
           score?: number | null
           status?: string
+          tokens_used?: number
           transcript?: Json
           updated_at?: string
           user_id?: string
@@ -4919,12 +4928,14 @@ export type Database = {
           chat_cost_in_brl_per_mtok: number
           chat_cost_out_brl_per_mtok: number
           chat_model: string
+          credits_per_case: number
           free_credits: number
           gateway_fee_pct: number
           grade_cost_in_brl_per_mtok: number
           grade_cost_out_brl_per_mtok: number
           grade_model: string
           id: boolean
+          max_tokens_per_case: number
           mp_access_token_enc: string | null
           openai_key_enc: string | null
           price_divisor: number
@@ -4936,12 +4947,14 @@ export type Database = {
           chat_cost_in_brl_per_mtok?: number
           chat_cost_out_brl_per_mtok?: number
           chat_model?: string
+          credits_per_case?: number
           free_credits?: number
           gateway_fee_pct?: number
           grade_cost_in_brl_per_mtok?: number
           grade_cost_out_brl_per_mtok?: number
           grade_model?: string
           id?: boolean
+          max_tokens_per_case?: number
           mp_access_token_enc?: string | null
           openai_key_enc?: string | null
           price_divisor?: number
@@ -4953,12 +4966,14 @@ export type Database = {
           chat_cost_in_brl_per_mtok?: number
           chat_cost_out_brl_per_mtok?: number
           chat_model?: string
+          credits_per_case?: number
           free_credits?: number
           gateway_fee_pct?: number
           grade_cost_in_brl_per_mtok?: number
           grade_cost_out_brl_per_mtok?: number
           grade_model?: string
           id?: boolean
+          max_tokens_per_case?: number
           mp_access_token_enc?: string | null
           openai_key_enc?: string | null
           price_divisor?: number
@@ -5344,6 +5359,10 @@ export type Database = {
           _description: string
           _user_id: string
         }
+        Returns: number
+      }
+      sim_add_session_tokens: {
+        Args: { _session_id: string; _tokens: number }
         Returns: number
       }
       sim_debit_credits: {
