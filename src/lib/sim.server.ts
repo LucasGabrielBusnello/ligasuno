@@ -387,17 +387,29 @@ export async function gradeSession(opts: {
   rules: string[];
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
-  const system = `Você é um avaliador acadêmico sênior, brilhante e empático, avaliando um aluno em um estudo de caso simulado. Avalie a transcrição da entrevista e a tomada de decisão do aluno. REGRA: NÃO explique a teoria do caso (outro sistema fará isso). Foque 100% no feedback de desempenho e estruture sua resposta neste formato Markdown:
+  const system = `Você é um avaliador acadêmico sênior, brilhante e empático, avaliando um aluno em um estudo de caso simulado. Avalie a transcrição da entrevista e a tomada de decisão do aluno. REGRA: NÃO explique a teoria do caso (outro sistema fará isso). Foque 100% no feedback de desempenho.
 
-**PARECER DO AVALIADOR** [Faça uma análise crítica, discursiva e humana do atendimento simulado. Aja como um mentor experiente conversando com o aluno. Avalie a linha de raciocínio, a comunicação e as hipóteses levantadas, justificando detalhadamente onde o aluno brilhou ou onde se perdeu.]
+FORMATO OBRIGATÓRIO (Markdown didático, fácil de bater o olho e entender):
+- Use exatamente os títulos abaixo como headings de nível 2 ("## TÍTULO"), sempre em linha própria.
+- Cada item de lista começa com "- " em uma linha própria (nunca cole vários itens na mesma linha).
+- Comece cada item com uma palavra-chave em negrito seguida de dois-pontos, depois a explicação curta (1 a 2 frases).
+- Não use colchetes, não repita o enunciado do formato, não escreva parágrafos com mais de 4 linhas.
 
-**ACERTOS NA CONDUTA** * [Liste em bullet points as perguntas e ações corretas]
+## PARECER DO AVALIADOR
+Análise crítica, discursiva e humana do atendimento, como um mentor conversando com o aluno (2 a 4 parágrafos curtos).
 
-**PONTOS DE ATENÇÃO (O QUE FALTOU)** * [Liste em bullet points as omissões críticas na investigação ou erros de tomada de decisão]
+## ACERTOS NA CONDUTA
+- **Palavra-chave:** o que o aluno fez bem.
 
-**AÇÕES DESNECESSÁRIAS** * [Liste se o aluno solicitou algo inútil para o contexto. Se não, escreva 'Nenhuma ação desnecessária solicitada.']
+## PONTOS DE ATENÇÃO
+- **Palavra-chave:** o que faltou ou saiu errado, e por que importa.
 
-**DICA DE OURO** * [Forneça uma dica prática e direta de raciocínio para o aluno levar para a vida real]`;
+## AÇÕES DESNECESSÁRIAS
+- **Palavra-chave:** o que foi pedido sem necessidade. Se não houve, escreva apenas: Nenhuma ação desnecessária solicitada.
+
+## DICA DE OURO
+- **Palavra-chave:** uma dica prática de raciocínio para levar à vida real.`;
+
 
   const payload = [
     `CASO: ${c.title} | área ${c.area} | nível ${c.level}º ano`,
@@ -453,12 +465,33 @@ export async function theoryLesson(c: { diagnosis: string; area: string; level: 
     [
       {
         role: "system",
-        content: `Aja como um livro-texto de medicina. Gere um resumo completo e estruturado em Markdown sobre esta patologia. Inclua: Definição, Fisiopatologia, Epidemiologia, Quadro Clínico e Fluxograma de Tratamento. Português do Brasil, objetivo, com títulos e tópicos, adequado ao ${c.level}º ano da graduação.`,
+        content: `Aja como um livro-texto de medicina resumindo a patologia para um aluno do ${c.level}º ano da graduação. Português do Brasil, objetivo e didático.
+
+FORMATO OBRIGATÓRIO em Markdown, com estes headings de nível 2 em linha própria, nesta ordem:
+## RESUMO RÁPIDO
+3 a 5 bullets com o essencial da doença (o que é, a quem acomete, sinal-chave, exame-chave, tratamento-chave).
+## DEFINIÇÃO E FISIOPATOLOGIA
+Parágrafos curtos explicando o mecanismo de forma simples.
+## EPIDEMIOLOGIA E INCIDÊNCIA
+Bullets com incidência/prevalência, faixa etária, sexo predominante e fatores de risco (use números aproximados quando existirem).
+## QUADRO CLÍNICO
+Bullets de sintomas e sinais, separando típicos de atípicos e sinais de gravidade.
+## DIAGNÓSTICO E EXAMES
+Bullets: exame padrão-ouro, exames iniciais, achados esperados e critérios diagnósticos.
+## DIAGNÓSTICOS DIFERENCIAIS
+Bullets curtos: nome do diferencial em negrito + como diferenciar.
+## TRATAMENTO
+Bullets separando medidas iniciais/suporte, tratamento específico (com classes de fármacos e doses usuais quando pertinente) e seguimento.
+## PONTOS DE PROVA
+3 a 5 bullets com pegadinhas e fatos mais cobrados.
+
+REGRAS: cada bullet começa com "- " em linha própria e inicia com uma palavra-chave em **negrito** seguida de dois-pontos. Frases curtas. Sem colchetes, sem repetir o enunciado do formato.`,
       },
       { role: "user", content: `Patologia: ${c.diagnosis} (área: ${c.area}).` },
     ],
-    { json: false, maxTokens: 2500 },
+    { json: false, maxTokens: 3000 },
   );
+
   return { aula: String(res.text ?? "").trim(), usage: res.usage, model: res.model };
 }
 
