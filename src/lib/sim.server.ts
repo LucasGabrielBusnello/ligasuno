@@ -380,6 +380,15 @@ async function callAnthropicPreceptor(system: string, userContent: string): Prom
  * CHAMADA A — Preceptor clínico (Anthropic, com fallback automático no Gemini Flash).
  * Só avalia a atuação do aluno; a teoria da doença é da CHAMADA B.
  */
+const LEVEL_RIGOR: Record<number, string> = {
+  1: "1º ano: cobre acolhimento, apresentação, identificação e a estrutura básica da queixa (início, duração, localização, fatores de melhora/piora). Não cobre conduta terapêutica nem exames avançados.",
+  2: "2º ano: cobre anamnese completa e semiologia básica bem executada. Espere hipóteses sindrômicas simples, não diagnósticos finos.",
+  3: "3º ano: cobre raciocínio sindrômico consistente, exame físico dirigido e escolha racional de exames iniciais.",
+  4: "4º ano: cobre diagnóstico diferencial estruturado, interpretação de exames e conduta inicial adequada.",
+  5: "5º ano: cobre conduta completa, priorização, critérios de gravidade/internação e seguimento. Rigor alto.",
+  6: "6º ano: nível de internato/prova de residência. Rigor máximo: manejo completo, doses, tempo-resposta, critérios de alta e encaminhamento.",
+};
+
 export async function gradeSession(opts: {
   c: SimCase;
   transcript: any[];
@@ -388,9 +397,21 @@ export async function gradeSession(opts: {
   anamnese: string;
   hypothesis: string;
   rules: string[];
+  studentName?: string | null;
+  clarifications?: { question: string; answer: string }[];
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
+  const student = (opts.studentName ?? "").trim();
+  const level = Number(c.level ?? 3);
   const system = `Você é um avaliador acadêmico sênior, brilhante e empático, avaliando um aluno em um estudo de caso simulado. Avalie a transcrição da entrevista e a tomada de decisão do aluno. REGRA: NÃO explique a teoria do caso (outro sistema fará isso). Foque 100% no feedback de desempenho.
+
+IDENTIDADE DO ALUNO: ${student ? `chame o aluno de "${student}". NUNCA invente outro nome.` : "não use nenhum nome próprio; trate por 'você'. NUNCA invente um nome."}
+
+REGRA INQUEBRÁVEL — A CLÍNICA É SOBERANA: exame complementar não manda na clínica. Se o aluno construiu uma suspeita clínica bem fundamentada e depois a abandonou apenas porque um exame complementar veio negativo/normal (falso negativo), isso é ERRO GRAVE e deve ser apontado e penalizado. Da mesma forma, valorize o aluno que mantém a conduta correta apesar de um exame discordante.
+
+ESCALONAMENTO POR ANO — ${LEVEL_RIGOR[level] ?? LEVEL_RIGOR[3]}
+Nunca cobre competências acima do ano do aluno.
+${rules.length ? `\nREGRAS DA INSTITUIÇÃO:\n- ${rules.join("\n- ")}` : ""}
 
 FORMATO OBRIGATÓRIO (Markdown didático, fácil de bater o olho e entender):
 - Use exatamente os títulos abaixo como headings de nível 2 ("## TÍTULO"), sempre em linha própria.
@@ -411,8 +432,13 @@ Análise crítica, discursiva e humana do atendimento, como um mentor conversand
 - **Palavra-chave:** o que foi pedido sem necessidade. Se não houve, escreva apenas: Nenhuma ação desnecessária solicitada.
 
 ## DICA DE OURO
-- **Palavra-chave:** uma dica prática de raciocínio para levar à vida real.`;
+- **Palavra-chave:** uma dica prática de raciocínio para levar à vida real.
 
+Depois do Markdown, escreva EXATAMENTE estes dois blocos finais:
+<<<NOTA>>> um número inteiro de 0 a 100 com o desempenho global.
+<<<ESCLARECIMENTOS>>> até 2 perguntas, uma por linha começando com "- ", pedindo ao aluno que explique o raciocínio de condutas que você NÃO entendeu. Se tudo ficou claro, escreva apenas "nenhum".`;
+
+  const clar = (opts.clarifications ?? []).filter((x) => x.answer?.trim());
 
   const payload = [
     `CASO: ${c.title} | área ${c.area} | nível ${c.level}º ano`,
@@ -424,7 +450,12 @@ Análise crítica, discursiva e humana do atendimento, como um mentor conversand
     `EXAMES SOLICITADOS: ${(exams ?? []).map((e: any) => `${e.name}${e.justified ? "" : " (supérfluo)"}`).join(", ") || "nenhum"}`,
     `ANAMNESE ESCRITA: ${anamnese || "-"}`,
     `HIPÓTESE DIAGNÓSTICA DO ALUNO: ${hypothesis}`,
-  ].join("\n\n");
+    clar.length
+      ? `ESCLARECIMENTOS JÁ DADOS PELO ALUNO (considere antes de penalizar):\n${clar.map((x) => `P: ${x.question}\nR: ${x.answer}`).join("\n")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   const fallbackMessages: Msg[] = [
     { role: "system", content: system },
@@ -439,25 +470,48 @@ Análise crítica, discursiva e humana do atendimento, como um mentor conversand
     res = await callModel(FLASH_MODEL, fallbackMessages, { json: false, maxTokens: 4096 });
   }
 
-  const raw = String(res.text ?? "").trim();
+  let raw = String(res.text ?? "").trim();
   const out = parseJson(raw);
 
-  // O novo prompt retorna Markdown livre. Se não houver campos estruturados,
-  // guardamos o texto completo em parecer_md e mantemos os demais campos vazios.
+  // Extrai os blocos finais e limpa o Markdown mostrado ao aluno.
+  const notaMatch = raw.match(/<<<NOTA>>>\s*(\d{1,3})/i);
+  const esclMatch = raw.match(/<<<ESCLARECIMENTOS>>>([\s\S]*)$/i);
+  const perguntas = (esclMatch?.[1] ?? "")
+    .split("\n")
+    .map((l) => l.replace(/^[-*•]\s*/, "").trim())
+    .filter((l) => l.length > 8 && !/^nenhum/i.test(l))
+    .slice(0, 2);
+  raw = raw.replace(/<<<NOTA>>>[\s\S]*$/i, "").trim();
+
+  const section = (title: RegExp) => {
+    const m = raw.match(new RegExp(`##\\s*${title.source}[^\\n]*\\n([\\s\\S]*?)(?=\\n##\\s|$)`, "i"));
+    return (m?.[1] ?? "")
+      .split("\n")
+      .map((l) => l.replace(/^[-*•]\s*/, "").trim())
+      .filter((l) => l.length > 3);
+  };
+
   const hasStructured = out.score != null || out.veredito || out.comentario || out.parecer_md;
   const arr = (v: any) => (Array.isArray(v) ? v.map(String) : []);
+  const score = notaMatch
+    ? Math.max(0, Math.min(100, Number(notaMatch[1])))
+    : hasStructured
+      ? Math.max(0, Math.min(100, Number(out.score ?? 0)))
+      : 0;
   return {
-    score: hasStructured ? Math.max(0, Math.min(100, Number(out.score ?? 0))) : 0,
-    veredito: String(out.veredito ?? ""),
-    acertos: arr(out.acertos),
-    faltou: arr(out.faltou),
-    exames_desnecessarios: arr(out.exames_desnecessarios),
-    melhorias: arr(out.melhorias),
+    score,
+    veredito: String(out.veredito ?? (score >= 70 ? "Bom atendimento" : score > 0 ? "Precisa evoluir" : "")),
+    acertos: hasStructured ? arr(out.acertos) : section(/ACERTOS/),
+    faltou: hasStructured ? arr(out.faltou) : section(/PONTOS DE ATEN|O QUE FALTOU/),
+    exames_desnecessarios: hasStructured ? arr(out.exames_desnecessarios) : section(/AÇÕES DESNECESS|ACOES DESNECESS/),
+    melhorias: hasStructured ? arr(out.melhorias) : section(/DICA DE OURO/),
     diagnostico_correto: String(out.diagnostico_correto ?? c.diagnosis),
     comentario: String(out.comentario ?? ""),
     parecer_md: hasStructured ? String(out.parecer_md ?? "") : raw,
+    perguntas_esclarecimento: perguntas,
     usage: res.usage,
     model: res.model,
+
   };
 }
 
