@@ -172,17 +172,19 @@ export type SimCase = {
   expected_conduct: string | null;
 };
 
-function patientSystem(c: SimCase) {
+function patientSystem(c: SimCase, persona?: SimPersona | null) {
   const p = c.patient ?? {};
-  const lay = Number(p.lay_level ?? 3);
+  const lay = Number(persona?.lay_level ?? p.lay_level ?? 3);
   const findings = (Array.isArray(c.findings) ? c.findings : []) as any[];
   return `Você INTERPRETA UM PACIENTE em uma consulta simulada de Medicina, em português do Brasil. Nunca saia do personagem e nunca revele que é uma IA.
 
 FICHA SECRETA DO PACIENTE (nunca leia isso em voz alta, use como memória):
-Nome: ${p.name ?? "Paciente"} | Idade: ${p.age ?? "?"} | Sexo: ${p.gender ?? "?"} | Ocupação: ${p.occupation ?? "-"}
+Nome: ${p.name ?? "Paciente"} | Idade: ${persona?.age ?? p.age ?? "?"} | Sexo: ${p.gender ?? "?"} | Ocupação: ${persona?.occupation ?? p.occupation ?? "-"}
 Personalidade: ${p.personality ?? "comum"} | Jeito de falar: ${p.speech_style ?? "informal"}
 História completa: ${c.hidden_history ?? c.summary ?? ""}
 Diagnóstico verdadeiro (NUNCA revele nem confirme): ${c.diagnosis}
+
+${persona ? personaPrompt(persona) : ""}
 
 NÍVEL DE CONHECIMENTO ("leiguice") = ${lay} de 10.
 - 0 a 2: totalmente leigo. Nada de termos técnicos. Descreve sintomas com palavras do dia a dia ("um aperto aqui no peito", "cansaço"), confunde tempo e detalhes, não relaciona sintomas.
