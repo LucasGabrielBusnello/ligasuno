@@ -108,8 +108,42 @@ export async function assertCredits(userId: string) {
 }
 
 /**
- * Registra o uso de tokens e debita os créditos correspondentes
- * (1 crédito = tokens_per_credit tokens, fração inclusa).
+ * Cobra 1 crédito (credits_per_case) pelo caso clínico iniciado.
+ * A partir daqui o aluno usa o caso à vontade até o teto de tokens.
+ */
+export async function chargeCaseStart(userId: string, sessionId: string): Promise<number> {
+  const s = await loadSimSettings();
+  const credits = Number(s.credits_per_case ?? 1);
+  await ensureBalance(userId);
+  if (credits <= 0) return await ensureBalance(userId);
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: balance } = await supabaseAdmin.rpc("sim_debit_credits", {
+    _user_id: userId,
+    _session_id: sessionId,
+    _credits: credits,
+    _tokens: 0,
+    _cost: 0,
+    _description: "Caso clínico iniciado",
+  });
+  return Number(balance ?? 0);
+}
+
+export const TIMEOUT_MESSAGE =
+  "O tempo de consulta esgotou. O Preceptor precisou assumir a consulta devido à demora no atendimento. Dê sua hipótese diagnóstica para receber o parecer do preceptor.";
+
+/** Estado do teto de tokens de uma sessão (timeout de segurança). */
+export async function sessionTokenState(sessionId: string): Promise<{ tokens: number; cap: number; capReached: boolean }> {
+  const s = await loadSimSettings();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin.from("sim_sessions").select("tokens_used").eq("id", sessionId).maybeSingle();
+  const tokens = Number((data as any)?.tokens_used ?? 0);
+  return { tokens, cap: s.max_tokens_per_case, capReached: tokens >= s.max_tokens_per_case };
+}
+
+/**
+ * Registra o uso de tokens para o painel financeiro e acumula o consumo da
+ * sessão. Os créditos NÃO são debitados por token: 1 crédito = 1 caso clínico.
+ * Retorna capReached=true quando a sessão bateu o teto de segurança.
  */
 export async function recordUsage(args: {
   userId: string;
@@ -118,15 +152,19 @@ export async function recordUsage(args: {
   model: string;
   usage: Usage | null;
   tier: Tier;
-}): Promise<{ credits: number; balance: number; cost: number; tokens: number }> {
-  const u = args.usage;
-  if (!u || !u.total_tokens) return { credits: 0, balance: await ensureBalance(args.userId), cost: 0, tokens: 0 };
+}): Promise<{ credits: number; balance: number; cost: number; tokens: number; sessionTokens: number; cap: number; capReached: boolean }> {
   const s = await loadSimSettings();
+  const cap = s.max_tokens_per_case;
+  const u = args.usage;
+  if (!u || !u.total_tokens) {
+    const st = args.sessionId ? await sessionTokenState(args.sessionId) : { tokens: 0, cap, capReached: false };
+    return { credits: 0, balance: await ensureBalance(args.userId), cost: 0, tokens: 0, sessionTokens: st.tokens, cap, capReached: st.capReached };
+  }
   const cost = costOfUsage(u, args.tier, s);
   const credits = u.total_tokens / (s.tokens_per_credit || 1000);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await ensureBalance(args.userId);
+  const balance = await ensureBalance(args.userId);
   await supabaseAdmin.from("sim_usage_events").insert({
     session_id: args.sessionId ?? null,
     user_id: args.userId,
@@ -138,13 +176,24 @@ export async function recordUsage(args: {
     cost_brl: Number(cost.toFixed(6)),
     credits: Number(credits.toFixed(4)),
   });
-  const { data: balance } = await supabaseAdmin.rpc("sim_debit_credits", {
-    _user_id: args.userId,
-    _session_id: (args.sessionId ?? null) as string,
-    _credits: Number(credits.toFixed(4)),
-    _tokens: u.total_tokens,
-    _cost: Number(cost.toFixed(6)),
-    _description: args.phase,
-  });
-  return { credits, balance: Number(balance ?? 0), cost, tokens: u.total_tokens };
+
+  let sessionTokens = 0;
+  if (args.sessionId) {
+    const { data: total } = await supabaseAdmin.rpc("sim_add_session_tokens", {
+      _session_id: args.sessionId,
+      _tokens: u.total_tokens,
+    });
+    sessionTokens = Number(total ?? 0);
+  }
+
+  return {
+    credits,
+    balance,
+    cost,
+    tokens: u.total_tokens,
+    sessionTokens,
+    cap,
+    capReached: !!args.sessionId && sessionTokens >= cap,
+  };
 }
+
