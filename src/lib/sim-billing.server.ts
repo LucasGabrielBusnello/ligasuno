@@ -55,8 +55,11 @@ export async function loadSimSettings(): Promise<SimSettings> {
     gateway_fee_pct: Number(d.gateway_fee_pct ?? DEFAULTS.gateway_fee_pct),
     price_divisor: Number(d.price_divisor ?? DEFAULTS.price_divisor) || 0.47,
     free_credits: Number(d.free_credits ?? DEFAULTS.free_credits),
+    max_tokens_per_case: Number(d.max_tokens_per_case ?? DEFAULTS.max_tokens_per_case) || DEFAULTS.max_tokens_per_case,
+    credits_per_case: Number(d.credits_per_case ?? DEFAULTS.credits_per_case),
   };
 }
+
 
 /** Custo bruto pago à API (R$) para um uso de tokens. */
 export function costOfUsage(u: Usage, tier: Tier, s: SimSettings): number {
