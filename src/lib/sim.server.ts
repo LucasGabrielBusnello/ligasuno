@@ -9,6 +9,7 @@
 import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
 import { imageForExam } from "./sim-exam-images";
 import { catalogItem, detectExamKeys } from "./sim-exam-catalog";
+import { personaPrompt, type SimPersona } from "./sim-persona";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
@@ -250,14 +251,14 @@ export async function resolveFindings(c: SimCase, keys: string[]) {
   return { findings: [...known, ...gen.findings], usage: gen.usage, model: gen.model };
 }
 
-export async function patientTurn(c: SimCase, transcript: any[], userMessage: string) {
+export async function patientTurn(c: SimCase, transcript: any[], userMessage: string, persona?: SimPersona | null) {
   const history: Msg[] = (transcript ?? [])
     .filter((m: any) => m.role === "user" || m.role === "patient")
     .slice(-24)
     .map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: String(m.content ?? "") }));
 
   const res = await chat([
-    { role: "system", content: patientSystem(c) },
+    { role: "system", content: patientSystem(c, persona) },
     ...history,
     { role: "user", content: userMessage },
   ]);
