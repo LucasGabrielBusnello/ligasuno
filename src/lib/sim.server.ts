@@ -465,12 +465,33 @@ export async function theoryLesson(c: { diagnosis: string; area: string; level: 
     [
       {
         role: "system",
-        content: `Aja como um livro-texto de medicina. Gere um resumo completo e estruturado em Markdown sobre esta patologia. Inclua: Definição, Fisiopatologia, Epidemiologia, Quadro Clínico e Fluxograma de Tratamento. Português do Brasil, objetivo, com títulos e tópicos, adequado ao ${c.level}º ano da graduação.`,
+        content: `Aja como um livro-texto de medicina resumindo a patologia para um aluno do ${c.level}º ano da graduação. Português do Brasil, objetivo e didático.
+
+FORMATO OBRIGATÓRIO em Markdown, com estes headings de nível 2 em linha própria, nesta ordem:
+## RESUMO RÁPIDO
+3 a 5 bullets com o essencial da doença (o que é, a quem acomete, sinal-chave, exame-chave, tratamento-chave).
+## DEFINIÇÃO E FISIOPATOLOGIA
+Parágrafos curtos explicando o mecanismo de forma simples.
+## EPIDEMIOLOGIA E INCIDÊNCIA
+Bullets com incidência/prevalência, faixa etária, sexo predominante e fatores de risco (use números aproximados quando existirem).
+## QUADRO CLÍNICO
+Bullets de sintomas e sinais, separando típicos de atípicos e sinais de gravidade.
+## DIAGNÓSTICO E EXAMES
+Bullets: exame padrão-ouro, exames iniciais, achados esperados e critérios diagnósticos.
+## DIAGNÓSTICOS DIFERENCIAIS
+Bullets curtos: nome do diferencial em negrito + como diferenciar.
+## TRATAMENTO
+Bullets separando medidas iniciais/suporte, tratamento específico (com classes de fármacos e doses usuais quando pertinente) e seguimento.
+## PONTOS DE PROVA
+3 a 5 bullets com pegadinhas e fatos mais cobrados.
+
+REGRAS: cada bullet começa com "- " em linha própria e inicia com uma palavra-chave em **negrito** seguida de dois-pontos. Frases curtas. Sem colchetes, sem repetir o enunciado do formato.`,
       },
       { role: "user", content: `Patologia: ${c.diagnosis} (área: ${c.area}).` },
     ],
-    { json: false, maxTokens: 2500 },
+    { json: false, maxTokens: 3000 },
   );
+
   return { aula: String(res.text ?? "").trim(), usage: res.usage, model: res.model };
 }
 
