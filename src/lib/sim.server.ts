@@ -387,7 +387,9 @@ const LEVEL_RIGOR: Record<number, string> = {
   4: "4º ano: cobre diagnóstico diferencial estruturado, interpretação de exames e conduta inicial adequada.",
   5: "5º ano: cobre conduta completa, priorização, critérios de gravidade/internação e seguimento. Rigor alto.",
   6: "6º ano: nível de internato/prova de residência. Rigor máximo: manejo completo, doses, tempo-resposta, critérios de alta e encaminhamento.",
+  7: "PRÉ-RESIDÊNCIA: nível mais exigente de todos. Cobre raciocínio de especialista: apresentações atípicas, doenças que se sobrepõem, interpretação fina de exames, critérios diagnósticos formais com escores, manejo intensivo com doses e tempo-resposta, e justificativa de cada decisão por diretriz. Penalize raciocínio superficial, conduta genérica e qualquer omissão de red flag.",
 };
+
 
 export async function gradeSession(opts: {
   c: SimCase;
