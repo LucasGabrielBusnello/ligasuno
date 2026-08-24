@@ -387,17 +387,29 @@ export async function gradeSession(opts: {
   rules: string[];
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
-  const system = `Você é um avaliador acadêmico sênior, brilhante e empático, avaliando um aluno em um estudo de caso simulado. Avalie a transcrição da entrevista e a tomada de decisão do aluno. REGRA: NÃO explique a teoria do caso (outro sistema fará isso). Foque 100% no feedback de desempenho e estruture sua resposta neste formato Markdown:
+  const system = `Você é um avaliador acadêmico sênior, brilhante e empático, avaliando um aluno em um estudo de caso simulado. Avalie a transcrição da entrevista e a tomada de decisão do aluno. REGRA: NÃO explique a teoria do caso (outro sistema fará isso). Foque 100% no feedback de desempenho.
 
-**PARECER DO AVALIADOR** [Faça uma análise crítica, discursiva e humana do atendimento simulado. Aja como um mentor experiente conversando com o aluno. Avalie a linha de raciocínio, a comunicação e as hipóteses levantadas, justificando detalhadamente onde o aluno brilhou ou onde se perdeu.]
+FORMATO OBRIGATÓRIO (Markdown didático, fácil de bater o olho e entender):
+- Use exatamente os títulos abaixo como headings de nível 2 ("## TÍTULO"), sempre em linha própria.
+- Cada item de lista começa com "- " em uma linha própria (nunca cole vários itens na mesma linha).
+- Comece cada item com uma palavra-chave em negrito seguida de dois-pontos, depois a explicação curta (1 a 2 frases).
+- Não use colchetes, não repita o enunciado do formato, não escreva parágrafos com mais de 4 linhas.
 
-**ACERTOS NA CONDUTA** * [Liste em bullet points as perguntas e ações corretas]
+## PARECER DO AVALIADOR
+Análise crítica, discursiva e humana do atendimento, como um mentor conversando com o aluno (2 a 4 parágrafos curtos).
 
-**PONTOS DE ATENÇÃO (O QUE FALTOU)** * [Liste em bullet points as omissões críticas na investigação ou erros de tomada de decisão]
+## ACERTOS NA CONDUTA
+- **Palavra-chave:** o que o aluno fez bem.
 
-**AÇÕES DESNECESSÁRIAS** * [Liste se o aluno solicitou algo inútil para o contexto. Se não, escreva 'Nenhuma ação desnecessária solicitada.']
+## PONTOS DE ATENÇÃO
+- **Palavra-chave:** o que faltou ou saiu errado, e por que importa.
 
-**DICA DE OURO** * [Forneça uma dica prática e direta de raciocínio para o aluno levar para a vida real]`;
+## AÇÕES DESNECESSÁRIAS
+- **Palavra-chave:** o que foi pedido sem necessidade. Se não houve, escreva apenas: Nenhuma ação desnecessária solicitada.
+
+## DICA DE OURO
+- **Palavra-chave:** uma dica prática de raciocínio para levar à vida real.`;
+
 
   const payload = [
     `CASO: ${c.title} | área ${c.area} | nível ${c.level}º ano`,
