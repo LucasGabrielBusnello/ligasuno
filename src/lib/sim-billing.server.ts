@@ -17,6 +17,10 @@ export type SimSettings = {
   gateway_fee_pct: number;
   price_divisor: number;
   free_credits: number;
+  /** Teto de consumo por caso clínico (timeout de segurança). */
+  max_tokens_per_case: number;
+  /** 1 crédito = 1 caso clínico iniciado. */
+  credits_per_case: number;
 };
 
 const DEFAULTS: SimSettings = {
@@ -30,7 +34,10 @@ const DEFAULTS: SimSettings = {
   gateway_fee_pct: 3,
   price_divisor: 0.47,
   free_credits: 20,
+  max_tokens_per_case: 300_000,
+  credits_per_case: 1,
 };
+
 
 export async function loadSimSettings(): Promise<SimSettings> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
