@@ -46,7 +46,48 @@ import {
   getSimSessionDetail,
   simPreceptorHint,
   regenerateSimReview,
+  answerSimClarifications,
 } from "@/lib/sim.functions";
+
+/** Card grande de notas do parecer: verde para acertos, vermelho suave para atenção. */
+function ListCard({
+  title,
+  items,
+  icon,
+  tone,
+}: {
+  title: string;
+  items?: string[] | null;
+  icon?: React.ReactNode;
+  tone?: "good" | "bad";
+}) {
+  const list = (items ?? []).filter(Boolean);
+  if (!list.length) return null;
+  const cls =
+    tone === "good"
+      ? "bg-emerald-500/10 ring-emerald-500/35"
+      : tone === "bad"
+        ? "bg-red-500/10 ring-red-500/30"
+        : "bg-card ring-border";
+  return (
+    <Card className={`ring-1 ${cls}`}>
+      <CardContent className="p-5 space-y-2">
+        <h4 className="font-black text-sm uppercase tracking-wide flex items-center gap-2">
+          {icon}
+          {title}
+        </h4>
+        <ul className="space-y-1.5">
+          {list.map((it, i) => (
+            <li key={i} className="text-sm text-foreground/90 flex gap-2">
+              <span className="text-primary">•</span>
+              <span>{it}</span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
 
 /** Normaliza o Markdown vindo da IA para ficar legível (títulos e listas em linhas próprias). */
 function normalizeMd(text: string) {
