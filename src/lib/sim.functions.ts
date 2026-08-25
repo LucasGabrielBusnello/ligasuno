@@ -81,6 +81,8 @@ export const resumeSimSession = createServerFn({ method: "POST" })
     if (!s || (s as any).user_id !== context.userId) throw new Error("Sessão não encontrada.");
     const row: any = s;
     if (row.status !== "active") throw new Error("Esta sessão de treino já foi encerrada.");
+    const { sessionTokenState } = await import("./sim-billing.server");
+    const cap = await sessionTokenState(row.id);
     return {
       sessionId: row.id as string,
       case: publicCase(row.sim_cases),
@@ -89,8 +91,10 @@ export const resumeSimSession = createServerFn({ method: "POST" })
       exam_requests: (row.exam_requests ?? []) as any[],
       anamnese: row.anamnese ?? "",
       hypothesis: row.hypothesis ?? "",
+      capReached: cap.capReached,
     };
   });
+
 
 export const saveSimNotes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
