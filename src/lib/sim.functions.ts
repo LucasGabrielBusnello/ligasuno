@@ -153,7 +153,13 @@ export const simSay = createServerFn({ method: "POST" })
     }
 
     const { patientTurn } = await import("./sim.server");
-    const out = await patientTurn(sim, session.transcript ?? [], data.message, session.persona ?? null);
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name, username")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const studentName = ((prof as any)?.full_name || (prof as any)?.username || "").trim().split(/\s+/)[0] ?? "";
+    const out = await patientTurn(sim, session.transcript ?? [], data.message, session.persona ?? null, studentName);
     const billing = await recordUsage({
       userId: context.userId,
       sessionId: session.id,
