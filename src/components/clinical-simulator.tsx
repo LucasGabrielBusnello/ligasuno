@@ -1126,17 +1126,23 @@ export function ResumoFixacao({ resumo }: { resumo?: any }) {
   );
 }
 
-function ListCard({ title, items, icon }: { title: string; items?: string[]; icon: React.ReactNode }) {
-
+function ListCard({ title, items, icon, tone = "neutral" }: { title: string; items?: string[]; icon: React.ReactNode; tone?: "neutral" | "good" | "bad" }) {
   if (!items?.length) return null;
+  const cls =
+    tone === "good"
+      ? "ring-1 ring-emerald-500/40 bg-emerald-500/10"
+      : tone === "bad"
+        ? "ring-1 ring-red-500/35 bg-red-500/10"
+        : "";
   return (
-    <Card>
-      <CardContent className="p-4 space-y-2">
-        <div className="text-xs font-black uppercase flex items-center gap-2">{icon} {title}</div>
-        <ul className="space-y-1 text-sm list-disc pl-4">
+    <Card className={cls}>
+      <CardContent className="p-5 space-y-3">
+        <div className="text-sm font-black uppercase flex items-center gap-2 tracking-wide">{icon} {title}</div>
+        <ul className="space-y-2 text-sm leading-relaxed list-disc pl-4">
           {items.map((i, k) => <li key={k}>{i}</li>)}
         </ul>
       </CardContent>
     </Card>
   );
 }
+
