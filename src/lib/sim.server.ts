@@ -580,7 +580,7 @@ export async function transcribeAudio(base64: string, format: string) {
 export function levelGuidance(level: number): string {
   switch (Number(level)) {
     case 1:
-      return `1º ANO — semiologia inicial. SOMENTE quadros simples e muito prevalentes, com sinais clínicos clássicos e diretos (resfriado/IVAS, faringoamigdalite, gastroenterite aguda, cefaleia tensional, lombalgia mecânica, ITU não complicada, celulite/ferida simples, asma leve, anemia ferropriva, dor abdominal inespecífica, hipertensão recém-descoberta assintomática, entorse). PROIBIDO: doenças raras, síndromes complexas, terapia intensiva, casos com múltiplas comorbidades ou diagnóstico por exclusão. Exames complementares básicos (hemograma, EAS, glicemia, radiografia simples). Foco em anamnese bem feita e exame físico básico.`;
+      return `1º ANO — semiologia inicial. SOMENTE consultas simples e muito prevalentes, na maioria em UBS/ambulatório: renovação de receita de uso contínuo, controle de pressão alta já conhecida (sem aprofundar em esquemas medicamentosos), cefaleia tensional simples, resfriado/IVAS, faringoamigdalite, gastroenterite aguda, lombalgia mecânica, ITU não complicada, ferida simples, anemia ferropriva, entorse. PROIBIDO: doenças raras, síndromes complexas, emergência grave, terapia intensiva, múltiplas comorbidades ou diagnóstico por exclusão. Exames complementares básicos (hemograma, EAS, glicemia, radiografia simples). Foco em acolhimento, anamnese bem feita e exame físico básico.`;
     case 2:
       return `2º ANO — mesmos casos simples do 1º ano, podendo incluir quadros que exijam algum raciocínio clínico e exame físico um pouco mais específico: HAS e suas repercussões, diabetes mellitus e descompensações simples, IAM, AVC, insuficiência cardíaca, DPOC, pneumonia, TEP/TEV, hipertensão pulmonar, síndromes genéticas simples (Down, Turner, Marfan), lesões corporais/traumas não complexos, dislipidemia, hipo/hipertireoidismo. Ainda sem casos raros ou de alta complexidade em UTI.`;
     case 3:
@@ -589,10 +589,52 @@ export function levelGuidance(level: number): string {
       return `4º ANO — casos de complexidade moderada a alta, incluindo emergências, doenças sistêmicas (reumatológicas, hematológicas, infecciosas), interpretação avançada de exames e decisões de conduta.`;
     case 5:
       return `5º ANO — internato: casos complexos, pacientes com múltiplas comorbidades, apresentações atípicas, urgência/emergência e definição completa de conduta e seguimento.`;
+    case 7:
+      return `PRÉ-RESIDÊNCIA — nível MAIS DIFÍCIL do simulador, acima do 6º ano. Pacientes complexos e casos difíceis: apresentações atípicas ou frustras de doenças graves, comorbidades múltiplas interagindo entre si, doenças de média raridade que caem em prova de residência, sobreposição de síndromes, dados conflitantes (exame complementar falso-negativo, laboratório discordante da clínica), pacientes poliqueixosos ou pouco confiáveis. Exija critérios diagnósticos formais com escores, interpretação fina de exames, manejo intensivo com doses e tempo-resposta, e decisões justificadas por diretriz.`;
     default:
       return `6º ANO — nível de internato final/prova de residência: casos complexos e atípicos, diagnóstico diferencial exigente, manejo completo incluindo terapia intensiva, critérios diagnósticos formais e condutas baseadas em diretrizes.`;
   }
 }
+
+/**
+ * Loop de esclarecimento de conduta — roda no modelo RÁPIDO/BARATO (Gemini Flash),
+ * nunca no modelo avançado do preceptor.
+ */
+export async function evaluateClarifications(opts: {
+  c: SimCase;
+  items: { question: string; answer: string }[];
+}) {
+  const items = opts.items.filter((i) => i.answer?.trim());
+  if (!items.length) return { veredictos: [] as any[], usage: null as Usage | null, model: "local" };
+  const res = await callModel(
+    FLASH_MODEL,
+    [
+      {
+        role: "system",
+        content: `Você é um preceptor avaliando as JUSTIFICATIVAS que um aluno deu para condutas que não ficaram claras em uma estação clínica simulada, em português do Brasil.
+Caso (confidencial): ${opts.c.title} — diagnóstico verdadeiro: ${opts.c.diagnosis}. Conduta esperada: ${opts.c.expected_conduct ?? "-"}.
+
+Para cada par pergunta/resposta, decida:
+- aceita=true quando o raciocínio do aluno é clinicamente defensável (mesmo que não seja o ideal);
+- aceita=false quando a justificativa não sustenta a conduta.
+Escreva um comentário curto (1 frase) explicando a decisão. Lembre-se: A CLÍNICA É SOBERANA — não aceite justificativa que abandone uma suspeita clínica bem fundamentada só por um exame complementar negativo.
+
+Responda em JSON: {"veredictos":[{"pergunta":"","aceita":true,"comentario":""}]}`,
+      },
+      { role: "user", content: items.map((i, n) => `${n + 1}) Pergunta: ${i.question}\nResposta do aluno: ${i.answer}`).join("\n\n") },
+    ],
+    { json: true, maxTokens: 900 },
+  );
+  const out = parseJson(res.text);
+  const veredictos = (Array.isArray(out.veredictos) ? out.veredictos : []).map((v: any, n: number) => ({
+    pergunta: String(v.pergunta ?? items[n]?.question ?? ""),
+    resposta: items[n]?.answer ?? "",
+    aceita: !!v.aceita,
+    comentario: String(v.comentario ?? ""),
+  }));
+  return { veredictos, usage: res.usage, model: res.model };
+}
+
 
 export async function generateCases(area: string, level: number, count: number) {
   const system = `Você é professor de semiologia que escreve casos clínicos ORIGINAIS em português do Brasil, no estilo e dificuldade das provas ENAMED/Revalida (nunca copie enunciados existentes).
