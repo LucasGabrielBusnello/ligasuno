@@ -129,7 +129,7 @@ export async function chargeCaseStart(userId: string, sessionId: string): Promis
 }
 
 export const TIMEOUT_MESSAGE =
-  "O tempo de consulta esgotou. O Preceptor precisou assumir a consulta devido à demora no atendimento. Dê sua hipótese diagnóstica para receber o parecer do preceptor.";
+  "O tempo de atendimento esgotou. O Preceptor precisou assumir o atendimento devido à demora. Insira sua hipótese final para receber sua nota.";
 
 /** Estado do teto de tokens de uma sessão (timeout de segurança). */
 export async function sessionTokenState(sessionId: string): Promise<{ tokens: number; cap: number; capReached: boolean }> {

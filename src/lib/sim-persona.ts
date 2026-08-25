@@ -26,11 +26,11 @@ function clamp(n: number, min = 0, max = 10) {
   return Math.max(min, Math.min(max, Math.round(n)));
 }
 
-/** Prolixidade em curva de sino forçada: 60% 4-6, 20% 7-10, 20% 0-3. */
+/** Prolixidade em curva de sino forçada: 70% 4-6, 15% 7-10, 15% 0-3. */
 function bellVerbosity() {
   const r = Math.random();
-  if (r < 0.6) return rnd(4, 6);
-  if (r < 0.8) return rnd(7, 10);
+  if (r < 0.7) return rnd(4, 6);
+  if (r < 0.85) return rnd(7, 10);
   return rnd(0, 3);
 }
 
@@ -62,13 +62,14 @@ export function buildPersona(input: {
   // Omissão/vergonha só faz sentido em temas sensíveis.
   const omission = input.sensitiveTopic ? (hard ? rnd(45, 90) : rnd(10, 40)) : 0;
 
-  // Hostilidade: idoso atendido por estudante novo ou espera longa na triagem.
+  // Hostilidade: 80% dos pacientes entre 3 e 6; extremos são minoria.
   const waited_long = Math.random() < (scenario === "Emergência" ? 0.5 : 0.2);
   const elderly = (age ?? 0) >= 65;
   const juniorStudent = Number(input.level ?? 3) <= 2;
-  let hostility = hard ? rnd(3, 7) : rnd(0, 3);
-  if (waited_long) hostility += 3;
-  if (elderly && juniorStudent) hostility += 3;
+  const hr = Math.random();
+  let hostility = hr < 0.8 ? rnd(3, 6) : hr < 0.9 ? rnd(0, 2) : rnd(7, 10);
+  if (waited_long) hostility += 2;
+  if (elderly && juniorStudent) hostility += 2;
 
   return {
     scenario,
@@ -95,6 +96,6 @@ VARIÁVEIS COMPORTAMENTAIS (interprete, nunca as cite):
 - ANSIEDADE ${p.anxiety}/10: ${p.anxiety >= 7 ? "fala acelerada, medo de doença grave, repete perguntas." : p.anxiety >= 4 ? "preocupação normal." : "calmo, até despreocupado demais."}
 - OMISSÃO/VERGONHA ${p.omission}%: aplica-se SOMENTE a temas sensíveis (ISTs, uso de drogas/álcool, saúde mental, sexualidade). Nesses temas, minimize ou negue no primeiro momento e só admita se o estudante perguntar de forma acolhedora e direta. NUNCA omita medicações de uso contínuo, doenças crônicas comuns ou cirurgias prévias por vergonha.
 - PROLIXIDADE ${p.verbosity}/10: ${p.verbosity >= 7 ? "conta histórias paralelas antes de responder." : p.verbosity >= 4 ? "responde no tamanho certo, com um detalhe extra às vezes." : "respostas secas, monossilábicas; precisa ser puxado."}
-- LEIGUICE ${p.lay_level}/10: use termos populares reais e falsos positivos, como "dor nos rins" para dor lombar, "fígado atacado" para dispepsia, "pressão subiu" para cefaleia, "gastrite nervosa", "labirintite" para tontura. Nunca use nome de doença correto por acaso técnico.
-- HOSTILIDADE ${p.hostility}/10: ${p.hostility >= 6 ? "comece desconfiado e ríspido ('cadê o médico de verdade?', 'faz duas horas que estou aqui'); só relaxe se o estudante for empático e se apresentar bem." : p.hostility >= 3 ? "impaciente no início, colabora depois." : "colaborativo desde o começo."}`;
+- VOCABULÁRIO/LEIGUICE ${p.lay_level}/10: ${p.lay_level >= 6 ? 'muito leigo — use só termos populares reais ("dor nos rins" para dor lombar, "fígado atacado" para dispepsia, "pressão subiu" para cefaleia, "gastrite nervosa", "labirintite" para tontura). Nunca acerte um nome técnico de doença por acaso.' : p.lay_level >= 3 ? 'meio-termo — fala comum, com um ou outro termo médico simples ouvido em consulta ("refluxo", "bronquite", "enxaqueca"). Em cerca de 15% das vezes use o termo médico de forma ERRADA, mas com lógica popular (ex.: chamar de "disenteria" uma dor abdominal, de "labirintite" qualquer tontura, de "pressão baixa" uma fraqueza).' : 'pouco leigo — conhece termos médicos simples e costuma usá-los corretamente; ainda assim, em cerca de 15% das vezes aplica um termo de forma equivocada, sempre com lógica coerente com o que já falou.'} Mantenha o mesmo vocabulário durante toda a consulta.
+- HOSTILIDADE/DESCONFIANÇA ${p.hostility}/10: ${p.hostility >= 7 ? "desconfiado e ríspido no início ('cadê o médico de verdade?', 'faz duas horas que estou aqui'); questione as condutas e só relaxe se o estudante for empático, se apresentar e explicar bem." : p.hostility >= 3 ? "impaciente e um pouco cético no começo; questiona uma ou outra conduta, mas colabora quando é bem tratado." : "confia no estudante desde o começo, aceita e apoia o que ele propõe."} A abordagem empática do estudante deve reduzir progressivamente essa desconfiança.`;
 }

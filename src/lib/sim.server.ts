@@ -173,7 +173,7 @@ export type SimCase = {
   expected_conduct: string | null;
 };
 
-function patientSystem(c: SimCase, persona?: SimPersona | null) {
+function patientSystem(c: SimCase, persona?: SimPersona | null, studentName?: string | null) {
   const p = c.patient ?? {};
   const lay = Number(persona?.lay_level ?? p.lay_level ?? 3);
   const findings = (Array.isArray(c.findings) ? c.findings : []) as any[];
@@ -186,6 +186,7 @@ História completa: ${c.hidden_history ?? c.summary ?? ""}
 Diagnóstico verdadeiro (NUNCA revele nem confirme): ${c.diagnosis}
 
 ${persona ? personaPrompt(persona) : ""}
+${(studentName ?? "").trim() ? `O ESTUDANTE que está te atendendo se chama ${String(studentName).trim()}. Trate-o por esse nome ou por "doutor(a)". NUNCA chame o estudante pelo seu próprio nome de paciente.` : 'Você não sabe o nome do estudante; trate-o por "doutor(a)" até que ele se apresente.'}
 
 NÍVEL DE CONHECIMENTO ("leiguice") = ${lay} de 10.
 - 0 a 2: totalmente leigo. Nada de termos técnicos. Descreve sintomas com palavras do dia a dia ("um aperto aqui no peito", "cansaço"), confunde tempo e detalhes, não relaciona sintomas.
@@ -251,14 +252,14 @@ export async function resolveFindings(c: SimCase, keys: string[]) {
   return { findings: [...known, ...gen.findings], usage: gen.usage, model: gen.model };
 }
 
-export async function patientTurn(c: SimCase, transcript: any[], userMessage: string, persona?: SimPersona | null) {
+export async function patientTurn(c: SimCase, transcript: any[], userMessage: string, persona?: SimPersona | null, studentName?: string | null) {
   const history: Msg[] = (transcript ?? [])
     .filter((m: any) => m.role === "user" || m.role === "patient")
     .slice(-24)
     .map((m: any) => ({ role: m.role === "user" ? "user" : "assistant", content: String(m.content ?? "") }));
 
   const res = await chat([
-    { role: "system", content: patientSystem(c, persona) },
+    { role: "system", content: patientSystem(c, persona, studentName) },
     ...history,
     { role: "user", content: userMessage },
   ]);
