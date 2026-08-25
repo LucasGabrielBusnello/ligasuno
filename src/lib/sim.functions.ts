@@ -284,6 +284,12 @@ export const simFinish = createServerFn({ method: "POST" })
     const { assertCredits, recordUsage } = await import("./sim-billing.server");
     await assertCredits(context.userId);
     const { data: rules } = await supabaseAdmin.from("sim_ai_rules").select("rule").eq("active", true).limit(50);
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name, username")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const studentName = ((prof as any)?.full_name || (prof as any)?.username || "").trim().split(/\s+/)[0] ?? "";
     const { gradeSession } = await import("./sim.server");
     const review = await gradeSession({
       c: sim,
@@ -293,6 +299,7 @@ export const simFinish = createServerFn({ method: "POST" })
       anamnese: data.anamnese,
       hypothesis: data.hypothesis,
       rules: (rules ?? []).map((r: any) => r.rule),
+      studentName,
     });
     const billing = await recordUsage({
       userId: context.userId,
@@ -315,6 +322,55 @@ export const simFinish = createServerFn({ method: "POST" })
       .eq("id", session.id);
     return { ...review, balance: billing.balance, case: { title: sim.title, diagnosis: sim.diagnosis, expected_conduct: sim.expected_conduct, hidden_history: sim.hidden_history } };
   });
+
+/**
+ * Loop de esclarecimento de conduta: o aluno responde até 2 perguntas do
+ * preceptor e a avaliação roda em modelo rápido/barato (Gemini Flash).
+ */
+export const answerSimClarifications = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        sessionId: z.string().uuid(),
+        answers: z
+          .array(z.object({ question: z.string().min(1).max(500), answer: z.string().min(1).max(2000) }))
+          .min(1)
+          .max(2),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: s, error } = await supabaseAdmin
+      .from("sim_sessions")
+      .select("*, sim_cases(*)")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const row: any = s;
+    if (!row || row.user_id !== context.userId) throw new Error("Sessão não encontrada.");
+
+    const { evaluateClarifications } = await import("./sim.server");
+    const { recordUsage } = await import("./sim-billing.server");
+    const out = await evaluateClarifications({ c: row.sim_cases, items: data.answers });
+    await recordUsage({
+      userId: context.userId,
+      sessionId: row.id,
+      phase: "esclarecimento",
+      model: out.model,
+      usage: out.usage,
+      tier: "chat",
+    });
+
+    const review = { ...(row.review ?? {}), veredictos_esclarecimento: out.veredictos, perguntas_esclarecimento: [] };
+    await supabaseAdmin
+      .from("sim_sessions")
+      .update({ review, clarifications: data.answers as any })
+      .eq("id", row.id);
+    return { veredictos: out.veredictos };
+  });
+
 
 export const regenerateSimReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
