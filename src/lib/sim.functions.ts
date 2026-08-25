@@ -128,15 +128,33 @@ async function loadSession(userId: string, sessionId: string) {
   return { supabaseAdmin, session: data as any, sim: (data as any).sim_cases };
 }
 
+/** Timeout de segurança: bloqueia novas interações quando o caso bateu o teto de tokens. */
+async function assertUnderTokenCap(sessionId: string) {
+  const { sessionTokenState, TIMEOUT_MESSAGE } = await import("./sim-billing.server");
+  const st = await sessionTokenState(sessionId);
+  if (st.capReached) {
+    const e = new Error(TIMEOUT_MESSAGE);
+    (e as any).capReached = true;
+    throw e;
+  }
+}
+
 export const simSay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid(), message: z.string().min(1).max(1500) }).parse(v))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
-    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    const { assertCredits, recordUsage, sessionTokenState, TIMEOUT_MESSAGE } = await import("./sim-billing.server");
     await assertCredits(context.userId);
+
+    // Teto atingido antes desta mensagem: o paciente já foi liberado.
+    const before = await sessionTokenState(session.id);
+    if (before.capReached) {
+      return { reply: TIMEOUT_MESSAGE, findings: [], balance: 0, capReached: true, system: true };
+    }
+
     const { patientTurn } = await import("./sim.server");
-    const out = await patientTurn(sim, session.transcript ?? [], data.message);
+    const out = await patientTurn(sim, session.transcript ?? [], data.message, session.persona ?? null);
     const billing = await recordUsage({
       userId: context.userId,
       sessionId: session.id,
@@ -146,17 +164,18 @@ export const simSay = createServerFn({ method: "POST" })
       tier: "chat",
     });
 
+    const reply = billing.capReached ? `${out.reply}\n\n${TIMEOUT_MESSAGE}` : out.reply;
     const transcript = [
       ...(session.transcript ?? []),
       { role: "user", content: data.message, at: new Date().toISOString() },
-      { role: "patient", content: out.reply, at: new Date().toISOString() },
+      { role: "patient", content: reply, at: new Date().toISOString() },
     ];
     const prev = (session.physical_findings ?? []) as any[];
     const merged = [...prev];
     for (const f of out.findings as any[]) if (!merged.some((m) => m.key === f.key)) merged.push(f);
 
     await supabaseAdmin.from("sim_sessions").update({ transcript, physical_findings: merged }).eq("id", session.id);
-    return { reply: out.reply, findings: out.findings, balance: billing.balance };
+    return { reply, findings: out.findings, balance: billing.balance, capReached: billing.capReached };
   });
 
 export const simExam = createServerFn({ method: "POST" })
@@ -167,6 +186,7 @@ export const simExam = createServerFn({ method: "POST" })
     const { examResult } = await import("./sim.server");
     const { assertCredits, recordUsage } = await import("./sim-billing.server");
     await assertCredits(context.userId);
+    await assertUnderTokenCap(session.id);
     const result = await examResult(sim, data.examName);
     const billing = await recordUsage({
       userId: context.userId,
@@ -178,8 +198,9 @@ export const simExam = createServerFn({ method: "POST" })
     });
     const list = [...((session.exam_requests ?? []) as any[]), { ...result, at: new Date().toISOString() }];
     await supabaseAdmin.from("sim_sessions").update({ exam_requests: list }).eq("id", session.id);
-    return { ...result, balance: billing.balance };
+    return { ...result, balance: billing.balance, capReached: billing.capReached };
   });
+
 
 export const simRevealFinding = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
