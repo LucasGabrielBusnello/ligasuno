@@ -214,6 +214,8 @@ export const simRevealFinding = createServerFn({ method: "POST" })
       const { resolveFindings } = await import("./sim.server");
       const { assertCredits, recordUsage } = await import("./sim-billing.server");
       await assertCredits(context.userId);
+      await assertUnderTokenCap(session.id);
+
       const out = await resolveFindings(sim, [data.key]);
       f = out.findings[0];
       if (!f) throw new Error("Essa manobra não está disponível.");
