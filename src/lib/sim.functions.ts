@@ -144,8 +144,7 @@ export const simSay = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid(), message: z.string().min(1).max(1500) }).parse(v))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
-    const { assertCredits, recordUsage, sessionTokenState, TIMEOUT_MESSAGE } = await import("./sim-billing.server");
-    await assertCredits(context.userId);
+    const { recordUsage, sessionTokenState, TIMEOUT_MESSAGE } = await import("./sim-billing.server");
 
     // Teto atingido antes desta mensagem: o paciente já foi liberado.
     const before = await sessionTokenState(session.id);
@@ -184,8 +183,7 @@ export const simExam = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
     const { examResult } = await import("./sim.server");
-    const { assertCredits, recordUsage } = await import("./sim-billing.server");
-    await assertCredits(context.userId);
+    const { recordUsage } = await import("./sim-billing.server");
     await assertUnderTokenCap(session.id);
     const result = await examResult(sim, data.examName);
     const billing = await recordUsage({
@@ -212,8 +210,7 @@ export const simRevealFinding = createServerFn({ method: "POST" })
     if (!f) {
       // Manobra do catálogo padrão que este caso não descreve: gera achado coerente.
       const { resolveFindings } = await import("./sim.server");
-      const { assertCredits, recordUsage } = await import("./sim-billing.server");
-      await assertCredits(context.userId);
+      const { recordUsage } = await import("./sim-billing.server");
       await assertUnderTokenCap(session.id);
 
       const out = await resolveFindings(sim, [data.key]);
@@ -281,8 +278,7 @@ export const simFinish = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
-    const { assertCredits, recordUsage } = await import("./sim-billing.server");
-    await assertCredits(context.userId);
+    const { recordUsage } = await import("./sim-billing.server");
     const { data: rules } = await supabaseAdmin.from("sim_ai_rules").select("rule").eq("active", true).limit(50);
     const { data: prof } = await supabaseAdmin
       .from("profiles")
@@ -387,8 +383,7 @@ export const regenerateSimReview = createServerFn({ method: "POST" })
     const row: any = s;
     if (row.status !== "finished") throw new Error("Só é possível gerar parecer novamente para treinos finalizados.");
 
-    const { assertCredits, recordUsage } = await import("./sim-billing.server");
-    await assertCredits(context.userId);
+    const { recordUsage } = await import("./sim-billing.server");
     const { data: rules } = await supabaseAdmin.from("sim_ai_rules").select("rule").eq("active", true).limit(50);
     const { gradeSession } = await import("./sim.server");
     const review = await gradeSession({
@@ -460,8 +455,7 @@ export const simTranscribe = createServerFn({ method: "POST" })
     z.object({ audio: z.string().min(50).max(9_000_000), format: z.enum(["webm", "m4a", "mp3", "wav", "ogg"]) }).parse(v),
   )
   .handler(async ({ data, context }) => {
-    const { assertCredits, recordUsage } = await import("./sim-billing.server");
-    await assertCredits(context.userId);
+    const { recordUsage } = await import("./sim-billing.server");
     const { transcribeAudio } = await import("./sim.server");
     const out = await transcribeAudio(data.audio, data.format);
     const billing = await recordUsage({
@@ -562,8 +556,7 @@ export const simPreceptorHint = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
     if (Number(sim.level) > 2) return { off_track: false, hint: "" };
-    const { assertCredits, recordUsage } = await import("./sim-billing.server");
-    await assertCredits(context.userId);
+    const { recordUsage } = await import("./sim-billing.server");
     const { preceptorHint } = await import("./sim.server");
     const out = await preceptorHint({
       c: sim,
