@@ -9,14 +9,43 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
-  Stethoscope, Send, Mic, Square, Activity, FlaskConical, ClipboardList, Loader2,
-  HeartPulse, Volume2, CheckCircle2, XCircle, ThumbsUp, ThumbsDown, History, Play,
-  Lightbulb, ArrowLeft, X,
+  Stethoscope,
+  Send,
+  Mic,
+  Square,
+  Activity,
+  FlaskConical,
+  ClipboardList,
+  Loader2,
+  HeartPulse,
+  Volume2,
+  CheckCircle2,
+  XCircle,
+  ThumbsUp,
+  ThumbsDown,
+  History,
+  Play,
+  Lightbulb,
+  ArrowLeft,
+  X,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import {
-  startSimSession, resumeSimSession, saveSimNotes, simSay, simExam, simExamMenu, simRevealFinding, simFinish, simTheory,
-  simTranscribe, listMySimSessions, sendSimFeedback, getSimSessionDetail, simPreceptorHint, regenerateSimReview,
+  startSimSession,
+  resumeSimSession,
+  saveSimNotes,
+  simSay,
+  simExam,
+  simExamMenu,
+  simRevealFinding,
+  simFinish,
+  simTheory,
+  simTranscribe,
+  listMySimSessions,
+  sendSimFeedback,
+  getSimSessionDetail,
+  simPreceptorHint,
+  regenerateSimReview,
 } from "@/lib/sim.functions";
 
 /** Normaliza o Markdown vindo da IA para ficar legível (títulos e listas em linhas próprias). */
@@ -56,7 +85,6 @@ export function MarkdownView({ text }: { text: string }) {
   );
 }
 
-
 function SectionSkeleton() {
   return (
     <div className="space-y-2 animate-pulse">
@@ -67,10 +95,11 @@ function SectionSkeleton() {
   );
 }
 
-
-
 type PublicCase = {
-  id: string; title: string; area: string; level: number;
+  id: string;
+  title: string;
+  area: string;
+  level: number;
   patient: { name: string; age: number | null; gender: string | null; occupation: string | null };
   triage: Record<string, any>;
   patient_image_url: string | null;
@@ -78,7 +107,14 @@ type PublicCase = {
 type ChatMsg = { role: "user" | "patient"; content: string };
 type MenuItem = { key: string; label: string; group?: string; sound_category: string; revealed: boolean };
 type Finding = { key: string; label: string; text: string; sound_category?: string; sound_finding?: string };
-type ExamOut = { name: string; justified: boolean; result_text: string; report: string; is_image: boolean; image_url: string | null };
+type ExamOut = {
+  name: string;
+  justified: boolean;
+  result_text: string;
+  report: string;
+  is_image: boolean;
+  image_url: string | null;
+};
 type SimResumeState = {
   transcript: any[];
   physical_findings: any[];
@@ -117,15 +153,25 @@ export function ClinicalSimulator() {
   const listSessions = useServerFn(listMySimSessions);
 
   useEffect(() => {
-    supabase.from("sim_cases").select("area, level").eq("published", true).then(({ data }) => {
-      const map = new Map<string, Set<number>>();
-      (data ?? []).forEach((r: any) => {
-        if (!map.has(r.area)) map.set(r.area, new Set());
-        map.get(r.area)!.add(r.level);
+    supabase
+      .from("sim_cases")
+      .select("area, level")
+      .eq("published", true)
+      .then(({ data }) => {
+        const map = new Map<string, Set<number>>();
+        (data ?? []).forEach((r: any) => {
+          if (!map.has(r.area)) map.set(r.area, new Set());
+          map.get(r.area)!.add(r.level);
+        });
+        setAreas(
+          Array.from(map.entries())
+            .map(([a, s]) => ({ area: a, levels: Array.from(s).sort() }))
+            .sort((a, b) => a.area.localeCompare(b.area)),
+        );
       });
-      setAreas(Array.from(map.entries()).map(([a, s]) => ({ area: a, levels: Array.from(s).sort() })).sort((a, b) => a.area.localeCompare(b.area)));
-    });
-    listSessions().then((r: any) => setHistory(r ?? [])).catch(() => {});
+    listSessions()
+      .then((r: any) => setHistory(r ?? []))
+      .catch(() => {});
   }, []);
 
   const availableAreas = useMemo(() => areas.filter((a) => a.levels.includes(level)), [areas, level]);
@@ -150,7 +196,9 @@ export function ClinicalSimulator() {
         initial={session.resume}
         onExit={() => {
           setSession(null);
-          listSessions().then((r: any) => setHistory(r ?? [])).catch(() => {});
+          listSessions()
+            .then((r: any) => setHistory(r ?? []))
+            .catch(() => {});
         }}
       />
     );
@@ -165,7 +213,9 @@ export function ClinicalSimulator() {
           </div>
           <div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">Treino de Semiologia</h1>
-            <p className="text-sm text-muted-foreground">Converse com o paciente, examine, peça exames e feche o diagnóstico.</p>
+            <p className="text-sm text-muted-foreground">
+              Converse com o paciente, examine, peça exames e feche o diagnóstico.
+            </p>
           </div>
         </div>
       </div>
@@ -173,14 +223,21 @@ export function ClinicalSimulator() {
       <Card>
         <CardContent className="p-6 space-y-5">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 font-bold">Nível de dificuldade</div>
+            <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2 font-bold">
+              Nível de dificuldade
+            </div>
             <div className="flex flex-wrap gap-2">
               {LEVELS.map((l) => (
                 <button
                   key={l}
-                  onClick={() => { setLevel(l); setArea(""); }}
+                  onClick={() => {
+                    setLevel(l);
+                    setArea("");
+                  }}
                   className={`px-4 py-2 rounded-xl text-sm font-bold ring-1 transition-colors ${
-                    level === l ? "bg-primary text-primary-foreground ring-primary/40" : "bg-muted/40 ring-border hover:bg-muted"
+                    level === l
+                      ? "bg-primary text-primary-foreground ring-primary/40"
+                      : "bg-muted/40 ring-border hover:bg-muted"
                   }`}
                 >
                   {l}º ano
@@ -214,7 +271,12 @@ export function ClinicalSimulator() {
             )}
           </div>
 
-          <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold w-full md:w-auto" onClick={begin} disabled={starting || availableAreas.length === 0}>
+          <Button
+            size="lg"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold w-full md:w-auto"
+            onClick={begin}
+            disabled={starting || availableAreas.length === 0}
+          >
             {starting ? <Loader2 className="size-4 mr-2 animate-spin" /> : <Play className="size-4 mr-2" />}
             Iniciar treino completo
           </Button>
@@ -222,16 +284,26 @@ export function ClinicalSimulator() {
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-lg font-black flex items-center gap-2"><History className="size-5 text-primary" /> Meus treinos</h2>
+        <h2 className="text-lg font-black flex items-center gap-2">
+          <History className="size-5 text-primary" /> Meus treinos
+        </h2>
         {history.length === 0 ? (
-          <Card><CardContent className="p-6 text-sm text-muted-foreground text-center">Você ainda não fez nenhum treino.</CardContent></Card>
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground text-center">
+              Você ainda não fez nenhum treino.
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid md:grid-cols-2 gap-3">
             {history.map((h) => (
               <Card key={h.id}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`size-12 rounded-xl ring-1 flex items-center justify-center font-black ${h.score != null ? scoreRing(h.score) : "ring-border bg-muted/30"}`}>
-                    <span className={h.score != null ? scoreColor(h.score) : "text-muted-foreground"}>{h.score ?? "—"}</span>
+                  <div
+                    className={`size-12 rounded-xl ring-1 flex items-center justify-center font-black ${h.score != null ? scoreRing(h.score) : "ring-border bg-muted/30"}`}
+                  >
+                    <span className={h.score != null ? scoreColor(h.score) : "text-muted-foreground"}>
+                      {h.score ?? "—"}
+                    </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm truncate">{h.title}</div>
@@ -241,7 +313,9 @@ export function ClinicalSimulator() {
                     {h.diagnosis && <div className="text-[11px] text-primary truncate">Diagnóstico: {h.diagnosis}</div>}
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <Badge variant={h.status === "finished" ? "default" : "secondary"}>{h.status === "finished" ? "Concluído" : "Em aberto"}</Badge>
+                    <Badge variant={h.status === "finished" ? "default" : "secondary"}>
+                      {h.status === "finished" ? "Concluído" : "Em aberto"}
+                    </Badge>
                     {h.status === "active" ? (
                       <Button
                         size="sm"
@@ -251,13 +325,17 @@ export function ClinicalSimulator() {
                           setResumingId(h.id);
                           try {
                             const r: any = await resume({ data: { sessionId: h.id } });
-                            setSession({ id: r.sessionId, case: r.case, resume: {
-                              transcript: r.transcript,
-                              physical_findings: r.physical_findings,
-                              exam_requests: r.exam_requests,
-                              anamnese: r.anamnese,
-                              hypothesis: r.hypothesis,
-                            }});
+                            setSession({
+                              id: r.sessionId,
+                              case: r.case,
+                              resume: {
+                                transcript: r.transcript,
+                                physical_findings: r.physical_findings,
+                                exam_requests: r.exam_requests,
+                                anamnese: r.anamnese,
+                                hypothesis: r.hypothesis,
+                              },
+                            });
                           } catch (e: any) {
                             toast.error(e?.message ?? "Não foi possível retomar o treino.");
                           } finally {
@@ -265,11 +343,20 @@ export function ClinicalSimulator() {
                           }
                         }}
                       >
-                        {resumingId === h.id ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Play className="size-3.5 mr-1" />}
+                        {resumingId === h.id ? (
+                          <Loader2 className="size-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Play className="size-3.5 mr-1" />
+                        )}
                         Continuar treino
                       </Button>
                     ) : (
-                      <Button size="sm" variant="outline" className="h-7 px-2 text-xs font-bold" onClick={() => setDetailId(h.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs font-bold"
+                        onClick={() => setDetailId(h.id)}
+                      >
                         <History className="size-3.5 mr-1" /> Ver histórico
                       </Button>
                     )}
@@ -277,7 +364,6 @@ export function ClinicalSimulator() {
                 </CardContent>
               </Card>
             ))}
-
           </div>
         )}
       </div>
@@ -296,7 +382,10 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
   const [regenerating, setRegenerating] = useState(false);
 
   const load = () => {
-    if (!sessionId) { setData(null); return; }
+    if (!sessionId) {
+      setData(null);
+      return;
+    }
     setLoading(true);
     detailFn({ data: { sessionId } })
       .then((r: any) => setData(r))
@@ -304,15 +393,25 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [sessionId]);
+  useEffect(() => {
+    load();
+  }, [sessionId]);
 
   const timeline = useMemo(() => {
     if (!data) return [] as any[];
     const items: any[] = [];
-    (data.transcript ?? []).forEach((m: any) => items.push({ kind: m.role === "user" ? "voce" : "paciente", at: m.at, text: m.content }));
-    (data.physical_findings ?? []).forEach((f: any) => items.push({ kind: "exame_fisico", at: f.at, text: `${f.label}: ${f.text}` }));
+    (data.transcript ?? []).forEach((m: any) =>
+      items.push({ kind: m.role === "user" ? "voce" : "paciente", at: m.at, text: m.content }),
+    );
+    (data.physical_findings ?? []).forEach((f: any) =>
+      items.push({ kind: "exame_fisico", at: f.at, text: `${f.label}: ${f.text}` }),
+    );
     (data.exam_requests ?? []).forEach((e: any) =>
-      items.push({ kind: "exame_comp", at: e.at, text: `${e.name}${e.result_text ? ` — ${e.result_text}` : ""}${e.report ? `\nLaudo: ${e.report}` : ""}` }),
+      items.push({
+        kind: "exame_comp",
+        at: e.at,
+        text: `${e.name}${e.result_text ? ` — ${e.result_text}` : ""}${e.report ? `\nLaudo: ${e.report}` : ""}`,
+      }),
     );
     return items.sort((a, b) => new Date(a.at ?? 0).getTime() - new Date(b.at ?? 0).getTime());
   }, [data]);
@@ -334,7 +433,9 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
         </DialogHeader>
 
         {loading || !data ? (
-          <div className="py-10 flex justify-center"><Loader2 className="size-6 animate-spin text-primary" /></div>
+          <div className="py-10 flex justify-center">
+            <Loader2 className="size-6 animate-spin text-primary" />
+          </div>
         ) : (
           <div className="space-y-5 text-sm">
             <div className="flex flex-wrap items-center gap-2">
@@ -358,8 +459,14 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
                   {timeline.map((it, i) => (
                     <li key={i} className="rounded-xl ring-1 ring-border bg-muted/30 p-3">
                       <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-[11px] uppercase tracking-wide font-bold text-primary">{LABEL[it.kind]}</span>
-                        {it.at && <span className="text-[10px] text-muted-foreground">{new Date(it.at).toLocaleTimeString("pt-BR")}</span>}
+                        <span className="text-[11px] uppercase tracking-wide font-bold text-primary">
+                          {LABEL[it.kind]}
+                        </span>
+                        {it.at && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(it.at).toLocaleTimeString("pt-BR")}
+                          </span>
+                        )}
                       </div>
                       <p className="whitespace-pre-wrap text-foreground/90">{it.text}</p>
                     </li>
@@ -371,7 +478,9 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
             {data.anamnese && (
               <div>
                 <h3 className="font-black mb-1">Sua anamnese</h3>
-                <p className="whitespace-pre-wrap text-foreground/90 rounded-xl ring-1 ring-border bg-muted/30 p-3">{data.anamnese}</p>
+                <p className="whitespace-pre-wrap text-foreground/90 rounded-xl ring-1 ring-border bg-muted/30 p-3">
+                  {data.anamnese}
+                </p>
               </div>
             )}
 
@@ -402,7 +511,11 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
                     }
                   }}
                 >
-                  {regenerating ? <Loader2 className="size-3.5 mr-1.5 animate-spin" /> : <History className="size-3.5 mr-1.5" />}
+                  {regenerating ? (
+                    <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <History className="size-3.5 mr-1.5" />
+                  )}
                   Gerar parecer novamente
                 </Button>
               </div>
@@ -417,17 +530,25 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
               <div className="rounded-xl ring-1 ring-primary/25 bg-primary/5 p-3 space-y-2">
                 <h3 className="font-black">Parecer da IA</h3>
                 {data.review.veredito && <p className="font-bold text-foreground">{data.review.veredito}</p>}
-                {data.review.comentario && <p className="whitespace-pre-wrap text-foreground/90">{data.review.comentario}</p>}
-                {([
-                  ["Acertos", data.review.acertos],
-                  ["O que faltou", data.review.faltou],
-                  ["Exames desnecessários", data.review.exames_desnecessarios],
-                  ["Como melhorar", data.review.melhorias],
-                ] as [string, string[]][]).map(([label, list]) =>
+                {data.review.comentario && (
+                  <p className="whitespace-pre-wrap text-foreground/90">{data.review.comentario}</p>
+                )}
+                {(
+                  [
+                    ["Acertos", data.review.acertos],
+                    ["O que faltou", data.review.faltou],
+                    ["Exames desnecessários", data.review.exames_desnecessarios],
+                    ["Como melhorar", data.review.melhorias],
+                  ] as [string, string[]][]
+                ).map(([label, list]) =>
                   Array.isArray(list) && list.length > 0 ? (
                     <div key={label}>
                       <p className="font-bold text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-                      <ul className="list-disc pl-5">{list.map((s: string, i: number) => <li key={i}>{s}</li>)}</ul>
+                      <ul className="list-disc pl-5">
+                        {list.map((s: string, i: number) => (
+                          <li key={i}>{s}</li>
+                        ))}
+                      </ul>
                     </div>
                   ) : null,
                 )}
@@ -447,7 +568,11 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
               <div>
                 <h3 className="font-black mb-1">Diagnóstico do caso</h3>
                 <p className="text-foreground/90">{data.diagnosis}</p>
-                {data.expected_conduct && <p className="mt-1 text-foreground/80"><span className="font-bold">Conduta esperada:</span> {data.expected_conduct}</p>}
+                {data.expected_conduct && (
+                  <p className="mt-1 text-foreground/80">
+                    <span className="font-bold">Conduta esperada:</span> {data.expected_conduct}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -457,9 +582,18 @@ function SessionHistoryDialog({ sessionId, onClose }: { sessionId: string | null
   );
 }
 
-
 /* ============ ESTAÇÃO ============ */
-function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: PublicCase; initial?: SimResumeState; onExit: () => void }) {
+function SimStation({
+  sessionId,
+  c,
+  initial,
+  onExit,
+}: {
+  sessionId: string;
+  c: PublicCase;
+  initial?: SimResumeState;
+  onExit: () => void;
+}) {
   const say = useServerFn(simSay);
   const menuFn = useServerFn(simExamMenu);
   const revealFn = useServerFn(simRevealFinding);
@@ -497,7 +631,10 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
 
   const [tab, setTab] = useState<"exame" | "exames" | "notas">("exame");
   const [chat, setChat] = useState<ChatMsg[]>(() =>
-    (initial?.transcript ?? []).map((m: any) => ({ role: m.role === "user" ? "user" : "patient", content: String(m.content ?? "") }))
+    (initial?.transcript ?? []).map((m: any) => ({
+      role: m.role === "user" ? "user" : "patient",
+      content: String(m.content ?? ""),
+    })),
   );
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -526,12 +663,17 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    menuFn({ data: { sessionId } }).then((r: any) => {
-      const items = (r ?? []) as MenuItem[];
-      const revealed = new Set((initial?.physical_findings ?? []).map((f: any) => f.key));
-      setMenu(items.map((m) => (revealed.has(m.key) ? { ...m, revealed: true } : m)));
-    }).catch(() => {});
-    supabase.from("sim_auscultation_sounds").select("*").then(({ data }) => setSounds(data ?? []));
+    menuFn({ data: { sessionId } })
+      .then((r: any) => {
+        const items = (r ?? []) as MenuItem[];
+        const revealed = new Set((initial?.physical_findings ?? []).map((f: any) => f.key));
+        setMenu(items.map((m) => (revealed.has(m.key) ? { ...m, revealed: true } : m)));
+      })
+      .catch(() => {});
+    supabase
+      .from("sim_auscultation_sounds")
+      .select("*")
+      .then(({ data }) => setSounds(data ?? []));
   }, [sessionId]);
 
   useEffect(() => {
@@ -542,7 +684,9 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
     if (!list?.length) return;
     setFindings((prev) => {
       const next = [...prev];
-      list.forEach((f) => { if (!next.some((x) => x.key === f.key)) next.push(f); });
+      list.forEach((f) => {
+        if (!next.some((x) => x.key === f.key)) next.push(f);
+      });
       return next;
     });
     setMenu((prev) => prev.map((m) => (list.some((f) => f.key === m.key) ? { ...m, revealed: true } : m)));
@@ -596,7 +740,10 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
   };
 
   const finish = async () => {
-    if (hypothesis.trim().length < 3) { toast.error("Escreva sua hipótese diagnóstica."); return; }
+    if (hypothesis.trim().length < 3) {
+      toast.error("Escreva sua hipótese diagnóstica.");
+      return;
+    }
     setFinishOpen(false);
     setResultOpen(true);
     setGrading(true);
@@ -616,7 +763,6 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
     await Promise.all([a, b]);
   };
 
-
   if (resultOpen)
     return (
       <SimResult
@@ -629,15 +775,20 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
       />
     );
 
-
   const t = c.triage ?? {};
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <Button variant="outline" size="sm" onClick={onExit}>Sair do treino</Button>
+        <Button variant="outline" size="sm" onClick={onExit}>
+          Sair do treino
+        </Button>
         <Badge variant="secondary">{c.area}</Badge>
         <Badge variant="outline">{c.level}º ano</Badge>
-        <Button size="sm" className="ml-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold" onClick={() => setFinishOpen(true)}>
+        <Button
+          size="sm"
+          className="ml-auto bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+          onClick={() => setFinishOpen(true)}
+        >
           Encerrar e diagnosticar
         </Button>
       </div>
@@ -645,22 +796,35 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
       <Card className="overflow-hidden">
         <CardContent className="p-4 flex flex-wrap items-center gap-4">
           <div className="size-14 rounded-2xl bg-primary/10 ring-1 ring-primary/25 flex items-center justify-center text-primary font-black text-lg overflow-hidden">
-            {c.patient_image_url ? <img src={c.patient_image_url} alt="" className="size-full object-cover" /> : (c.patient.name ?? "P").slice(0, 1)}
+            {c.patient_image_url ? (
+              <img src={c.patient_image_url} alt="" className="size-full object-cover" />
+            ) : (
+              (c.patient.name ?? "P").slice(0, 1)
+            )}
           </div>
           <div className="min-w-0">
             <div className="font-black">{c.patient.name}</div>
             <div className="text-xs text-muted-foreground">
-              {c.patient.age ? `${c.patient.age} anos` : ""} {c.patient.gender ? `· ${c.patient.gender}` : ""} {c.patient.occupation ? `· ${c.patient.occupation}` : ""}
+              {c.patient.age ? `${c.patient.age} anos` : ""} {c.patient.gender ? `· ${c.patient.gender}` : ""}{" "}
+              {c.patient.occupation ? `· ${c.patient.occupation}` : ""}
             </div>
           </div>
           <div className="flex flex-wrap gap-2 md:ml-auto">
             {[
-              ["PA", t.pa], ["FC", t.fc], ["FR", t.fr], ["Tax", t.temp], ["SpO₂", t.spo2], ["Dor", t.dor],
-            ].filter(([, v]) => !!v).map(([k, v]) => (
-              <div key={String(k)} className="px-2.5 py-1 rounded-lg bg-muted/40 ring-1 ring-border text-[11px]">
-                <span className="text-muted-foreground">{k}: </span><span className="font-bold">{String(v)}</span>
-              </div>
-            ))}
+              ["PA", t.pa],
+              ["FC", t.fc],
+              ["FR", t.fr],
+              ["Tax", t.temp],
+              ["SpO₂", t.spo2],
+              ["Dor", t.dor],
+            ]
+              .filter(([, v]) => !!v)
+              .map(([k, v]) => (
+                <div key={String(k)} className="px-2.5 py-1 rounded-lg bg-muted/40 ring-1 ring-border text-[11px]">
+                  <span className="text-muted-foreground">{k}: </span>
+                  <span className="font-bold">{String(v)}</span>
+                </div>
+              ))}
           </div>
         </CardContent>
       </Card>
@@ -688,17 +852,21 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
               <Lightbulb className="size-4" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-black uppercase tracking-wide text-amber-600 dark:text-amber-400">Dica do Preceptor</div>
+              <div className="text-xs font-black uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                Dica do Preceptor
+              </div>
               <p className="text-sm text-foreground mt-0.5">{hint}</p>
             </div>
-            <button onClick={() => setHint(null)} className="text-muted-foreground hover:text-foreground shrink-0" aria-label="Fechar dica">
+            <button
+              onClick={() => setHint(null)}
+              className="text-muted-foreground hover:text-foreground shrink-0"
+              aria-label="Fechar dica"
+            >
               <X className="size-4" />
             </button>
           </CardContent>
         </Card>
       )}
-
-
 
       <div className="grid lg:grid-cols-[1.1fr_1fr] gap-4">
         {/* CHAT */}
@@ -709,29 +877,41 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
           <div ref={chatRef} className="flex-1 min-h-[320px] max-h-[52vh] overflow-y-auto p-4 space-y-3">
             {chat.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                Comece se apresentando e pergunte o que trouxe {c.patient.name} até você. Diga também quando quiser examinar
-                (“vou auscultar seu coração”, “vou palpar seu abdome”).
+                Comece se apresentando e pergunte o que trouxe {c.patient.name} até você. Diga também quando quiser
+                examinar (“vou auscultar seu coração”, “vou palpar seu abdome”).
               </p>
             )}
             {chat.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                <div
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                >
                   {m.content}
                 </div>
               </div>
             ))}
-            {busy && <div className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 className="size-3 animate-spin" /> aguardando...</div>}
+            {busy && (
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="size-3 animate-spin" /> aguardando...
+              </div>
+            )}
           </div>
           <div className="p-3 border-t border-border/60 flex gap-2">
             <MicButton onText={(txt) => send(txt)} transcribe={transcribeFn} disabled={busy} />
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") send(input); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") send(input);
+              }}
               placeholder="Fale com o paciente..."
               disabled={busy}
             />
-            <Button onClick={() => send(input)} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button
+              onClick={() => send(input)}
+              disabled={busy}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
               <Send className="size-4" />
             </Button>
           </div>
@@ -740,12 +920,20 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
         {/* PAINEL */}
         <Card className="overflow-hidden">
           <div className="flex border-b border-border/60 overflow-x-auto">
-            {([["exame", "Exame físico", Activity], ["exames", "Exames complementares", FlaskConical], ["notas", "Anamnese", ClipboardList]] as const).map(([id, label, Icon]) => (
+            {(
+              [
+                ["exame", "Exame físico", Activity],
+                ["exames", "Exames complementares", FlaskConical],
+                ["notas", "Anamnese", ClipboardList],
+              ] as const
+            ).map(([id, label, Icon]) => (
               <button
                 key={id}
                 onClick={() => setTab(id as any)}
                 className={`px-4 py-2.5 text-xs font-bold whitespace-nowrap flex items-center gap-1.5 border-b-2 ${
-                  tab === id ? "border-primary/40 text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+                  tab === id
+                    ? "border-primary/40 text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon className="size-3.5" /> {label}
@@ -757,7 +945,9 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
             {tab === "exame" && (
               <>
                 <ExamMenu menu={menu} onPick={reveal} busy={busy} />
-                {findings.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma manobra realizada ainda.</p>}
+                {findings.length === 0 && (
+                  <p className="text-sm text-muted-foreground">Nenhuma manobra realizada ainda.</p>
+                )}
                 {findings.map((f) => (
                   <div key={f.key} className="rounded-xl ring-1 ring-border p-3 space-y-2">
                     <div className="text-xs font-black uppercase text-primary">{f.label}</div>
@@ -774,19 +964,33 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
                   <Input
                     value={examName}
                     onChange={(e) => setExamName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") askExam(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") askExam();
+                    }}
                     placeholder="Escreva o exame que deseja solicitar..."
                     disabled={busy}
                   />
-                  <Button onClick={askExam} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground">Solicitar</Button>
+                  <Button
+                    onClick={askExam}
+                    disabled={busy}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    Solicitar
+                  </Button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Nenhum exame é sugerido: peça só o que você justificaria — exames desnecessários descontam pontos.</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Nenhum exame é sugerido: peça só o que você justificaria — exames desnecessários descontam pontos.
+                </p>
                 {exams.map((e, i) => (
                   <div key={i} className="rounded-xl ring-1 ring-border p-3 space-y-1">
                     <div className="text-xs font-black uppercase text-primary flex items-center gap-2">{e.name}</div>
                     {e.image_url && <img src={e.image_url} alt={e.name} className="rounded-lg w-full object-cover" />}
                     <p className="text-sm whitespace-pre-wrap">{e.result_text}</p>
-                    {e.report && <p className="text-xs text-muted-foreground whitespace-pre-wrap"><b>Laudo:</b> {e.report}</p>}
+                    {e.report && (
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                        <b>Laudo:</b> {e.report}
+                      </p>
+                    )}
                   </div>
                 ))}
               </>
@@ -794,8 +998,15 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
 
             {tab === "notas" && (
               <>
-                <p className="text-[11px] text-muted-foreground">Escreva sua anamnese e o exame físico como faria no prontuário. Isso entra na correção.</p>
-                <Textarea rows={14} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Identificação, QP, HDA, antecedentes, hábitos, exame físico..." />
+                <p className="text-[11px] text-muted-foreground">
+                  Escreva sua anamnese e o exame físico como faria no prontuário. Isso entra na correção.
+                </p>
+                <Textarea
+                  rows={14}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Identificação, QP, HDA, antecedentes, hábitos, exame físico..."
+                />
               </>
             )}
           </CardContent>
@@ -804,17 +1015,31 @@ function SimStation({ sessionId, c, initial, onExit }: { sessionId: string; c: P
 
       <Dialog open={finishOpen} onOpenChange={setFinishOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Encerrar estação</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Encerrar estação</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
             <div>
               <div className="text-xs font-bold uppercase text-muted-foreground mb-1">Hipótese diagnóstica</div>
-              <Input value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} placeholder="Seu diagnóstico principal" />
+              <Input
+                value={hypothesis}
+                onChange={(e) => setHypothesis(e.target.value)}
+                placeholder="Seu diagnóstico principal"
+              />
             </div>
-            <p className="text-xs text-muted-foreground">Sua anamnese escrita, os exames pedidos e a conversa serão avaliados.</p>
+            <p className="text-xs text-muted-foreground">
+              Sua anamnese escrita, os exames pedidos e a conversa serão avaliados.
+            </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setFinishOpen(false)}>Voltar</Button>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={finish} disabled={grading}>
+            <Button variant="outline" onClick={() => setFinishOpen(false)}>
+              Voltar
+            </Button>
+            <Button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              onClick={finish}
+              disabled={grading}
+            >
               {grading ? <Loader2 className="size-4 mr-2 animate-spin" /> : null} Corrigir estação
             </Button>
           </DialogFooter>
@@ -853,16 +1078,15 @@ function ExamMenu({ menu, onPick, busy }: { menu: MenuItem[]; onPick: (k: string
           {groups.map((g) => (
             <div key={g} className="space-y-1.5">
               <div className="text-[10px] font-black uppercase tracking-wide text-muted-foreground">{g}</div>
-              <div className="flex flex-wrap gap-1.5">{menu.filter((m) => (m.group ?? "Manobras") === g).map(Chip)}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {menu.filter((m) => (m.group ?? "Manobras") === g).map(Chip)}
+              </div>
             </div>
           ))}
         </div>
       )}
       {rest > 0 && (
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="text-[11px] font-bold text-primary hover:underline"
-        >
+        <button onClick={() => setExpanded((v) => !v)} className="text-[11px] font-bold text-primary hover:underline">
           {expanded ? "Ver menos manobras" : `Ver todas as manobras (+${rest})`}
         </button>
       )}
@@ -879,7 +1103,11 @@ const SOUND_LABEL: Record<string, string> = {
 };
 
 const normKey = (s: string) =>
-  String(s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_");
+  String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_");
 
 function SoundPlayer({ finding, sounds }: { finding: Finding; sounds: any[] }) {
   const cat = finding.sound_category ?? "nenhum";
@@ -893,7 +1121,8 @@ function SoundPlayer({ finding, sounds }: { finding: Finding; sounds: any[] }) {
   return (
     <div className="rounded-lg bg-muted/40 ring-1 ring-border p-2.5 space-y-2">
       <div className="text-[11px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
-        <Volume2 className="size-3.5" /> {SOUND_LABEL[cat] ?? cat} — {(finding.sound_finding ?? "normal").replace(/_/g, " ")}
+        <Volume2 className="size-3.5" /> {SOUND_LABEL[cat] ?? cat} —{" "}
+        {(finding.sound_finding ?? "normal").replace(/_/g, " ")}
       </div>
       {match?.audio_url ? (
         <>
@@ -909,12 +1138,24 @@ function SoundPlayer({ finding, sounds }: { finding: Finding; sounds: any[] }) {
   );
 }
 
-function MicButton({ onText, transcribe, disabled }: { onText: (t: string) => void; transcribe: any; disabled?: boolean }) {
+function MicButton({
+  onText,
+  transcribe,
+  disabled,
+}: {
+  onText: (t: string) => void;
+  transcribe: any;
+  disabled?: boolean;
+}) {
   const [rec, setRec] = useState<MediaRecorder | null>(null);
   const [loading, setLoading] = useState(false);
 
   const toggle = async () => {
-    if (rec) { rec.stop(); setRec(null); return; }
+    if (rec) {
+      rec.stop();
+      setRec(null);
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -949,14 +1190,31 @@ function MicButton({ onText, transcribe, disabled }: { onText: (t: string) => vo
   };
 
   return (
-    <Button type="button" variant={rec ? "destructive" : "outline"} onClick={toggle} disabled={disabled || loading} title="Falar com o paciente">
-      {loading ? <Loader2 className="size-4 animate-spin" /> : rec ? <Square className="size-4" /> : <Mic className="size-4" />}
+    <Button
+      type="button"
+      variant={rec ? "destructive" : "outline"}
+      onClick={toggle}
+      disabled={disabled || loading}
+      title="Falar com o paciente"
+    >
+      {loading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : rec ? (
+        <Square className="size-4" />
+      ) : (
+        <Mic className="size-4" />
+      )}
     </Button>
   );
 }
 
 function SimResult({
-  sessionId, review, reviewLoading, theory, theoryLoading, onExit,
+  sessionId,
+  review,
+  reviewLoading,
+  theory,
+  theoryLoading,
+  onExit,
 }: {
   sessionId: string;
   review: any;
@@ -996,12 +1254,18 @@ function SimResult({
           <div className="flex-1 min-w-[220px]">
             <div className="font-black text-lg">{review ? review.veredito : "Corrigindo sua estação…"}</div>
             {review && (
-              <div className="text-sm text-muted-foreground">Diagnóstico correto: <b className="text-foreground">{review.diagnostico_correto}</b></div>
+              <div className="text-sm text-muted-foreground">
+                Diagnóstico correto: <b className="text-foreground">{review.diagnostico_correto}</b>
+              </div>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={onExit}><ArrowLeft className="size-4 mr-2" /> Voltar às informações gerais</Button>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold" onClick={onExit}><Play className="size-4 mr-2" /> Novo treino</Button>
+            <Button variant="outline" onClick={onExit}>
+              <ArrowLeft className="size-4 mr-2" /> Voltar às informações gerais
+            </Button>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold" onClick={onExit}>
+              <Play className="size-4 mr-2" /> Novo treino
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -1009,7 +1273,9 @@ function SimResult({
       {/* Card 1 — Parecer do Preceptor (CHAMADA A) */}
       <Card className="ring-1 ring-primary/25">
         <CardContent className="p-5 space-y-3">
-          <h3 className="font-black flex items-center gap-2"><Stethoscope className="size-4 text-primary" /> Parecer do Preceptor</h3>
+          <h3 className="font-black flex items-center gap-2">
+            <Stethoscope className="size-4 text-primary" /> Parecer do Preceptor
+          </h3>
           {reviewLoading || !review ? (
             <SectionSkeleton />
           ) : review.parecer_md ? (
@@ -1023,21 +1289,49 @@ function SimResult({
       {review && (
         <>
           {review.parecer_md && review.comentario && (
-            <Card><CardContent className="p-5 text-sm whitespace-pre-wrap">{review.comentario}</CardContent></Card>
+            <Card>
+              <CardContent className="p-5 text-sm whitespace-pre-wrap">{review.comentario}</CardContent>
+            </Card>
           )}
 
-          <ClarificationLoop sessionId={sessionId} questions={review.perguntas_esclarecimento} veredictos={review.veredictos_esclarecimento} />
+          <ClarificationLoop
+            sessionId={sessionId}
+            questions={review.perguntas_esclarecimento}
+            veredictos={review.veredictos_esclarecimento}
+          />
 
           <div className="grid md:grid-cols-2 gap-3">
-            <ListCard tone="good" title="Acertos na conduta" items={review.acertos} icon={<CheckCircle2 className="size-4 text-emerald-500" />} />
-            <ListCard tone="bad" title="Pontos de atenção" items={review.faltou} icon={<XCircle className="size-4 text-red-500" />} />
-            <ListCard title="Exames desnecessários" items={review.exames_desnecessarios} icon={<FlaskConical className="size-4 text-amber-500" />} />
-            <ListCard title="Como melhorar" items={review.melhorias} icon={<Activity className="size-4 text-primary" />} />
+            <ListCard
+              tone="good"
+              title="Acertos na conduta"
+              items={review.acertos}
+              icon={<CheckCircle2 className="size-4 text-emerald-500" />}
+            />
+            <ListCard
+              tone="bad"
+              title="Pontos de atenção"
+              items={review.faltou}
+              icon={<XCircle className="size-4 text-red-500" />}
+            />
+            <ListCard
+              title="Exames desnecessários"
+              items={review.exames_desnecessarios}
+              icon={<FlaskConical className="size-4 text-amber-500" />}
+            />
+            <ListCard
+              title="Como melhorar"
+              items={review.melhorias}
+              icon={<Activity className="size-4 text-primary" />}
+            />
           </div>
 
-
           {review.case?.expected_conduct && (
-            <Card><CardContent className="p-5 text-sm"><b className="text-primary">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
+            <Card>
+              <CardContent className="p-5 text-sm">
+                <b className="text-primary">Conduta esperada: </b>
+                {review.case.expected_conduct}
+              </CardContent>
+            </Card>
           )}
 
           {review.resumo && <ResumoFixacao resumo={review.resumo} />}
@@ -1047,7 +1341,9 @@ function SimResult({
       {/* Card 2 — Revisão Teórica (CHAMADA B) */}
       <Card className="ring-1 ring-amber-500/25">
         <CardContent className="p-5 space-y-3">
-          <h3 className="font-black flex items-center gap-2"><ClipboardList className="size-4 text-amber-500" /> Revisão Teórica</h3>
+          <h3 className="font-black flex items-center gap-2">
+            <ClipboardList className="size-4 text-amber-500" /> Revisão Teórica
+          </h3>
           {theoryLoading ? (
             <SectionSkeleton />
           ) : theory ? (
@@ -1058,9 +1354,6 @@ function SimResult({
         </CardContent>
       </Card>
 
-
-
-
       <Card>
         <CardContent className="p-5 space-y-3">
           <div className="text-sm font-bold">A correção fez sentido para você?</div>
@@ -1068,10 +1361,19 @@ function SimResult({
             <p className="text-sm text-primary">Feedback enviado. Obrigado!</p>
           ) : (
             <>
-              <Textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Se discordou de algo, explique aqui (opcional)." />
+              <Textarea
+                rows={3}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Se discordou de algo, explique aqui (opcional)."
+              />
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => submit("up")} disabled={rating !== null}><ThumbsUp className="size-4 mr-2" /> Fez sentido</Button>
-                <Button variant="outline" onClick={() => submit("down")} disabled={rating !== null}><ThumbsDown className="size-4 mr-2" /> Discordo</Button>
+                <Button variant="outline" onClick={() => submit("up")} disabled={rating !== null}>
+                  <ThumbsUp className="size-4 mr-2" /> Fez sentido
+                </Button>
+                <Button variant="outline" onClick={() => submit("down")} disabled={rating !== null}>
+                  <ThumbsDown className="size-4 mr-2" /> Discordo
+                </Button>
               </div>
             </>
           )}
@@ -1099,7 +1401,9 @@ export function ResumoFixacao({ resumo }: { resumo?: any }) {
     <Card className="ring-1 ring-primary/25 bg-primary/5">
       <CardContent className="p-5 space-y-3">
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-black">Resumo para fixação</div>
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-black">
+            Resumo para fixação
+          </div>
           <div className="text-lg font-black text-foreground">{resumo.doenca}</div>
         </div>
         <div className="grid md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
@@ -1114,7 +1418,9 @@ export function ResumoFixacao({ resumo }: { resumo?: any }) {
                   <p className="text-foreground/90 whitespace-pre-wrap">{text}</p>
                 ) : (
                   <ul className="list-disc pl-4 text-foreground/90 space-y-0.5">
-                    {list.map((i: string, k: number) => <li key={k}>{i}</li>)}
+                    {list.map((i: string, k: number) => (
+                      <li key={k}>{i}</li>
+                    ))}
                   </ul>
                 )}
               </div>
@@ -1122,7 +1428,9 @@ export function ResumoFixacao({ resumo }: { resumo?: any }) {
           })}
         </div>
         {resumo.bordao && (
-          <p className="rounded-lg bg-background/70 ring-1 ring-primary/20 p-3 text-sm font-bold text-foreground">💡 {resumo.bordao}</p>
+          <p className="rounded-lg bg-background/70 ring-1 ring-primary/20 p-3 text-sm font-bold text-foreground">
+            💡 {resumo.bordao}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -1150,7 +1458,10 @@ function ClarificationLoop({
         <CardContent className="p-5 space-y-3">
           <div className="text-sm font-black uppercase tracking-wide">Esclarecimento de conduta</div>
           {result.map((v, k) => (
-            <div key={k} className={`rounded-xl p-3 text-sm ring-1 ${v.aceita ? "bg-emerald-500/10 ring-emerald-500/35" : "bg-red-500/10 ring-red-500/30"}`}>
+            <div
+              key={k}
+              className={`rounded-xl p-3 text-sm ring-1 ${v.aceita ? "bg-emerald-500/10 ring-emerald-500/35" : "bg-red-500/10 ring-red-500/30"}`}
+            >
               <div className="font-bold">{v.pergunta}</div>
               <div className="text-muted-foreground mt-1">{v.comentario}</div>
             </div>
@@ -1181,7 +1492,9 @@ function ClarificationLoop({
     <Card className="ring-1 ring-amber-500/40 bg-amber-500/5">
       <CardContent className="p-5 space-y-3">
         <div className="text-sm font-black uppercase tracking-wide">O preceptor quer entender sua conduta</div>
-        <p className="text-xs text-muted-foreground">Antes de penalizar, ele te dá a chance de explicar. Responda abaixo.</p>
+        <p className="text-xs text-muted-foreground">
+          Antes de penalizar, ele te dá a chance de explicar. Responda abaixo.
+        </p>
         {qs.map((q, i) => (
           <div key={i} className="space-y-1">
             <div className="text-sm font-bold">{q}</div>
@@ -1189,7 +1502,13 @@ function ClarificationLoop({
               rows={3}
               placeholder="Explique seu raciocínio para esta conduta"
               value={answers[i] ?? ""}
-              onChange={(e) => setAnswers((a) => { const n = [...a]; n[i] = e.target.value; return n; })}
+              onChange={(e) =>
+                setAnswers((a) => {
+                  const n = [...a];
+                  n[i] = e.target.value;
+                  return n;
+                })
+              }
             />
           </div>
         ))}
@@ -1202,23 +1521,38 @@ function ClarificationLoop({
   );
 }
 
-
+function FeedbackCard({
+  items,
+  tone,
+  icon,
+  title,
+}: {
+  items?: string[];
+  tone: "good" | "bad";
+  icon?: React.ReactNode;
+  title: string;
+}) {
   if (!items?.length) return null;
+
   const cls =
     tone === "good"
-      ? "ring-1 ring-emerald-500/40 bg-emerald-500/10"
+      ? "ring-1 ring-emerald-500/40 bg-emerald-500/10 text-emerald-950 dark:text-emerald-200"
       : tone === "bad"
-        ? "ring-1 ring-red-500/35 bg-red-500/10"
+        ? "ring-1 ring-red-500/35 bg-red-500/10 text-red-950 dark:text-red-200"
         : "";
+
   return (
     <Card className={cls}>
       <CardContent className="p-5 space-y-3">
-        <div className="text-sm font-black uppercase flex items-center gap-2 tracking-wide">{icon} {title}</div>
+        <div className="text-sm font-black uppercase flex items-center gap-2 tracking-wide">
+          {icon} {title}
+        </div>
         <ul className="space-y-2 text-sm leading-relaxed list-disc pl-4">
-          {items.map((i, k) => <li key={k}>{i}</li>)}
+          {items.map((i, k) => (
+            <li key={k}>{i}</li>
+          ))}
         </ul>
       </CardContent>
     </Card>
   );
 }
-
