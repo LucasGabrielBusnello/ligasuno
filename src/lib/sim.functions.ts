@@ -18,10 +18,13 @@ function publicCase(c: any) {
 export const startSimSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
-    z.object({ level: z.number().int().min(1).max(6), area: z.string().min(1).max(80).nullable().optional() }).parse(v),
+    z.object({ level: z.number().int().min(1).max(7), area: z.string().min(1).max(80).nullable().optional() }).parse(v),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { assertCredits, chargeCaseStart } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
+
     let q = supabaseAdmin.from("sim_cases").select("*").eq("published", true).eq("level", data.level);
     if (data.area) q = q.eq("area", data.area);
     const { data: cases, error } = await q;
@@ -38,14 +41,31 @@ export const startSimSession = createServerFn({ method: "POST" })
     const pool = cases.filter((c: any) => !seen.has(c.id));
     const chosen = (pool.length ? pool : cases)[Math.floor(Math.random() * (pool.length ? pool.length : cases.length))] as any;
 
+    // Variáveis comportamentais do paciente, sorteadas localmente (custo zero).
+    const { buildPersona } = await import("./sim-persona");
+    const p = chosen.patient ?? {};
+    const persona = buildPersona({
+      age: p.age ?? null,
+      occupation: p.occupation ?? null,
+      area: chosen.area,
+      level: chosen.level,
+      sensitiveTopic: /ist|dst|hiv|sífilis|droga|álcool|alcool|depress|ansiedad|psiqui|sexual/i.test(
+        `${chosen.area} ${chosen.diagnosis} ${chosen.hidden_history ?? ""}`,
+      ),
+    });
+
     const { data: session, error: e2 } = await supabaseAdmin
       .from("sim_sessions")
-      .insert({ user_id: context.userId, case_id: chosen.id, level: chosen.level, area: chosen.area })
+      .insert({ user_id: context.userId, case_id: chosen.id, level: chosen.level, area: chosen.area, persona: persona as any })
       .select("id")
       .single();
     if (e2) throw new Error(e2.message);
-    return { sessionId: session.id as string, case: publicCase(chosen) };
+
+    // 1 crédito = 1 caso clínico.
+    const balance = await chargeCaseStart(context.userId, session.id as string);
+    return { sessionId: session.id as string, case: publicCase(chosen), balance };
   });
+
 
 export const resumeSimSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
