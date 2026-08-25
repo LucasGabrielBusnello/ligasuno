@@ -26,11 +26,11 @@ function clamp(n: number, min = 0, max = 10) {
   return Math.max(min, Math.min(max, Math.round(n)));
 }
 
-/** Prolixidade em curva de sino forçada: 60% 4-6, 20% 7-10, 20% 0-3. */
+/** Prolixidade em curva de sino forçada: 70% 4-6, 15% 7-10, 15% 0-3. */
 function bellVerbosity() {
   const r = Math.random();
-  if (r < 0.6) return rnd(4, 6);
-  if (r < 0.8) return rnd(7, 10);
+  if (r < 0.7) return rnd(4, 6);
+  if (r < 0.85) return rnd(7, 10);
   return rnd(0, 3);
 }
 
