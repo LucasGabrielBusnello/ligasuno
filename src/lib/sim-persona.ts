@@ -62,13 +62,14 @@ export function buildPersona(input: {
   // Omissão/vergonha só faz sentido em temas sensíveis.
   const omission = input.sensitiveTopic ? (hard ? rnd(45, 90) : rnd(10, 40)) : 0;
 
-  // Hostilidade: idoso atendido por estudante novo ou espera longa na triagem.
+  // Hostilidade: 80% dos pacientes entre 3 e 6; extremos são minoria.
   const waited_long = Math.random() < (scenario === "Emergência" ? 0.5 : 0.2);
   const elderly = (age ?? 0) >= 65;
   const juniorStudent = Number(input.level ?? 3) <= 2;
-  let hostility = hard ? rnd(3, 7) : rnd(0, 3);
-  if (waited_long) hostility += 3;
-  if (elderly && juniorStudent) hostility += 3;
+  const hr = Math.random();
+  let hostility = hr < 0.8 ? rnd(3, 6) : hr < 0.9 ? rnd(0, 2) : rnd(7, 10);
+  if (waited_long) hostility += 2;
+  if (elderly && juniorStudent) hostility += 2;
 
   return {
     scenario,
