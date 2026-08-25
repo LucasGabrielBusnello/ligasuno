@@ -1026,12 +1026,15 @@ function SimResult({
             <Card><CardContent className="p-5 text-sm whitespace-pre-wrap">{review.comentario}</CardContent></Card>
           )}
 
+          <ClarificationLoop sessionId={review.sessionId ?? sessionId} questions={review.perguntas_esclarecimento} />
+
           <div className="grid md:grid-cols-2 gap-3">
-            <ListCard title="Você acertou" items={review.acertos} icon={<CheckCircle2 className="size-4 text-primary" />} />
-            <ListCard title="Faltou" items={review.faltou} icon={<XCircle className="size-4 text-red-500" />} />
+            <ListCard tone="good" title="Acertos na conduta" items={review.acertos} icon={<CheckCircle2 className="size-4 text-emerald-500" />} />
+            <ListCard tone="bad" title="Pontos de atenção" items={review.faltou} icon={<XCircle className="size-4 text-red-500" />} />
             <ListCard title="Exames desnecessários" items={review.exames_desnecessarios} icon={<FlaskConical className="size-4 text-amber-500" />} />
             <ListCard title="Como melhorar" items={review.melhorias} icon={<Activity className="size-4 text-primary" />} />
           </div>
+
 
           {review.case?.expected_conduct && (
             <Card><CardContent className="p-5 text-sm"><b className="text-primary">Conduta esperada: </b>{review.case.expected_conduct}</CardContent></Card>
