@@ -1129,7 +1129,80 @@ export function ResumoFixacao({ resumo }: { resumo?: any }) {
   );
 }
 
-function ListCard({ title, items, icon, tone = "neutral" }: { title: string; items?: string[]; icon: React.ReactNode; tone?: "neutral" | "good" | "bad" }) {
+function ClarificationLoop({
+  sessionId,
+  questions,
+  veredictos,
+}: {
+  sessionId: string;
+  questions?: string[];
+  veredictos?: { pergunta: string; resposta: string; aceita: boolean; comentario: string }[];
+}) {
+  const answerFn = useServerFn(answerSimClarifications);
+  const [answers, setAnswers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(veredictos ?? null);
+
+  const qs = (questions ?? []).slice(0, 2);
+  if (result?.length) {
+    return (
+      <Card className="ring-1 ring-primary/25">
+        <CardContent className="p-5 space-y-3">
+          <div className="text-sm font-black uppercase tracking-wide">Esclarecimento de conduta</div>
+          {result.map((v, k) => (
+            <div key={k} className={`rounded-xl p-3 text-sm ring-1 ${v.aceita ? "bg-emerald-500/10 ring-emerald-500/35" : "bg-red-500/10 ring-red-500/30"}`}>
+              <div className="font-bold">{v.pergunta}</div>
+              <div className="text-muted-foreground mt-1">{v.comentario}</div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!qs.length) return null;
+
+  const submit = async () => {
+    const payload = qs
+      .map((q, i) => ({ question: q, answer: (answers[i] ?? "").trim() }))
+      .filter((a) => a.answer.length > 1);
+    if (!payload.length) return toast.error("Escreva seu raciocínio antes de enviar.");
+    setLoading(true);
+    try {
+      const r: any = await answerFn({ data: { sessionId, answers: payload } });
+      setResult(r.veredictos);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar o esclarecimento.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="ring-1 ring-amber-500/40 bg-amber-500/5">
+      <CardContent className="p-5 space-y-3">
+        <div className="text-sm font-black uppercase tracking-wide">O preceptor quer entender sua conduta</div>
+        <p className="text-xs text-muted-foreground">Antes de penalizar, ele te dá a chance de explicar. Responda abaixo.</p>
+        {qs.map((q, i) => (
+          <div key={i} className="space-y-1">
+            <div className="text-sm font-bold">{q}</div>
+            <Textarea
+              rows={3}
+              placeholder="Explique seu raciocínio para esta conduta"
+              value={answers[i] ?? ""}
+              onChange={(e) => setAnswers((a) => { const n = [...a]; n[i] = e.target.value; return n; })}
+            />
+          </div>
+        ))}
+        <Button onClick={submit} disabled={loading} className="font-bold">
+          {loading ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+          Enviar esclarecimento
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+
   if (!items?.length) return null;
   const cls =
     tone === "good"
