@@ -1026,7 +1026,7 @@ function SimResult({
             <Card><CardContent className="p-5 text-sm whitespace-pre-wrap">{review.comentario}</CardContent></Card>
           )}
 
-          <ClarificationLoop sessionId={review.sessionId ?? sessionId} questions={review.perguntas_esclarecimento} />
+          <ClarificationLoop sessionId={sessionId} questions={review.perguntas_esclarecimento} veredictos={review.veredictos_esclarecimento} />
 
           <div className="grid md:grid-cols-2 gap-3">
             <ListCard tone="good" title="Acertos na conduta" items={review.acertos} icon={<CheckCircle2 className="size-4 text-emerald-500" />} />
