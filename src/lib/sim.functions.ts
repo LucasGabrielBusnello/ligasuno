@@ -18,10 +18,13 @@ function publicCase(c: any) {
 export const startSimSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
-    z.object({ level: z.number().int().min(1).max(6), area: z.string().min(1).max(80).nullable().optional() }).parse(v),
+    z.object({ level: z.number().int().min(1).max(7), area: z.string().min(1).max(80).nullable().optional() }).parse(v),
   )
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { assertCredits, chargeCaseStart } = await import("./sim-billing.server");
+    await assertCredits(context.userId);
+
     let q = supabaseAdmin.from("sim_cases").select("*").eq("published", true).eq("level", data.level);
     if (data.area) q = q.eq("area", data.area);
     const { data: cases, error } = await q;
@@ -38,14 +41,31 @@ export const startSimSession = createServerFn({ method: "POST" })
     const pool = cases.filter((c: any) => !seen.has(c.id));
     const chosen = (pool.length ? pool : cases)[Math.floor(Math.random() * (pool.length ? pool.length : cases.length))] as any;
 
+    // Variáveis comportamentais do paciente, sorteadas localmente (custo zero).
+    const { buildPersona } = await import("./sim-persona");
+    const p = chosen.patient ?? {};
+    const persona = buildPersona({
+      age: p.age ?? null,
+      occupation: p.occupation ?? null,
+      area: chosen.area,
+      level: chosen.level,
+      sensitiveTopic: /ist|dst|hiv|sífilis|droga|álcool|alcool|depress|ansiedad|psiqui|sexual/i.test(
+        `${chosen.area} ${chosen.diagnosis} ${chosen.hidden_history ?? ""}`,
+      ),
+    });
+
     const { data: session, error: e2 } = await supabaseAdmin
       .from("sim_sessions")
-      .insert({ user_id: context.userId, case_id: chosen.id, level: chosen.level, area: chosen.area })
+      .insert({ user_id: context.userId, case_id: chosen.id, level: chosen.level, area: chosen.area, persona: persona as any })
       .select("id")
       .single();
     if (e2) throw new Error(e2.message);
-    return { sessionId: session.id as string, case: publicCase(chosen) };
+
+    // 1 crédito = 1 caso clínico.
+    const balance = await chargeCaseStart(context.userId, session.id as string);
+    return { sessionId: session.id as string, case: publicCase(chosen), balance };
   });
+
 
 export const resumeSimSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -61,6 +81,8 @@ export const resumeSimSession = createServerFn({ method: "POST" })
     if (!s || (s as any).user_id !== context.userId) throw new Error("Sessão não encontrada.");
     const row: any = s;
     if (row.status !== "active") throw new Error("Esta sessão de treino já foi encerrada.");
+    const { sessionTokenState } = await import("./sim-billing.server");
+    const cap = await sessionTokenState(row.id);
     return {
       sessionId: row.id as string,
       case: publicCase(row.sim_cases),
@@ -69,8 +91,10 @@ export const resumeSimSession = createServerFn({ method: "POST" })
       exam_requests: (row.exam_requests ?? []) as any[],
       anamnese: row.anamnese ?? "",
       hypothesis: row.hypothesis ?? "",
+      capReached: cap.capReached,
     };
   });
+
 
 export const saveSimNotes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -104,15 +128,33 @@ async function loadSession(userId: string, sessionId: string) {
   return { supabaseAdmin, session: data as any, sim: (data as any).sim_cases };
 }
 
+/** Timeout de segurança: bloqueia novas interações quando o caso bateu o teto de tokens. */
+async function assertUnderTokenCap(sessionId: string) {
+  const { sessionTokenState, TIMEOUT_MESSAGE } = await import("./sim-billing.server");
+  const st = await sessionTokenState(sessionId);
+  if (st.capReached) {
+    const e = new Error(TIMEOUT_MESSAGE);
+    (e as any).capReached = true;
+    throw e;
+  }
+}
+
 export const simSay = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => z.object({ sessionId: z.string().uuid(), message: z.string().min(1).max(1500) }).parse(v))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin, session, sim } = await loadSession(context.userId, data.sessionId);
-    const { assertCredits, recordUsage } = await import("./sim-billing.server");
+    const { assertCredits, recordUsage, sessionTokenState, TIMEOUT_MESSAGE } = await import("./sim-billing.server");
     await assertCredits(context.userId);
+
+    // Teto atingido antes desta mensagem: o paciente já foi liberado.
+    const before = await sessionTokenState(session.id);
+    if (before.capReached) {
+      return { reply: TIMEOUT_MESSAGE, findings: [], balance: 0, capReached: true, system: true };
+    }
+
     const { patientTurn } = await import("./sim.server");
-    const out = await patientTurn(sim, session.transcript ?? [], data.message);
+    const out = await patientTurn(sim, session.transcript ?? [], data.message, session.persona ?? null);
     const billing = await recordUsage({
       userId: context.userId,
       sessionId: session.id,
@@ -122,17 +164,18 @@ export const simSay = createServerFn({ method: "POST" })
       tier: "chat",
     });
 
+    const reply = billing.capReached ? `${out.reply}\n\n${TIMEOUT_MESSAGE}` : out.reply;
     const transcript = [
       ...(session.transcript ?? []),
       { role: "user", content: data.message, at: new Date().toISOString() },
-      { role: "patient", content: out.reply, at: new Date().toISOString() },
+      { role: "patient", content: reply, at: new Date().toISOString() },
     ];
     const prev = (session.physical_findings ?? []) as any[];
     const merged = [...prev];
     for (const f of out.findings as any[]) if (!merged.some((m) => m.key === f.key)) merged.push(f);
 
     await supabaseAdmin.from("sim_sessions").update({ transcript, physical_findings: merged }).eq("id", session.id);
-    return { reply: out.reply, findings: out.findings, balance: billing.balance };
+    return { reply, findings: out.findings, balance: billing.balance, capReached: billing.capReached };
   });
 
 export const simExam = createServerFn({ method: "POST" })
@@ -143,6 +186,7 @@ export const simExam = createServerFn({ method: "POST" })
     const { examResult } = await import("./sim.server");
     const { assertCredits, recordUsage } = await import("./sim-billing.server");
     await assertCredits(context.userId);
+    await assertUnderTokenCap(session.id);
     const result = await examResult(sim, data.examName);
     const billing = await recordUsage({
       userId: context.userId,
@@ -154,8 +198,9 @@ export const simExam = createServerFn({ method: "POST" })
     });
     const list = [...((session.exam_requests ?? []) as any[]), { ...result, at: new Date().toISOString() }];
     await supabaseAdmin.from("sim_sessions").update({ exam_requests: list }).eq("id", session.id);
-    return { ...result, balance: billing.balance };
+    return { ...result, balance: billing.balance, capReached: billing.capReached };
   });
+
 
 export const simRevealFinding = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -169,6 +214,8 @@ export const simRevealFinding = createServerFn({ method: "POST" })
       const { resolveFindings } = await import("./sim.server");
       const { assertCredits, recordUsage } = await import("./sim-billing.server");
       await assertCredits(context.userId);
+      await assertUnderTokenCap(session.id);
+
       const out = await resolveFindings(sim, [data.key]);
       f = out.findings[0];
       if (!f) throw new Error("Essa manobra não está disponível.");
@@ -237,6 +284,12 @@ export const simFinish = createServerFn({ method: "POST" })
     const { assertCredits, recordUsage } = await import("./sim-billing.server");
     await assertCredits(context.userId);
     const { data: rules } = await supabaseAdmin.from("sim_ai_rules").select("rule").eq("active", true).limit(50);
+    const { data: prof } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name, username")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const studentName = ((prof as any)?.full_name || (prof as any)?.username || "").trim().split(/\s+/)[0] ?? "";
     const { gradeSession } = await import("./sim.server");
     const review = await gradeSession({
       c: sim,
@@ -246,6 +299,7 @@ export const simFinish = createServerFn({ method: "POST" })
       anamnese: data.anamnese,
       hypothesis: data.hypothesis,
       rules: (rules ?? []).map((r: any) => r.rule),
+      studentName,
     });
     const billing = await recordUsage({
       userId: context.userId,
@@ -268,6 +322,55 @@ export const simFinish = createServerFn({ method: "POST" })
       .eq("id", session.id);
     return { ...review, balance: billing.balance, case: { title: sim.title, diagnosis: sim.diagnosis, expected_conduct: sim.expected_conduct, hidden_history: sim.hidden_history } };
   });
+
+/**
+ * Loop de esclarecimento de conduta: o aluno responde até 2 perguntas do
+ * preceptor e a avaliação roda em modelo rápido/barato (Gemini Flash).
+ */
+export const answerSimClarifications = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        sessionId: z.string().uuid(),
+        answers: z
+          .array(z.object({ question: z.string().min(1).max(500), answer: z.string().min(1).max(2000) }))
+          .min(1)
+          .max(2),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: s, error } = await supabaseAdmin
+      .from("sim_sessions")
+      .select("*, sim_cases(*)")
+      .eq("id", data.sessionId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const row: any = s;
+    if (!row || row.user_id !== context.userId) throw new Error("Sessão não encontrada.");
+
+    const { evaluateClarifications } = await import("./sim.server");
+    const { recordUsage } = await import("./sim-billing.server");
+    const out = await evaluateClarifications({ c: row.sim_cases, items: data.answers });
+    await recordUsage({
+      userId: context.userId,
+      sessionId: row.id,
+      phase: "esclarecimento",
+      model: out.model,
+      usage: out.usage,
+      tier: "chat",
+    });
+
+    const review = { ...(row.review ?? {}), veredictos_esclarecimento: out.veredictos, perguntas_esclarecimento: [] };
+    await supabaseAdmin
+      .from("sim_sessions")
+      .update({ review, clarifications: data.answers as any })
+      .eq("id", row.id);
+    return { veredictos: out.veredictos };
+  });
+
 
 export const regenerateSimReview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
