@@ -202,3 +202,65 @@ export const adminDeleteSimSound = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ===================== RAG — Referências bibliográficas ===================== */
+
+export const adminListSimReferences = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const db = await requireAdmin(context);
+    const { data, error } = await (db as any)
+      .from("sim_references")
+      .select("*")
+      .order("kind")
+      .order("title");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const adminSaveSimReference = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        id: z.string().uuid().nullable().optional(),
+        title: z.string().min(3).max(300),
+        kind: z.enum(["core", "area", "guideline"]).default("area"),
+        area: z.string().max(120).nullable().optional(),
+        notes: z.string().max(500).nullable().optional(),
+        active: z.boolean().default(true),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    const db = await requireAdmin(context);
+    const row = {
+      title: data.title.trim(),
+      kind: data.kind,
+      area: data.kind === "area" ? (data.area?.trim() || null) : null,
+      notes: data.notes?.trim() || null,
+      active: data.active,
+    };
+    if (data.id) {
+      const { error } = await (db as any).from("sim_references").update(row).eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { id: data.id };
+    }
+    const { data: ins, error } = await (db as any)
+      .from("sim_references")
+      .insert({ ...row, created_by: context.userId })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: ins.id as string };
+  });
+
+export const adminDeleteSimReference = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    const db = await requireAdmin(context);
+    const { error } = await (db as any).from("sim_references").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
