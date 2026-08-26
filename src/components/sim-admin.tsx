@@ -11,11 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Trash2, Edit, Loader2, Sparkles, Volume2 } from "lucide-react";
+import { Plus, Trash2, Edit, Loader2, Sparkles, Volume2, BookOpen } from "lucide-react";
 import {
   adminListSimCases, adminSaveSimCase, adminDeleteSimCase, adminGenerateSimCases,
   adminListSimFeedback, adminResolveSimFeedback, adminListSimRules, adminSaveSimRule,
   adminDeleteSimRule, adminSaveSimSound, adminDeleteSimSound,
+  adminListSimReferences, adminSaveSimReference, adminDeleteSimReference,
 } from "@/lib/sim-admin.functions";
 
 export function SimAdmin() {
@@ -27,15 +28,18 @@ export function SimAdmin() {
           <TabsTrigger value="sons">Biblioteca de sons</TabsTrigger>
           <TabsTrigger value="feedback">Feedback dos alunos</TabsTrigger>
           <TabsTrigger value="regras">Regras da IA</TabsTrigger>
+          <TabsTrigger value="refs"><BookOpen className="size-4 mr-1.5" />Referências (RAG)</TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="casos" className="mt-4"><CasesAdmin /></TabsContent>
       <TabsContent value="sons" className="mt-4"><SoundsAdmin /></TabsContent>
       <TabsContent value="feedback" className="mt-4"><FeedbackAdmin /></TabsContent>
       <TabsContent value="regras" className="mt-4"><RulesAdmin /></TabsContent>
+      <TabsContent value="refs" className="mt-4"><ReferencesAdmin /></TabsContent>
     </Tabs>
   );
 }
+
 
 const AREAS = ["Clínica Médica","Cardiologia","Pneumologia","Gastroenterologia","Nefrologia","Endocrinologia","Neurologia","Reumatologia","Infectologia","Hematologia","Dermatologia","Psiquiatria","Pediatria","Ginecologia e Obstetrícia","Cirurgia Geral","Ortopedia","Urologia","Oftalmologia","Otorrinolaringologia","Geriatria","Medicina de Família e Comunidade","Emergência e Medicina Intensiva","Oncologia"];
 
