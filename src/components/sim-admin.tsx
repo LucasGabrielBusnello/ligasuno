@@ -351,3 +351,135 @@ function RulesAdmin() {
     </div>
   );
 }
+
+const REF_KINDS: { value: string; label: string; hint: string }[] = [
+  { value: "core", label: "Núcleo (todas as áreas)", hint: "Vale para qualquer caso, em qualquer especialidade." },
+  { value: "area", label: "Por área", hint: "Só entra no RAG quando o caso é da área escolhida." },
+  { value: "guideline", label: "Diretriz / protocolo", hint: "Diretriz ou protocolo brasileiro, vale para todas as áreas." },
+];
+
+function ReferencesAdmin() {
+  const list = useServerFn(adminListSimReferences);
+  const save = useServerFn(adminSaveSimReference);
+  const del = useServerFn(adminDeleteSimReference);
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [title, setTitle] = useState("");
+  const [kind, setKind] = useState("area");
+  const [area, setArea] = useState(AREAS[0]);
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const reload = () => {
+    setLoading(true);
+    list()
+      .then((r: any) => setRows(r ?? []))
+      .catch((e: any) => toast.error(e.message))
+      .finally(() => setLoading(false));
+  };
+  useEffect(() => { reload(); }, []);
+
+  const add = async () => {
+    if (title.trim().length < 3) return toast.error("Informe o nome da obra/diretriz.");
+    setSaving(true);
+    try {
+      await save({ data: { id: null, title: title.trim(), kind: kind as any, area: kind === "area" ? area : null, notes: notes.trim() || null, active: true } });
+      setTitle(""); setNotes("");
+      toast.success("Referência adicionada ao RAG.");
+      reload();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const grouped = REF_KINDS.map((k) => ({ ...k, items: rows.filter((r) => r.kind === k.value) }));
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-emerald-600/30">
+        <CardContent className="p-4 space-y-3">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold">Bibliografia absoluta do simulador</p>
+            <p className="text-xs text-muted-foreground">
+              As referências cadastradas aqui entram no RAG restritivo: a IA só pode gerar casos e corrigir provas com base nesta bibliografia,
+              e o preceptor (parecer final) é obrigado a citar a fonte de cada afirmação.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>Obra / diretriz</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Porto — Semiologia Médica, 8ª ed." />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Escopo</Label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+              >
+                {REF_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+              </select>
+              <p className="text-[11px] text-muted-foreground">{REF_KINDS.find((k) => k.value === kind)?.hint}</p>
+            </div>
+            {kind === "area" && (
+              <div className="space-y-1.5">
+                <Label>Área</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                >
+                  {AREAS.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label>Observação (capítulos, edição, uso)</Label>
+              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opcional. Ex.: usar capítulos de exame físico." />
+            </div>
+          </div>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={add} disabled={saving}>
+            {saving ? <Loader2 className="size-4 animate-spin mr-1.5" /> : <Plus className="size-4 mr-1.5" />}
+            Adicionar referência
+          </Button>
+        </CardContent>
+      </Card>
+
+      {loading && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="size-4 animate-spin" /> Carregando referências...</p>}
+
+      {!loading && grouped.map((g) => (
+        <div key={g.value} className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{g.label}</p>
+          {g.items.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma referência cadastrada neste escopo.</p>}
+          {g.items.map((r) => (
+            <Card key={r.id}>
+              <CardContent className="p-3 flex items-center gap-3">
+                <Switch
+                  checked={r.active}
+                  onCheckedChange={async (v) => {
+                    try {
+                      await save({ data: { id: r.id, title: r.title, kind: r.kind, area: r.area, notes: r.notes, active: v } });
+                      reload();
+                    } catch (e: any) { toast.error(e.message); }
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{r.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {r.area ? <Badge variant="secondary" className="mr-2">{r.area}</Badge> : null}
+                    {r.notes || (r.active ? "Ativa no RAG" : "Desativada")}
+                  </p>
+                </div>
+                <Button variant="ghost" size="icon" onClick={async () => {
+                  try { await del({ data: { id: r.id } }); reload(); } catch (e: any) { toast.error(e.message); }
+                }}><Trash2 className="size-4 text-destructive" /></Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
