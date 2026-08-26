@@ -81,20 +81,44 @@ const norm = (s: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
+/** Referência cadastrada manualmente pelo admin (tabela public.sim_references). */
+export type CustomRef = {
+  title: string;
+  kind?: string | null;
+  area?: string | null;
+  notes?: string | null;
+  active?: boolean | null;
+};
+
+/** Filtra as referências cadastradas no admin que valem para esta área. */
+export function customRefsForArea(area: string, custom?: CustomRef[] | null): string[] {
+  const a = norm(area);
+  return (custom ?? [])
+    .filter((r) => r && r.active !== false && String(r.title ?? "").trim().length > 1)
+    .filter((r) => {
+      if (r.kind === "core" || r.kind === "guideline") return true;
+      const ra = norm(r.area ?? "");
+      if (!ra) return true;
+      return a.includes(ra) || ra.includes(a);
+    })
+    .map((r) => `${String(r.title).trim()}${r.notes ? ` (${String(r.notes).trim()})` : ""}`);
+}
+
 /** Referências permitidas para uma área (núcleo + específicas + diretrizes brasileiras). */
-export function refsForArea(area: string): string[] {
+export function refsForArea(area: string, custom?: CustomRef[] | null): string[] {
   const a = norm(area);
   const hit = AREA_REFS.filter((r) => a.includes(norm(r.area)) || norm(r.area).includes(a));
   const specific = hit.flatMap((h) => h.refs);
-  return [...new Set([...CORE_REFS, ...specific, ...BR_GUIDELINES])];
+  return [...new Set([...CORE_REFS, ...specific, ...BR_GUIDELINES, ...customRefsForArea(area, custom)])];
 }
 
 /**
  * Bloco de prompt que fecha a IA nesta bibliografia (RAG restritivo).
  * `cite` liga a exigência de citação explícita em cada afirmação.
+ * `custom` são as referências cadastradas manualmente no painel do Admin.
  */
-export function referencesPrompt(area: string, opts?: { cite?: boolean }): string {
-  const list = refsForArea(area);
+export function referencesPrompt(area: string, opts?: { cite?: boolean; custom?: CustomRef[] | null }): string {
+  const list = refsForArea(area, opts?.custom);
   return `BIBLIOGRAFIA ABSOLUTA (RAG restritivo) — estas são as ÚNICAS fontes de verdade autorizadas:
 ${list.map((r) => `- ${r}`).join("\n")}
 
@@ -104,8 +128,10 @@ REGRAS INQUEBRÁVEIS DA BIBLIOGRAFIA:
 - Nunca cite artigo, site, escore ou diretriz estrangeira que não esteja na lista. Para conduta no SUS, a referência é sempre o material do Ministério da Saúde listado.${
     opts?.cite
       ? `
-- CITE a fonte ao final de cada afirmação relevante, no formato (Autor/Obra — capítulo/tema). Ex.: "(Harrison — Medicina Interna, síndromes coronarianas agudas)".
-- Ao final do parecer, inclua a seção "## REFERÊNCIAS" listando apenas as obras da lista que você efetivamente usou.`
+- CITE a fonte ao final de CADA afirmação relevante, no formato (Autor/Obra — capítulo/tema). Ex.: "(Harrison — Medicina Interna, síndromes coronarianas agudas)".
+- Nenhum item de lista do seu parecer pode ficar sem citação. Se não houver fonte na lista que sustente a afirmação, reescreva ou remova a afirmação.
+- Ao final do parecer, inclua a seção "## REFERÊNCIAS" listando, em itens "- ", apenas as obras da lista que você efetivamente usou.`
       : ""
   }`;
 }
+
