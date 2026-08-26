@@ -1,0 +1,1 @@
+ALTER TABLE public.sim_sessions ADD COLUMN IF NOT EXISTS reasoning jsonb NOT NULL DEFAULT '{}'::jsonb;

@@ -10,6 +10,8 @@ import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
 import { imageForExam } from "./sim-exam-images";
 import { catalogItem, detectExamKeys } from "./sim-exam-catalog";
 import { personaPrompt, type SimPersona } from "./sim-persona";
+import { referencesPrompt } from "./sim-references";
+import { fixPatientGender } from "./sim-gender";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
@@ -174,7 +176,8 @@ export type SimCase = {
 };
 
 function patientSystem(c: SimCase, persona?: SimPersona | null, studentName?: string | null) {
-  const p = c.patient ?? {};
+  // Nome próprio manda no sexo: evita paciente "Maria" falando de si no masculino.
+  const p = fixPatientGender(c.patient ?? {});
   const lay = Number(persona?.lay_level ?? p.lay_level ?? 3);
   const findings = (Array.isArray(c.findings) ? c.findings : []) as any[];
   return `Você INTERPRETA UM PACIENTE em uma consulta simulada de Medicina, em português do Brasil. Nunca saia do personagem e nunca revele que é uma IA.
@@ -184,6 +187,9 @@ Nome: ${p.name ?? "Paciente"} | Idade: ${persona?.age ?? p.age ?? "?"} | Sexo: $
 Personalidade: ${p.personality ?? "comum"} | Jeito de falar: ${p.speech_style ?? "informal"}
 História completa: ${c.hidden_history ?? c.summary ?? ""}
 Diagnóstico verdadeiro (NUNCA revele nem confirme): ${c.diagnosis}
+
+COERÊNCIA DE IDENTIDADE (obrigatória): você é ${p.gender === "feminino" ? "MULHER" : p.gender === "masculino" ? "HOMEM" : `do sexo ${p.gender ?? "não informado"}`} e se chama ${p.name ?? "Paciente"}. Fale de si sempre nesse gênero gramatical (concordância correta em português) e nunca troque de sexo, nome ou idade no meio da consulta.
+
 
 ${persona ? personaPrompt(persona) : ""}
 ${(studentName ?? "").trim() ? `O ESTUDANTE que está te atendendo se chama ${String(studentName).trim()}. Trate-o por esse nome ou por "doutor(a)". NUNCA chame o estudante pelo seu próprio nome de paciente.` : 'Você não sabe o nome do estudante; trate-o por "doutor(a)" até que ele se apresente.'}
@@ -640,8 +646,13 @@ Responda em JSON: {"veredictos":[{"pergunta":"","aceita":true,"comentario":""}]}
 export async function generateCases(area: string, level: number, count: number) {
   const system = `Você é professor de semiologia que escreve casos clínicos ORIGINAIS em português do Brasil, no estilo e dificuldade das provas ENAMED/Revalida (nunca copie enunciados existentes).
 
+${referencesPrompt(area)}
+
 DIFICULDADE OBRIGATÓRIA PARA ESTE LOTE (respeite à risca, a complexidade deve ser proporcional ao ano):
 ${levelGuidance(level)}
+
+COERÊNCIA DE IDENTIDADE DO PACIENTE (obrigatória): o campo gender deve combinar com o primeiro nome (nome feminino → "feminino"; nome masculino → "masculino") e toda a história, triagem e achados devem usar a concordância de gênero correta. Nunca escreva "o paciente" para uma mulher nem "a paciente" para um homem.
+
 
 Responda em JSON: {"casos":[{"title":"","level":${level},"summary":"","patient":{"name":"","age":0,"gender":"masculino|feminino","occupation":"","personality":"","lay_level":0,"speech_style":""},"triage":{"chief_complaint":"","pa":"","fc":"","fr":"","temp":"","spo2":"","dor":"","peso":"","alergias":"","medicacoes":"","observacoes":""},"hidden_history":"","findings":[{"key":"ausculta_cardiaca","label":"Ausculta cardíaca","text":"","sound_category":"cardiaca|pulmonar|abdominal|carotida|percussao|nenhum","sound_finding":""}],"exams":[{"name":"","category":"","justified":true,"result_text":"","report":"","is_image":false}],"diagnosis":"","expected_conduct":""}]}
 Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, palpacao_abdome e inspecao_geral); 6 a 10 exames, alguns com justified=false (supérfluos); hidden_history detalhada (HDA, antecedentes, hábitos, familiares); triagem coerente com o diagnóstico; lay_level entre 0 e 10 variando entre os casos.`;
@@ -652,7 +663,8 @@ Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, 
   ]);
   const out = parseJson(res.text);
   const casos = Array.isArray(out.casos) ? out.casos : [];
-  return casos.map((c: any) => ({ ...c, area, level }));
+  // Rede de segurança: corrige sexo divergente do nome antes de salvar o caso.
+  return casos.map((c: any) => ({ ...c, area, level, patient: fixPatientGender(c.patient ?? {}) }));
 }
 
 /** Dica do Preceptor — só para 1º e 2º ano, guia sem entregar o diagnóstico. */
