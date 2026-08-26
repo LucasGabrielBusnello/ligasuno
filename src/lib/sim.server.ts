@@ -176,7 +176,8 @@ export type SimCase = {
 };
 
 function patientSystem(c: SimCase, persona?: SimPersona | null, studentName?: string | null) {
-  const p = c.patient ?? {};
+  // Nome próprio manda no sexo: evita paciente "Maria" falando de si no masculino.
+  const p = fixPatientGender(c.patient ?? {});
   const lay = Number(persona?.lay_level ?? p.lay_level ?? 3);
   const findings = (Array.isArray(c.findings) ? c.findings : []) as any[];
   return `Você INTERPRETA UM PACIENTE em uma consulta simulada de Medicina, em português do Brasil. Nunca saia do personagem e nunca revele que é uma IA.
