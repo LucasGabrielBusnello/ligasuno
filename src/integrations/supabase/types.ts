@@ -4862,6 +4862,7 @@ export type Database = {
           level: number | null
           persona: Json
           physical_findings: Json
+          reasoning: Json
           review: Json | null
           score: number | null
           status: string
@@ -4883,6 +4884,7 @@ export type Database = {
           level?: number | null
           persona?: Json
           physical_findings?: Json
+          reasoning?: Json
           review?: Json | null
           score?: number | null
           status?: string
@@ -4904,6 +4906,7 @@ export type Database = {
           level?: number | null
           persona?: Json
           physical_findings?: Json
+          reasoning?: Json
           review?: Json | null
           score?: number | null
           status?: string
