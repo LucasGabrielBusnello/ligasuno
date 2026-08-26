@@ -10,6 +10,8 @@ import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
 import { imageForExam } from "./sim-exam-images";
 import { catalogItem, detectExamKeys } from "./sim-exam-catalog";
 import { personaPrompt, type SimPersona } from "./sim-persona";
+import { referencesPrompt } from "./sim-references";
+import { fixPatientGender } from "./sim-gender";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
