@@ -663,7 +663,8 @@ Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, 
   ]);
   const out = parseJson(res.text);
   const casos = Array.isArray(out.casos) ? out.casos : [];
-  return casos.map((c: any) => ({ ...c, area, level }));
+  // Rede de segurança: corrige sexo divergente do nome antes de salvar o caso.
+  return casos.map((c: any) => ({ ...c, area, level, patient: fixPatientGender(c.patient ?? {}) }));
 }
 
 /** Dica do Preceptor — só para 1º e 2º ano, guia sem entregar o diagnóstico. */
