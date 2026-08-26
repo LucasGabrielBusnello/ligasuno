@@ -10,12 +10,29 @@ import { loadSimSettings, type Tier, type Usage } from "./sim-billing.server";
 import { imageForExam } from "./sim-exam-images";
 import { catalogItem, detectExamKeys } from "./sim-exam-catalog";
 import { personaPrompt, type SimPersona } from "./sim-persona";
-import { referencesPrompt } from "./sim-references";
+import { referencesPrompt, type CustomRef } from "./sim-references";
 import { fixPatientGender } from "./sim-gender";
 
 const AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+
+/**
+ * Referências do RAG cadastradas manualmente no painel do Admin.
+ * Falha silenciosa: se a tabela não responder, o RAG segue com a lista fixa.
+ */
+export async function loadCustomRefs(): Promise<CustomRef[]> {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await (supabaseAdmin as any)
+      .from("sim_references")
+      .select("title, kind, area, notes, active")
+      .eq("active", true);
+    return (data ?? []) as CustomRef[];
+  } catch {
+    return [];
+  }
+}
 
 export type AiResult<T> = T & { usage: Usage | null; model: string };
 
@@ -410,6 +427,7 @@ export async function gradeSession(opts: {
   clarifications?: { question: string; answer: string }[];
 }) {
   const { c, transcript, exams, findings, anamnese, hypothesis, rules } = opts;
+  const customRefs = await loadCustomRefs();
   const student = (opts.studentName ?? "").trim();
   const level = Number(c.level ?? 3);
   const system = `Você é um avaliador acadêmico sênior, brilhante e empático, avaliando um aluno em um estudo de caso simulado. Avalie a transcrição da entrevista e a tomada de decisão do aluno. REGRA: NÃO explique a teoria do caso (outro sistema fará isso). Foque 100% no feedback de desempenho.
@@ -417,6 +435,8 @@ export async function gradeSession(opts: {
 IDENTIDADE DO ALUNO: ${student ? `chame o aluno de "${student}". NUNCA invente outro nome.` : "não use nenhum nome próprio; trate por 'você'. NUNCA invente um nome."}
 
 REGRA INQUEBRÁVEL — A CLÍNICA É SOBERANA: exame complementar não manda na clínica. Se o aluno construiu uma suspeita clínica bem fundamentada e depois a abandonou apenas porque um exame complementar veio negativo/normal (falso negativo), isso é ERRO GRAVE e deve ser apontado e penalizado. Da mesma forma, valorize o aluno que mantém a conduta correta apesar de um exame discordante.
+
+${referencesPrompt(String(c.area ?? ""), { cite: true, custom: customRefs })}
 
 ESCALONAMENTO POR ANO — ${LEVEL_RIGOR[level] ?? LEVEL_RIGOR[3]}
 Nunca cobre competências acima do ano do aluno.
@@ -441,7 +461,10 @@ Análise crítica, discursiva e humana do atendimento, como um mentor conversand
 - **Palavra-chave:** o que foi pedido sem necessidade. Se não houve, escreva apenas: Nenhuma ação desnecessária solicitada.
 
 ## DICA DE OURO
-- **Palavra-chave:** uma dica prática de raciocínio para levar à vida real.
+- **Palavra-chave:** uma dica prática de raciocínio para levar à vida real. (com citação da fonte)
+
+## REFERÊNCIAS
+- Liste apenas as obras da BIBLIOGRAFIA ABSOLUTA que você realmente usou acima, uma por item.
 
 Depois do Markdown, escreva EXATAMENTE estes dois blocos finais:
 <<<NOTA>>> um número inteiro de 0 a 100 com o desempenho global.
@@ -644,9 +667,10 @@ Responda em JSON: {"veredictos":[{"pergunta":"","aceita":true,"comentario":""}]}
 
 
 export async function generateCases(area: string, level: number, count: number) {
+  const customRefs = await loadCustomRefs();
   const system = `Você é professor de semiologia que escreve casos clínicos ORIGINAIS em português do Brasil, no estilo e dificuldade das provas ENAMED/Revalida (nunca copie enunciados existentes).
 
-${referencesPrompt(area)}
+${referencesPrompt(area, { custom: customRefs })}
 
 DIFICULDADE OBRIGATÓRIA PARA ESTE LOTE (respeite à risca, a complexidade deve ser proporcional ao ano):
 ${levelGuidance(level)}
