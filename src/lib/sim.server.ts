@@ -646,8 +646,13 @@ Responda em JSON: {"veredictos":[{"pergunta":"","aceita":true,"comentario":""}]}
 export async function generateCases(area: string, level: number, count: number) {
   const system = `Você é professor de semiologia que escreve casos clínicos ORIGINAIS em português do Brasil, no estilo e dificuldade das provas ENAMED/Revalida (nunca copie enunciados existentes).
 
+${referencesPrompt(area)}
+
 DIFICULDADE OBRIGATÓRIA PARA ESTE LOTE (respeite à risca, a complexidade deve ser proporcional ao ano):
 ${levelGuidance(level)}
+
+COERÊNCIA DE IDENTIDADE DO PACIENTE (obrigatória): o campo gender deve combinar com o primeiro nome (nome feminino → "feminino"; nome masculino → "masculino") e toda a história, triagem e achados devem usar a concordância de gênero correta. Nunca escreva "o paciente" para uma mulher nem "a paciente" para um homem.
+
 
 Responda em JSON: {"casos":[{"title":"","level":${level},"summary":"","patient":{"name":"","age":0,"gender":"masculino|feminino","occupation":"","personality":"","lay_level":0,"speech_style":""},"triage":{"chief_complaint":"","pa":"","fc":"","fr":"","temp":"","spo2":"","dor":"","peso":"","alergias":"","medicacoes":"","observacoes":""},"hidden_history":"","findings":[{"key":"ausculta_cardiaca","label":"Ausculta cardíaca","text":"","sound_category":"cardiaca|pulmonar|abdominal|carotida|percussao|nenhum","sound_finding":""}],"exams":[{"name":"","category":"","justified":true,"result_text":"","report":"","is_image":false}],"diagnosis":"","expected_conduct":""}]}
 Regras: 8 a 14 findings (sempre incluindo ausculta_cardiaca, ausculta_pulmonar, palpacao_abdome e inspecao_geral); 6 a 10 exames, alguns com justified=false (supérfluos); hidden_history detalhada (HDA, antecedentes, hábitos, familiares); triagem coerente com o diagnóstico; lay_level entre 0 e 10 variando entre os casos.`;
